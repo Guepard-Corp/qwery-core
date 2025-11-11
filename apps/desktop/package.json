@@ -32,7 +32,7 @@
     "electron": "39.1.1",
     "electron-builder": "^25.1.8",
     "eslint": "^9.39.0",
-    "nodemon": "^3.1.9",
+    "nodemon": "^3.1.11",
     "rimraf": "^6.0.1",
     "typescript": "^5.9.3",
     "wait-on": "^7.2.0"
