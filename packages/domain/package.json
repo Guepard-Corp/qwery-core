@@ -32,7 +32,7 @@
     "@vitest/coverage-v8": "^4.0.7",
     "eslint": "^9.39.0",
     "typescript": "^5.9.3",
-    "vitest": "4.0.7"
+    "vitest": "4.0.8"
   },
   "prettier": "@qwery/prettier-config",
   "typesVersions": {

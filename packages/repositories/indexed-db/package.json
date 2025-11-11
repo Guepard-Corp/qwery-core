@@ -28,7 +28,7 @@
     "fake-indexeddb": "^6.0.2",
     "jsdom": "^27.1.0",
     "typescript": "^5.9.3",
-    "vitest": "4.0.7"
+    "vitest": "4.0.8"
   },
   "prettier": "@qwery/prettier-config",
   "typesVersions": {
