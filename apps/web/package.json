@@ -82,7 +82,7 @@
     "vite": "^7.1.12",
     "vite-plugin-devtools-json": "^1.0.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "4.0.7"
+    "vitest": "4.0.8"
   },
   "engines": {
     "node": ">=18.0.0"
