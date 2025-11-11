@@ -1,0 +1,11 @@
+{
+  "name": "@qwery/tsconfig",
+  "private": true,
+  "version": "0.1.0",
+  "files": [
+    "base.json"
+  ],
+  "devDependencies": {
+    "vite": "^7.1.12"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "qwery-core",
+  "description": "The core library of Qwery Platform",
+  "homepage": "https://qwery.run",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qwery-run/qwery-core"
+  },
+  "bugs": {
+    "url": "https://github.com/qwery-run/qwery-core/issues"
+  },
+  "keywords": [
+    "ai",
+    "agentic-ai",
+    "database",
+    "sql",
+    "data-engineering",
+    "mysql",
+    "mongodb",
+    "nosql",
+    "clickhouse",
+    "postgresql",
+    "sqlserver",
+    "duckdb"
+  ],
+  "license": "ELv2",
+  "version": "0.1.0",
+  "private": false,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.x"
+  },
+  "author": {
+    "url": "https://guepard.run",
+    "name": "Guepard Inc."
+  },
+  "scripts": {
+    "turbo": "turbo",
+    "postinstall": "manypkg fix && node node_modules/.pnpm/electron@39.1.1/node_modules/electron/install.js",
+    "build": "turbo build --cache-dir=.turbo",
+    "clean": "git clean -xdf node_modules dist",
+    "clean:workspaces": "turbo clean",
+    "dev": "cross-env FORCE_COLOR=1 turbo dev --parallel",
+    "format": "turbo format --cache-dir=.turbo --continue -- --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
+    "format:fix": "turbo format --cache-dir=.turbo --continue -- --write --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
+    "lint": "turbo lint --cache-dir=.turbo --continue -- --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg check",
+    "lint:fix": "turbo lint --cache-dir=.turbo --continue -- --fix --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg fix",
+    "typecheck": "turbo typecheck --cache-dir=.turbo",
+    "test": "turbo test --cache-dir=.turbo",
+    "storybook": "pnpm --filter @qwery/storybook-config storybook",
+    "build-storybook": "pnpm --filter @qwery/storybook-config build-storybook",
+    "desktop:dev": "pnpm --filter desktop dev",
+    "desktop:build": "pnpm --filter desktop build",
+    "desktop:package": "pnpm --filter desktop package",
+    "desktop:start": "pnpm --filter desktop start",
+    "update": "pnpm update -r",
+    "syncpack:list": "pnpm dlx syncpack list-mismatches",
+    "syncpack:fix": "pnpm dlx syncpack fix-mismatches",
+    "env:generate": "turbo gen env",
+    "env:validate": "turbo gen validate-env"
+  },
+  "prettier": "@qwery/prettier-config",
+  "packageManager": "pnpm@10.18.1",
+  "pnpm": {
+    "overrides": {
+      "react-is": "19.0.0"
+    }
+  },
+  "devDependencies": {
+    "@manypkg/cli": "^0.25.1",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@turbo/gen": "^2.6.0",
+    "@types/node": "catalog:",
+    "cross-env": "^10.1.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.7.1",
+    "turbo": "^2.6.0",
+    "typescript": "^5.9.3"
+  }
+}

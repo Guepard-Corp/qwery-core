@@ -1,0 +1,11 @@
+{
+  "pageTitle": "What would you like to do?",
+  "connectDatasourceTitle": "Connect to more than 100 data sources (Database, SaaS, Files, etc.)",
+  "connectDatasourceDescription": "Connect to an existing database or data source to start querying and managing your data.",
+  "connectDatasourceButton": "Connect to a data source",
+  "startDatabaseTitle": "Start a database",
+  "startDatabaseDescription": "Create and deploy a new database instance to get started with your project.",
+  "startDatabaseButton": "Start a database",
+  "playgroundTryMessage": "Try our playground databases and Qwery 🚀"
+}
+

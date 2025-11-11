@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://docs.qwery.run
+    about: For documentation and tutorials.
+  - name: Discord
+    url: https://discord.com/invite/Ferpc4rC3c
+    about: For chatting with the community and getting help.

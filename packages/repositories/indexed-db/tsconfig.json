@@ -1,0 +1,14 @@
+{
+  "extends": "@qwery/tsconfig/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@qwery/domain/*": ["../domain/src/*"]
+    }
+  },
+  "include": ["src/**/*", "__tests__/**/*"],
+  "exclude": ["node_modules"]
+}
+

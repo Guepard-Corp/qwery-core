@@ -1,0 +1,45 @@
+{
+  "name": "@qwery/domain",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "test": "vitest run --logHeapUsage --coverage --silent",
+    "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
+    "lint:fix": "eslint --cache --cache-location ./node_modules/.cache/eslint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    "./entities": "./src/entities/index.ts",
+    "./repositories": "./src/repositories/index.ts",
+    "./common": "./src/common/index.ts",
+    "./services": "./src/services/index.ts",
+    "./enums": "./src/enums/index.ts"
+  },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "reflect-metadata": "^0.2.2",
+    "sqids": "^0.3.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@qwery/eslint-config": "workspace:*",
+    "@qwery/prettier-config": "workspace:*",
+    "@qwery/tsconfig": "workspace:*",
+    "@vitest/coverage-istanbul": "^4.0.7",
+    "@vitest/coverage-v8": "^4.0.7",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.3",
+    "vitest": "4.0.7"
+  },
+  "prettier": "@qwery/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

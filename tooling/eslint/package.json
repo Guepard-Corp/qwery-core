@@ -1,0 +1,28 @@
+{
+  "name": "@qwery/eslint-config",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "./apps.js",
+    "./base.js",
+    "./react.js"
+  ],
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "format": "prettier --check \"**/*.{js,json}\""
+  },
+  "dependencies": {
+    "@types/eslint": "9.6.1",
+    "eslint-config-turbo": "^2.6.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "typescript-eslint": "8.46.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@qwery/prettier-config": "workspace:*",
+    "eslint": "^9.39.0"
+  },
+  "prettier": "@qwery/prettier-config"
+}

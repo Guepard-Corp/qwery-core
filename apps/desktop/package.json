@@ -1,0 +1,43 @@
+{
+  "name": "desktop",
+  "description": "Qwery Studio Desktop Application",
+  "author": {
+    "url": "https://guepard.run",
+    "name": "Guepard Inc."
+  },
+  "private": false,
+  "version": "0.1.0",
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist release tsconfig.tsbuildinfo",
+    "compile": "cross-env NODE_ENV=production tsc -p tsconfig.json",
+    "compile:watch": "cross-env NODE_ENV=development tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "prepare:renderer": "node ./scripts/prepare-renderer.mjs",
+    "build": "pnpm clean && pnpm i && pnpm --filter web build && pnpm compile && pnpm prepare:renderer",
+    "dev": "concurrently -c cyan,magenta -n compile,electron \"pnpm compile:watch\" \"pnpm start:electron\"",
+    "dev:standalone": "concurrently -c cyan,magenta,green -n compile,electron,renderer \"pnpm compile:watch\" \"pnpm start:electron\" \"pnpm --filter web dev\"",
+    "start:electron": "wait-on file:dist/main.js http-get://localhost:3000 --timeout 60000 && cross-env NODE_ENV=development nodemon --watch dist --ext js --exec \"electron dist/main.js\"",
+    "package": "pnpm build && electron-builder -c electron-builder.yml",
+    "start": "pnpm build && cross-env NODE_ENV=production electron dist/main.js"
+  },
+  "devDependencies": {
+    "@qwery/eslint-config": "workspace:*",
+    "@qwery/prettier-config": "workspace:*",
+    "@qwery/tailwind-config": "workspace:*",
+    "@qwery/tsconfig": "workspace:*",
+    "concurrently": "^9.1.0",
+    "cross-env": "^10.1.0",
+    "electron": "39.1.1",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.39.0",
+    "nodemon": "^3.1.9",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.3",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "@qwery/shared": "workspace:*"
+  }
+}

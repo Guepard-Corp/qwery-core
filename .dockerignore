@@ -1,0 +1,27 @@
+Ignore the build output directory. This is the most important one!
+target/
+
+Ignore local environment files.
+.env
+env.example
+
+Ignore Git directory and files
+.git/
+.gitignore
+
+Ignore IDE-specific files
+.idea/
+.vscode/
+
+Ignore documentation, scripts, and other non-source files
+that aren't needed in the final image.
+docs/
+chocolatey/
+Formula/
+snap/
+resources/
+*.md
+*.sh
+Makefile
+LICENCE
+LICENSE_SHORT

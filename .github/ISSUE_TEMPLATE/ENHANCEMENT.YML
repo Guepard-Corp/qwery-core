@@ -1,0 +1,15 @@
+name: "Enhancement"
+description: Create a new ticket for an improvement.
+title: "🚀 [ENHANCEMENT] - <title>"
+labels: [
+  "enhancement"
+]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: Please enter an explicit description of your improvement
+      placeholder: Short and explicit description of your improvement...
+    validations:
+      required: true

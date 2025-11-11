@@ -1,0 +1,29 @@
+{
+  "extends": "@qwery/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "~/*": ["./app/*"],
+      "~/config/*": ["./config/*"],
+      "~/components/*": ["./components/*"],
+      "~/lib/*": ["./lib/*"],
+      "~/types/*": ["./.react-router/types/*"]
+    },
+    "noEmit": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "rootDirs": [".", "./.react-router/types"]
+  },
+  "include": [
+    "*.ts",
+    "*.tsx",
+    "config/**/*.{ts|tsx}",
+    "components/**/*",
+    "lib/**/*.ts",
+    "app",
+    "__tests__",
+    ".react-router/types/**/*"
+, "components", "lib"  ],
+  "exclude": ["node_modules"]
+}

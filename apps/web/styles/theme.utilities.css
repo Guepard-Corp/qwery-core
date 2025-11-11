@@ -1,0 +1,5 @@
+@utility container {
+  margin-inline: auto;
+
+  @apply xl:max-w-[80rem] px-4 lg:px-8;
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@qwery/tsconfig/base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "types": ["vitest/globals"]
+  },
+  "include": ["*.ts", "*.tsx", "src", "__tests__"],
+  "exclude": ["node_modules"]
+}

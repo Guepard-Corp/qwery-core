@@ -1,0 +1,143 @@
+/*
+* markdoc.css
+*
+* Styles for Markdoc Markdown files. Update this to customize the stylesheet for Markdoc content, such as
+* the blog post, documentation, etc.
+ */
+
+.markdoc h1 {
+  @apply font-heading text-foreground mt-14 text-3xl font-semibold tracking-tight dark:text-white;
+}
+
+.markdoc h2 {
+  @apply font-heading text-foreground mt-10 mb-2 text-xl font-semibold tracking-tight dark:text-white;
+}
+
+.markdoc h3 {
+  @apply font-heading text-foreground mt-8 mb-4 text-lg font-semibold tracking-tight dark:text-white;
+}
+
+.markdoc h4 {
+  @apply text-foreground mt-6 text-base font-medium tracking-tight dark:text-white;
+}
+
+.markdoc h5 {
+  @apply text-foreground mt-5 text-sm font-medium tracking-tight dark:text-white;
+}
+
+.markdoc h6 {
+  @apply text-foreground mt-2 text-sm font-normal tracking-tight dark:text-white;
+}
+
+.markdoc p {
+  @apply mt-7 text-base/7 text-gray-700 dark:text-gray-300;
+}
+
+.markdoc li {
+  @apply relative mt-2 text-base/7 text-gray-700 dark:text-gray-300;
+}
+
+.markdoc ul > li:before {
+  content: '-';
+
+  @apply mr-2;
+}
+
+.markdoc ol > li:before {
+  @apply text-secondary-foreground inline-flex font-medium;
+
+  content: counters(counts, '.') '. ';
+  font-feature-settings: 'tnum';
+}
+
+.markdoc b,
+.markdoc strong {
+  @apply text-secondary-foreground font-semibold dark:text-white;
+}
+
+.markdoc img,
+.markdoc video {
+  @apply rounded-md;
+}
+
+.markdoc ul,
+.markdoc ol {
+  @apply pl-1;
+}
+
+.markdoc ol > li {
+  counter-increment: counts;
+}
+
+.markdoc ol > li:before {
+  @apply mr-2 inline-flex font-semibold;
+
+  content: counters(counts, '.') '. ';
+  font-feature-settings: 'tnum';
+}
+
+.markdoc p > code,
+.markdoc li > code {
+  @apply bg-muted/50 text-secondary-foreground border p-0.5 font-mono text-sm font-semibold;
+}
+
+.markdoc pre {
+  @apply bg-muted/50 border-border text-foreground my-4 overflow-x-auto rounded-md border px-4 py-2 font-mono text-sm;
+}
+
+.markdoc blockquote {
+  @apply my-4 rounded-md border px-4 py-2 text-base/7 text-gray-700 dark:text-gray-300;
+
+  p {
+    @apply mt-0;
+  }
+}
+
+.markdoc a {
+  @apply text-secondary-foreground border-b border-b-black pb-0.5 font-semibold hover:border-b-2 dark:border-yellow-300;
+}
+
+.markdoc hr {
+  @apply border-border mt-8 mb-6;
+}
+
+.markdoc [role='alert'] {
+  @apply m-0 my-8 py-4;
+}
+
+.markdoc [role='alert'] * {
+  color: inherit;
+  @apply m-0 p-0 text-sm;
+}
+
+.markdoc [role='alert'] h5 {
+  color: inherit;
+}
+
+.markdoc table {
+  @apply my-4 w-full caption-bottom text-sm;
+}
+
+.markdoc th {
+  @apply [&_tr]:border-b;
+}
+
+.markdoc tbody {
+  @apply [&_tr:last-child]:border-0;
+}
+
+.markdoc tfoot {
+  @apply bg-muted/50 border-t font-medium [&>tr]:last:border-b-0;
+}
+
+.markdoc tr {
+  @apply data-[state=selected]:bg-muted border-b transition-colors;
+}
+
+.markdoc th {
+  @apply text-muted-foreground h-10 px-2 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px];
+}
+
+.markdoc td {
+  @apply p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px];
+}

@@ -1,0 +1,35 @@
+appId: run.qwery.desktop
+productName: Qwery Studio
+directories:
+  output: release
+  buildResources: resources
+asar: true
+icon: resources/icons/icon.png
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: dist/server
+    to: server
+    filter:
+      - "**/*"
+mac:
+  category: public.app-category.developer-tools
+  icon: resources/icons/icon.png
+  target:
+    - dmg
+    - zip
+win:
+  icon: resources/icons/icon.png
+  target:
+    - nsis
+  legalTrademarks: "Qwery Studio"
+linux:
+  icon: resources/icons/icon.png
+  target:
+    - AppImage
+    - deb
+  category: Development
+extraMetadata:
+  main: dist/main.js
+

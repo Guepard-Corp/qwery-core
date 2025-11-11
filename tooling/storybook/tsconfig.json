@@ -1,0 +1,17 @@
+{
+  "extends": "@qwery/tsconfig/base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "types": ["vite/client", "@storybook/react"]
+  },
+  "include": ["../**/*.stories.@(js|jsx|ts|tsx)", ".storybook/**/*"],
+  "exclude": ["node_modules", "../node_modules"]
+}

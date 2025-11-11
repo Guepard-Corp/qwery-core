@@ -1,0 +1,40 @@
+{
+  "name": "@qwery/shared",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
+    "lint:fix": "eslint --cache --cache-location ./node_modules/.cache/eslint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "prettier": "@qwery/prettier-config",
+  "exports": {
+    "./logger": "./src/logger/index.ts",
+    "./utils": "./src/utils.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./events": "./src/events/index.tsx",
+    "./registry": "./src/registry/index.ts",
+    "./desktop": "./src/desktop/index.ts"
+  },
+  "devDependencies": {
+    "@qwery/eslint-config": "workspace:*",
+    "@qwery/prettier-config": "workspace:*",
+    "@qwery/tailwind-config": "workspace:*",
+    "@qwery/tsconfig": "workspace:*",
+    "@types/react": "catalog:",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "pino": "^10.1.0"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

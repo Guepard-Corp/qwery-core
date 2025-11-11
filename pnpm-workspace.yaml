@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/**
+  - tooling/*
+
+catalog:
+  '@types/node': 24.9.2
+  '@types/react': 19.2.2
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - '@sentry/cli'

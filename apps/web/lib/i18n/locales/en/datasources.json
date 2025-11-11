@@ -1,0 +1,21 @@
+{
+    "newDatasource": "New Data Source",
+    "new_pageTitle": "Connect to {{name}}",
+    "new_pageSubtitle": "Select a data source to connect to.",
+    "nameLabel": "Datasource Name",
+    "editNameAriaLabel": "Edit name",
+    "testConnection": "Test Connection",
+    "testing": "Testing...",
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "connecting": "Connecting...",
+    "loading": "Loading...",
+    "notFound": "Plugin not found",
+    "notFoundError": "Plugin not found",
+    "formNotReady": "Form not ready yet",
+    "connectionTestSuccess": "Connection test successful",
+    "connectionTestFailed": "Connection test failed",
+    "connectionTestError": "Failed to test connection",
+    "saveSuccess": "Connection configuration saved successfully",
+    "saveFailed": "Failed to save connection configuration"
+}

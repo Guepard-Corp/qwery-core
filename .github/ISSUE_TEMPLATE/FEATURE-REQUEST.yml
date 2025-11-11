@@ -1,0 +1,100 @@
+name: "✨ Feature Request"
+description: Suggest a new feature or enhancement for Qwery
+title: "✨ [FEATURE] - <title>"
+labels:
+  - "feature-request"
+  - "needs-triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature! Please fill out the information below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem Statement"
+      description: "Is your feature request related to a problem? Please describe the problem you're trying to solve."
+      placeholder: "I'm frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe the solution you'd like to see implemented."
+      placeholder: "I would like to be able to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Have you considered any alternative solutions or workarounds?"
+      placeholder: "I've tried... but it doesn't work because..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Feature Area"
+      description: "Which area of Qwery does this feature relate to?"
+      multiple: true
+      options:
+        - Query Generation
+        - AI Agents
+        - Datasources / Connectors
+        - Dashboards
+        - Notebooks
+        - Data Apps
+        - Desktop Application
+        - Web Application
+        - API
+        - Templates
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      description: "How important is this feature to you?"
+      options:
+        - "Nice to have"
+        - "Important"
+        - "Critical"
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: "Use Case"
+      description: "Describe your use case. How would this feature benefit you and others?"
+      placeholder: "This would help me..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "Additional Context"
+      description: "Add any other context, screenshots, or examples about the feature request."
+      placeholder: "Screenshots, mockups, related issues, etc."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: "Contribution"
+      description: "Would you be willing to contribute to this feature?"
+      options:
+        - label: "I'm willing to submit a PR to implement this feature"
+          required: false
+
