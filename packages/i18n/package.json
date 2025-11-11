@@ -22,7 +22,7 @@
     "@qwery/shared": "workspace:*",
     "@qwery/tailwind-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
-    "@tanstack/react-query": "5.90.5",
+    "@tanstack/react-query": "5.90.7",
     "eslint": "^9.39.0",
     "react-i18next": "^16.2.3",
     "typescript": "^5.9.3"
