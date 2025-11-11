@@ -46,7 +46,7 @@
     "react-i18next": "^16.2.3",
     "recharts": "^2.15.3",
     "sonner": "^2.0.7",
-    "tailwindcss": "4.1.16",
+    "tailwindcss": "4.1.17",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
