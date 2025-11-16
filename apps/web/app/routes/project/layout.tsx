@@ -17,7 +17,7 @@ import { LayoutFooter } from '../layout/_components/layout-footer';
 import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
 import { LayoutTopBar } from '../layout/_components/layout-topbar';
 import { ProjectSidebar } from './_components/project-sidebar';
-import QweryAgentUI from '@qwery/ui/agent-ui';
+import { AgentUIWrapper } from './_components/agent-ui-wrapper';
 
 export async function loader(args: Route.LoaderArgs) {
   const request = args.request;
@@ -62,7 +62,7 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
           <LayoutFooter />
         </PageFooter>
         <AgentSidebar>
-          <QweryAgentUI />
+          <AgentUIWrapper />
         </AgentSidebar>
         {props.children}
       </Page>

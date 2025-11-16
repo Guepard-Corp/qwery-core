@@ -1,0 +1,138 @@
+declare module 'qwery' {
+  /**
+   * The version of Qwery.
+   */
+  export const version: string;
+
+  /**
+   * Represents an icon in the UI. This is either an uri, separate uris for the light- and dark-themes,
+   * or a {@link ThemeIcon theme icon}.
+   */
+  export type IconPath =
+    | Uri
+    | {
+        /**
+         * The icon path for the light theme.
+         */
+        light: Uri;
+        /**
+         * The icon path for the dark theme.
+         */
+        dark: Uri;
+      }
+    | ThemeIcon;
+
+  /**
+   * The ExtensionMode is provided on the `ExtensionContext` and indicates the
+   * mode the specific extension is running in.
+   */
+  export enum ExtensionMode {
+    /**
+     * The extension is installed normally in the editor.
+     */
+    Production = 1,
+
+    /**
+     * The extension is running from an `--extensionDevelopmentPath` provided
+     * when launching the editor.
+     */
+    Development = 2,
+
+    /**
+     * The extension is running from an `--extensionTestsPath` and
+     * the extension host is running unit tests.
+     */
+    Test = 3,
+  }
+
+  /**
+   * An extension context is a collection of utilities private to an
+   * extension.
+   *
+   * An instance of an `ExtensionContext` is provided as the first
+   * parameter to the `activate`-call of an extension.
+   */
+  export interface ExtensionContext {
+    /**
+     * The mode the extension is running in. See {@link ExtensionMode}
+     * for possible values and scenarios.
+     */
+    readonly extensionMode: ExtensionMode;
+
+    /**
+     * The current `Extension` instance.
+     */
+    readonly extension: Extension<any>;
+  }
+
+  /**
+   * In a remote window the extension kind describes if an extension
+   * runs where the UI (window) runs or if an extension runs remotely.
+   */
+  export enum ExtensionKind {
+    /**
+     * Extension runs where the UI runs.
+     */
+    UI = 1,
+
+    /**
+     * Extension runs where the remote extension host runs.
+     */
+    Workspace = 2,
+  }
+
+  /**
+   * Represents an extension.
+   *
+   * To get an instance of an `Extension` use {@link extensions.getExtension getExtension}.
+   */
+  export interface Extension<T> {
+    /**
+     * The canonical extension identifier in the form of: `publisher.name`.
+     */
+    readonly id: string;
+
+    /**
+     * The uri of the directory containing the extension.
+     */
+    readonly extensionUri: Uri;
+
+    /**
+     * The absolute file path of the directory containing this extension. Shorthand
+     * notation for {@link Extension.extensionUri Extension.extensionUri.fsPath} (independent of the uri scheme).
+     */
+    readonly extensionPath: string;
+
+    /**
+     * `true` if the extension has been activated.
+     */
+    readonly isActive: boolean;
+
+    /**
+     * The parsed contents of the extension's package.json.
+     */
+    readonly packageJSON: any;
+
+    /**
+     * The extension kind describes if an extension runs where the UI runs
+     * or if an extension runs where the remote extension host runs. The extension kind
+     * is defined in the `package.json`-file of extensions but can also be refined
+     * via the `remote.extensionKind`-setting. When no remote extension host exists,
+     * the value is {@linkcode ExtensionKind.UI}.
+     */
+    extensionKind: ExtensionKind;
+
+    /**
+     * The public API exported by this extension (return value of `activate`).
+     * It is an invalid action to access this field before this extension has been activated.
+     */
+    readonly exports: T;
+
+    /**
+     * Activates this extension and returns its public API.
+     *
+     * @returns A promise that will resolve when this extension has been activated.
+     */
+    activate(): Thenable<T>;
+  }
+}

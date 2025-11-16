@@ -11,7 +11,16 @@
         <img src="https://img.shields.io/badge/Join-Community-%23ffcb51?logo=discord&logoColor=black" alt="Join our Community" />
     </a>
     <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/build_and_test.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/build-release.yml?branch=main" alt="Build">
+        <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/ci.yml?branch=main" alt="Build">
+    </a>
+    <a href="https://github.com/Guepard-Corp/qwery-core/blob/main/LICENCE" target="_blank">
+        <img src="https://img.shields.io/badge/license-ELv2-blue.svg" alt="License" />
+    </a>
+    <a href="https://nodejs.org/" target="_blank">
+        <img src="https://img.shields.io/badge/node-%3E%3D22.x-brightgreen" alt="Node Version" />
+    </a>
+    <a href="https://github.com/Guepard-Corp/qwery-core/pulls" target="_blank">
+        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
     </a>
     </p>
 </div>
@@ -99,10 +108,3 @@ This project uses the Elastic License 2.0 (ELv2). See the [LICENSE](LICENCE) fil
 ## 🙏 Thank You
 
 We're grateful to the open source community. See our [Thank You](THANK-YOU.md) page for acknowledgments.
-
-## 📊 Project Status
-
-![Build Status](https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/build-release.yml?branch=main)
-![License](https://img.shields.io/badge/license-ELv2-blue.svg)
-![Node Version](https://img.shields.io/badge/node-%3E%3D22.x-brightgreen)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)

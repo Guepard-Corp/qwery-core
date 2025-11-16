@@ -42,8 +42,8 @@ export function ResizableContent(props: ResizableContentProps) {
     setIsOpen(initialOpen);
   }, [initialOpen]);
 
-  const sidebarSize = isOpen ? 40 : 0;
-  const contentSize = isOpen ? 60 : 100;
+  const sidebarSize = isOpen ? 50 : 0;
+  const contentSize = isOpen ? 50 : 100;
 
   return (
     <ResizablePanelGroup
@@ -56,7 +56,7 @@ export function ResizableContent(props: ResizableContentProps) {
       </ResizablePanel>
       {isOpen && <ResizableHandle withHandle />}
       {isOpen && (
-        <ResizablePanel defaultSize={sidebarSize} minSize={10} maxSize={40}>
+        <ResizablePanel defaultSize={sidebarSize} minSize={10} maxSize={80}>
           {AgentSidebar}
         </ResizablePanel>
       )}

@@ -48,24 +48,38 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from '../ai-elements/reasoning';
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from '../ai-elements/tool';
 import { Loader } from '../ai-elements/loader';
+import { ChatTransport, UIMessage, ToolUIPart } from 'ai';
 
 const models = [
   {
-    name: 'GPT 4o',
-    value: 'openai/gpt-4o',
+    name: 'TinyLlama',
+    value: 'TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k',
   },
   {
-    name: 'Deepseek R1',
-    value: 'deepseek/deepseek-r1',
+    name: 'Llama-3.1',
+    value: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
   },
 ];
 
-export default function QweryAgentUI() {
+export interface QweryAgentUIProps {
+  transport: ChatTransport<UIMessage>;
+}
+
+export default function QweryAgentUI(props: QweryAgentUIProps) {
   const [input, setInput] = useState('');
   const [model, setModel] = useState(models[0]?.value ?? '');
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status, regenerate } = useChat();
+  const { messages, sendMessage, status, regenerate } = useChat({
+    transport: props.transport,
+  });
 
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -98,30 +112,38 @@ export default function QweryAgentUI() {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.role === 'assistant' &&
-                  message.parts.filter((part) => part.type === 'source-url')
-                    .length > 0 && (
+                  message.parts.filter(
+                    (part: { type: string }) => part.type === 'source-url',
+                  ).length > 0 && (
                     <Sources>
                       <SourcesTrigger
                         count={
                           message.parts.filter(
-                            (part) => part.type === 'source-url',
+                            (part: { type: string }) =>
+                              part.type === 'source-url',
                           ).length
                         }
                       />
                       {message.parts
                         .filter((part) => part.type === 'source-url')
-                        .map((part, i) => (
-                          <SourcesContent key={`${message.id}-${i}`}>
-                            <Source
-                              key={`${message.id}-${i}`}
-                              href={part.url}
-                              title={part.url}
-                            />
-                          </SourcesContent>
-                        ))}
+                        .map((part, i: number) => {
+                          const sourcePart = part as {
+                            type: 'source-url';
+                            url?: string;
+                          };
+                          return (
+                            <SourcesContent key={`${message.id}-${i}`}>
+                              <Source
+                                key={`${message.id}-${i}`}
+                                href={sourcePart.url}
+                                title={sourcePart.url}
+                              />
+                            </SourcesContent>
+                          );
+                        })}
                     </Sources>
                   )}
-                {message.parts.map((part, i) => {
+                {message.parts.map((part, i: number) => {
                   switch (part.type) {
                     case 'text':
                       return (
@@ -166,6 +188,37 @@ export default function QweryAgentUI() {
                         </Reasoning>
                       );
                     default:
+                      // Handle tool parts (type format: tool-${toolCallId})
+                      if (part.type.startsWith('tool-')) {
+                        const toolPart = part as ToolUIPart;
+                        // Extract tool name from type (format: tool-${toolCallId}) or use toolName if available
+                        const toolName =
+                          'toolName' in toolPart &&
+                          typeof toolPart.toolName === 'string'
+                            ? toolPart.toolName
+                            : toolPart.type.replace('tool-', '');
+                        return (
+                          <Tool
+                            key={`${message.id}-${i}`}
+                            defaultOpen={toolPart.state === 'output-error'}
+                          >
+                            <ToolHeader
+                              title={toolName}
+                              type={toolPart.type}
+                              state={toolPart.state}
+                            />
+                            <ToolContent>
+                              {toolPart.input != null ? (
+                                <ToolInput input={toolPart.input} />
+                              ) : null}
+                              <ToolOutput
+                                output={toolPart.output}
+                                errorText={toolPart.errorText}
+                              />
+                            </ToolContent>
+                          </Tool>
+                        );
+                      }
                       return null;
                   }
                 })}

@@ -87,7 +87,7 @@ export function PageFooter(props: React.PropsWithChildren) {
 }
 
 export function AgentSidebar(props: React.PropsWithChildren) {
-  return <div className={'hidden lg:flex'}>{props.children}</div>;
+  return <>{props.children}</>;
 }
 export function PageBody(
   props: React.PropsWithChildren<{

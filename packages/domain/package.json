@@ -30,7 +30,6 @@
     "@qwery/prettier-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
     "@vitest/coverage-istanbul": "^4.0.7",
-    "@vitest/coverage-v8": "^4.0.7",
     "eslint": "^9.39.0",
     "typescript": "^5.9.3",
     "vitest": "4.0.7"
