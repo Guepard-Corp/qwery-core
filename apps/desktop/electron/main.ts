@@ -1,9 +1,50 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import http from "node:http";
 import path from "node:path";
 
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+// Check if we're running as server process (not Electron app)
+// This prevents server.js from bootstrapping Electron when run with Electron's Node runtime
+// Check all argv values since flags like --no-sandbox might be before the script path
+const isServerProcess = 
+  process.env.ELECTRON_RUN_AS_SERVER === "true" ||
+  process.argv.some(arg => arg?.includes("server.js") || (arg?.includes("/server/") && arg?.endsWith(".js")));
+
+// Debug logging for server process detection
+if (isServerProcess) {
+  console.log("[main.ts] Detected server process, skipping Electron bootstrap");
+  console.log("[main.ts] argv:", process.argv);
+  console.log("[main.ts] ELECTRON_RUN_AS_SERVER:", process.env.ELECTRON_RUN_AS_SERVER);
+  
+  // Find server.js path from argv
+  const serverScriptPath = process.argv.find(arg => arg?.includes("server.js"));
+  if (serverScriptPath) {
+    console.log("[main.ts] Importing and running server script:", serverScriptPath);
+    // Import and run server.js directly
+    import(serverScriptPath).catch((error) => {
+      console.error("[main.ts] Failed to import server script:", error);
+      process.exit(1);
+    });
+  } else {
+    console.error("[main.ts] Server script path not found in argv");
+    process.exit(1);
+  }
+  
+  // Don't continue with Electron initialization
+  // The server script will handle its own execution
+}
+
+// Only initialize Electron if we're NOT running as a server process
+if (!isServerProcess) {
+  // This is the actual Electron app bootstrap - only run if not a server
+  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+
+// Disable sandbox on Linux to avoid permission issues
+// The sandbox requires root-owned chrome-sandbox binary which is problematic for distribution
+if (process.platform === "linux" && !process.argv.includes("--no-sandbox")) {
+  app.commandLine.appendSwitch("--no-sandbox");
+}
 
 // Enable console logging in production for debugging
 if (app.isPackaged) {
@@ -27,9 +68,10 @@ let mainWindow: BrowserWindow | undefined;
 const startProductionServer = async (): Promise<void> => {
   // In packaged app, server is in extraResources (outside asar)
   // In development build, it's in the dist folder
+  // Use server.js (our custom entry point) instead of index.js
   const serverPath = app.isPackaged
-    ? path.join(process.resourcesPath, "server", "index.js")
-    : path.join(__dirname, "..", "server", "index.js");
+    ? path.join(process.resourcesPath, "server", "server.js")
+    : path.join(__dirname, "..", "server", "server.js");
   
   console.log("Starting production server at:", serverPath);
   
@@ -45,15 +87,27 @@ const startProductionServer = async (): Promise<void> => {
     ...process.env,
     NODE_ENV: "production",
     PORT: String(productionServerPort),
+    ELECTRON_RUN_AS_SERVER: "true", // Prevent Electron bootstrap when running server
   };
   
   console.log("Spawning server process");
   
   // Use Electron's Node.js runtime directly - it's already bundled and doesn't require external dependencies
   const execPath = process.execPath;
-  const execArgs: string[] = [serverPath];
+  const execArgs: string[] = [];
+  
+  // Pass --no-sandbox to server process if main process has it, or on Linux where sandbox often fails
+  if (process.argv.includes("--no-sandbox") || process.platform === "linux") {
+    execArgs.push("--no-sandbox");
+  }
+  
+  // Pass server.js directly - Electron will run it as a script
+  // The ELECTRON_RUN_AS_SERVER env var and conditional in main.ts prevent Electron bootstrap
+  execArgs.push(serverPath);
   
   console.log("Using Electron's Node.js runtime for server process");
+  console.log("Server script:", serverPath);
+  console.log("Exec args:", execArgs.join(" "));
   
   serverProcess = spawn(execPath, execArgs, {
     env: serverEnv,
@@ -114,7 +168,8 @@ const startProductionServer = async (): Promise<void> => {
       if (serverProcess) {
         serverProcess.removeListener("exit", exitHandler);
       }
-      reject(new Error(`Server startup timeout - server at ${serverPath} did not respond on ${productionServerUrl}`));
+      const errorDetails = serverErrors || serverOutput || "No output from server";
+      reject(new Error(`Server startup timeout - server at ${serverPath} did not respond on ${productionServerUrl}\n\nServer output:\n${errorDetails}`));
     }, 30000);
 
     let attempts = 0;
@@ -122,38 +177,59 @@ const startProductionServer = async (): Promise<void> => {
 
     const checkServer = () => {
       attempts++;
-      fetch(productionServerUrl)
-        .then((response) => {
-          if (response.ok) {
-            clearTimeout(timeout);
-            if (serverProcess) {
-              serverProcess.removeListener("exit", exitHandler);
-            }
-            console.log(`Production server ready at ${productionServerUrl} after ${attempts} attempts`);
-            resolve();
-          } else {
-            if (attempts >= maxAttempts) {
-              clearTimeout(timeout);
-              if (serverProcess) {
-                serverProcess.removeListener("exit", exitHandler);
-              }
-              reject(new Error(`Server responded but returned status ${response.status}`));
-            } else {
-              setTimeout(checkServer, 100);
-            }
+      const url = new URL(productionServerUrl);
+      const request = http.get({
+        hostname: url.hostname,
+        port: url.port || 3000,
+        path: url.pathname,
+        timeout: 2000,
+      }, (response) => {
+        request.destroy();
+        if (response.statusCode && response.statusCode >= 200 && response.statusCode < 500) {
+          clearTimeout(timeout);
+          if (serverProcess) {
+            serverProcess.removeListener("exit", exitHandler);
           }
-        })
-        .catch((error) => {
+          console.log(`Production server ready at ${productionServerUrl} after ${attempts} attempts`);
+          resolve();
+        } else {
           if (attempts >= maxAttempts) {
             clearTimeout(timeout);
             if (serverProcess) {
               serverProcess.removeListener("exit", exitHandler);
             }
-            reject(new Error(`Server did not become available: ${error.message}`));
+            reject(new Error(`Server responded but returned status ${response.statusCode}`));
           } else {
             setTimeout(checkServer, 100);
           }
-        });
+        }
+      });
+      
+      request.on("error", (error) => {
+        request.destroy();
+        if (attempts >= maxAttempts) {
+          clearTimeout(timeout);
+          if (serverProcess) {
+            serverProcess.removeListener("exit", exitHandler);
+          }
+          reject(new Error(`Server did not become available: ${error.message}`));
+        } else {
+          setTimeout(checkServer, 100);
+        }
+      });
+      
+      request.on("timeout", () => {
+        request.destroy();
+        if (attempts >= maxAttempts) {
+          clearTimeout(timeout);
+          if (serverProcess) {
+            serverProcess.removeListener("exit", exitHandler);
+          }
+          reject(new Error(`Server did not respond within timeout`));
+        } else {
+          setTimeout(checkServer, 100);
+        }
+      });
     };
 
     setTimeout(checkServer, 500);
@@ -182,8 +258,19 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
     minWidth: 1024,
     minHeight: 720,
     show: false,
-    backgroundColor: "#111827",
+    backgroundColor: "#0a0a0a", // Dark slate background
     title: "Qwery Studio",
+    frame: false, // Custom frameless window for sharp, modern look
+    titleBarStyle: "hidden", // Hidden title bar (macOS)
+    titleBarOverlay: process.platform === "win32" ? {
+      color: "#0f172a",
+      symbolColor: "#ffffff",
+      height: 40,
+    } : undefined,
+    transparent: false, // Solid background for sharp edges
+    roundedCorners: false, // Sharp corners (Linux)
+    vibrancy: process.platform === "darwin" ? "under-window" : undefined, // macOS vibrancy
+    visualEffectState: process.platform === "darwin" ? "active" : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -195,10 +282,11 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
   window.once("ready-to-show", () => {
     window.show();
 
-    // Enable DevTools in production if DEBUG env var is set
+    // Enable DevTools in production for debugging (can be disabled later)
     const shouldOpenDevTools = 
       (!app.isPackaged && isDevelopment && process.env.ELECTRON_OPEN_DEVTOOLS !== "false") ||
-      (process.env.DEBUG === "true");
+      (process.env.DEBUG === "true") ||
+      (app.isPackaged && process.env.ELECTRON_OPEN_DEVTOOLS === "true");
 
     if (shouldOpenDevTools) {
       window.webContents.openDevTools({ mode: "detach" });
@@ -221,24 +309,109 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
     mainWindow = undefined;
   });
 
+  // Track maximize state changes for custom title bar
+  window.on("maximize", () => {
+    window.webContents.send("window:maximize-changed", true);
+  });
+  window.on("unmaximize", () => {
+    window.webContents.send("window:maximize-changed", false);
+  });
+
   const rendererUrl = resolveRendererUrl();
   console.log("Loading renderer URL:", rendererUrl);
 
-  try {
-    await window.loadURL(rendererUrl);
-  } catch (error) {
-    console.error("Failed to load renderer", error);
-    if (!isDevelopment) {
-      // In production, show error to user
+  // Add error handlers before loading
+  window.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+    console.error("Failed to load URL:", {
+      errorCode,
+      errorDescription,
+      validatedURL,
+      rendererUrl,
+    });
+    // Always show error in production, and open DevTools to help debug
+    if (app.isPackaged) {
+      window.webContents.openDevTools({ mode: "detach" });
       window.webContents.executeJavaScript(`
-        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; font-family: system-ui; color: #fff; background: #111827;">
+        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; font-family: system-ui; color: #fff; background: #111827; padding: 40px;">
           <h1 style="font-size: 24px; margin-bottom: 16px;">Failed to load application</h1>
-          <p style="color: #9ca3af; margin-bottom: 8px;">Error: ${error instanceof Error ? error.message : String(error)}</p>
-          <p style="color: #9ca3af; font-size: 14px;">URL: ${rendererUrl}</p>
+          <p style="color: #9ca3af; margin-bottom: 8px;">Error Code: ${errorCode}</p>
+          <p style="color: #9ca3af; margin-bottom: 8px;">${errorDescription}</p>
+          <p style="color: #9ca3af; font-size: 14px; margin-bottom: 16px;">URL: ${validatedURL || rendererUrl}</p>
+          <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">Check DevTools console for more details</p>
         </div>';
       `).catch(() => {});
-      throw error;
     }
+  });
+
+  window.webContents.on("console-message", (event, level, message) => {
+    console.log(`[Renderer ${level}]:`, message);
+  });
+
+  // Add keyboard shortcut to open DevTools (Ctrl+Shift+I or F12)
+  window.webContents.on("before-input-event", (event, input) => {
+    if ((input.control && input.shift && input.key.toLowerCase() === "i") || input.key === "F12") {
+      window.webContents.openDevTools({ mode: "detach" });
+    }
+  });
+
+  try {
+    console.log("Attempting to load URL:", rendererUrl);
+    await window.loadURL(rendererUrl);
+    
+    // Wait a bit and check if page actually loaded
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    const pageContent = await window.webContents.executeJavaScript(`
+      document.body ? document.body.innerHTML.trim() : 'NO_BODY'
+    `).catch(() => 'ERROR_READING_BODY');
+    
+    console.log("Page content check:", pageContent === '' ? 'EMPTY_BODY' : pageContent.substring(0, 100));
+    
+    if (pageContent === '' || pageContent === 'NO_BODY' || pageContent === 'ERROR_READING_BODY') {
+      console.warn("Page loaded but body is empty or error reading - opening DevTools for debugging");
+      if (app.isPackaged) {
+        window.webContents.openDevTools({ mode: "detach" });
+      }
+      const errors = await window.webContents.executeJavaScript(`
+        ({
+          scripts: Array.from(document.querySelectorAll('script')).map(s => s.src).filter(Boolean),
+          title: document.title,
+          readyState: document.readyState,
+          location: window.location.href
+        })
+      `).catch(() => ({}));
+      console.log("Page debug info:", errors);
+      
+      // Show helpful message if body is empty
+      if (pageContent === '' || pageContent === 'NO_BODY') {
+        window.webContents.executeJavaScript(`
+          if (!document.body || document.body.innerHTML.trim() === '') {
+            document.body = document.createElement('body');
+            document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; font-family: system-ui; color: #fff; background: #111827; padding: 40px;">
+              <h1 style="font-size: 24px; margin-bottom: 16px;">Application Loading...</h1>
+              <p style="color: #9ca3af; margin-bottom: 8px;">The page appears to be empty.</p>
+              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 16px;">URL: ${rendererUrl}</p>
+              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">Check DevTools console for errors</p>
+            </div>';
+          }
+        `).catch(() => {});
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load renderer", error);
+    // Always show error in production
+    if (app.isPackaged) {
+      window.webContents.openDevTools({ mode: "detach" });
+      window.webContents.executeJavaScript(`
+        document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; font-family: system-ui; color: #fff; background: #111827; padding: 40px;">
+          <h1 style="font-size: 24px; margin-bottom: 16px;">Failed to load application</h1>
+          <p style="color: #9ca3af; margin-bottom: 8px;">Error: ${error instanceof Error ? error.message : String(error)}</p>
+          <p style="color: #9ca3af; font-size: 14px; margin-bottom: 16px;">URL: ${rendererUrl}</p>
+          <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">Check DevTools console for more details</p>
+        </div>';
+      `).catch(() => {});
+    }
+    throw error;
   }
 
   return window;
@@ -314,5 +487,33 @@ app.on("before-quit", () => {
 
 ipcMain.handle("app:get-version", () => app.getVersion());
 
+// Window control handlers for custom frame
+ipcMain.handle("window:minimize", () => {
+  if (mainWindow) {
+    mainWindow.minimize();
+  }
+});
+
+ipcMain.handle("window:maximize", () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.handle("window:close", () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+});
+
+ipcMain.handle("window:is-maximized", () => {
+  return mainWindow?.isMaximized() ?? false;
+});
+
 void bootstrap();
+} // End of !isServerProcess conditional
 
