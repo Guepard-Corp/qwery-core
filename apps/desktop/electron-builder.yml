@@ -19,17 +19,26 @@ mac:
   target:
     - dmg
     - zip
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: null
+  entitlementsInherit: null
 win:
   icon: resources/icons/icon.png
   target:
     - nsis
+    - portable
   legalTrademarks: "Qwery Studio"
+  publisherName: "Guepard Inc."
+  requestedExecutionLevel: asInvoker
 linux:
   icon: resources/icons/icon.png
   target:
     - AppImage
     - deb
+    - tar.gz
   category: Development
+  maintainer: "Guepard Inc."
 extraMetadata:
   main: dist/main.js
 

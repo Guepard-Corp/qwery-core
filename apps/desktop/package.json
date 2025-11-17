@@ -1,6 +1,7 @@
 {
   "name": "desktop",
   "description": "Qwery Studio Desktop Application",
+  "homepage": "https://qwery.run",
   "author": {
     "url": "https://guepard.run",
     "name": "Guepard Inc."
@@ -15,11 +16,15 @@
     "compile": "cross-env NODE_ENV=production tsc -p tsconfig.json",
     "compile:watch": "cross-env NODE_ENV=development tsc -p tsconfig.json --watch --preserveWatchOutput",
     "prepare:renderer": "node ./scripts/prepare-renderer.mjs",
-    "build": "pnpm clean && pnpm i && pnpm --filter web build && pnpm compile && pnpm prepare:renderer",
+    "build": "pnpm clean && pnpm i && node ./scripts/create-env.mjs && pnpm --filter web build && rm -f ../web/.env && pnpm compile && pnpm prepare:renderer",
     "dev": "concurrently -c cyan,magenta -n compile,electron \"pnpm compile:watch\" \"pnpm start:electron\"",
     "dev:standalone": "concurrently -c cyan,magenta,green -n compile,electron,renderer \"pnpm compile:watch\" \"pnpm start:electron\" \"pnpm --filter web dev\"",
     "start:electron": "wait-on file:dist/main.js http-get://localhost:3000 --timeout 60000 && cross-env NODE_ENV=development nodemon --watch dist --ext js --exec \"electron dist/main.js\"",
     "package": "pnpm build && electron-builder -c electron-builder.yml",
+    "package:mac": "pnpm build && electron-builder --mac -c electron-builder.yml",
+    "package:win": "pnpm build && electron-builder --win -c electron-builder.yml",
+    "package:linux": "pnpm build && electron-builder --linux -c electron-builder.yml",
+    "package:all": "pnpm build && electron-builder --mac --win --linux -c electron-builder.yml",
     "start": "pnpm build && cross-env NODE_ENV=production electron dist/main.js"
   },
   "devDependencies": {
@@ -38,6 +43,10 @@
     "wait-on": "^7.2.0"
   },
   "dependencies": {
-    "@qwery/shared": "workspace:*"
+    "@mjackson/node-fetch-server": "^0.7.0",
+    "@qwery/shared": "workspace:*",
+    "cookie": "^0.6.0",
+    "scheduler": "^0.27.0",
+    "set-cookie-parser": "^2.7.2"
   }
 }

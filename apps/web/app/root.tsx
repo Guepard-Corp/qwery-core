@@ -13,6 +13,7 @@ import { CsrfTokenMeta } from '@qwery/csrf/client';
 import { createCsrfProtect } from '@qwery/csrf/server';
 import { cn } from '@qwery/ui/utils';
 
+import { DesktopTitleBar } from '~/components/desktop-title-bar';
 import { RootHead } from '~/components/root-head';
 import { RootProviders } from '~/components/root-providers';
 import appConfig from '~/config/app.config';
@@ -79,6 +80,7 @@ export default function App(props: Route.ComponentProps) {
         <CsrfTokenMeta csrf={csrfToken} />
       </head>
       <body>
+        <DesktopTitleBar />
         <RootProviders theme={theme} language={language}>
           <Outlet />
         </RootProviders>
