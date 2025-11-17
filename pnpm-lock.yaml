@@ -23,6 +23,9 @@ importers:
       '@manypkg/cli':
         specifier: ^0.25.1
         version: 0.25.1
+      '@mjackson/node-fetch-server':
+        specifier: ^0.7.0
+        version: 0.7.0
       '@trivago/prettier-plugin-sort-imports':
         specifier: ^5.2.2
         version: 5.2.2(prettier@3.6.2)
@@ -32,6 +35,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.9.2
+      cookie:
+        specifier: ^0.6.0
+        version: 0.6.0
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -41,6 +47,12 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.7.1
         version: 0.7.1(@trivago/prettier-plugin-sort-imports@5.2.2(prettier@3.6.2))(prettier@3.6.2)
+      scheduler:
+        specifier: ^0.27.0
+        version: 0.27.0
+      set-cookie-parser:
+        specifier: ^2.7.2
+        version: 2.7.2
       turbo:
         specifier: ^2.6.0
         version: 2.6.0
@@ -50,9 +62,21 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@mjackson/node-fetch-server':
+        specifier: ^0.7.0
+        version: 0.7.0
       '@qwery/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      cookie:
+        specifier: ^0.6.0
+        version: 0.6.0
+      scheduler:
+        specifier: ^0.27.0
+        version: 0.27.0
+      set-cookie-parser:
+        specifier: ^2.7.2
+        version: 2.7.2
     devDependencies:
       '@qwery/eslint-config':
         specifier: workspace:*
@@ -875,6 +899,9 @@ importers:
 
   packages/shared:
     dependencies:
+      cookie:
+        specifier: ^0.6.0
+        version: 0.6.0
       pino:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1860,6 +1887,9 @@ packages:
 
   '@mjackson/node-fetch-server@0.2.0':
     resolution: {integrity: sha512-EMlH1e30yzmTpGLQjlFmaDAjyOeZhng1/XCd7DExR8PNAnG/G1tyruZxEoUe11ClnwGhGrtsdnyyUx1frSzjng==}
+
+  '@mjackson/node-fetch-server@0.7.0':
+    resolution: {integrity: sha512-un8diyEBKU3BTVj3GzlTPA1kIjCkGdD+AMYQy31Gf9JCkfoZzwgJ79GUtHrF2BN3XPNMLpubbzPcxys+a3uZEw==}
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -4137,6 +4167,10 @@ packages:
 
   cookie-signature@1.0.6:
     resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
+
+  cookie@0.6.0:
+    resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
+    engines: {node: '>= 0.6'}
 
   cookie@0.7.1:
     resolution: {integrity: sha512-6DnInpx7SJ2AK3+CTUE/ZM0vWTUboZCegxhC2xiIydHR9jNuTAASBrfEpHhiGOZw/nX51bHt6YQl8jsGo4y/0w==}
@@ -8425,6 +8459,8 @@ snapshots:
 
   '@mjackson/node-fetch-server@0.2.0': {}
 
+  '@mjackson/node-fetch-server@0.7.0': {}
+
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
       '@emnapi/core': 1.7.0
@@ -11041,6 +11077,8 @@ snapshots:
   convert-source-map@2.0.0: {}
 
   cookie-signature@1.0.6: {}
+
+  cookie@0.6.0: {}
 
   cookie@0.7.1: {}
 
