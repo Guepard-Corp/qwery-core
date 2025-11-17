@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isDesktopApp = exports.getDesktopApi = void 0;
 const resolveDesktopApi = () => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
         return undefined;
     }
     return window.desktop;
