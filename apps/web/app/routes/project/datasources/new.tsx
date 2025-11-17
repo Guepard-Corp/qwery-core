@@ -227,7 +227,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
               <CardTitle>
                 <Trans
                   i18nKey="datasources:new_pageTitle"
-                  values={{ name: loaderData.name || extension.data?.name }}
+                  values={{ 
+                    name: String(loaderData.name || extension.data?.name || '')
+                  }}
                 />
               </CardTitle>
               {(loaderData.description || extension.data?.description) && (
