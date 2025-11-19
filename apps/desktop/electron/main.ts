@@ -1,15 +1,21 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { spawn, ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 
 // Check if we're running as server process (not Electron app)
 // This prevents server.js from bootstrapping Electron when run with Electron's Node runtime
 // Check all argv values since flags like --no-sandbox might be before the script path
-const isServerProcess = 
+const isServerProcess =
   process.env.ELECTRON_RUN_AS_SERVER === "true" ||
-  process.argv.some(arg => arg?.includes("server.js") || (arg?.includes("/server/") && arg?.endsWith(".js")));
+  process.argv.some(
+    (arg) =>
+      arg?.includes("server.js") ||
+      (arg?.includes("/server/") && arg?.endsWith(".js")),
+  );
+
+const APP_USER_MODEL_ID = "run.qwery.desktop";
 
 // Debug logging for server process detection
 if (isServerProcess) {
@@ -39,12 +45,45 @@ if (isServerProcess) {
 if (!isServerProcess) {
   // This is the actual Electron app bootstrap - only run if not a server
   process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+  app.setName("Qwery Studio");
 
-// Disable sandbox on Linux to avoid permission issues
-// The sandbox requires root-owned chrome-sandbox binary which is problematic for distribution
-if (process.platform === "linux" && !process.argv.includes("--no-sandbox")) {
-  app.commandLine.appendSwitch("--no-sandbox");
+  if (process.platform === "win32") {
+    app.setAppUserModelId(APP_USER_MODEL_ID);
+  }
+
+const hasSetuidChromeSandbox = (): boolean => {
+  const execDir = path.dirname(process.execPath);
+  const sandboxPath = path.join(execDir, "chrome-sandbox");
+
+  try {
+    const stats = statSync(sandboxPath);
+    const hasSetuid = (stats.mode & 0o4000) === 0o4000;
+    const ownedByRoot = stats.uid === 0;
+
+    if (!hasSetuid || !ownedByRoot) {
+      console.warn(
+        `[sandbox] chrome-sandbox at ${sandboxPath} missing setuid bit or not owned by root (setuid=${hasSetuid}, uid=${stats.uid})`,
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn(`[sandbox] Unable to inspect chrome-sandbox path`, error);
+    return false;
+  }
+};
+
+const userDisabledSandbox = process.argv.includes(" --no-sandbox");
+const linuxSandboxEnabled =
+  process.platform === "linux" ? !userDisabledSandbox && hasSetuidChromeSandbox() : true;
+
+if (process.platform === "linux" && !linuxSandboxEnabled && !userDisabledSandbox) {
+  // Fallback to Chromium's no-sandbox mode when suid helper is unavailable
+  app.commandLine.appendSwitch(" --no-sandbox");
 }
+
+const sandboxDisabled = process.platform === "linux" && !linuxSandboxEnabled;
 
 // Enable console logging in production for debugging
 if (app.isPackaged) {
@@ -64,6 +103,46 @@ const productionServerUrl = `http://localhost:${productionServerPort}`;
 
 let serverProcess: ChildProcess | undefined;
 let mainWindow: BrowserWindow | undefined;
+let cachedAppIcon: string | undefined;
+
+const resolveAppIcon = (): string | undefined => {
+  if (app.isPackaged) {
+    const packagedIcon = path.join(process.resourcesPath, "icons", "icon.png");
+    if (existsSync(packagedIcon)) {
+      return packagedIcon;
+    }
+  }
+
+  const repoIcon = path.join(app.getAppPath(), "resources", "icons", "icon.png");
+  if (existsSync(repoIcon)) {
+    return repoIcon;
+  }
+
+  return undefined;
+};
+
+const prepareAppIcon = (): string | undefined => {
+  const iconPath = resolveAppIcon();
+
+  if (!iconPath) {
+    console.warn(
+      "[main.ts] Application icon not found. Falling back to Electron default icon.",
+    );
+    return undefined;
+  }
+
+  cachedAppIcon = iconPath;
+
+  if (process.platform === "darwin" && app.dock) {
+    try {
+      app.dock.setIcon(iconPath);
+    } catch (error) {
+      console.warn("[main.ts] Failed to set macOS dock icon", error);
+    }
+  }
+
+  return iconPath;
+};
 
 const startProductionServer = async (): Promise<void> => {
   // In packaged app, server is in extraResources (outside asar)
@@ -96,8 +175,8 @@ const startProductionServer = async (): Promise<void> => {
   const execPath = process.execPath;
   const execArgs: string[] = [];
   
-  // Pass --no-sandbox to server process if main process has it, or on Linux where sandbox often fails
-  if (process.argv.includes("--no-sandbox") || process.platform === "linux") {
+  // Pass --no-sandbox to server process if the renderer runs without sandbox
+  if (sandboxDisabled) {
     execArgs.push("--no-sandbox");
   }
   
@@ -252,6 +331,8 @@ const resolveRendererUrl = (): string => {
 };
 
 const createMainWindow = async (): Promise<BrowserWindow> => {
+  const icon = cachedAppIcon ?? resolveAppIcon();
+
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -261,6 +342,7 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
     backgroundColor: "#0a0a0a", // Dark slate background
     title: "Qwery Studio",
     frame: false, // Custom frameless window for sharp, modern look
+    icon,
     titleBarStyle: "hidden", // Hidden title bar (macOS)
     titleBarOverlay: process.platform === "win32" ? {
       color: "#0f172a",
@@ -419,6 +501,8 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
 
 const bootstrap = async () => {
   await app.whenReady();
+
+  prepareAppIcon();
   
   if (shouldUseBundledServer) {
     console.log("Using bundled server (packaged:", app.isPackaged, ", NODE_ENV:", process.env.NODE_ENV, ")");
