@@ -23,7 +23,7 @@ export default function ProjectDatasourcesPage({
     workspace.projectId as string,
   );
 
-  const hasDatasources = datasources.data?.length ?? 0 > 0;
+  const hasDatasources = (datasources.data?.length ?? 0) > 0;
 
   return (
     <div className="p-2 lg:p-4">
