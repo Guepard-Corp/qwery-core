@@ -36,11 +36,6 @@ const copyRenderer = async () => {
     await rm(targetServerDir, { recursive: true, force: true });
     await mkdir(targetServerDir, { recursive: true });
     await cp(webBuildServerDir, targetServerDir, { recursive: true, dereference: true });
-
-    const serverStaticDir = path.join(targetServerDir, "public");
-    await rm(serverStaticDir, { recursive: true, force: true });
-    await mkdir(serverStaticDir, { recursive: true });
-    await cp(webBuildClientDir, serverStaticDir, { recursive: true, dereference: true });
     
     // Add package.json with "type": "module" so Node.js treats server files as ES modules
     const { writeFile } = await import("node:fs/promises");
@@ -74,7 +69,6 @@ const host = process.env.HOST || "localhost";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const staticRootCandidates = [
-  path.resolve(currentDir, "public"),
   path.resolve(currentDir, "../renderer"),
   path.resolve(currentDir, "../../renderer"),
 ];
@@ -117,8 +111,7 @@ const shouldAttemptStatic = (pathname) => {
   return (
     pathname.startsWith("/assets/") ||
     pathname.startsWith("/images/") ||
-    pathname.startsWith("/fonts/") ||
-    pathname.startsWith("/public/")
+    pathname.startsWith("/fonts/")
   );
 };
 
@@ -323,18 +316,13 @@ process.on("SIGINT", () => {
       }
     };
 
-    const dependencyNames = new Set(["@react-router/node"]);
-    try {
-      const webPackageJson = JSON.parse(await readFile(webPackageJsonPath, "utf-8"));
-      for (const name of Object.keys(webPackageJson.dependencies ?? {})) {
-        dependencyNames.add(name);
-      }
-      for (const name of Object.keys(webPackageJson.peerDependencies ?? {})) {
-        dependencyNames.add(name);
-      }
-    } catch (dependenciesError) {
-      console.warn("Failed to read web package dependencies:", dependenciesError);
-    }
+    const dependencyNames = new Set([
+      "@react-router/node",
+      "react",
+      "react-dom",
+      "scheduler",
+      "set-cookie-parser",
+    ]);
 
     for (const moduleName of dependencyNames) {
       await ensureServerDependency(moduleName);

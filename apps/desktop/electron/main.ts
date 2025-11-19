@@ -332,6 +332,8 @@ const resolveRendererUrl = (): string => {
 
 const createMainWindow = async (): Promise<BrowserWindow> => {
   const icon = cachedAppIcon ?? resolveAppIcon();
+  const isMac = process.platform === "darwin";
+  const isWindows = process.platform === "win32";
 
   const window = new BrowserWindow({
     width: 1440,
@@ -343,12 +345,14 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
     title: "Qwery Studio",
     frame: false, // Custom frameless window for sharp, modern look
     icon,
-    titleBarStyle: "hidden", // Hidden title bar (macOS)
-    titleBarOverlay: process.platform === "win32" ? {
-      color: "#0f172a",
-      symbolColor: "#ffffff",
-      height: 40,
-    } : undefined,
+    titleBarStyle: isMac ? "hidden" : undefined, // only meaningful on macOS
+    titleBarOverlay: isMac
+      ? {
+          color: "#0f172a",
+          symbolColor: "#ffffff",
+          height: 40,
+        }
+      : undefined,
     transparent: false, // Solid background for sharp edges
     roundedCorners: false, // Sharp corners (Linux)
     vibrancy: process.platform === "darwin" ? "under-window" : undefined, // macOS vibrancy

@@ -12,6 +12,7 @@ buildDependenciesFromSource: false
 files:
   - "dist/**"
   - "!dist/server/**"
+  - "!dist/renderer/**"
   - "package.json"
   - "!**/*.map"
   - "!**/*.ts"
@@ -29,6 +30,8 @@ files:
 extraResources:
   - from: dist/server
     to: server
+  - from: dist/renderer
+    to: renderer
   - from: resources/icons
     to: icons
   - from: resources/linux

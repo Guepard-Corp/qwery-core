@@ -9,6 +9,6 @@ Icon=qwery-studio
 Terminal=false
 Categories=Development;Utility;
 StartupNotify=true
-StartupWMClass=Qwery Studio
+StartupWMClass=qwery-desktop
 Keywords=database;sql;ai;automation;
 
