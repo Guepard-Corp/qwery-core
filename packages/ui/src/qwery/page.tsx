@@ -23,6 +23,20 @@ function PageWithHeaderSidebar(props: PageProps) {
     AgentSidebar,
   } = getSlotsFromPage(props);
 
+  const contentRegion = Children ? (
+    <div
+      className="flex h-full w-full min-h-0 flex-col overflow-hidden"
+      data-page-scroll-region
+    >
+      <div
+        className="flex-1 min-h-0 overflow-y-auto"
+        data-page-scroll-body
+      >
+        {Children}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       {/* Topbar */}
@@ -51,7 +65,10 @@ function PageWithHeaderSidebar(props: PageProps) {
         {/* Main Content */}
         <div className="bg-background relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1">
-            <ResizableContent Content={Children} AgentSidebar={AgentSidebar} />
+            <ResizableContent
+              Content={contentRegion}
+              AgentSidebar={AgentSidebar}
+            />
           </div>
         </div>
         {Footer}
