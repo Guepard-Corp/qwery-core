@@ -91,6 +91,19 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
             { toolName: string; args: unknown; state: string }
           > = new Map();
 
+          const emitDelta = (delta: string) => {
+            if (!delta) {
+              return;
+            }
+            for (const char of delta) {
+              controller.enqueue({
+                type: 'text-delta',
+                delta: char,
+                id: messageIdGenerated,
+              } as UIMessageChunk);
+            }
+          };
+
           // Try to stream LangGraph execution, but fallback to invoke if streaming fails
           let streamed = false;
 
@@ -133,24 +146,17 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
                       );
                       const newDelta = newContent.slice(emittedText.length);
                       if (newDelta) {
+                        emitDelta(newDelta);
                         emittedText = newContent;
-                        controller.enqueue({
-                          type: 'text-delta',
-                          delta: newDelta,
-                          id: messageIdGenerated,
-                        } as UIMessageChunk);
+                        accumulatedText = newContent;
                       }
                       continue;
                     }
                   }
 
                   // No duplicate detected, emit normally
+                  emitDelta(content);
                   emittedText += content;
-                  controller.enqueue({
-                    type: 'text-delta',
-                    delta: content,
-                    id: messageIdGenerated,
-                  } as UIMessageChunk);
                 }
               }
 
@@ -170,17 +176,17 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
                       lastAssistantMessageContent &&
                       content.startsWith(lastAssistantMessageContent)
                     ) {
-                      // The LLM included the previous message, extract only the new part
                       newContent = content.slice(
                         lastAssistantMessageContent.length,
                       );
-                      // Update accumulatedText to reflect only the new content
-                      accumulatedText = newContent;
-                      emittedText = newContent;
-                    } else {
-                      accumulatedText = content;
-                      emittedText = content;
                     }
+
+                    const delta = newContent.slice(emittedText.length);
+                    if (delta) {
+                      emitDelta(delta);
+                    }
+                    accumulatedText = newContent;
+                    emittedText = newContent;
                   }
                 }
 
@@ -334,19 +340,11 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
 
                       // Only emit if we haven't already emitted this content
                       if (newContent && newContent !== emittedText) {
-                        // Calculate what's new to emit
                         const toEmit = newContent.slice(emittedText.length);
                         if (toEmit) {
+                          emitDelta(toEmit);
                           accumulatedText = newContent;
                           emittedText = newContent;
-                          // Stream the new content
-                          for (const char of toEmit) {
-                            controller.enqueue({
-                              type: 'text-delta',
-                              delta: char,
-                              id: messageIdGenerated,
-                            } as UIMessageChunk);
-                          }
                         }
                       }
                       break;
@@ -397,19 +395,11 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
 
                     // Only emit if we haven't already emitted this content
                     if (newContent && newContent !== emittedText) {
-                      // Calculate what's new to emit
                       const toEmit = newContent.slice(emittedText.length);
                       if (toEmit) {
+                        emitDelta(toEmit);
                         accumulatedText = newContent;
                         emittedText = newContent;
-                        // Stream the new content character by character for visual effect
-                        for (const char of toEmit) {
-                          controller.enqueue({
-                            type: 'text-delta',
-                            delta: char,
-                            id: messageIdGenerated,
-                          } as UIMessageChunk);
-                        }
                       }
                     }
                     break;
@@ -428,7 +418,7 @@ export class LangGraphTransport<UI_MESSAGE extends UIMessage>
           }
 
           // Emit final text-end if we have accumulated text
-          if (accumulatedText) {
+          if (emittedText) {
             controller.enqueue({
               type: 'text-end',
               id: messageIdGenerated,

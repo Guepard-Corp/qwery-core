@@ -9,6 +9,7 @@ import { WorkspaceModeEnum } from '../enums/workspace-mode';
  * - desktop: The workspace is running on a desktop device.
  * - mobile: The workspace is running on a mobile device.
  * - browser: The workspace is running in a browser using anonymous user.
+ * - cli: The workspace is managed through the CLI.
  */
 export const WorkspaceModeSchema = z.nativeEnum(WorkspaceModeEnum);
 

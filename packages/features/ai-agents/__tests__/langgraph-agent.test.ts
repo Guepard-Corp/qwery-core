@@ -1,15 +1,58 @@
 /// <reference types="vitest/globals" />
 
+import { afterEach, vi } from 'vitest';
 import { createLangGraphAgent } from '../src/langgraph-agent';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 
+const azureConfig = {
+  provider: 'azure' as const,
+  apiKey: 'test-key',
+  endpoint: 'https://azure.test',
+  deployment: 'mock-deployment',
+  apiVersion: '2024-04-01-preview',
+  temperature: 0.1,
+};
+
+function mockAzureResponses(responses: string[]) {
+  let callIndex = 0;
+  const fetchMock = vi.fn().mockImplementation(async () => {
+    const content = responses[Math.min(callIndex, responses.length - 1)];
+    callIndex += 1;
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            index: callIndex - 1,
+            message: {
+              content,
+            },
+          },
+        ],
+      }),
+      {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      },
+    );
+  });
+
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('LangGraph Agent', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('should call the LLM and get a response', async () => {
+    mockAzureResponses(['Hello, this is a test response']);
+
     // Create agent without tools to test basic LLM response
-    // Using the lightest model for faster test execution: TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k
-    // This model requires only 675.24 MB VRAM and is marked as low_resource_required
     const { app, llm } = createLangGraphAgent({
-      model: 'TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k',
+      llm: azureConfig,
     });
 
     // Verify the graph is compiled and ready
@@ -30,7 +73,7 @@ describe('LangGraph Agent', () => {
     // Use initProgressCallback to track model loading progress
     const { app: appWithProgress, llm: llmWithProgress } = createLangGraphAgent(
       {
-        model: 'TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k',
+        llm: azureConfig,
         initProgressCallback: (progress) => {
           if (progress.progress < 1) {
             console.log(
@@ -91,9 +134,14 @@ describe('LangGraph Agent', () => {
   }, 600000); // 10 minutes timeout for model download and initialization on first run
 
   it('should not duplicate assistant messages in multi-turn conversations', async () => {
+    mockAzureResponses([
+      'First azure response for hello',
+      'Completely different azure response for hi',
+    ]);
+
     // Create agent without tools to test basic LLM response
     const { app } = createLangGraphAgent({
-      model: 'TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k',
+      llm: azureConfig,
       initProgressCallback: (progress) => {
         if (progress.progress < 1) {
           console.log(
