@@ -1,21 +1,53 @@
 appId: run.qwery.desktop
-productName: Qwery Studio
+productName: QweryStudio
+
 directories:
   output: release
   buildResources: resources
+
 asar: true
-icon: resources/icons/icon.png
+npmRebuild: false
+buildDependenciesFromSource: false
+
 files:
-  - dist/**
-  - package.json
+  - "dist/**"
+  - "!dist/server/**"
+  - "package.json"
+  - "!**/*.map"
+  - "!**/*.ts"
+  - "!**/*.tsx"
+  - "!**/*.test.*"
+  - "!**/__tests__/**"
+  - "!**/eslint.config.*"
+  - "!**/tsconfig.*"
+  - "!**/scripts/**"
+  - "!**/.*/**"
+  - "!../**"
+  - "!../../**"
+  - "!../../../**"
+
 extraResources:
   - from: dist/server
     to: server
-    filter:
-      - "**/*"
-mac:
-  category: public.app-category.developer-tools
+  - from: resources/icons
+    to: icons
+  - from: resources/linux
+    to: linux
+
+
+linux:
   icon: resources/icons/icon.png
+  target:
+    #- AppImage
+    - deb
+    #- tar.gz
+  category: Development
+  maintainer: "Guepard Inc."
+
+
+mac:
+  icon: resources/icons/icon.png
+  category: public.app-category.developer-tools
   target:
     - dmg
     - zip
@@ -23,6 +55,8 @@ mac:
   gatekeeperAssess: false
   entitlements: null
   entitlementsInherit: null
+
+
 win:
   icon: resources/icons/icon.png
   target:
@@ -31,14 +65,9 @@ win:
   legalTrademarks: "Qwery Studio"
   publisherName: "Guepard Inc."
   requestedExecutionLevel: asInvoker
-linux:
-  icon: resources/icons/icon.png
-  target:
-    - AppImage
-    - deb
-    - tar.gz
-  category: Development
-  maintainer: "Guepard Inc."
-extraMetadata:
-  main: dist/main.js
+
+
+deb:
+  afterInstall: scripts/deb/after-install.sh
+  afterRemove: scripts/deb/after-remove.sh
 

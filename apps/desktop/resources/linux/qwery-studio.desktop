@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Qwery Studio
+GenericName=Data Workspace
+Comment=Qwery Studio Desktop
+Exec="/opt/QweryStudio/qwery-desktop" %U
+Icon=qwery-studio
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true
+StartupWMClass=Qwery Studio
+Keywords=database;sql;ai;automation;
+

@@ -28,19 +28,19 @@ const copyRenderer = async () => {
   await ensureWebBuildExists();
   await rm(targetRendererDir, { recursive: true, force: true });
   await mkdir(targetRendererDir, { recursive: true });
-  await cp(webBuildClientDir, targetRendererDir, { recursive: true });
+  await cp(webBuildClientDir, targetRendererDir, { recursive: true, dereference: true });
   
   // Copy server build for production SSR
   try {
     await stat(webBuildServerDir);
     await rm(targetServerDir, { recursive: true, force: true });
     await mkdir(targetServerDir, { recursive: true });
-    await cp(webBuildServerDir, targetServerDir, { recursive: true });
+    await cp(webBuildServerDir, targetServerDir, { recursive: true, dereference: true });
 
     const serverStaticDir = path.join(targetServerDir, "public");
     await rm(serverStaticDir, { recursive: true, force: true });
     await mkdir(serverStaticDir, { recursive: true });
-    await cp(webBuildClientDir, serverStaticDir, { recursive: true });
+    await cp(webBuildClientDir, serverStaticDir, { recursive: true, dereference: true });
     
     // Add package.json with "type": "module" so Node.js treats server files as ES modules
     const { writeFile } = await import("node:fs/promises");
@@ -303,7 +303,7 @@ process.on("SIGINT", () => {
       try {
         await rm(dependencyTargetDir, { recursive: true, force: true });
         await mkdir(path.dirname(dependencyTargetDir), { recursive: true });
-        await cp(moduleDir, dependencyTargetDir, { recursive: true });
+        await cp(moduleDir, dependencyTargetDir, { recursive: true, dereference: true });
       } catch (copyError) {
         console.warn(`Failed to copy server dependency "${moduleName}":`, copyError);
       }
