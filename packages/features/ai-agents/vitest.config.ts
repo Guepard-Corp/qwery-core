@@ -10,8 +10,10 @@ export default defineConfig({
     globals: true,
     browser: {
       enabled: true,
-      headless: false,
-      provider: playwright(),
+      //headless: false,
+      provider: playwright({
+        launchOptions: { headless: true },
+      }),
       instances: [{ browser: 'chromium' }],
     },
     testTimeout: 300000, // 5 minutes for model loading and inference

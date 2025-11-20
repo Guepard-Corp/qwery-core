@@ -52,6 +52,10 @@
     "desktop:dev": "pnpm --filter desktop dev",
     "desktop:build": "pnpm --filter desktop build",
     "desktop:package": "pnpm --filter desktop package",
+    "desktop:package:mac": "pnpm --filter desktop package:mac",
+    "desktop:package:win": "pnpm --filter desktop package:win",
+    "desktop:package:linux": "pnpm --filter desktop package:linux",
+    "desktop:package:all": "pnpm --filter desktop package:all",
     "desktop:start": "pnpm --filter desktop start",
     "update": "pnpm update -r",
     "syncpack:list": "pnpm dlx syncpack list-mismatches",
@@ -69,13 +73,21 @@
   },
   "devDependencies": {
     "@manypkg/cli": "^0.25.1",
+    "@mjackson/node-fetch-server": "^0.7.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",
     "@types/node": "catalog:",
+    "cookie": "^0.6.0",
     "cross-env": "^10.1.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
+    "scheduler": "^0.27.0",
+    "set-cookie-parser": "^2.7.2",
     "turbo": "^2.6.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
