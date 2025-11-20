@@ -42,6 +42,7 @@
     "@qwery/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "^8.11.10",
+    "@vitest/coverage-v8": "4.0.7",
     "eslint": "^9.39.0",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",

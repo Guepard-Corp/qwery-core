@@ -15,6 +15,10 @@ run_cli() {
   pnpm --silent --filter cli start "$@" 2>/dev/null
 }
 
+extract_json() {
+  printf '%s\n' "$1" | node -e "const fs=require('fs');const input=fs.readFileSync(0,'utf8');const start=input.indexOf('{');const end=input.lastIndexOf('}');if(start===-1||end===-1||end<=start){process.exit(1);}process.stdout.write(input.slice(start,end+1));"
+}
+
 # Check if Azure env vars are set
 if [ -z "${AZURE_API_KEY:-}" ] || [ -z "${AZURE_ENDPOINT:-}" ]; then
   echo -e "${RED}Error: AZURE_API_KEY and AZURE_ENDPOINT must be set${NC}"
@@ -22,6 +26,7 @@ if [ -z "${AZURE_API_KEY:-}" ] || [ -z "${AZURE_ENDPOINT:-}" ]; then
 fi
 
 export NODE_TLS_REJECT_UNAUTHORIZED=0
+export AI_SDK_LOG_WARNINGS=false
 
 echo -e "${GREEN}=== Natural Language to SQL Test Suite ===${NC}\n"
 
@@ -84,10 +89,16 @@ for i in "${!QUERIES[@]}"; do
     --mode natural \
     --datasource "$DS_ID" \
     --format json)
+
+  JSON_OUTPUT=$(extract_json "$RESULT") || {
+    echo -e "${RED}✗ Failed to parse CLI output${NC}"
+    echo "$RESULT"
+    exit 1
+  }
   
-  SQL=$(echo "$RESULT" | jq -r '.sql // empty')
-  ROW_COUNT=$(echo "$RESULT" | jq -r '.rowCount // 0')
-  ERROR=$(echo "$RESULT" | jq -r '.error // empty')
+  SQL=$(echo "$JSON_OUTPUT" | jq -r '.sql // empty')
+  ROW_COUNT=$(echo "$JSON_OUTPUT" | jq -r '.rowCount // 0')
+  ERROR=$(echo "$JSON_OUTPUT" | jq -r '.error // empty')
   
   if [ -n "$ERROR" ] && [ "$ERROR" != "null" ]; then
     echo -e "${RED}✗ Error: $ERROR${NC}\n"

@@ -25,8 +25,12 @@ vi.mock('@mlc-ai/web-llm', () => {
     setInitProgressCallback: vi.fn(),
   };
 
+  function MockMLCEngine(this: unknown) {
+    return mockEngine;
+  }
+
   return {
-    MLCEngine: vi.fn().mockImplementation(() => mockEngine),
+    MLCEngine: vi.fn(MockMLCEngine),
   };
 });
 

@@ -24,19 +24,14 @@ vi.mock('@mlc-ai/web-llm', () => {
     setInitProgressCallback: vi.fn(),
   };
 
+  function MockMLCEngine(this: unknown) {
+    return mockEngine;
+  }
+
   return {
-    MLCEngine: vi.fn().mockImplementation(() => mockEngine),
+    MLCEngine: vi.fn(MockMLCEngine),
   };
 });
-
-// Mock Azure
-vi.mock('@ai-sdk/azure', () => ({
-  createAzure: vi.fn().mockReturnValue((deployment: string) => ({
-    provider: 'azure',
-    deployment,
-  })),
-  azure: vi.fn(),
-}));
 
 function mockAzureResponses(responses: string[]) {
   let callIndex = 0;
@@ -66,12 +61,23 @@ function mockAzureResponses(responses: string[]) {
 }
 
 describe('LLM Provider Abstraction', () => {
+  const originalProcess = globalThis.process;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof globalThis.process === 'undefined') {
+      vi.stubGlobal('process', { env: {} });
+    }
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    if (originalProcess) {
+      globalThis.process = originalProcess;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (globalThis as Record<string, unknown>).process;
+    }
   });
 
   describe('WebLLM Provider', () => {
