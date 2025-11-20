@@ -8,7 +8,12 @@ import {
   NodeFooter,
   NodeAction,
 } from './node';
-import { ReactFlow, Background, Controls, type Node as ReactFlowNode } from '@xyflow/react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  type Node as ReactFlowNode,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useState } from 'react';
 import { Button } from '../shadcn/button';
@@ -77,7 +82,7 @@ export const WithActions: Story = {
           label: (
             <Node handles={{ source: true, target: true }}>
               <NodeHeader>
-                <div className="flex items-center justify-between w-full">
+                <div className="flex w-full items-center justify-between">
                   <div>
                     <NodeTitle>Process Node</NodeTitle>
                     <NodeDescription>Node with actions</NodeDescription>
@@ -127,7 +132,7 @@ export const WithFooter: Story = {
                 <p className="text-sm">Main content area</p>
               </NodeContent>
               <NodeFooter>
-                <p className="text-xs text-muted-foreground">Footer content</p>
+                <p className="text-muted-foreground text-xs">Footer content</p>
               </NodeFooter>
             </Node>
           ),
@@ -212,4 +217,3 @@ export const MultipleNodes: Story = {
     );
   },
 };
-

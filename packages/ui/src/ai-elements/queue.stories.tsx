@@ -125,7 +125,9 @@ export const WithDescriptions: Story = {
               <QueueItem>
                 <QueueItemIndicator />
                 <QueueItemContent>Task 1</QueueItemContent>
-                <QueueItemDescription>This is a description</QueueItemDescription>
+                <QueueItemDescription>
+                  This is a description
+                </QueueItemDescription>
                 <QueueItemActions>
                   <QueueItemAction>
                     <XIcon className="size-3" />
@@ -204,4 +206,3 @@ export const MultipleSections: Story = {
     </div>
   ),
 };
-

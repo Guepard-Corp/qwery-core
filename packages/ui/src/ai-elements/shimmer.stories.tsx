@@ -21,7 +21,7 @@ export const ShortText: Story = {
   render: () => (
     <div className="max-w-md space-y-2">
       <Shimmer>Thinking</Shimmer>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Short shimmer text example
       </p>
     </div>
@@ -32,7 +32,7 @@ export const LongText: Story = {
   render: () => (
     <div className="max-w-md space-y-2">
       <Shimmer>Generating response, please wait...</Shimmer>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Longer shimmer text example
       </p>
     </div>
@@ -45,7 +45,7 @@ export const InHeading: Story = {
       <h2 className="text-2xl font-bold">
         <Shimmer as="span">Processing your request</Shimmer>
       </h2>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Shimmer can be used in headings
       </p>
     </div>
@@ -61,9 +61,7 @@ export const CustomDuration: Story = {
       <div>
         <Shimmer duration={3}>Slow animation (3s)</Shimmer>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Custom duration examples
-      </p>
+      <p className="text-muted-foreground text-sm">Custom duration examples</p>
     </div>
   ),
 };
@@ -77,8 +75,7 @@ export const CustomSpread: Story = {
       <div>
         <Shimmer spread={4}>Wide spread</Shimmer>
       </div>
-      <p className="text-sm text-muted-foreground">Custom spread examples</p>
+      <p className="text-muted-foreground text-sm">Custom spread examples</p>
     </div>
   ),
 };
-

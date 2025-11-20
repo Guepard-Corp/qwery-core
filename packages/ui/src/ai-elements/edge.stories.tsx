@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Edge } from './edge';
-import { ReactFlow, Background, Controls, type Node, type Edge as ReactFlowEdge } from '@xyflow/react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  type Node,
+  type Edge as ReactFlowEdge,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useState } from 'react';
 
@@ -47,12 +53,7 @@ export const Temporary: Story = {
 
     return (
       <div className="h-screen w-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          edgeTypes={edgeTypes}
-          fitView
-        >
+        <ReactFlow nodes={nodes} edges={edges} edgeTypes={edgeTypes} fitView>
           <Background />
           <Controls />
         </ReactFlow>
@@ -91,12 +92,7 @@ export const Animated: Story = {
 
     return (
       <div className="h-screen w-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          edgeTypes={edgeTypes}
-          fitView
-        >
+        <ReactFlow nodes={nodes} edges={edges} edgeTypes={edgeTypes} fitView>
           <Background />
           <Controls />
         </ReactFlow>
@@ -147,12 +143,7 @@ export const MultipleEdges: Story = {
 
     return (
       <div className="h-screen w-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          edgeTypes={edgeTypes}
-          fitView
-        >
+        <ReactFlow nodes={nodes} edges={edges} edgeTypes={edgeTypes} fitView>
           <Background />
           <Controls />
         </ReactFlow>
@@ -160,4 +151,3 @@ export const MultipleEdges: Story = {
     );
   },
 };
-

@@ -1,9 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-} from './reasoning';
+import { Reasoning, ReasoningTrigger, ReasoningContent } from './reasoning';
 
 const meta: Meta<typeof Reasoning> = {
   title: 'AI Elements/Reasoning',
@@ -88,4 +84,3 @@ export const WithDuration: Story = {
     </div>
   ),
 };
-

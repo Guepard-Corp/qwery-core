@@ -20,11 +20,7 @@ const checkerboardBase64 =
 export const Simple: Story = {
   render: () => (
     <div className="max-w-md">
-      <Image
-        base64={redPixelBase64}
-        mediaType="image/png"
-        alt="Red pixel"
-      />
+      <Image base64={redPixelBase64} mediaType="image/png" alt="Red pixel" />
     </div>
   ),
 };
@@ -45,21 +41,21 @@ export const WithCustomSize: Story = {
   render: () => (
     <div className="max-w-md space-y-4">
       <div>
-        <p className="text-sm text-muted-foreground mb-2">Small (100x100)</p>
+        <p className="text-muted-foreground mb-2 text-sm">Small (100x100)</p>
         <Image
           base64={redPixelBase64}
           mediaType="image/png"
           alt="Small image"
-          className="w-[100px] h-[100px]"
+          className="h-[100px] w-[100px]"
         />
       </div>
       <div>
-        <p className="text-sm text-muted-foreground mb-2">Medium (200x200)</p>
+        <p className="text-muted-foreground mb-2 text-sm">Medium (200x200)</p>
         <Image
           base64={redPixelBase64}
           mediaType="image/png"
           alt="Medium image"
-          className="w-[200px] h-[200px]"
+          className="h-[200px] w-[200px]"
         />
       </div>
     </div>
@@ -90,4 +86,3 @@ export const WithUint8Array: Story = {
     );
   },
 };
-

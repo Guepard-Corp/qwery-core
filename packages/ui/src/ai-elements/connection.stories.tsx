@@ -113,4 +113,3 @@ export const MultipleConnections: Story = {
     );
   },
 };
-

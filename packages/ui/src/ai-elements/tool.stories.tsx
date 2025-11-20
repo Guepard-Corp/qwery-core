@@ -1,11 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-} from './tool';
+import { Tool, ToolHeader, ToolContent, ToolInput, ToolOutput } from './tool';
 
 const meta: Meta<typeof Tool> = {
   title: 'AI Elements/Tool',
@@ -103,7 +97,10 @@ export const WithComplexOutput: Story = {
             output={{
               results: [
                 { title: 'React Docs', url: 'https://react.dev' },
-                { title: 'React GitHub', url: 'https://github.com/facebook/react' },
+                {
+                  title: 'React GitHub',
+                  url: 'https://github.com/facebook/react',
+                },
               ],
             }}
           />
@@ -129,4 +126,3 @@ export const ApprovalRequested: Story = {
     </div>
   ),
 };
-

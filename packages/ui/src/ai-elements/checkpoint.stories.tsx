@@ -1,9 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  Checkpoint,
-  CheckpointIcon,
-  CheckpointTrigger,
-} from './checkpoint';
+import { Checkpoint, CheckpointIcon, CheckpointTrigger } from './checkpoint';
 import { BookmarkIcon } from 'lucide-react';
 
 const meta: Meta<typeof Checkpoint> = {
@@ -72,4 +68,3 @@ export const MultipleCheckpoints: Story = {
     </div>
   ),
 };
-

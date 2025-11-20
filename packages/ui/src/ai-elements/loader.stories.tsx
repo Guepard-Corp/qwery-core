@@ -21,7 +21,7 @@ export const Small: Story = {
   render: () => (
     <div className="flex h-32 items-center justify-center gap-4">
       <Loader size={12} />
-      <span className="text-sm text-muted-foreground">Small (12px)</span>
+      <span className="text-muted-foreground text-sm">Small (12px)</span>
     </div>
   ),
 };
@@ -30,7 +30,7 @@ export const Medium: Story = {
   render: () => (
     <div className="flex h-32 items-center justify-center gap-4">
       <Loader size={16} />
-      <span className="text-sm text-muted-foreground">Medium (16px)</span>
+      <span className="text-muted-foreground text-sm">Medium (16px)</span>
     </div>
   ),
 };
@@ -39,7 +39,7 @@ export const Large: Story = {
   render: () => (
     <div className="flex h-32 items-center justify-center gap-4">
       <Loader size={24} />
-      <span className="text-sm text-muted-foreground">Large (24px)</span>
+      <span className="text-muted-foreground text-sm">Large (24px)</span>
     </div>
   ),
 };
@@ -48,7 +48,7 @@ export const ExtraLarge: Story = {
   render: () => (
     <div className="flex h-32 items-center justify-center gap-4">
       <Loader size={32} />
-      <span className="text-sm text-muted-foreground">Extra Large (32px)</span>
+      <span className="text-muted-foreground text-sm">Extra Large (32px)</span>
     </div>
   ),
 };
@@ -59,10 +59,9 @@ export const Inline: Story = {
       <p>
         Loading... <Loader size={14} />
       </p>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         The loader can be used inline with text
       </p>
     </div>
   ),
 };
-

@@ -57,7 +57,9 @@ export const Simple: Story = {
                     }}
                   >
                     {model.label}
-                    <ModelSelectorShortcut>{model.shortcut}</ModelSelectorShortcut>
+                    <ModelSelectorShortcut>
+                      {model.shortcut}
+                    </ModelSelectorShortcut>
                   </ModelSelectorItem>
                 ))}
               </ModelSelectorGroup>
@@ -121,4 +123,3 @@ export const WithGroups: Story = {
     );
   },
 };
-

@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Panel } from './panel';
-import { ReactFlow, Background, Controls, type Node, type Edge } from '@xyflow/react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  type Node,
+  type Edge,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useState } from 'react';
 import { Button } from '../shadcn/button';
@@ -85,7 +91,7 @@ export const MultiplePanels: Story = {
             </Button>
           </Panel>
           <Panel position="bottom-left">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-muted-foreground text-xs">
               <p>Node count: {nodes.length}</p>
               <p>Edge count: {edges.length}</p>
             </div>
@@ -95,4 +101,3 @@ export const MultiplePanels: Story = {
     );
   },
 };
-

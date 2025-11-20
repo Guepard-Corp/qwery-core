@@ -68,7 +68,7 @@ export const Streaming: Story = {
           <PlanTrigger />
         </PlanHeader>
         <PlanContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Plan content will appear here...
           </p>
         </PlanContent>
@@ -147,7 +147,7 @@ export const WithActions: Story = {
           </div>
         </PlanContent>
         <PlanFooter>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Plan created on {new Date().toLocaleDateString()}
           </p>
         </PlanFooter>
@@ -155,4 +155,3 @@ export const WithActions: Story = {
     </div>
   ),
 };
-

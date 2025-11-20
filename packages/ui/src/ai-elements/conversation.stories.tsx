@@ -56,7 +56,7 @@ export const WithMessages: Story = {
     ];
 
     return (
-      <div className="h-screen w-full max-w-4xl mx-auto p-4">
+      <div className="mx-auto h-screen w-full max-w-4xl p-4">
         <Conversation>
           <ConversationContent>
             {messages.map((message) => (
@@ -83,7 +83,7 @@ export const LongConversation: Story = {
     }));
 
     return (
-      <div className="h-screen w-full max-w-4xl mx-auto p-4">
+      <div className="mx-auto h-screen w-full max-w-4xl p-4">
         <Conversation>
           <ConversationContent>
             {messages.map((message) => (
@@ -116,4 +116,3 @@ export const CustomEmptyState: Story = {
     </div>
   ),
 };
-

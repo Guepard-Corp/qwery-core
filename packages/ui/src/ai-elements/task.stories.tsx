@@ -1,11 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  Task,
-  TaskTrigger,
-  TaskContent,
-  TaskItem,
-  TaskItemFile,
-} from './task';
+import { Task, TaskTrigger, TaskContent, TaskItem, TaskItemFile } from './task';
 
 const meta: Meta<typeof Task> = {
   title: 'AI Elements/Task',
@@ -115,4 +109,3 @@ export const LongContent: Story = {
     </div>
   ),
 };
-

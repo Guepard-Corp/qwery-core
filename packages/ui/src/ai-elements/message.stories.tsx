@@ -119,7 +119,7 @@ export const Conversation: Story = {
         <MessageContent>
           <MessageResponse>
             Sure! Here's a simple React component example:
-            <pre className="mt-2 text-sm bg-muted p-2 rounded">
+            <pre className="bg-muted mt-2 rounded p-2 text-sm">
               {`function Button({ onClick, children }) {
   return <button onClick={onClick}>{children}</button>;
 }`}
@@ -135,4 +135,3 @@ export const Conversation: Story = {
     </div>
   ),
 };
-

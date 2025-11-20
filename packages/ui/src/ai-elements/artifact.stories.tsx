@@ -28,7 +28,9 @@ export const Simple: Story = {
         <ArtifactHeader>
           <div>
             <ArtifactTitle>Document Title</ArtifactTitle>
-            <ArtifactDescription>Created on January 1, 2024</ArtifactDescription>
+            <ArtifactDescription>
+              Created on January 1, 2024
+            </ArtifactDescription>
           </div>
           <ArtifactClose />
         </ArtifactHeader>
@@ -74,7 +76,9 @@ export const FullExample: Story = {
         <ArtifactHeader>
           <div>
             <ArtifactTitle>React Component</ArtifactTitle>
-            <ArtifactDescription>Generated React component code</ArtifactDescription>
+            <ArtifactDescription>
+              Generated React component code
+            </ArtifactDescription>
           </div>
           <ArtifactActions>
             <ArtifactAction tooltip="Download" icon={DownloadIcon} />
@@ -83,7 +87,7 @@ export const FullExample: Story = {
           </ArtifactActions>
         </ArtifactHeader>
         <ArtifactContent>
-          <pre className="text-sm overflow-x-auto">
+          <pre className="overflow-x-auto text-sm">
             {`export function Button({ children, onClick }) {
   return (
     <button onClick={onClick}>

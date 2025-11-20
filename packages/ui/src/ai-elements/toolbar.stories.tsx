@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Toolbar } from './toolbar';
-import { ReactFlow, Background, Controls, type Node, type Edge } from '@xyflow/react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  type Node,
+  type Edge,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useState } from 'react';
 import { Button } from '../shadcn/button';
@@ -17,7 +23,13 @@ const meta: Meta<typeof Toolbar> = {
 export default meta;
 type Story = StoryObj<typeof Toolbar>;
 
-const CustomNodeComponent = ({ data, selected }: { data: any; selected?: boolean }) => {
+const CustomNodeComponent = ({
+  data,
+  selected,
+}: {
+  data: any;
+  selected?: boolean;
+}) => {
   return data.label;
 };
 
@@ -39,7 +51,9 @@ export const Simple: Story = {
                 <NodeTitle>Node with Toolbar</NodeTitle>
               </NodeHeader>
               <NodeContent>
-                <p className="text-sm">Hover or select this node to see the toolbar</p>
+                <p className="text-sm">
+                  Hover or select this node to see the toolbar
+                </p>
               </NodeContent>
               <Toolbar>
                 <Button size="sm" variant="ghost">
@@ -125,4 +139,3 @@ export const MultipleNodes: Story = {
     );
   },
 };
-

@@ -131,4 +131,3 @@ export const WithQuote: Story = {
     </div>
   ),
 };
-

@@ -141,10 +141,7 @@ export const WithTools: Story = {
                 <GlobeIcon size={16} />
                 <span>Search</span>
               </PromptInputButton>
-              <PromptInputSelect
-                value={model}
-                onValueChange={setModel}
-              >
+              <PromptInputSelect value={model} onValueChange={setModel}>
                 <PromptInputSelectTrigger>
                   <PromptInputSelectValue />
                 </PromptInputSelectTrigger>
@@ -207,4 +204,3 @@ export const FullFeatured: Story = {
     );
   },
 };
-

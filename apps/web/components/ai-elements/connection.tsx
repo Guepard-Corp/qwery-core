@@ -1,13 +1,13 @@
-import type { ConnectionLineComponent } from "@xyflow/react";
+import type { ConnectionLineComponentProps } from '@xyflow/react';
 
 const HALF = 0.5;
 
-export const Connection: ConnectionLineComponent = ({
+export const Connection = ({
   fromX,
   fromY,
   toX,
   toY,
-}) => (
+}: ConnectionLineComponentProps) => (
   <g>
     <path
       className="animated"

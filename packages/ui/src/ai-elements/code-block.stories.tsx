@@ -114,4 +114,3 @@ export function Counter({ initialValue = 0 }: CounterProps) {
     );
   },
 };
-

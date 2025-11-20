@@ -30,7 +30,9 @@ export const ApprovalRequested: Story = {
         <ConfirmationRequest>
           <ConfirmationActions>
             <ConfirmationAction>Approve</ConfirmationAction>
-            <ConfirmationAction variant="destructive">Reject</ConfirmationAction>
+            <ConfirmationAction variant="destructive">
+              Reject
+            </ConfirmationAction>
           </ConfirmationActions>
         </ConfirmationRequest>
       </Confirmation>
@@ -47,7 +49,7 @@ export const Approved: Story = {
       >
         <ConfirmationTitle>Action approved</ConfirmationTitle>
         <ConfirmationAccepted>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             The action has been approved and will proceed.
           </p>
         </ConfirmationAccepted>
@@ -69,7 +71,7 @@ export const Rejected: Story = {
       >
         <ConfirmationTitle>Action rejected</ConfirmationTitle>
         <ConfirmationRejected>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             The action has been rejected. Reason: This action is not allowed
           </p>
         </ConfirmationRejected>
@@ -87,7 +89,7 @@ export const OutputAvailable: Story = {
       >
         <ConfirmationTitle>Action completed successfully</ConfirmationTitle>
         <ConfirmationAccepted>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             The approved action has been executed and completed.
           </p>
         </ConfirmationAccepted>
@@ -95,4 +97,3 @@ export const OutputAvailable: Story = {
     </div>
   ),
 };
-

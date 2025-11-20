@@ -114,4 +114,3 @@ export const LowUsage: Story = {
     </div>
   ),
 };
-
