@@ -1,13 +1,58 @@
 /// <reference types="vitest/globals" />
 
+import { afterEach, vi } from 'vitest';
 import { LangGraphTransport } from '../src/langgraph-transport';
 import type { UIMessage } from 'ai';
 
+const azureConfig = {
+  provider: 'azure' as const,
+  apiKey: 'test-key',
+  endpoint: 'https://azure.test',
+  deployment: 'mock-deployment',
+  apiVersion: '2024-04-01-preview',
+  temperature: 0.1,
+};
+
+function mockAzureResponses(responses: string[]) {
+  let callIndex = 0;
+  const fetchMock = vi.fn().mockImplementation(async () => {
+    const content = responses[Math.min(callIndex, responses.length - 1)];
+    callIndex += 1;
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            index: callIndex - 1,
+            message: {
+              content,
+            },
+          },
+        ],
+      }),
+      {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      },
+    );
+  });
+
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('LangGraph Transport', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('should send messages and stream LLM response', async () => {
-    // Create transport with the lightest model for faster test execution
+    mockAzureResponses(['Hello from azure transport']);
+
+    // Create transport with Azure provider injected for test stability
     const transport = new LangGraphTransport({
-      model: 'TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC-1k',
+      llm: azureConfig,
       initProgressCallback: (progress) => {
         if (progress.progress < 1) {
           console.log(

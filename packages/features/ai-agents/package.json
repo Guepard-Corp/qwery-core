@@ -15,12 +15,17 @@
     "./browser-chat-transport": "./src/browser-chat-transport.ts",
     "./langgraph-transport": "./src/langgraph-transport.ts",
     "./langgraph-agent": "./src/langgraph-agent.ts",
+    "./llm-provider": "./src/llm-provider.ts",
     "./tool-registry": "./src/tool-registry.ts",
     "./tools/base-tool": "./src/tools/base-tool.ts",
     "./components/agents-provider": "./src/components/agents-provider.tsx",
     "./hooks/use-agents": "./src/hooks/use-agents.tsx"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^2.0.68",
+    "@ai-sdk/azure": "^2.0.68",
+    "@ai-sdk/openai": "^2.0.68",
+    "@ai-sdk/provider": "^2.0.0",
     "@langchain/community": "^0.3.0",
     "@langchain/core": "^0.3.0",
     "@langchain/langgraph": "^0.2.0",

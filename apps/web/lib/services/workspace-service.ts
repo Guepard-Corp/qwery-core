@@ -18,6 +18,7 @@ export class WorkspaceService extends WorkspaceModeService {
       case WorkspaceModeEnum.DESKTOP:
         return port;
       case WorkspaceModeEnum.BROWSER:
+      case WorkspaceModeEnum.CLI:
         return port;
       default:
         throw new Error(`Unknown workspace mode: ${mode}`);

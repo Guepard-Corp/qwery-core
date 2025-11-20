@@ -45,6 +45,7 @@ Qwery is the most capable platform for querying and visualizing data without req
 - **Natural Language Querying**: Ask questions in plain language, get SQL automatically
 - **Multi-Database Support**: PostgreSQL, MySQL, MongoDB, DuckDB, ClickHouse, SQL Server, and more
 - **AI-Powered Agents**: Intelligent assistants that help with data workflows (CMD/CTRL + L)
+- **Flexible LLM Providers**: Swap between on-device WebLLM and cloud providers (Azure today, OpenAI/Anthropic next) using a single abstraction layer
 - **Visual Data Apps**: Build dashboards and data applications without code
 - **Desktop & Cloud**: Run locally or use our cloud platform
 - **Template Library**: Pre-built notebooks, queries, and dashboards
@@ -79,6 +80,70 @@ The web app will be available at `http://localhost:3000`
 # Build and run desktop app
 pnpm desktop:dev
 ```
+
+### Command Line Interface
+
+The CLI (located in `apps/cli`) uses the same domain use cases and repository abstractions. It is ideal for headless environments or automation workflows.
+
+```bash
+# Build the CLI once (emits dist/index.js with the qwery binary)
+pnpm --filter cli build
+
+# Initialize the local workspace snapshot
+pnpm --filter cli start -- workspace init
+
+# Inspect projects (uses domain use cases, never repositories directly)
+pnpm --filter cli start -- project list
+
+# Create a project without leaving the terminal
+pnpm --filter cli start -- project create "Finance Data" \
+  --description "Finance notebooks for 2025 planning" \
+  --status active
+
+# Register a remote datasource (Postgres in this example)
+pnpm --filter cli start -- datasource create "Prod Postgres" \
+  --connection "postgresql://user:pass@host:5432/postgres?sslmode=require"
+
+# Build a notebook that targets the datasource
+NOTEBOOK_ID=$(pnpm --filter cli start -- notebook create "Remote Analysis" --format json | jq -r '.id')
+pnpm --filter cli start -- notebook add-cell "$NOTEBOOK_ID" \
+  --type prompt \
+  --datasources "<DATASOURCE_ID>" \
+  --query "List the schemas and how many tables they hold"
+
+# Execute the cell (natural language -> SQL). Requires Azure/Bredrock env + TLS override if using self-signed certs.
+NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm --filter cli start -- notebook run "$NOTEBOOK_ID" \
+  --cell 1 \
+  --mode natural \
+  --datasource "<DATASOURCE_ID>" \
+  --update-cell
+```
+
+State is stored at `~/.qwery/cli-state.json`, so you can safely run the CLI repeatedly or check it into pipelines. Use `--format json` on any command for machine-friendly output.
+If your datasource uses a self-signed certificate, prefix commands with `NODE_TLS_REJECT_UNAUTHORIZED=0` (or set it once in your shell) so the Postgres driver can complete the TLS handshake.
+Natural-language execution goes through the same Azure/Bedrock abstraction as the web app, so make sure the relevant `AZURE_*` or `AWS_*` env vars are exported before running `notebook run --mode natural`.
+
+### Agent Provider Configuration
+
+The LangGraph-based agents now share one provider abstraction, so WebLLM (default) and Azure OpenAI sit behind the same transport and ReAct graph. Configure them through env vars:
+
+- **WebLLM (default)** – no extra setup, optionally override `VITE_AGENT_MODEL` and `VITE_AGENT_TEMPERATURE`.
+- **Azure OpenAI** – set the following before running the web app or transports:
+  ```bash
+  # client-side (apps/web) .env
+  VITE_AGENT_PROVIDER=azure
+  VITE_AZURE_API_KEY=<your_azure_api_key>
+  VITE_AZURE_ENDPOINT=https://<your-resource>.openai.azure.com/
+  VITE_AZURE_DEPLOYMENT_ID=<deployment_name>
+  VITE_AZURE_API_VERSION=2024-04-01-preview
+
+  # optional server-side fallbacks
+  AZURE_API_KEY=<your_azure_api_key>
+  AZURE_ENDPOINT=https://<your-resource>.openai.azure.com/
+  AZURE_DEPLOYMENT_ID=<deployment_name>
+  AZURE_API_VERSION=2024-04-01-preview
+  ```
+Switching providers is as simple as changing `VITE_AGENT_PROVIDER`; the rest of the stack (tools, transports, memory) stays untouched.
 
 ## 📚 Documentation
 

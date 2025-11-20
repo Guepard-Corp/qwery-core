@@ -150,3 +150,16 @@ apps/desktop/dist
 
 # macOS
 .DS_Store
+
+# Python virtual environment
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Old Python source code
+/src/
