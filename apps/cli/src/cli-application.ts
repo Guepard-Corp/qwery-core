@@ -7,6 +7,7 @@ import { registerNotebookCommands } from './commands/notebook';
 import { registerProjectCommands } from './commands/project';
 import { registerWorkspaceCommands } from './commands/workspace';
 import { CliContainer } from './container/cli-container';
+import { InteractiveRepl } from './services/interactive-repl';
 
 export class CliApplication {
   private readonly program: Command;
@@ -35,7 +36,9 @@ export class CliApplication {
     await this.container.init();
     try {
       if (argv.length <= 2) {
-        this.program.outputHelp();
+        // Start interactive REPL mode (Cursor CLI style)
+        const repl = new InteractiveRepl(this.container);
+        await repl.start();
         return;
       }
       await this.program.parseAsync(argv);

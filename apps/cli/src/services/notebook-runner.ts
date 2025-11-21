@@ -1,6 +1,6 @@
 import type { Datasource } from '@qwery/domain/entities';
-import { SqlAgent } from './sql-agent';
 import { createDriverForDatasource } from '../extensions/driver-factory';
+import { CliUsageError } from '../utils/errors';
 
 export interface RunCellOptions {
   datasource: Datasource;
@@ -15,15 +15,6 @@ export interface RunCellResult {
 }
 
 export class NotebookRunner {
-  private agent: SqlAgent | null = null;
-
-  private getAgent(): SqlAgent {
-    if (!this.agent) {
-      this.agent = new SqlAgent();
-    }
-    return this.agent;
-  }
-
   public async testConnection(datasource: Datasource): Promise<void> {
     const driver = await createDriverForDatasource(datasource);
     try {
@@ -34,22 +25,16 @@ export class NotebookRunner {
   }
 
   public async runCell(options: RunCellOptions): Promise<RunCellResult> {
+    if (options.mode === 'natural') {
+      throw new CliUsageError(
+        'Natural language mode is not yet available. Please use SQL queries directly.',
+      );
+    }
+
     const driver = await createDriverForDatasource(options.datasource);
-    let sql = options.query;
+    const sql = options.query;
 
     try {
-      if (options.mode === 'natural') {
-        const schema =
-          (await driver.getCurrentSchema()) ??
-          'Schema unavailable. Generate best-effort SQL.';
-        const agent = this.getAgent();
-        sql = await agent.generateSql({
-          datasourceName: options.datasource.name,
-          naturalLanguage: options.query,
-          schemaDescription: schema,
-        });
-      }
-
       const result = await driver.query(sql);
       const rowCount =
         result.stat.rowsRead ?? result.stat.rowsAffected ?? result.rows.length;
