@@ -1,14 +1,13 @@
 'use client';
 
-import { Button } from '../shadcn/button';
-import { Separator } from '../shadcn/separator';
+import { Button } from '~/components/ui/button';
+import { Separator } from '~/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
-} from '../shadcn/tooltip';
-import { cn } from '../lib/utils';
+} from '~/components/ui/tooltip';
+import { cn } from '~/lib/utils';
 import { BookmarkIcon, type LucideProps } from 'lucide-react';
 import type { ComponentProps, HTMLAttributes } from 'react';
 
@@ -48,25 +47,23 @@ export type CheckpointTriggerProps = ComponentProps<typeof Button> & {
 
 export const CheckpointTrigger = ({
   children,
-  className,
+  className: _className,
   variant = 'ghost',
   size = 'sm',
   tooltip,
   ...props
 }: CheckpointTriggerProps) =>
   tooltip ? (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size={size} type="button" variant={variant} {...props}>
-            {children}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent align="start" side="bottom">
-          {tooltip}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button size={size} type="button" variant={variant} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent align="start" side="bottom">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   ) : (
     <Button size={size} type="button" variant={variant} {...props}>
       {children}
