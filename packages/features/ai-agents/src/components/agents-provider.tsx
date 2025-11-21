@@ -31,16 +31,8 @@ export function AgentsProvider({
   options = {},
 }: AgentsProviderProps) {
   const agent = useMemo(() => {
-    return createLangGraphAgent({
-      ...options,
-    });
-  }, [
-    options.model,
-    options.tools,
-    options.temperature,
-    options.initProgressCallback,
-    options.llm,
-  ]);
+    return createLangGraphAgent(options);
+  }, [options.model, options.tools, options.temperature]);
 
   const runQueryWithAgent = async (
     datasourceRepository: DatasourceRepositoryPort,
