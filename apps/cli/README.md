@@ -124,10 +124,12 @@ qwery workspace show
 
 ### Interactive REPL Mode
 
-- Conversational query interface (Cursor CLI style)
-- Direct SQL execution
-- Context-aware prompts
-- Command history
+- **Cursor CLI-style interface** - Beautiful, conversational query interface
+- **All CLI commands available** - Run any command directly in interactive mode
+- **Direct SQL execution** - Type SQL queries and get instant results
+- **Context-aware prompts** - Shows current datasource in prompt
+- **Beautiful formatting** - Brand-colored boxes and perfectly aligned tables
+- **Command history** - Up/down arrow navigation
 
 ## Usage Examples
 
@@ -195,22 +197,45 @@ qwery workspace show --format json
 
 ## Interactive REPL Mode
 
-Run `qwery` with no arguments to enter an interactive console where you can query directly.
+Run `qwery` with no arguments to enter an interactive console (Cursor CLI style) where you can run any CLI command or execute SQL queries directly.
 
 ### Getting Started
 
 ```bash
 $ qwery
 
+┌───────────────────────────────────────────────────┐
+│                     ✓ Success                     │
+├───────────────────────────────────────────────────┤
+│  Welcome to Qwery CLI Interactive Mode!             │
+│                                                     │
+│  Type /help to see available commands.              │
+│  Type /use <datasource-id> to select a datasource.  │
+│  Just type SQL queries directly to execute them.    │
+└───────────────────────────────────────────────────┘
+
 qwery> 
 ```
 
-### Available Commands
+### REPL Commands
 
-- `/help` - Show help message
+- `/help` - Show comprehensive help with all available commands
 - `/exit` - Exit the REPL
-- `/clear` - Clear the screen
+- `/clear` - Clear the screen and show welcome message
 - `/use <datasource-id>` - Select a datasource to query
+
+### All CLI Commands Available
+
+Every CLI command works in interactive mode! Just type the command directly:
+
+```bash
+qwery> workspace init
+qwery> datasource create my-db --connection "postgresql://..."
+qwery> datasource list
+qwery> notebook create my-notes --description "Test"
+qwery> notebook add-cell <id> --datasources <id> --query "SELECT 1"
+qwery> project list
+```
 
 ### Example Session
 
@@ -218,18 +243,39 @@ qwery>
 $ qwery
 
 qwery> /help
-Available commands:
-  /help              Show this help message
-  /exit              Exit the REPL
-  /clear             Clear the screen
-  /use <datasource-id>  Select a datasource to query
+# Shows beautiful help box with all commands
 
-Just type your query directly - SQL or natural language.
+qwery> workspace init
+# Initialize workspace (works in interactive mode!)
 
-qwery> /use d7d411d0-8fbf-46a8-859d-7aca6abfad14
-✓ Using datasource: my-database
+qwery> datasource create angry-star \
+  --connection "postgresql://postgres:YUX5he1NC3cn@angry-star-sooomu.us-west-aws.db.guepard.run:22050/postgres?sslmode=require" \
+  --description "Angry star prod"
 
-qwery [my-database]> SELECT current_date
+┌───────────────────────────────────────────────────┐
+│                     ✓ Success                     │
+├───────────────────────────────────────────────────┤
+│  Datasource created successfully                   │
+└───────────────────────────────────────────────────┘
+
+qwery> datasource list
+# Shows perfectly aligned table with brand color borders
+
+qwery> /use <datasource-id>
+┌───────────────────────────────────────────────────┐
+│                     ✓ Success                     │
+├───────────────────────────────────────────────────┤
+│  Using datasource: angry-star                      │
+│  Provider: postgresql                              │
+└───────────────────────────────────────────────────┘
+
+qwery [angry-star]> SELECT current_date
+
+┌───────────────────────────────────────────────────┐
+│ Query                                             │
+├───────────────────────────────────────────────────┤
+│  SELECT current_date                              │
+└───────────────────────────────────────────────────┘
 
 ┌──────────────┐
 │ current_date │
@@ -237,27 +283,31 @@ qwery [my-database]> SELECT current_date
 │ 2025-11-21   │
 └──────────────┘
 
-(1 row)
+┌───────────────────────────────────────────────────┐
+│                     ✓ Success                     │
+├───────────────────────────────────────────────────┤
+│  Query executed successfully.                     │
+│                                                     │
+│  1 row returned                                    │
+└───────────────────────────────────────────────────┘
 
-qwery [my-database]> SELECT version()
-
-┌─────────────────────────────────────────────┐
-│ version                                      │
-├─────────────────────────────────────────────┤
-│ PostgreSQL 15.4 on x86_64-pc-linux-gnu     │
-└─────────────────────────────────────────────┘
-
-(1 row)
-
-qwery [my-database]> /exit
-Goodbye!
+────────────────────────────────────────────
+qwery [angry-star]> /exit
+┌───────────────────────────────────────────────────┐
+│                     ✓ Success                     │
+├───────────────────────────────────────────────────┤
+│  Goodbye! See you next time!                       │
+└───────────────────────────────────────────────────┘
 ```
 
 ### Features
 
-- **Empty input allowed** - Just press Enter to see the prompt again
-- **SQL auto-detection** - Queries starting with SQL keywords (`SELECT`, `INSERT`, etc.) are automatically detected
+- **Beautiful formatting** - Brand-colored boxes (#2596be) with perfectly aligned text
+- **All CLI commands** - Every command works in interactive mode
+- **Empty input allowed** - Just press Enter to see the prompt again (Cursor CLI behavior)
+- **SQL auto-detection** - Queries starting with SQL keywords are automatically detected
 - **Context-aware prompt** - Shows current datasource: `qwery [datasource-name]>`
+- **Perfect table alignment** - Custom table formatter ensures all columns align correctly
 - **Natural language** - Coming soon (requires SqlAgent)
 
 ## Complete Example: Angry Star Database
@@ -315,7 +365,10 @@ qwery notebook run <notebook-id>
 # Enter interactive mode
 qwery
 
-# Inside REPL:
+# Inside REPL - all commands work:
+workspace show
+datasource list
+notebook create test --description "Test notebook"
 /use <datasource-id>
 SELECT current_date
 SELECT version()
@@ -433,12 +486,18 @@ pnpm unlink --global cli
 
 ## Command Reference
 
+All commands work both in regular CLI mode and interactive REPL mode.
+
 ### Workspace Commands
 
 ```bash
 qwery workspace init              # Initialize workspace
 qwery workspace show             # Show current workspace
 qwery workspace show --format json  # JSON output
+
+# In interactive mode:
+qwery> workspace init
+qwery> workspace show
 ```
 
 ### Datasource Commands
@@ -448,6 +507,11 @@ qwery datasource create <name> --connection "<url>" --description "<desc>"
 qwery datasource list
 qwery datasource list --format json
 qwery datasource test <datasource-id>
+
+# In interactive mode:
+qwery> datasource create my-db --connection "postgresql://..."
+qwery> datasource list
+qwery> datasource test <id>
 ```
 
 ### Notebook Commands
@@ -459,6 +523,12 @@ qwery notebook add-cell <notebook-id> --datasources <id> --query "<sql>"
 qwery notebook run <notebook-id>
 qwery notebook run <notebook-id> --cell <cell-id>
 qwery notebook run <notebook-id> --query "<sql>"
+
+# In interactive mode:
+qwery> notebook create my-notes --description "Test"
+qwery> notebook list
+qwery> notebook add-cell <id> --datasources <id> --query "SELECT 1"
+qwery> notebook run <id>
 ```
 
 ### Project Commands
@@ -467,7 +537,28 @@ qwery notebook run <notebook-id> --query "<sql>"
 qwery project list
 qwery project create <name> --description "<desc>" --organization-id <id>
 qwery project delete <project-id> --force
+
+# In interactive mode:
+qwery> project list
+qwery> project create test --description "Test project" --organization-id <id>
+qwery> project delete <id> --force
 ```
+
+## UI Design
+
+The CLI uses a beautiful, consistent design system:
+
+- **Brand Color:** #2596be (used for all borders, prompts, and highlights)
+- **Text Color:** White (for all content)
+- **Success:** Green (for success messages)
+- **Error:** Red (for error messages)
+- **Warning:** Yellow (for warnings)
+
+All output is formatted with:
+- Perfectly aligned tables with custom formatter
+- Beautiful box borders with brand color
+- Consistent spacing and padding
+- ANSI color code handling for accurate alignment
 
 ## Development
 
@@ -476,6 +567,8 @@ qwery project delete <project-id> --force
 ```bash
 pnpm --filter cli test
 ```
+
+Runs 56 unit tests with 82% code coverage.
 
 ### Type Checking
 
@@ -488,6 +581,16 @@ pnpm --filter cli typecheck
 ```bash
 pnpm --filter cli lint
 pnpm --filter cli lint:fix
+```
+
+### Rebuild After Changes
+
+After making code changes, rebuild and relink:
+
+```bash
+pnpm --filter cli build
+cd apps/cli
+pnpm link --global
 ```
 
 ## License
