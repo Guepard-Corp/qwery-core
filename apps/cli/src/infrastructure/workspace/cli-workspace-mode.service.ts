@@ -6,4 +6,3 @@ export class CliWorkspaceModeService extends WorkspaceModeService {
     return WorkspaceModeEnum.DESKTOP;
   }
 }
-

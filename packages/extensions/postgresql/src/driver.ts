@@ -46,7 +46,9 @@ export class PostgresDatasourceDriver extends DatasourceDriver {
       if (!grouped.has(key)) {
         grouped.set(key, []);
       }
-      grouped.get(key)!.push(`${row.column_name as string} ${row.data_type as string}`);
+      grouped
+        .get(key)!
+        .push(`${row.column_name as string} ${row.data_type as string}`);
     }
 
     return Array.from(grouped.entries())
@@ -115,12 +117,16 @@ export class PostgresDatasourceDriver extends DatasourceDriver {
       password: url.password ? decodeURIComponent(url.password) : undefined,
       host: url.hostname,
       port: url.port ? Number(url.port) : undefined,
-      database: url.pathname ? url.pathname.replace(/^\//, '') || undefined : undefined,
+      database: url.pathname
+        ? url.pathname.replace(/^\//, '') || undefined
+        : undefined,
       ssl,
     };
   }
 
-  private async withClient<T>(callback: (client: Client) => Promise<T>): Promise<T> {
+  private async withClient<T>(
+    callback: (client: Client) => Promise<T>,
+  ): Promise<T> {
     const client = new Client(this.buildPgConfig());
     return this.withInsecureTls(async () => {
       try {
@@ -146,7 +152,3 @@ export class PostgresDatasourceDriver extends DatasourceDriver {
     }
   }
 }
-
-
-
-

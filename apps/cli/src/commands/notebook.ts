@@ -130,10 +130,7 @@ export function registerNotebookCommands(
     .command('add-cell <notebookId>')
     .description('Append a cell to a notebook')
     .option('--type <type>', 'Cell type: query or prompt', 'query')
-    .option(
-      '-d, --datasources <ids>',
-      'Comma separated datasource identifiers',
-    )
+    .option('-d, --datasources <ids>', 'Comma separated datasource identifiers')
     .option('-q, --query <text>', 'Cell text content')
     .option('--run-mode <mode>', 'Run mode: default or fixit', 'default')
     .option('-f, --format <format>', 'Output format: table (default) or json')
@@ -150,8 +147,7 @@ export function registerNotebookCommands(
 
       const nextCellId =
         notebook.cells.reduce(
-          (max: number, cell: { cellId: number }) =>
-            Math.max(max, cell.cellId),
+          (max: number, cell: { cellId: number }) => Math.max(max, cell.cellId),
           0,
         ) + 1;
 
@@ -299,4 +295,3 @@ export function registerNotebookCommands(
       );
     });
 }
-

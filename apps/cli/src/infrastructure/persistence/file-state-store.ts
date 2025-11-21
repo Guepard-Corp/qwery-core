@@ -10,11 +10,7 @@ import {
 } from '../../state/cli-state';
 
 const DATE_KEYS = new Set(['createdAt', 'updatedAt']);
-const DEFAULT_STATE_FILE = path.join(
-  os.homedir(),
-  '.qwery',
-  'cli-state.json',
-);
+const DEFAULT_STATE_FILE = path.join(os.homedir(), '.qwery', 'cli-state.json');
 
 function reviveDates(key: string, value: unknown) {
   if (
@@ -31,7 +27,8 @@ function normalizeState(partial: Partial<CliState> | undefined): CliState {
   const base = createInitialState();
 
   return {
-    version: typeof partial?.version === 'number' ? partial.version : base.version,
+    version:
+      typeof partial?.version === 'number' ? partial.version : base.version,
     workspace: ensureWorkspaceMode(partial?.workspace ?? null),
     users: partial?.users ?? base.users,
     organizations: partial?.organizations ?? base.organizations,
@@ -86,4 +83,3 @@ export class FileStateStore {
     await writeFile(this.filePath, `${serialized}\n`, 'utf8');
   }
 }
-

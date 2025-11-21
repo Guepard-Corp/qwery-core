@@ -1,3 +1,5 @@
+import { formatTable, colors, infoBox, successBox } from './formatting';
+
 export type OutputFormat = 'table' | 'json';
 
 export function resolveFormat(value?: string): OutputFormat {
@@ -35,8 +37,6 @@ function serializeRow(row: unknown): unknown {
   return serializeValue(row);
 }
 
-import { formatTable, colors } from './formatting';
-
 export function printOutput<TFormat extends OutputFormat>(
   data: unknown,
   format: TFormat,
@@ -53,7 +53,9 @@ export function printOutput<TFormat extends OutputFormat>(
   }
 
   if (Array.isArray(data)) {
-    const serialized = data.map((row) => serializeRow(row)) as Array<Record<string, unknown>>;
+    const serialized = data.map((row) => serializeRow(row)) as Array<
+      Record<string, unknown>
+    >;
     const table = formatTable(serialized, { color: colors.brand });
     console.log('\n' + table + '\n');
     return;
@@ -64,20 +66,22 @@ export function printOutput<TFormat extends OutputFormat>(
   console.log('\n' + table + '\n');
 }
 
-import { infoBox, successBox, formatTable } from './formatting';
-
 export function printInteractiveResult(result: {
   sql: string;
   rows: Array<Record<string, unknown>>;
   rowCount: number;
 }): void {
   if (result.rows.length === 0) {
-    console.log('\n' + infoBox('Query executed successfully.\n\n(0 rows)') + '\n');
+    console.log(
+      '\n' + infoBox('Query executed successfully.\n\n(0 rows)') + '\n',
+    );
     return;
   }
 
   // Show results in perfectly aligned table
-  const serializedRows = result.rows.map((row) => serializeRow(row)) as Array<Record<string, unknown>>;
+  const serializedRows = result.rows.map((row) => serializeRow(row)) as Array<
+    Record<string, unknown>
+  >;
   const table = formatTable(serializedRows, { color: colors.brand });
   console.log('\n' + table + '\n');
 
@@ -85,4 +89,3 @@ export function printInteractiveResult(result: {
   const summary = `Query executed successfully.\n\n${result.rowCount} row${result.rowCount !== 1 ? 's' : ''} returned`;
   console.log(successBox(summary));
 }
-

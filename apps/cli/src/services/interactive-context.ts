@@ -25,7 +25,9 @@ export class InteractiveContext {
     this.datasourceName = datasource.name;
     console.log(
       '\n' +
-        successBox(`Using datasource: ${datasource.name}\nProvider: ${datasource.datasource_provider}`) +
+        successBox(
+          `Using datasource: ${datasource.name}\nProvider: ${datasource.datasource_provider}`,
+        ) +
         '\n',
     );
   }
@@ -43,4 +45,3 @@ export class InteractiveContext {
     return this.datasourceName;
   }
 }
-

@@ -13,10 +13,9 @@ describe('CliContainer', () => {
   beforeEach(async () => {
     const testStatePath = join(testStateDir, 'test-state.json');
     container = new CliContainer(
-      // @ts-expect-error - accessing private constructor param
-      new (await import('../infrastructure/persistence/file-state-store')).FileStateStore(
-        testStatePath,
-      ),
+      new (
+        await import('../infrastructure/persistence/file-state-store')
+      ).FileStateStore(testStatePath),
     );
     await container.init();
   });
@@ -44,10 +43,7 @@ describe('CliContainer', () => {
       container.setWorkspace(workspace);
       await container.persist();
 
-      const newContainer = new CliContainer(
-        // @ts-expect-error - accessing private constructor param
-        container['stateStore'],
-      );
+      const newContainer = new CliContainer(container['stateStore']);
       await newContainer.init();
       const loaded = newContainer.getWorkspace();
       expect(loaded?.id).toBe('ws-1');
@@ -106,4 +102,3 @@ describe('CliContainer', () => {
     });
   });
 });
-

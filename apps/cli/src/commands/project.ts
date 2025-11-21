@@ -167,4 +167,3 @@ async function confirmDeletion(projectId: string): Promise<boolean> {
   rl.close();
   return /^y(es)?$/i.test(answer.trim());
 }
-

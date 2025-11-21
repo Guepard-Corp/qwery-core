@@ -35,4 +35,3 @@ export function handleCliError(error: unknown): never {
   console.error(String(error));
   process.exit(1);
 }
-

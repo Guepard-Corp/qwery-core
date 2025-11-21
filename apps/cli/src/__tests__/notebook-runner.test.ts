@@ -62,10 +62,7 @@ describe('NotebookRunner', () => {
 
   describe('testConnection', () => {
     it('attempts to test connection (will fail without real DB)', async () => {
-      await expect(
-        runner.testConnection(testDatasource),
-      ).rejects.toThrow(); // Connection error expected
+      await expect(runner.testConnection(testDatasource)).rejects.toThrow(); // Connection error expected
     });
   });
 });
-

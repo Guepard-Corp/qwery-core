@@ -44,4 +44,3 @@ export function ensureWorkspaceMode(
     mode: WorkspaceModeEnum.DESKTOP,
   };
 }
-

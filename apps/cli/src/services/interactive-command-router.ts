@@ -1,7 +1,7 @@
 import type { CliContainer } from '../container/cli-container';
 import { CliUsageError } from '../utils/errors';
 import { printOutput, resolveFormat } from '../utils/output';
-import { successBox, errorBox, infoBox } from '../utils/formatting';
+import { successBox } from '../utils/formatting';
 import { v4 as uuidv4 } from 'uuid';
 import type { Workspace } from '@qwery/domain/entities';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
@@ -20,7 +20,7 @@ import {
 export class InteractiveCommandRouter {
   constructor(private readonly container: CliContainer) {}
 
-  public async execute(command: string, args: string[]): Promise<void> {
+  public async execute(command: string, _args: string[]): Promise<void> {
     const [cmd, ...rest] = command.split(' ').filter(Boolean);
 
     switch (cmd) {
@@ -37,7 +37,9 @@ export class InteractiveCommandRouter {
         await this.handleProject(rest);
         break;
       default:
-        throw new CliUsageError(`Unknown command: ${cmd}. Type /help for available commands.`);
+        throw new CliUsageError(
+          `Unknown command: ${cmd}. Type /help for available commands.`,
+        );
     }
   }
 
@@ -50,9 +52,14 @@ export class InteractiveCommandRouter {
         const useCases = this.container.getUseCases();
         const previous = this.container.getWorkspace();
 
-        const userId = options['user-id'] ?? options['u'] ?? previous?.userId ?? '';
-        const organizationId = options['organization-id'] ?? options['o'] ?? previous?.organizationId;
-        const projectId = options['project-id'] ?? options['p'] ?? previous?.projectId;
+        const userId =
+          options['user-id'] ?? options['u'] ?? previous?.userId ?? '';
+        const organizationId =
+          options['organization-id'] ??
+          options['o'] ??
+          previous?.organizationId;
+        const projectId =
+          options['project-id'] ?? options['p'] ?? previous?.projectId;
 
         const workspaceDto = await useCases.initWorkspace.execute({
           userId,
@@ -111,7 +118,9 @@ export class InteractiveCommandRouter {
         break;
       }
       default:
-        throw new CliUsageError(`Unknown workspace command: ${subcmd}. Use 'init' or 'show'.`);
+        throw new CliUsageError(
+          `Unknown workspace command: ${subcmd}. Use 'init' or 'show'.`,
+        );
     }
   }
 
@@ -122,12 +131,15 @@ export class InteractiveCommandRouter {
       case 'create': {
         const name = rest[0];
         if (!name) {
-          throw new CliUsageError('Datasource name required: datasource create <name>');
+          throw new CliUsageError(
+            'Datasource name required: datasource create <name>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
         const workspace = this.container.getWorkspace();
-        const projectId = options['project-id'] ?? options['p'] ?? workspace?.projectId;
+        const projectId =
+          options['project-id'] ?? options['p'] ?? workspace?.projectId;
         if (!projectId) {
           throw new CliUsageError(
             'Project id missing. Provide --project-id or initialize the workspace.',
@@ -136,10 +148,17 @@ export class InteractiveCommandRouter {
 
         const providerId = options['provider'] ?? 'postgresql';
         const driverId = options['driver'] ?? providerId;
-        const { config, summary } = this.resolveDatasourceConfig(providerId, options);
+        const { config, summary } = this.resolveDatasourceConfig(
+          providerId,
+          options,
+        );
 
         if (!options['skip-test']) {
-          const driver = await createDriverFromExtension(providerId, name, config);
+          const driver = await createDriverFromExtension(
+            providerId,
+            name,
+            config,
+          );
           try {
             await driver.testConnection();
           } finally {
@@ -154,7 +173,10 @@ export class InteractiveCommandRouter {
           id: identity.id,
           projectId,
           name,
-          description: options['description'] ?? options['d'] ?? `Remote datasource ${summary.descriptionHint}`,
+          description:
+            options['description'] ??
+            options['d'] ??
+            `Remote datasource ${summary.descriptionHint}`,
           datasource_provider: providerId,
           datasource_driver: driverId,
           datasource_kind: DatasourceKind.REMOTE,
@@ -187,7 +209,8 @@ export class InteractiveCommandRouter {
       case 'list': {
         const options = this.parseOptions(rest);
         const workspace = this.container.getWorkspace();
-        const projectId = options['project-id'] ?? options['p'] ?? workspace?.projectId;
+        const projectId =
+          options['project-id'] ?? options['p'] ?? workspace?.projectId;
 
         if (!projectId) {
           throw new CliUsageError(
@@ -196,7 +219,8 @@ export class InteractiveCommandRouter {
         }
 
         const useCases = this.container.getUseCases();
-        const datasources = await useCases.getDatasourcesByProjectId.execute(projectId);
+        const datasources =
+          await useCases.getDatasourcesByProjectId.execute(projectId);
 
         const format = resolveFormat(options['format'] ?? options['f']);
         const rows = datasources.map((datasource) => ({
@@ -215,13 +239,17 @@ export class InteractiveCommandRouter {
       case 'test': {
         const datasourceId = rest[0];
         if (!datasourceId) {
-          throw new CliUsageError('Datasource id required: datasource test <datasource-id>');
+          throw new CliUsageError(
+            'Datasource id required: datasource test <datasource-id>',
+          );
         }
 
         const repositories = this.container.getRepositories();
         const datasource = await repositories.datasource.findById(datasourceId);
         if (!datasource) {
-          throw new CliUsageError(`Datasource with id ${datasourceId} not found`);
+          throw new CliUsageError(
+            `Datasource with id ${datasourceId} not found`,
+          );
         }
 
         const driver = await createDriverForDatasource(datasource);
@@ -253,12 +281,15 @@ export class InteractiveCommandRouter {
       case 'create': {
         const title = rest[0];
         if (!title) {
-          throw new CliUsageError('Notebook title required: notebook create <title>');
+          throw new CliUsageError(
+            'Notebook title required: notebook create <title>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
         const workspace = this.container.getWorkspace();
-        const projectId = options['project-id'] ?? options['p'] ?? workspace?.projectId;
+        const projectId =
+          options['project-id'] ?? options['p'] ?? workspace?.projectId;
         if (!projectId) {
           throw new CliUsageError(
             'Project id missing. Provide --project-id or initialize the workspace.',
@@ -299,7 +330,8 @@ export class InteractiveCommandRouter {
       case 'list': {
         const options = this.parseOptions(rest);
         const workspace = this.container.getWorkspace();
-        const projectId = options['project-id'] ?? options['p'] ?? workspace?.projectId;
+        const projectId =
+          options['project-id'] ?? options['p'] ?? workspace?.projectId;
 
         if (!projectId) {
           throw new CliUsageError(
@@ -308,7 +340,8 @@ export class InteractiveCommandRouter {
         }
 
         const useCases = this.container.getUseCases();
-        const notebooks = await useCases.getNotebooksByProjectId.execute(projectId);
+        const notebooks =
+          await useCases.getNotebooksByProjectId.execute(projectId);
 
         const format = resolveFormat(options['format'] ?? options['f']);
         const rows = notebooks.map((notebook) => ({
@@ -326,7 +359,9 @@ export class InteractiveCommandRouter {
       case 'add-cell': {
         const notebookId = rest[0];
         if (!notebookId) {
-          throw new CliUsageError('Notebook id required: notebook add-cell <notebook-id>');
+          throw new CliUsageError(
+            'Notebook id required: notebook add-cell <notebook-id>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
@@ -343,7 +378,8 @@ export class InteractiveCommandRouter {
 
         const nextCellId =
           notebook.cells.reduce(
-            (max: number, cell: { cellId: number }) => Math.max(max, cell.cellId),
+            (max: number, cell: { cellId: number }) =>
+              Math.max(max, cell.cellId),
             0,
           ) + 1;
 
@@ -352,10 +388,13 @@ export class InteractiveCommandRouter {
           .map((id: string) => id.trim())
           .filter(Boolean);
         if (datasourceIds.length === 0) {
-          throw new CliUsageError('At least one datasource id is required (--datasources).');
+          throw new CliUsageError(
+            'At least one datasource id is required (--datasources).',
+          );
         }
 
-        const cellType: 'prompt' | 'query' = options['type'] === 'prompt' ? 'prompt' : 'query';
+        const cellType: 'prompt' | 'query' =
+          options['type'] === 'prompt' ? 'prompt' : 'query';
         const runMode: 'default' | 'fixit' =
           options['run-mode'] === 'fixit' ? 'fixit' : 'default';
 
@@ -392,7 +431,9 @@ export class InteractiveCommandRouter {
       case 'run': {
         const notebookId = rest[0];
         if (!notebookId) {
-          throw new CliUsageError('Notebook id required: notebook run <notebook-id>');
+          throw new CliUsageError(
+            'Notebook id required: notebook run <notebook-id>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
@@ -402,22 +443,35 @@ export class InteractiveCommandRouter {
           throw new CliUsageError(`Notebook with id ${notebookId} not found.`);
         }
 
-        const requestedCellId = (options['cell'] ?? options['c']) ? Number(options['cell'] ?? options['c']) : undefined;
+        const requestedCellId =
+          (options['cell'] ?? options['c'])
+            ? Number(options['cell'] ?? options['c'])
+            : undefined;
         if (options['cell'] && Number.isNaN(requestedCellId)) {
           throw new CliUsageError('--cell must be a valid number.');
         }
 
         const cell = requestedCellId
-          ? notebook.cells.find((c: { cellId: number }) => c.cellId === requestedCellId)
+          ? notebook.cells.find(
+              (c: { cellId: number }) => c.cellId === requestedCellId,
+            )
           : notebook.cells[notebook.cells.length - 1];
 
         if (!cell) {
-          throw new CliUsageError('Notebook has no cells. Use `notebook add-cell` first.');
+          throw new CliUsageError(
+            'Notebook has no cells. Use `notebook add-cell` first.',
+          );
         }
 
-        const datasourceId = options['datasource'] ?? options['d'] ?? cell.datasources?.[0] ?? undefined;
+        const datasourceId =
+          options['datasource'] ??
+          options['d'] ??
+          cell.datasources?.[0] ??
+          undefined;
         if (!datasourceId) {
-          throw new CliUsageError('Datasource id missing. Use --datasource or attach one to the cell.');
+          throw new CliUsageError(
+            'Datasource id missing. Use --datasource or attach one to the cell.',
+          );
         }
 
         const datasource = await repositories.datasource.findById(datasourceId);
@@ -425,7 +479,9 @@ export class InteractiveCommandRouter {
           throw new CliUsageError(`Datasource ${datasourceId} not found.`);
         }
 
-        const inputMode = options['mode'] ?? (cell.cellType === 'prompt' ? 'natural' : ('sql' as const));
+        const inputMode =
+          options['mode'] ??
+          (cell.cellType === 'prompt' ? 'natural' : ('sql' as const));
         const queryText = options['query'] ?? options['q'] ?? cell.query;
         if (!queryText?.trim()) {
           throw new CliUsageError('Cell query content is empty.');
@@ -479,9 +535,14 @@ export class InteractiveCommandRouter {
         const useCases = this.container.getUseCases();
         const projects = await useCases.getProjects.execute();
 
-        const filtered = options['organization-id'] ?? options['o']
-          ? projects.filter((project) => project.org_id === (options['organization-id'] ?? options['o']))
-          : projects;
+        const filtered =
+          (options['organization-id'] ?? options['o'])
+            ? projects.filter(
+                (project) =>
+                  project.org_id ===
+                  (options['organization-id'] ?? options['o']),
+              )
+            : projects;
 
         const format = resolveFormat(options['format'] ?? options['f']);
         const rows = filtered.map((project) => ({
@@ -499,12 +560,17 @@ export class InteractiveCommandRouter {
       case 'create': {
         const name = rest[0];
         if (!name) {
-          throw new CliUsageError('Project name required: project create <name>');
+          throw new CliUsageError(
+            'Project name required: project create <name>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
         const workspace = this.container.getWorkspace();
-        const organizationId = options['organization-id'] ?? options['o'] ?? workspace?.organizationId;
+        const organizationId =
+          options['organization-id'] ??
+          options['o'] ??
+          workspace?.organizationId;
 
         if (!organizationId) {
           throw new CliUsageError(
@@ -517,7 +583,11 @@ export class InteractiveCommandRouter {
           throw new CliUsageError('Project description cannot be empty.');
         }
 
-        const creator = options['created-by'] ?? workspace?.username ?? workspace?.userId ?? 'cli';
+        const creator =
+          options['created-by'] ??
+          workspace?.username ??
+          workspace?.userId ??
+          'cli';
 
         const payload = {
           org_id: organizationId,
@@ -550,7 +620,9 @@ export class InteractiveCommandRouter {
       case 'delete': {
         const projectId = rest[0];
         if (!projectId) {
-          throw new CliUsageError('Project id required: project delete <project-id>');
+          throw new CliUsageError(
+            'Project id required: project delete <project-id>',
+          );
         }
 
         const options = this.parseOptions(rest.slice(1));
@@ -560,7 +632,9 @@ export class InteractiveCommandRouter {
 
         const useCases = this.container.getUseCases();
         await useCases.deleteProject.execute(projectId);
-        console.log('\n' + successBox(`Project '${projectId}' deleted.`) + '\n');
+        console.log(
+          '\n' + successBox(`Project '${projectId}' deleted.`) + '\n',
+        );
         break;
       }
       default:
@@ -574,6 +648,9 @@ export class InteractiveCommandRouter {
     const options: Record<string, string> = {};
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
+      if (!arg) {
+        continue;
+      }
       if (arg.startsWith('--')) {
         const key = arg.slice(2);
         const next = args[i + 1];
@@ -604,7 +681,9 @@ export class InteractiveCommandRouter {
     config: Record<string, unknown>;
     summary: { descriptionHint: string; host?: string; database?: string };
   } {
-    const explicitConfig = options['config'] ? JSON.parse(options['config']) : null;
+    const explicitConfig = options['config']
+      ? JSON.parse(options['config'])
+      : null;
     if (explicitConfig) {
       return {
         config: explicitConfig,
@@ -614,7 +693,9 @@ export class InteractiveCommandRouter {
 
     const connection = options['connection'] ?? options['c'];
     if (!connection) {
-      throw new CliUsageError('Provide either --connection or --config when creating a datasource.');
+      throw new CliUsageError(
+        'Provide either --connection or --config when creating a datasource.',
+      );
     }
 
     if (providerId !== 'postgresql') {
@@ -647,4 +728,3 @@ export class InteractiveCommandRouter {
     };
   }
 }
-

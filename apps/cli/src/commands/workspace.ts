@@ -31,10 +31,7 @@ export function registerWorkspaceCommands(
     .command('init')
     .description('Initialize the workspace context via the domain use case')
     .option('-u, --user-id <id>', 'Existing user identifier to rehydrate')
-    .option(
-      '-o, --organization-id <id>',
-      'Preferred organization identifier',
-    )
+    .option('-o, --organization-id <id>', 'Preferred organization identifier')
     .option('-p, --project-id <id>', 'Preferred project identifier')
     .option('-f, --format <format>', 'Output format: table (default) or json')
     .action(async (options: WorkspaceInitOptions) => {
@@ -104,4 +101,3 @@ export function registerWorkspaceCommands(
       printOutput(summary, format);
     });
 }
-

@@ -8,7 +8,9 @@ const schema = z.object({
   connectionUrl: z
     .string()
     .url()
-    .describe('PostgreSQL connection string (postgresql://user:pass@host:port/db)'),
+    .describe(
+      'PostgreSQL connection string (postgresql://user:pass@host:port/db)',
+    ),
 });
 
 let registered = false;
@@ -34,7 +36,3 @@ export function registerPostgresqlExtension(): void {
 }
 
 export { PostgresDatasourceDriver };
-
-
-
-

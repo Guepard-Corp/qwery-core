@@ -39,13 +39,18 @@ function getVisibleLength(str: string): number {
   return stripAnsiCodes(str).length;
 }
 
-export function box(text: string, options?: { title?: string; color?: string }): string {
+export function box(
+  text: string,
+  options?: { title?: string; color?: string },
+): string {
   // Trim trailing spaces from each line for consistent alignment
   const lines = text.split('\n').map((line) => line.trimEnd());
   // Filter out completely empty lines for width calculation, but keep them for display
   const nonEmptyLines = lines.filter((line) => line.length > 0);
   const maxWidth = Math.max(
-    ...(nonEmptyLines.length > 0 ? nonEmptyLines.map((line) => getVisibleLength(line)) : [0]),
+    ...(nonEmptyLines.length > 0
+      ? nonEmptyLines.map((line) => getVisibleLength(line))
+      : [0]),
     options?.title ? getVisibleLength(options.title) + 2 : 0,
   );
   const padding = 2;
@@ -88,7 +93,7 @@ export function box(text: string, options?: { title?: string; color?: string }):
       '\n';
   } else {
     result +=
-      (options.color || '') +
+      (options?.color || '') +
       boxChars.topLeft +
       boxChars.horizontal.repeat(width - 2) +
       boxChars.topRight +
@@ -104,13 +109,13 @@ export function box(text: string, options?: { title?: string; color?: string }):
     // So: rightPadding = maxWidth + 2*padding - padding - visibleLength = maxWidth + padding - visibleLength
     const rightPadding = maxWidth - visibleLength + padding;
     result +=
-      (options.color || '') +
+      (options?.color || '') +
       boxChars.vertical +
       colors.reset +
       ' '.repeat(padding) +
       (line || '') + // Handle empty lines
       ' '.repeat(rightPadding) +
-      (options.color || '') +
+      (options?.color || '') +
       boxChars.vertical +
       colors.reset +
       '\n';
@@ -118,7 +123,7 @@ export function box(text: string, options?: { title?: string; color?: string }):
 
   // Bottom border
   result +=
-    (options.color || '') +
+    (options?.color || '') +
     boxChars.bottomLeft +
     boxChars.horizontal.repeat(width - 2) +
     boxChars.bottomRight +
@@ -168,8 +173,12 @@ export function formatTable(
   }
 
   const color = options?.color || colors.brand;
-  const keys = Object.keys(data[0]);
-  
+  const firstRow = data[0];
+  if (!firstRow) {
+    return '';
+  }
+  const keys = Object.keys(firstRow);
+
   // Calculate column widths (strip ANSI codes for accurate measurement)
   const columnWidths: Record<string, number> = {};
   for (const key of keys) {
@@ -204,7 +213,14 @@ export function formatTable(
     const width = columnWidths[key]!;
     const keyDisplay = colors.white + key + colors.reset;
     const padding = width - getVisibleLength(key);
-    result += ' ' + keyDisplay + ' '.repeat(padding) + ' ' + color + boxChars.vertical + colors.reset;
+    result +=
+      ' ' +
+      keyDisplay +
+      ' '.repeat(padding) +
+      ' ' +
+      color +
+      boxChars.vertical +
+      colors.reset;
   }
   result += '\n';
 
@@ -228,7 +244,14 @@ export function formatTable(
       const valueStr = value != null ? String(value) : '';
       const valueDisplay = colors.white + valueStr + colors.reset;
       const padding = width - getVisibleLength(valueStr);
-      result += ' ' + valueDisplay + ' '.repeat(padding) + ' ' + color + boxChars.vertical + colors.reset;
+      result +=
+        ' ' +
+        valueDisplay +
+        ' '.repeat(padding) +
+        ' ' +
+        color +
+        boxChars.vertical +
+        colors.reset;
     }
     result += '\n';
   }
@@ -245,4 +268,3 @@ export function formatTable(
 
   return result;
 }
-

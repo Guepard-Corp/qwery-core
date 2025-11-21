@@ -15,7 +15,6 @@ import {
   colored,
   colors,
 } from '../utils/formatting';
-import { CliUsageError } from '../utils/errors';
 
 export class InteractiveRepl {
   private rl: Interface | null = null;
@@ -62,7 +61,10 @@ export class InteractiveRepl {
 
       // Check if it's a CLI command (workspace, datasource, notebook, project)
       const firstWord = trimmed.split(/\s+/)[0];
-      if (['workspace', 'datasource', 'notebook', 'project'].includes(firstWord)) {
+      if (
+        firstWord &&
+        ['workspace', 'datasource', 'notebook', 'project'].includes(firstWord)
+      ) {
         await this.handleCliCommand(trimmed);
         return;
       }
@@ -80,6 +82,10 @@ export class InteractiveRepl {
 
   private async handleReplCommand(command: string): Promise<void> {
     const [cmd, ...args] = command.slice(1).trim().split(/\s+/);
+    if (!cmd) {
+      this.showHelp();
+      return;
+    }
     const cmdLower = cmd.toLowerCase();
 
     switch (cmdLower) {
@@ -103,13 +109,18 @@ export class InteractiveRepl {
               '\n',
           );
         } else {
-          await this.context.setDatasource(args[0]);
+          const datasourceId = args[0];
+          if (datasourceId) {
+            await this.context.setDatasource(datasourceId);
+          }
         }
         break;
       default:
         console.log(
           '\n' +
-            errorBox(`Unknown command: /${cmd}\n\nType /help for available commands.`) +
+            errorBox(
+              `Unknown command: /${cmd}\n\nType /help for available commands.`,
+            ) +
             '\n',
         );
     }
@@ -143,8 +154,7 @@ export class InteractiveRepl {
       const result = await this.queryHandler.execute(query, datasource);
       printInteractiveResult(result);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       console.log('\n' + errorBox(message) + '\n');
     }
 
@@ -173,6 +183,9 @@ export class InteractiveRepl {
     try {
       const parts = command.trim().split(/\s+/);
       const cmd = parts[0];
+      if (!cmd) {
+        return;
+      }
       const args = parts.slice(1);
       await this.commandRouter.execute(cmd, args);
     } catch (error) {
@@ -189,7 +202,7 @@ export class InteractiveRepl {
 
   private showHelp(): void {
     const maxCmdWidth = 30; // Maximum width for command column
-    
+
     const formatCommand = (cmd: string, desc: string): string => {
       const cmdDisplay = colored(cmd, colors.brand);
       // Calculate visible length (cmd without ANSI codes) for proper alignment
@@ -233,4 +246,3 @@ ${colored('Just type SQL queries directly to execute them.', colors.white)}`;
     console.log('\n' + successBox(welcomeText) + '\n');
   }
 }
-

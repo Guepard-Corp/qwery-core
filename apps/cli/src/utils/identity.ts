@@ -10,4 +10,3 @@ export function createIdentity(): Identity {
   const slug = id.split('-')[0] || id.substring(0, 8);
   return { id, slug };
 }
-

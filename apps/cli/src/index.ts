@@ -17,4 +17,3 @@ async function bootstrap() {
 bootstrap().catch((error) => {
   handleCliError(error);
 });
-

@@ -60,7 +60,9 @@ export class CliContainer {
     getOrganization: new GetOrganizationService(this.repositories.organization),
   };
 
-  constructor(private readonly stateStore: FileStateStore = new FileStateStore()) {}
+  constructor(
+    private readonly stateStore: FileStateStore = new FileStateStore(),
+  ) {}
 
   public async init(): Promise<void> {
     this.state = await this.stateStore.load();
@@ -152,4 +154,3 @@ export class CliContainer {
     };
   }
 }
-

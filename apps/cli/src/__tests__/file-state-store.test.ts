@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import os from 'node:os';
 import { FileStateStore } from '../infrastructure/persistence/file-state-store';
 import { createInitialState, CLI_STATE_VERSION } from '../state/cli-state';
+import { WorkspaceModeEnum } from '@qwery/domain/enums';
+import { Roles } from '@qwery/domain/common/roles';
 
 describe('FileStateStore', () => {
   const testDir = join(os.tmpdir(), 'qwery-cli-test');
@@ -43,7 +45,7 @@ describe('FileStateStore', () => {
         organizationId: 'org-1',
         projectId: 'proj-1',
         isAnonymous: false,
-        mode: 'desktop',
+        mode: WorkspaceModeEnum.DESKTOP,
       };
       await store.save(state);
 
@@ -70,7 +72,7 @@ describe('FileStateStore', () => {
         {
           id: 'user-1',
           username: 'test',
-          email: 'test@example.com',
+          role: Roles.USER,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -100,4 +102,3 @@ describe('FileStateStore', () => {
     });
   });
 });
-

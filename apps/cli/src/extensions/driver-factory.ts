@@ -28,4 +28,3 @@ export async function createDriverForDatasource(
     config,
   );
 }
-

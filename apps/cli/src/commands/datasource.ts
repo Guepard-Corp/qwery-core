@@ -72,10 +72,7 @@ export function registerDatasourceCommands(
 
       const providerId = options.provider ?? 'postgresql';
       const driverId = options.driver ?? providerId;
-      const { config, summary } = resolveDatasourceConfig(
-        providerId,
-        options,
-      );
+      const { config, summary } = resolveDatasourceConfig(providerId, options);
 
       if (!options.skipTest) {
         const driver = await createDriverFromExtension(
@@ -98,8 +95,7 @@ export function registerDatasourceCommands(
         projectId,
         name,
         description:
-          options.description ??
-          `Remote datasource ${summary.descriptionHint}`,
+          options.description ?? `Remote datasource ${summary.descriptionHint}`,
         datasource_provider: providerId,
         datasource_driver: driverId,
         datasource_kind: DatasourceKind.REMOTE,
@@ -251,4 +247,3 @@ function resolveDatasourceConfig(
     },
   };
 }
-

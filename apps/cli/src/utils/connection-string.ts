@@ -21,7 +21,9 @@ export function parseConnectionString(
       password: url.password || undefined,
       host: url.hostname || undefined,
       port: url.port || undefined,
-      database: url.pathname ? url.pathname.replace(/^\//, '') || undefined : undefined,
+      database: url.pathname
+        ? url.pathname.replace(/^\//, '') || undefined
+        : undefined,
       searchParams: url.searchParams,
       raw: connection,
     };
@@ -38,4 +40,3 @@ export function connectionDescription(parsed: ParsedConnectionString): string {
   const db = parsed.database ? `/${parsed.database}` : '';
   return `${parsed.host}${db}`;
 }
-

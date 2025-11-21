@@ -43,8 +43,7 @@ describe('utils', () => {
 
   describe('parseConnectionString', () => {
     it('parses PostgreSQL connection string', () => {
-      const url =
-        'postgresql://user:pass@localhost:5432/mydb?sslmode=require';
+      const url = 'postgresql://user:pass@localhost:5432/mydb?sslmode=require';
       const parsed = parseConnectionString(url);
       expect(parsed.protocol).toBe('postgresql');
       expect(parsed.username).toBe('user');
@@ -70,8 +69,7 @@ describe('utils', () => {
 
   describe('connectionDescription', () => {
     it('generates description from parsed connection', () => {
-      const url =
-        'postgresql://user:pass@localhost:5432/mydb?sslmode=require';
+      const url = 'postgresql://user:pass@localhost:5432/mydb?sslmode=require';
       const parsed = parseConnectionString(url);
       const desc = connectionDescription(parsed);
       expect(desc).toContain('localhost');
@@ -79,4 +77,3 @@ describe('utils', () => {
     });
   });
 });
-

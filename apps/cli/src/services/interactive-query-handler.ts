@@ -48,4 +48,3 @@ export class InteractiveQueryHandler {
     return 'natural';
   }
 }
-

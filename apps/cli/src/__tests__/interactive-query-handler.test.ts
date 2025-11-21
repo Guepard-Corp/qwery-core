@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { InteractiveQueryHandler } from '../services/interactive-query-handler';
 import { CliContainer } from '../container/cli-container';
 import type { Datasource } from '@qwery/domain/entities';
@@ -36,32 +36,44 @@ describe('InteractiveQueryHandler', () => {
 
   describe('detectMode', () => {
     it('detects SQL mode for SELECT queries', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('SELECT * FROM users');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('SELECT * FROM users');
       expect(mode).toBe('sql');
     });
 
     it('detects SQL mode for INSERT queries', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('INSERT INTO users VALUES (1)');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('INSERT INTO users VALUES (1)');
       expect(mode).toBe('sql');
     });
 
     it('detects SQL mode for UPDATE queries', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('UPDATE users SET name = "test"');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('UPDATE users SET name = "test"');
       expect(mode).toBe('sql');
     });
 
     it('detects SQL mode for WITH queries', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('WITH cte AS (SELECT 1) SELECT * FROM cte');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('WITH cte AS (SELECT 1) SELECT * FROM cte');
       expect(mode).toBe('sql');
     });
 
     it('detects natural language mode for non-SQL queries', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('how many users do we have');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('how many users do we have');
       expect(mode).toBe('natural');
     });
 
     it('is case-insensitive for SQL detection', () => {
-      const mode = (handler as never as { detectMode(query: string): 'sql' | 'natural' }).detectMode('select * from users');
+      const mode = (
+        handler as never as { detectMode(query: string): 'sql' | 'natural' }
+      ).detectMode('select * from users');
       expect(mode).toBe('sql');
     });
   });
@@ -90,4 +102,3 @@ describe('InteractiveQueryHandler', () => {
     });
   });
 });
-
