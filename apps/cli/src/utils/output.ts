@@ -9,6 +9,32 @@ export function resolveFormat(value?: string): OutputFormat {
   return normalized === 'json' ? 'json' : 'table';
 }
 
+function serializeValue(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (Array.isArray(value) || typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return value;
+}
+
+function serializeRow(row: unknown): unknown {
+  if (row && typeof row === 'object' && !Array.isArray(row)) {
+    return Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key, serializeValue(value)]),
+    );
+  }
+
+  return serializeValue(row);
+}
+
 export function printOutput<TFormat extends OutputFormat>(
   data: unknown,
   format: TFormat,
@@ -25,10 +51,10 @@ export function printOutput<TFormat extends OutputFormat>(
   }
 
   if (Array.isArray(data)) {
-    console.table(data);
+    console.table(data.map((row) => serializeRow(row)));
     return;
   }
 
-  console.table([data]);
+  console.table([serializeRow(data)]);
 }
 
