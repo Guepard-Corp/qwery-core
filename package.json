@@ -66,7 +66,13 @@
   "pnpm": {
     "overrides": {
       "react-is": "19.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "@tailwindcss/oxide",
+      "better-sqlite3",
+      "msw"
+    ]
   },
   "devDependencies": {
     "@manypkg/cli": "^0.25.1",

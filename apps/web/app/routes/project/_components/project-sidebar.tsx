@@ -50,7 +50,7 @@ export function ProjectSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="p-4">
+        <div className="flex flex-col space-y-2 p-4">
           <Shortcuts
             items={[
               {

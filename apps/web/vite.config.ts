@@ -14,6 +14,7 @@ export default defineConfig(({ command }) => ({
       command === 'build'
         ? true
         : ['posthog-js', '@posthog/react', 'streamdown'],
+    external: ['better-sqlite3', '@qwery/repository-sqlite'],
   },
   plugins: [
     devtoolsJson(),
@@ -26,26 +27,21 @@ export default defineConfig(({ command }) => ({
     allowedHosts: ALLOWED_HOSTS,
     proxy: {
       // Proxy specific agent API routes to the query agent service
-      '/api/ping': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/test-connection': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/query': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+      //'/api': {
+      //  target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:8000',
+      //  changeOrigin: true,
+      //},
     },
   },
   build: {
     rollupOptions: {
-      external: ['fsevents'],
+      external: (id: string) => {
+        if (id === 'fsevents') return true;
+        if (id === 'better-sqlite3') return true;
+        if (id === '@qwery/repository-sqlite') return true;
+        if (id.startsWith('node:')) return true;
+        return false;
+      },
     },
   },
   optimizeDeps: {

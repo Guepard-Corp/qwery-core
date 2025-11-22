@@ -5,11 +5,11 @@ import { NavigationConfigSchema } from '@qwery/ui/navigation-schema';
 
 import pathsConfig from './paths.config';
 import { createPath } from './qwery.navigation.config';
-import { NotebookUseCaseDto } from '@qwery/domain/usecases';
+import type { NotebookOutput } from '@qwery/domain/usecases';
 
 const iconClasses = 'w-4';
 
-const getNotebookRoutes = (notebooks: NotebookUseCaseDto[]) => {
+const getNotebookRoutes = (notebooks: NotebookOutput[]) => {
   return notebooks.map((notebook) => {
     return {
       label: notebook.title,
@@ -19,7 +19,7 @@ const getNotebookRoutes = (notebooks: NotebookUseCaseDto[]) => {
   });
 };
 
-const getRoutes = (slug: string, notebooks: NotebookUseCaseDto[]) =>
+const getRoutes = (slug: string, notebooks: NotebookOutput[]) =>
   [
     {
       label: 'common:routes.project',
@@ -49,7 +49,7 @@ const getRoutes = (slug: string, notebooks: NotebookUseCaseDto[]) =>
 
 export function createNavigationConfig(
   slug: string,
-  notebooks: NotebookUseCaseDto[] | undefined,
+  notebooks: NotebookOutput[] | undefined,
 ) {
   return NavigationConfigSchema.parse({
     routes: getRoutes(slug, notebooks || []),

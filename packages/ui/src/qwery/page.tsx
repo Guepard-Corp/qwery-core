@@ -19,7 +19,7 @@ function PageWithHeaderSidebar(props: PageProps) {
     Children,
     MobileNavigation,
     TopNavigation,
-    Footer,
+    Footer: _Footer,
     AgentSidebar,
   } = getSlotsFromPage(props);
 
@@ -45,16 +45,17 @@ function PageWithHeaderSidebar(props: PageProps) {
       {/* Sidebar + Content */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="bg-sidebar dark:border-border px w-[224px] shrink-0 border-r p-4">
-          {Navigation}
-        </div>
+        {Navigation && (
+          <div className="bg-sidebar dark:border-border px w-[224px] shrink-0 border-r p-4">
+            {Navigation}
+          </div>
+        )}
         {/* Main Content */}
         <div className="bg-background relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1">
             <ResizableContent Content={Children} AgentSidebar={AgentSidebar} />
           </div>
         </div>
-        {Footer}
       </div>
     </div>
   );

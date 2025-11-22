@@ -1,8 +1,8 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { DatasourceRepositoryPort } from '../../repositories/datasource-repository.port';
+import { DatasourceRepositoryPort } from '../../repositories';
 import {
-  DatasourceUseCaseDto,
+  DatasourceOutput,
   GetDatasourceUseCase,
   GetDatasourceBySlugUseCase,
 } from '../../usecases';
@@ -12,7 +12,7 @@ export class GetDatasourceService implements GetDatasourceUseCase {
     private readonly datasourceRepository: DatasourceRepositoryPort,
   ) {}
 
-  public async execute(id: string): Promise<DatasourceUseCaseDto> {
+  public async execute(id: string): Promise<DatasourceOutput> {
     const datasource = await this.datasourceRepository.findById(id);
     if (!datasource) {
       throw DomainException.new({
@@ -21,7 +21,7 @@ export class GetDatasourceService implements GetDatasourceUseCase {
         data: { id },
       });
     }
-    return DatasourceUseCaseDto.new(datasource);
+    return DatasourceOutput.new(datasource);
   }
 }
 
@@ -30,7 +30,7 @@ export class GetDatasourceBySlugService implements GetDatasourceBySlugUseCase {
     private readonly datasourceRepository: DatasourceRepositoryPort,
   ) {}
 
-  public async execute(slug: string): Promise<DatasourceUseCaseDto> {
+  public async execute(slug: string): Promise<DatasourceOutput> {
     const datasource = await this.datasourceRepository.findBySlug(slug);
     if (!datasource) {
       throw DomainException.new({
@@ -39,6 +39,6 @@ export class GetDatasourceBySlugService implements GetDatasourceBySlugUseCase {
         data: { slug },
       });
     }
-    return DatasourceUseCaseDto.new(datasource);
+    return DatasourceOutput.new(datasource);
   }
 }

@@ -1,0 +1,86 @@
+import type { Repositories } from '~/lib/context/workspace-context';
+
+// Detect if we're in a server/API context (Node.js environment)
+const IS_SERVER = typeof process !== 'undefined' && process.env !== undefined;
+
+const STORAGE_ADAPTER = (import.meta.env?.VITE_STORAGE_ADAPTER ||
+  'indexed-db') as 'indexed-db' | 'sqlite';
+
+export async function createRepositories(): Promise<Repositories> {
+  // When used in API routes (server context), always use SQLite repositories directly
+  if (IS_SERVER) {
+    const {
+      UserRepository,
+      ConversationRepository,
+      DatasourceRepository,
+      NotebookRepository,
+      OrganizationRepository,
+      ProjectRepository,
+    } = await import('@qwery/repository-sqlite');
+
+    const DB_PATH = process.env.VITE_DB_NAME || undefined;
+
+    return {
+      user: new UserRepository(DB_PATH),
+      organization: new OrganizationRepository(DB_PATH),
+      project: new ProjectRepository(DB_PATH),
+      datasource: new DatasourceRepository(DB_PATH),
+      notebook: new NotebookRepository(DB_PATH),
+      conversation: new ConversationRepository(DB_PATH),
+    };
+  }
+
+  // Browser context: use IndexedDB or API repositories based on STORAGE_ADAPTER
+  if (STORAGE_ADAPTER === 'sqlite') {
+    // When using SQLite, use API repositories that call the backend API
+    // (which uses SQLite repositories on the server)
+    const [
+      { UserRepository: IndexedDBUserRepository },
+      {
+        ConversationRepository: APIConversationRepository,
+        DatasourceRepository: APIDatasourceRepository,
+        NotebookRepository: APINotebookRepository,
+        OrganizationRepository: APIOrganizationRepository,
+        ProjectRepository: APIProjectRepository,
+      },
+    ] = await Promise.all([
+      import('@qwery/repository-indexed-db'),
+      import('./index'),
+    ]);
+
+    return {
+      user: new IndexedDBUserRepository(), // User stays local for now
+      organization: new APIOrganizationRepository(),
+      project: new APIProjectRepository(),
+      datasource: new APIDatasourceRepository(),
+      notebook: new APINotebookRepository(),
+      conversation: new APIConversationRepository(),
+    };
+  }
+
+  // Default to IndexedDB (client-side storage)
+  const [
+    {
+      UserRepository: IndexedDBUserRepository,
+      OrganizationRepository: IndexedDBOrganizationRepository,
+      ProjectRepository: IndexedDBProjectRepository,
+      DatasourceRepository: IndexedDBDatasourceRepository,
+      NotebookRepository: IndexedDBNotebookRepository,
+    },
+    { ConversationRepository: APIConversationRepository },
+  ] = await Promise.all([
+    import('@qwery/repository-indexed-db'),
+    import('./index'),
+  ]);
+
+  return {
+    user: new IndexedDBUserRepository(),
+    organization: new IndexedDBOrganizationRepository(),
+    project: new IndexedDBProjectRepository(),
+    datasource: new IndexedDBDatasourceRepository(),
+    notebook: new IndexedDBNotebookRepository(),
+    // Note: IndexedDB doesn't have conversation repository
+    // Using API repository as fallback for conversation
+    conversation: new APIConversationRepository(),
+  };
+}

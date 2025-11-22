@@ -56,7 +56,7 @@ export function ResizableContent(props: ResizableContentProps) {
       </ResizablePanel>
       {isOpen && <ResizableHandle withHandle />}
       {isOpen && (
-        <ResizablePanel defaultSize={sidebarSize} minSize={10} maxSize={80}>
+        <ResizablePanel defaultSize={sidebarSize} minSize={0} maxSize={80}>
           {AgentSidebar}
         </ResizablePanel>
       )}

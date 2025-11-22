@@ -1,7 +1,4 @@
-import { NotebookUseCaseDto } from '../dto/notebook-usecase-dto';
+import { NotebookOutput } from '../dto/notebook-usecase-dto';
 import { UseCase } from '../usecase';
 
-export type GetNotebooksByProjectIdUseCase = UseCase<
-  string,
-  NotebookUseCaseDto[]
->;
+export type GetNotebooksByProjectIdUseCase = UseCase<string, NotebookOutput[]>;

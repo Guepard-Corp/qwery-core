@@ -1,6 +1,6 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { NotebookRepositoryPort } from '../../repositories/notebook-repository.port';
+import { NotebookRepositoryPort } from '../../repositories';
 import { DeleteNotebookUseCase } from '../../usecases';
 
 export class DeleteNotebookService implements DeleteNotebookUseCase {

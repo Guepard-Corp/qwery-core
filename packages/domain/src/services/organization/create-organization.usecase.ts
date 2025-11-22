@@ -1,12 +1,9 @@
-import { ICreateOrganizationDTO } from '../../dtos/organization.dto';
+import { Organization, OrganizationEntity } from '../../entities';
+import { OrganizationRepositoryPort } from '../../repositories';
 import {
-  Organization,
-  OrganizationEntity,
-} from '../../entities/organization.type';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
-import {
+  CreateOrganizationInput,
+  OrganizationOutput,
   CreateOrganizationUseCase,
-  OrganizationUseCaseDto,
 } from '../../usecases';
 
 export class CreateOrganizationService implements CreateOrganizationUseCase {
@@ -15,12 +12,12 @@ export class CreateOrganizationService implements CreateOrganizationUseCase {
   ) {}
 
   public async execute(
-    organizationDTO: ICreateOrganizationDTO,
-  ): Promise<OrganizationUseCaseDto> {
+    organizationDTO: CreateOrganizationInput,
+  ): Promise<OrganizationOutput> {
     const newOrganization = OrganizationEntity.create(organizationDTO);
     const organization = await this.organizationRepository.create(
       newOrganization as unknown as Organization,
     );
-    return OrganizationUseCaseDto.new(organization);
+    return OrganizationOutput.new(organization);
   }
 }

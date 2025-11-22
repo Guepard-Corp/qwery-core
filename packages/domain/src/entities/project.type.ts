@@ -1,8 +1,8 @@
 import { Entity } from '../common/entity';
 import { z } from 'zod';
-import { ICreateProjectDTO, IUpdateProjectDTO } from '../dtos/project.dto';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
 import { generateIdentity } from '../utils/identity.generator';
+import { CreateProjectInput, UpdateProjectInput } from '../usecases';
 
 export const ProjectSchema = z.object({
   id: z.string().uuid().describe('The unique identifier for the project'),
@@ -16,8 +16,14 @@ export const ProjectSchema = z.object({
     .string()
     .min(1)
     .max(1024)
+    .optional()
     .describe('The description of the project'),
-  status: z.string().min(1).max(255).describe('The status of the project'),
+  status: z
+    .string()
+    .min(1)
+    .max(255)
+    .optional()
+    .describe('The status of the project'),
   createdAt: z.date().describe('The date and time the project was created'),
   updatedAt: z
     .date()
@@ -39,7 +45,7 @@ export type Project = z.infer<typeof ProjectSchema>;
 @Exclude()
 export class ProjectEntity extends Entity<string, typeof ProjectSchema> {
   @Expose()
-  public id!: string;
+  declare public id: string;
   @Expose()
   public org_id!: string;
   @Expose()
@@ -59,7 +65,7 @@ export class ProjectEntity extends Entity<string, typeof ProjectSchema> {
   @Expose()
   public updatedBy!: string;
 
-  public static create(newProject: ICreateProjectDTO): ProjectEntity {
+  public static create(newProject: CreateProjectInput): ProjectEntity {
     const { id, slug } = generateIdentity();
     const now = new Date();
     const project: Project = {
@@ -68,7 +74,7 @@ export class ProjectEntity extends Entity<string, typeof ProjectSchema> {
       name: newProject.name,
       slug,
       description: newProject.description,
-      status: newProject.status,
+      status: 'active',
       createdAt: now,
       updatedAt: now,
       createdBy: newProject.createdBy,
@@ -80,7 +86,7 @@ export class ProjectEntity extends Entity<string, typeof ProjectSchema> {
 
   public static update(
     project: Project,
-    projectDTO: IUpdateProjectDTO,
+    projectDTO: UpdateProjectInput,
   ): ProjectEntity {
     const date = new Date();
     const updatedProject: Project = {

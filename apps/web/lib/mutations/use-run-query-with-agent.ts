@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
 import type { DatasourceRepositoryPort } from '@qwery/domain/repositories';
-import { useAgents } from '@qwery/ai-agents/hooks/use-agents';
+import { useAgents } from '~/lib/hooks/use-agents';
 
 type RunQueryWithAgentPayload = {
   cellId: number;

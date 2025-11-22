@@ -18,6 +18,8 @@ import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navi
 import { LayoutTopBar } from '../layout/_components/layout-topbar';
 import { ProjectSidebar } from './_components/project-sidebar';
 import { AgentUIWrapper } from './_components/agent-ui-wrapper';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { WorkspaceModeEnum } from '@qwery/domain/enums';
 
 export async function loader(args: Route.LoaderArgs) {
   const request = args.request;
@@ -62,7 +64,7 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
           <LayoutFooter />
         </PageFooter>
         <AgentSidebar>
-          <AgentUIWrapper />
+          <AgentUIWrapper conversationSlug="default" />
         </AgentSidebar>
         {props.children}
       </Page>
@@ -70,10 +72,34 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   );
 }
 
-export default function Layout(props: Route.ComponentProps) {
+function SimpleModeSidebarLayout(
+  props: Route.ComponentProps & React.PropsWithChildren,
+) {
   return (
-    <SidebarLayout {...props}>
+    <Page>
+      <PageTopNavigation>
+        <LayoutTopBar />
+      </PageTopNavigation>
+      <PageMobileNavigation className={'flex items-center justify-between'}>
+        <LayoutMobileNavigation />
+      </PageMobileNavigation>
+      <PageFooter>
+        <LayoutFooter />
+      </PageFooter>
+      {props.children}
+    </Page>
+  );
+}
+
+export default function Layout(props: Route.ComponentProps) {
+  const { workspace } = useWorkspace();
+  const SideBar =
+    workspace.mode === WorkspaceModeEnum.SIMPLE
+      ? SimpleModeSidebarLayout
+      : SidebarLayout;
+  return (
+    <SideBar {...props}>
       <Outlet />
-    </SidebarLayout>
+    </SideBar>
   );
 }

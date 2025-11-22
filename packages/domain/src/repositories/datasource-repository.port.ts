@@ -1,4 +1,4 @@
-import { Datasource } from '../entities/datasource.type';
+import { Datasource } from '../entities';
 import { RepositoryPort } from './base-repository.port';
 
 export abstract class DatasourceRepositoryPort extends RepositoryPort<

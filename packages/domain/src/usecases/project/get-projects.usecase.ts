@@ -1,4 +1,4 @@
-import { ProjectUseCaseDto } from '../dto/project-usecase-dto';
+import { ProjectOutput } from '../dto/project-usecase-dto';
 import { UseCase } from '../usecase';
 
-export type GetProjectsUseCase = UseCase<void, ProjectUseCaseDto[]>;
+export type GetProjectsUseCase = UseCase<void, ProjectOutput[]>;

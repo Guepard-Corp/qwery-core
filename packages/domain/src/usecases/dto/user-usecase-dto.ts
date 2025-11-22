@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { User } from '../../entities/user.type';
+import { User } from '../../entities';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
 import { Roles } from '../../common/roles';
 
 @Exclude()
-export class UserUseCaseDto {
+export class UserOutput {
   @Expose()
   public id!: string;
 
@@ -14,7 +14,18 @@ export class UserUseCaseDto {
   @Expose()
   public role!: Roles;
 
-  public static new(user: User): UserUseCaseDto {
-    return plainToClass(UserUseCaseDto, user);
+  public static new(user: User): UserOutput {
+    return plainToClass(UserOutput, user);
   }
 }
+
+export type CreateUserInput = {
+  username: string;
+  role?: Roles;
+};
+
+export type UpdateUserInput = {
+  id: string;
+  username?: string;
+  role?: Roles;
+};

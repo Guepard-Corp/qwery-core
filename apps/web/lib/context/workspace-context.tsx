@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react';
 import { Workspace } from '@qwery/domain/entities';
 import {
   DatasourceRepositoryPort,
+  IConversationRepository,
   NotebookRepositoryPort,
   OrganizationRepositoryPort,
   ProjectRepositoryPort,
@@ -15,6 +16,7 @@ export type Repositories = {
   project: ProjectRepositoryPort;
   datasource: DatasourceRepositoryPort;
   notebook: NotebookRepositoryPort;
+  conversation: IConversationRepository;
 };
 
 const WorkspaceContext = createContext<{

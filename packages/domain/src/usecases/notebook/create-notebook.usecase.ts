@@ -1,8 +1,10 @@
-import { NotebookUseCaseDto } from '../dto/notebook-usecase-dto';
-import { ICreateNotebookDTO } from '../../dtos/notebook.dto';
+import {
+  CreateNotebookInput,
+  NotebookOutput,
+} from '../dto/notebook-usecase-dto';
 import { UseCase } from '../usecase';
 
 export type CreateNotebookUseCase = UseCase<
-  ICreateNotebookDTO,
-  NotebookUseCaseDto
+  CreateNotebookInput,
+  NotebookOutput
 >;

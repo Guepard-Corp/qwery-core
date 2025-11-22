@@ -256,4 +256,85 @@ export class Code {
     code: 2506,
     message: 'Datasource create error.',
   };
+
+  // Agent - 2600-2699
+
+  public static AGENT_SESSION_NOT_FOUND_ERROR: CodeDescription = {
+    code: 2600,
+    message: 'Agent session not found.',
+  };
+
+  public static STATE_MACHINE_NOT_FOUND_ERROR: CodeDescription = {
+    code: 2601,
+    message: 'State machine not found.',
+  };
+
+  public static INVALID_STATE_TRANSITION_ERROR: CodeDescription = {
+    code: 2602,
+    message: 'Invalid state transition.',
+  };
+
+  // Conversation - 2700-2799
+
+  public static CONVERSATION_NOT_FOUND_ERROR: CodeDescription = {
+    code: 2700,
+    message: 'Conversation not found.',
+  };
+
+  public static CONVERSATION_ALREADY_EXISTS_ERROR: CodeDescription = {
+    code: 2701,
+    message: 'Conversation already exists.',
+  };
+
+  public static CONVERSATION_UPDATE_ERROR: CodeDescription = {
+    code: 2702,
+    message: 'Conversation update error.',
+  };
+
+  public static CONVERSATION_DELETE_ERROR: CodeDescription = {
+    code: 2703,
+    message: 'Conversation delete error.',
+  };
+
+  public static CONVERSATION_GET_ERROR: CodeDescription = {
+    code: 2704,
+    message: 'Conversation get error.',
+  };
+
+  public static CONVERSATION_CREATE_ERROR: CodeDescription = {
+    code: 2705,
+    message: 'Conversation create error.',
+  };
+
+  // Message - 2800-2899
+
+  public static MESSAGE_NOT_FOUND_ERROR: CodeDescription = {
+    code: 2800,
+    message: 'Message not found.',
+  };
+
+  public static MESSAGE_ALREADY_EXISTS_ERROR: CodeDescription = {
+    code: 2801,
+    message: 'Message already exists.',
+  };
+
+  public static MESSAGE_UPDATE_ERROR: CodeDescription = {
+    code: 2802,
+    message: 'Message update error.',
+  };
+
+  public static MESSAGE_DELETE_ERROR: CodeDescription = {
+    code: 2803,
+    message: 'Message delete error.',
+  };
+
+  public static MESSAGE_GET_ERROR: CodeDescription = {
+    code: 2804,
+    message: 'Message get error.',
+  };
+
+  public static MESSAGE_CREATE_ERROR: CodeDescription = {
+    code: 2805,
+    message: 'Message create error.',
+  };
 }

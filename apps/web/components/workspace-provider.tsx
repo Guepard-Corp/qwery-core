@@ -1,23 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Workspace } from '@qwery/domain/entities';
 import { InitWorkspaceService } from '@qwery/domain/services';
-import {
-  DatasourceRepository as IndexedDBDatasourceRepository,
-  NotebookRepository as IndexedDBNotebookRepository,
-  OrganizationRepository as IndexedDBOrganizationRepository,
-  ProjectRepository as IndexedDBProjectRepository,
-  UserRepository as IndexedDBUserRepository,
-} from '@qwery/repository-indexed-db';
 import { LoadingOverlay } from '@qwery/ui/loading-overlay';
 import { Trans } from '@qwery/ui/trans';
 
+import type { Repositories } from '~/lib/context/workspace-context';
 import { WorkspaceContext } from '~/lib/context/workspace-context';
 import { useWorkspaceMode } from '~/lib/hooks/use-workspace-mode';
+import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { WorkspaceService } from '~/lib/services/workspace-service';
 import {
   getWorkspaceFromLocalStorage,
@@ -29,19 +24,24 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
 
   const workspaceQuery = useWorkspaceMode(localWorkspace);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [repositories, setRepositories] = useState<Repositories | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const repositories = useMemo(() => {
+  useEffect(() => {
     if (!workspaceQuery.data) {
-      return null;
+      return;
     }
 
-    return {
-      user: new IndexedDBUserRepository(),
-      organization: new IndexedDBOrganizationRepository(),
-      project: new IndexedDBProjectRepository(),
-      datasource: new IndexedDBDatasourceRepository(),
-      notebook: new IndexedDBNotebookRepository(),
+    let cancelled = false;
+
+    createRepositories().then((repos) => {
+      if (!cancelled) {
+        setRepositories(repos);
+      }
+    });
+
+    return () => {
+      cancelled = true;
     };
   }, [workspaceQuery.data]);
 
@@ -75,6 +75,7 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
           projectId: initializedWorkspace.project?.id,
           isAnonymous: initializedWorkspace.isAnonymous,
           mode: initializedWorkspace.mode,
+          runtime: initializedWorkspace.runtime,
         };
 
         setWorkspace(workspaceData);
@@ -91,6 +92,7 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
           projectId: initializedWorkspace.project?.id,
           isAnonymous: initializedWorkspace.isAnonymous,
           mode: initializedWorkspace.mode,
+          runtime: initializedWorkspace.runtime,
         };
         setWorkspaceInLocalStorage(workspaceToStore);
       } finally {

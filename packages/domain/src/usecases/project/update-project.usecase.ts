@@ -1,8 +1,4 @@
-import { IUpdateProjectDTO } from '../../dtos/project.dto';
-import { ProjectUseCaseDto } from '../dto/project-usecase-dto';
+import { ProjectOutput, UpdateProjectInput } from '../dto/project-usecase-dto';
 import { UseCase } from '../usecase';
 
-export type UpdateProjectUseCase = UseCase<
-  IUpdateProjectDTO,
-  ProjectUseCaseDto
->;
+export type UpdateProjectUseCase = UseCase<UpdateProjectInput, ProjectOutput>;
