@@ -21,7 +21,7 @@
     "./hooks/use-agents": "./src/hooks/use-agents.tsx"
   },
   "dependencies": {
-    "@langchain/community": "^0.3.0",
+    "@langchain/community": "^0.3.58",
     "@langchain/core": "^0.3.0",
     "@langchain/langgraph": "^0.2.0",
     "@mlc-ai/web-llm": "^0.2.79",
