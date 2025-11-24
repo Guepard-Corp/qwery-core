@@ -20,8 +20,14 @@ import {
 export class InteractiveCommandRouter {
   constructor(private readonly container: CliContainer) {}
 
-  public async execute(command: string, _args: string[]): Promise<void> {
-    const [cmd, ...rest] = command.split(' ').filter(Boolean);
+  public async execute(command: string, args: string[]): Promise<void> {
+    const cmd = command.trim();
+    if (!cmd) {
+      throw new CliUsageError(
+        'Missing command. Type /help for available commands.',
+      );
+    }
+    const rest = args;
 
     switch (cmd) {
       case 'workspace':
