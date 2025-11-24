@@ -26,13 +26,16 @@ interface AgentsProviderProps extends React.PropsWithChildren {
   options?: LangGraphAgentOptions;
 }
 
+const DEFAULT_AGENT_OPTIONS = {} as LangGraphAgentOptions;
+
 export function AgentsProvider({
   children,
-  options = {},
+  options,
 }: AgentsProviderProps) {
+  const resolvedOptions = options ?? DEFAULT_AGENT_OPTIONS;
   const agent = useMemo(() => {
-    return createLangGraphAgent(options);
-  }, [options.model, options.tools, options.temperature]);
+    return createLangGraphAgent(resolvedOptions);
+  }, [resolvedOptions]);
 
   const runQueryWithAgent = async (
     datasourceRepository: DatasourceRepositoryPort,

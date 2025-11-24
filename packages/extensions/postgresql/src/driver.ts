@@ -128,27 +128,11 @@ export class PostgresDatasourceDriver extends DatasourceDriver {
     callback: (client: Client) => Promise<T>,
   ): Promise<T> {
     const client = new Client(this.buildPgConfig());
-    return this.withInsecureTls(async () => {
-      try {
-        await client.connect();
-        return await callback(client);
-      } finally {
-        await client.end().catch(() => undefined);
-      }
-    });
-  }
-
-  private async withInsecureTls<T>(callback: () => Promise<T>): Promise<T> {
-    const previous = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     try {
-      return await callback();
+      await client.connect();
+      return await callback(client);
     } finally {
-      if (previous === undefined) {
-        delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      } else {
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = previous;
-      }
+      await client.end().catch(() => undefined);
     }
   }
 }
