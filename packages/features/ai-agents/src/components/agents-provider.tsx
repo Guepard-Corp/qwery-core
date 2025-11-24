@@ -28,10 +28,7 @@ interface AgentsProviderProps extends React.PropsWithChildren {
 
 const DEFAULT_AGENT_OPTIONS = {} as LangGraphAgentOptions;
 
-export function AgentsProvider({
-  children,
-  options,
-}: AgentsProviderProps) {
+export function AgentsProvider({ children, options }: AgentsProviderProps) {
   const resolvedOptions = options ?? DEFAULT_AGENT_OPTIONS;
   const agent = useMemo(() => {
     return createLangGraphAgent(resolvedOptions);
