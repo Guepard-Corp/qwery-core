@@ -25,6 +25,9 @@ type Pages = {
       "*": string;
     };
   };
+  "/404": {
+    params: {};
+  };
   "/organizations": {
     params: {};
   };
@@ -74,7 +77,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/ds/:slug" | "/prj/:slug/playground";
+    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/404" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/ds/:slug" | "/prj/:slug/playground";
   };
   "routes/version.ts": {
     id: "routes/version";
@@ -90,11 +93,15 @@ type RouteFiles = {
   };
   "routes/layout/layout.tsx": {
     id: "routes/layout/layout";
-    page: "/";
+    page: "/" | "/404";
   };
   "routes/index.tsx": {
     id: "routes/index";
     page: "/";
+  };
+  "routes/404.tsx": {
+    id: "routes/404";
+    page: "/404";
   };
   "routes/organizations/layout.tsx": {
     id: "routes/organizations/layout";
@@ -153,6 +160,7 @@ type RouteModules = {
   "routes/ingest.$": typeof import("./app/routes/ingest.$.ts");
   "routes/layout/layout": typeof import("./app/routes/layout/layout.tsx");
   "routes/index": typeof import("./app/routes/index.tsx");
+  "routes/404": typeof import("./app/routes/404.tsx");
   "routes/organizations/layout": typeof import("./app/routes/organizations/layout.tsx");
   "routes/organizations/index": typeof import("./app/routes/organizations/index.tsx");
   "routes/organization/layout": typeof import("./app/routes/organization/layout.tsx");
