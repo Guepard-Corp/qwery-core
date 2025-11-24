@@ -1,4 +1,11 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -80,6 +87,20 @@ export class FileStateStore {
       null,
       2,
     );
-    await writeFile(this.filePath, `${serialized}\n`, 'utf8');
+
+    const tmpPrefix = path.join(dir, `.tmp-${path.basename(this.filePath)}-`);
+    const tmpDir = await mkdtemp(tmpPrefix);
+    const tmpFile = path.join(tmpDir, path.basename(this.filePath));
+
+    try {
+      await writeFile(tmpFile, `${serialized}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+      });
+      await rm(this.filePath, { force: true });
+      await rename(tmpFile, this.filePath);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
   }
 }
