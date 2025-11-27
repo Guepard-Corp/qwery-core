@@ -46,11 +46,11 @@ export function ResizableContent(props: ResizableContentProps) {
   const contentSize = isOpen ? 50 : 100;
 
   return (
-    <ResizablePanelGroup
-      key={isOpen ? 'open' : 'closed'}
-      direction="horizontal"
-      className="w-full"
-    >
+  <ResizablePanelGroup
+  key={isOpen ? 'open' : 'closed'}
+  direction="horizontal"
+  className="w-full h-full min-h-0"
+>
       <ResizablePanel defaultSize={contentSize} minSize={isOpen ? 50 : 100}>
         {Content}
       </ResizablePanel>

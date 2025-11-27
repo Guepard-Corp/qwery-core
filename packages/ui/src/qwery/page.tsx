@@ -49,11 +49,11 @@ function PageWithHeaderSidebar(props: PageProps) {
           {Navigation}
         </div>
         {/* Main Content */}
-        <div className="bg-background relative flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex-1">
-            <ResizableContent Content={Children} AgentSidebar={AgentSidebar} />
-          </div>
-        </div>
+     <div className="bg-background relative flex min-w-0 flex-1 flex-col">
+  <div className="flex-1 flex flex-col min-h-0">
+    <ResizableContent Content={Children} AgentSidebar={AgentSidebar} />
+  </div>
+</div>
         {Footer}
       </div>
     </div>

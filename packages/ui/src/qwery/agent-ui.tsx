@@ -107,7 +107,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
   return (
     <div className="relative mx-auto size-full h-full max-w-4xl p-6">
       <div className="flex h-full flex-col">
-        <Conversation className="h-full">
+        <Conversation className="h-full min-h-0 flex-1">
           <ConversationContent>
             {messages.map((message) => (
               <div key={message.id}>
