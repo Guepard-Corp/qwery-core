@@ -351,6 +351,7 @@ export type AgentContext = {
     | ReturnType<typeof streamText>
     | ReturnType<(typeof Experimental_Agent)['prototype']['stream']>; // holds the streaming result from AI SDK
   intent: Intent;
+  error?: string;
 };
 
 export type AgentEvents =

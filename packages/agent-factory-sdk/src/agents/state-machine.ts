@@ -42,6 +42,7 @@ export const createStateMachine = (conversationId: string) => {
         intent: 'other',
         complexity: 'simple',
       },
+      error: undefined,
     },
     initial: 'idle',
     states: {
@@ -53,7 +54,8 @@ export const createStateMachine = (conversationId: string) => {
               uiMessages: ({ event }) => event.messages,
               inputMessage: ({ event }) =>
                 event.messages[event.messages.length - 1]?.parts[0]?.text ?? '',
-              streamResult: undefined, // Clear previous result when starting new request
+              streamResult: () => undefined, // Clear previous result when starting new request
+              error: () => undefined,
             }),
           },
           STOP: 'stopped',
@@ -107,6 +109,14 @@ export const createStateMachine = (conversationId: string) => {
               onError: {
                 target: '#factory-agent.idle',
                 actions: assign({
+                  error: ({ event }) => {
+                    const errorMsg =
+                      event.error instanceof Error
+                        ? event.error.message
+                        : String(event.error);
+                    console.error('detectIntent error:', errorMsg, event.error);
+                    return errorMsg;
+                  },
                   streamResult: undefined,
                 }),
               },
@@ -119,6 +129,7 @@ export const createStateMachine = (conversationId: string) => {
               input: ({ context }: { context: AgentContext }) => ({
                 inputMessage: context.inputMessage,
                 intent: context.intent,
+                uiMessages: context.uiMessages,
               }),
               onDone: {
                 target: '#factory-agent.idle',
@@ -129,6 +140,18 @@ export const createStateMachine = (conversationId: string) => {
               onError: {
                 target: '#factory-agent.idle',
                 actions: assign({
+                  error: ({ event }) => {
+                    const errorMsg =
+                      event.error instanceof Error
+                        ? event.error.message
+                        : String(event.error);
+                    console.error(
+                      'summarizeIntent error:',
+                      errorMsg,
+                      event.error,
+                    );
+                    return errorMsg;
+                  },
                   streamResult: undefined,
                 }),
               },
@@ -150,6 +173,14 @@ export const createStateMachine = (conversationId: string) => {
               onError: {
                 target: '#factory-agent.idle',
                 actions: assign({
+                  error: ({ event }) => {
+                    const errorMsg =
+                      event.error instanceof Error
+                        ? event.error.message
+                        : String(event.error);
+                    console.error('greeting error:', errorMsg, event.error);
+                    return errorMsg;
+                  },
                   streamResult: undefined,
                 }),
               },
@@ -162,6 +193,7 @@ export const createStateMachine = (conversationId: string) => {
               input: ({ context }: { context: AgentContext }) => ({
                 inputMessage: context.inputMessage,
                 conversationId: context.conversationId,
+                uiMessages: context.uiMessages,
               }),
               onDone: {
                 target: '#factory-agent.idle',
@@ -172,6 +204,14 @@ export const createStateMachine = (conversationId: string) => {
               onError: {
                 target: '#factory-agent.idle',
                 actions: assign({
+                  error: ({ event }) => {
+                    const errorMsg =
+                      event.error instanceof Error
+                        ? event.error.message
+                        : String(event.error);
+                    console.error('readData error:', errorMsg, event.error);
+                    return errorMsg;
+                  },
                   streamResult: undefined,
                 }),
               },

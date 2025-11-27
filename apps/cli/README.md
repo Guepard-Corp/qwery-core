@@ -47,6 +47,27 @@ A command-line interface for managing Qwery workspaces, datasources, notebooks, 
 - **Node.js** >= 22.0.0
 - **pnpm** >= 9.0.0 (install with `corepack enable pnpm`)
 
+### Environment Variables
+
+The CLI requires environment variables for the AI agent to work. Create a `.env` file in `apps/cli/`:
+
+```bash
+# Query Agent Configuration
+VITE_AGENT_PROVIDER=azure
+AGENT_PROVIDER=azure
+
+# Azure OpenAI Configuration
+AZURE_API_KEY=your-azure-api-key
+AZURE_RESOURCE_NAME=your-azure-resource-name
+AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
+
+# Workspace Directory (for Google Sheets support)
+VITE_WORKING_DIR=workspace
+WORKING_DIR=workspace
+```
+
+See `.env.example` for a complete template.
+
 ### Step-by-Step Installation
 
 #### 1. Build the CLI

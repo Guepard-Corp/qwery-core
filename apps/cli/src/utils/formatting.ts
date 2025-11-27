@@ -6,6 +6,7 @@ export const colors = {
   dim: '\x1b[2m',
   // Brand color #2596be
   brand: '\x1b[38;2;37;150;190m',
+  prompt: '\x1b[38;2;255;203;81m',
   // Standard colors
   red: '\x1b[31m',
   green: '\x1b[32m',

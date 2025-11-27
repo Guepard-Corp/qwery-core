@@ -1,8 +1,8 @@
-import { WorkspaceModeEnum } from '@qwery/domain/enums';
-import { WorkspaceModeService } from '@qwery/domain/services';
+import { WorkspaceModeEnum, WorkspaceRuntimeEnum } from '@qwery/domain/enums';
+import { WorkspaceRuntimeService } from '@qwery/domain/services';
 
-export class CliWorkspaceModeService extends WorkspaceModeService {
-  public async detectWorkspaceMode(): Promise<WorkspaceModeEnum> {
-    return WorkspaceModeEnum.DESKTOP;
+export class CliWorkspaceModeService extends WorkspaceRuntimeService {
+  public async detectWorkspaceRuntime(): Promise<WorkspaceRuntimeEnum> {
+    return WorkspaceRuntimeEnum.DESKTOP;
   }
 }

@@ -41,8 +41,12 @@
   "prettier": "@qwery/prettier-config",
   "typesVersions": {
     "*": {
-      "*": ["src/*"],
-      "common/roles": ["src/common/roles.ts"]
+      "*": [
+        "src/*"
+      ],
+      "common/roles": [
+        "src/common/roles.ts"
+      ]
     }
   }
 }

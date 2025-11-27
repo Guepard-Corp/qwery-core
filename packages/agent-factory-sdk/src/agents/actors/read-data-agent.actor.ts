@@ -30,7 +30,25 @@ export const readDataAgentActor = fromPromise(
   },
 );
 
-const WORKSPACE = import.meta.env.VITE_WORKING_DIR;
+// Support both import.meta.env (Vite/browser) and process.env (Node.js)
+const WORKSPACE = resolveWorkspaceDir();
+
+function resolveWorkspaceDir(): string | undefined {
+  const globalProcess = typeof globalThis !== 'undefined' ? (globalThis as { process?: NodeJS.Process }).process : undefined;
+  const envValue =
+    globalProcess?.env?.WORKSPACE ??
+    globalProcess?.env?.VITE_WORKING_DIR ??
+    globalProcess?.env?.WORKING_DIR;
+  if (envValue) {
+    return envValue;
+  }
+
+  try {
+    return (import.meta as { env?: Record<string, string> })?.env?.VITE_WORKING_DIR;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface ReadDataAgentOptions {
   conversationId: string;
@@ -54,9 +72,7 @@ export class ReadDataAgent {
 
     this.agent = this.createAgent(model);
 
-    console.log(
-      `###ReadDataAgent created for conversation ${this.conversationId}`,
-    );
+    // ReadDataAgent created silently
   }
 
   getAgent(): ReturnType<ReadDataAgent['createAgent']> {
@@ -78,11 +94,9 @@ export class ReadDataAgent {
             }
             const { join } = await import('node:path');
             const dbPath = join(WORKSPACE, this.conversationId, 'database.db');
-            console.log('DB path:', dbPath);
             const result = await testConnection({
               dbPath: dbPath,
             });
-            console.log('Connect status:', result);
             return result.toString();
           },
         }),
@@ -97,13 +111,14 @@ export class ReadDataAgent {
             }
             const { join } = await import('node:path');
             const { mkdir } = await import('node:fs/promises');
-
-            const workspace = WORKSPACE;
-            await mkdir(workspace, { recursive: true });
-            const fileDir = join(workspace, this.conversationId);
+            await mkdir(WORKSPACE, { recursive: true });
+            const fileDir = join(WORKSPACE, this.conversationId);
             await mkdir(fileDir, { recursive: true });
             const dbPath = join(fileDir, 'database.db');
 
+            console.debug(
+              `[ReadDataAgent:${this.conversationId}] Creating DuckDB view from sheet: ${sharedLink}`,
+            );
             const message = await gsheetToDuckdb({
               dbPath,
               sharedLink,

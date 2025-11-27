@@ -51,11 +51,65 @@ export class FactoryAgent {
     //console.log("Last user text:", JSON.stringify(opts.messages, null, 2));
 
     return await new Promise<Response>((resolve, reject) => {
+      let resolved = false;
       let requestStarted = false;
+      let lastState: string | undefined;
+      let stateChangeCount = 0;
+
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          subscription.unsubscribe();
+          reject(
+            new Error(
+              `FactoryAgent response timeout: state machine did not produce streamResult within 120 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
+            ),
+          );
+        }
+      }, 120000);
 
       const subscription = this.factoryActor.subscribe((state) => {
         const ctx = state.context;
-        console.log('Factory state in subscribe:', state.value);
+        const currentState =
+          typeof state.value === 'string'
+            ? state.value
+            : JSON.stringify(state.value);
+        lastState = currentState;
+        stateChangeCount++;
+
+        // Check for errors in context
+        if (ctx.error) {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+            reject(new Error(`State machine error: ${ctx.error}`));
+          }
+          return;
+        }
+
+        // Check if we're back to idle without a streamResult (error case)
+        if (
+          currentState.includes('idle') &&
+          !ctx.streamResult &&
+          stateChangeCount > 2 &&
+          ctx.error
+        ) {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+            reject(new Error(`State machine error: ${ctx.error}`));
+          }
+          return;
+        }
+
+        // Check if we're stuck in detectIntent for too long
+        if (currentState.includes('detectIntent') && stateChangeCount > 10) {
+          console.warn(
+            `FactoryAgent ${this.id} appears stuck in detectIntent; waiting for state change...`,
+          );
+          return;
+        }
 
         // Mark that we've started processing (state is running or we have a result)
         if (state.value === 'running' || ctx.streamResult) {
@@ -67,13 +121,17 @@ export class FactoryAgent {
           // Verify this result is for the current request by checking inputMessage matches
           const resultInputMessage = ctx.inputMessage;
           if (resultInputMessage === currentInputMessage) {
-            try {
-              const response = ctx.streamResult.toUIMessageStreamResponse();
-              subscription.unsubscribe();
-              resolve(response);
-            } catch (err) {
-              subscription.unsubscribe();
-              reject(err);
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              try {
+                const response = ctx.streamResult.toUIMessageStreamResponse();
+                subscription.unsubscribe();
+                resolve(response);
+              } catch (err) {
+                subscription.unsubscribe();
+                reject(err);
+              }
             }
           }
           // If inputMessage doesn't match, it's a stale result - wait for the correct one
@@ -89,3 +147,4 @@ export class FactoryAgent {
     });
   }
 }
+
