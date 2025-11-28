@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react';
 import { Workspace } from '@qwery/domain/entities';
 import {
   DatasourceRepositoryPort,
+  IConversationRepository,
   NotebookRepositoryPort,
   OrganizationRepositoryPort,
   ProjectRepositoryPort,
@@ -15,17 +16,17 @@ export type Repositories = {
   project: ProjectRepositoryPort;
   datasource: DatasourceRepositoryPort;
   notebook: NotebookRepositoryPort;
+  conversation: IConversationRepository;
 };
 
-const WorkspaceContext = createContext<{
+type WorkspaceContextValue = {
   repositories: Repositories;
   workspace: Workspace;
-} | null>(null);
+};
 
-export function useWorkspace(): {
-  repositories: Repositories;
-  workspace: Workspace;
-} {
+const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+
+export function useWorkspace(): WorkspaceContextValue {
   const context = useContext(WorkspaceContext);
   if (!context) {
     throw new Error('useWorkspace must be used within a WorkspaceProvider');

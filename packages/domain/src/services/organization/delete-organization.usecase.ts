@@ -1,6 +1,6 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
+import { OrganizationRepositoryPort } from '../../repositories';
 import { DeleteOrganizationUseCase } from '../../usecases';
 
 export class DeleteOrganizationService implements DeleteOrganizationUseCase {

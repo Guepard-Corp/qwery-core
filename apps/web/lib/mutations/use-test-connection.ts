@@ -24,7 +24,16 @@ export function useTestConnection(
         if (!extension) {
           throw new Error('Extension not found');
         }
-        const driver = await extension.getDriver(payload.name, payload.config);
+        const driverStorageKey =
+          (payload.config as { storageKey?: string })?.storageKey ??
+          payload.id ??
+          payload.slug ??
+          payload.name ??
+          'embedded-datasource';
+        const driver = await extension.getDriver(
+          driverStorageKey,
+          payload.config,
+        );
         if (!driver) {
           throw new Error('Driver not found');
         }

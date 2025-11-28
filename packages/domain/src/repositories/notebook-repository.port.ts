@@ -1,4 +1,4 @@
-import { Notebook } from '../entities/notebook.type';
+import { Notebook } from '../entities';
 import { RepositoryPort } from './base-repository.port';
 
 export abstract class NotebookRepositoryPort extends RepositoryPort<

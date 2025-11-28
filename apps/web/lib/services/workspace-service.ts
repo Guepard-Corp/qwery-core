@@ -1,26 +1,26 @@
 import { Workspace } from '@qwery/domain/entities';
-import { WorkspaceModeEnum } from '@qwery/domain/enums';
-import { WorkspaceModeService } from '@qwery/domain/services';
+import { WorkspaceRuntimeEnum } from '@qwery/domain/enums';
+import { WorkspaceRuntimeService } from '@qwery/domain/services';
 import { isDesktopApp } from '@qwery/shared/desktop';
 
-export class WorkspaceService extends WorkspaceModeService {
-  public async detectWorkspaceMode(): Promise<WorkspaceModeEnum> {
+export class WorkspaceService extends WorkspaceRuntimeService {
+  public async detectWorkspaceRuntime(): Promise<WorkspaceRuntimeEnum> {
     return isDesktopApp()
-      ? WorkspaceModeEnum.DESKTOP
-      : WorkspaceModeEnum.BROWSER;
+      ? WorkspaceRuntimeEnum.DESKTOP
+      : WorkspaceRuntimeEnum.BROWSER;
   }
 
   async getWorkspace(port: Workspace): Promise<Workspace> {
-    const mode = await this.execute();
-    console.info(`Workspace mode: ${mode}`);
+    const runtime = await this.execute();
+    console.info(`Workspace runtime: ${runtime}`);
 
-    switch (mode) {
-      case WorkspaceModeEnum.DESKTOP:
+    switch (runtime) {
+      case WorkspaceRuntimeEnum.DESKTOP:
         return port;
-      case WorkspaceModeEnum.BROWSER:
+      case WorkspaceRuntimeEnum.BROWSER:
         return port;
       default:
-        throw new Error(`Unknown workspace mode: ${mode}`);
+        throw new Error(`Unknown workspace runtime: ${runtime}`);
     }
   }
 }

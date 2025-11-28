@@ -28,6 +28,9 @@
         "next-env.d.ts",
         "build/**",
         "dist/**"
+      ],
+      "env": [
+        "NODE_ENV"
       ]
     },
     "dev": {
@@ -59,7 +62,8 @@
     "test": {
       "dependsOn": [
         "^topo"
-      ]
+      ],
+      "outputLogs": "errors-only"
     },
     "clean": {
       "cache": false

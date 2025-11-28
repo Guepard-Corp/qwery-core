@@ -1,6 +1,6 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { DatasourceRepositoryPort } from '../../repositories/datasource-repository.port';
+import { DatasourceRepositoryPort } from '../../repositories';
 import { DeleteDatasourceUseCase } from '../../usecases';
 
 export class DeleteDatasourceService implements DeleteDatasourceUseCase {

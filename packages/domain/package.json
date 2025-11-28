@@ -12,11 +12,15 @@
   },
   "exports": {
     "./entities": "./src/entities/index.ts",
+    "./exceptions": "./src/exceptions/index.ts",
     "./repositories": "./src/repositories/index.ts",
     "./common": "./src/common/index.ts",
+    "./common/roles": "./src/common/roles.ts",
     "./services": "./src/services/index.ts",
     "./enums": "./src/enums/index.ts",
-    "./usecases": "./src/usecases/index.ts"
+    "./usecases": "./src/usecases/index.ts",
+    "./protocol": "./src/protocol/index.ts",
+    "./ports": "./src/ports/index.ts"
   },
   "dependencies": {
     "class-transformer": "^0.5.1",
@@ -39,6 +43,9 @@
     "*": {
       "*": [
         "src/*"
+      ],
+      "common/roles": [
+        "src/common/roles.ts"
       ]
     }
   }

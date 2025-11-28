@@ -7,34 +7,17 @@ import {
   PageTopNavigation,
 } from '@qwery/ui/page';
 import { SidebarProvider } from '@qwery/ui/shadcn-sidebar';
-
-import { sidebarStateCookie } from '~/lib/cookies';
 import type { Route } from '~/types/app/routes/organization/+types/layout';
 
 import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
 import { LayoutTopBar } from '../layout/_components/layout-topbar';
 import { OrgSidebar } from './_components/org-sidebar';
 
-export async function loader(args: Route.LoaderArgs) {
-  const request = args.request;
-
-  const [layoutState] = await Promise.all([getLayoutState(request)]);
-
+export async function loader(_args: Route.LoaderArgs) {
   return {
-    layoutState,
-  };
-}
-
-async function getLayoutState(request: Request) {
-  const cookieHeader = request.headers.get('Cookie');
-  const sidebarOpenCookie = await sidebarStateCookie.parse(cookieHeader);
-
-  const sidebarOpenCookieValue = sidebarOpenCookie
-    ? sidebarOpenCookie === 'false'
-    : true;
-
-  return {
-    open: sidebarOpenCookieValue,
+    layoutState: {
+      open: true,
+    },
   };
 }
 

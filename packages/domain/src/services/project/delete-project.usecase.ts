@@ -1,6 +1,6 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { ProjectRepositoryPort } from '../../repositories/project-repository.port';
+import { ProjectRepositoryPort } from '../../repositories';
 import { DeleteProjectUseCase } from '../../usecases';
 
 export class DeleteProjectService implements DeleteProjectUseCase {

@@ -1,11 +1,8 @@
 import { Entity } from '../common/entity';
 import { z } from 'zod';
-import {
-  ICreateOrganizationDTO,
-  IUpdateOrganizationDTO,
-} from '../dtos/organization.dto';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
 import { generateIdentity } from '../utils/identity.generator';
+import { CreateOrganizationInput, UpdateOrganizationInput } from '../usecases';
 
 /**
  * Organization schema
@@ -47,7 +44,7 @@ export class OrganizationEntity extends Entity<
   typeof OrganizationSchema
 > {
   @Expose()
-  public id!: string;
+  declare public id: string;
   @Expose()
   public name!: string;
   @Expose()
@@ -64,7 +61,7 @@ export class OrganizationEntity extends Entity<
   public updatedBy!: string;
 
   public static create(
-    newOrganization: ICreateOrganizationDTO,
+    newOrganization: CreateOrganizationInput,
   ): OrganizationEntity {
     const { id, slug } = generateIdentity();
     const now = new Date();
@@ -87,7 +84,7 @@ export class OrganizationEntity extends Entity<
 
   public static update(
     organization: Organization,
-    organizationDTO: IUpdateOrganizationDTO,
+    organizationDTO: UpdateOrganizationInput,
   ): OrganizationEntity {
     const date = new Date();
     const updatedOrganization: Organization = {

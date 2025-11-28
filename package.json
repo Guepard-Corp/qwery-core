@@ -35,7 +35,7 @@
     "name": "Guepard Inc."
   },
   "scripts": {
-    "pretest": "pnpm exec playwright install --with-deps",
+    "pretest": "pnpm exec playwright install chromium firefox webkit || true",
     "turbo": "turbo",
     "postinstall": "manypkg fix && node node_modules/.pnpm/electron@39.1.1/node_modules/electron/install.js",
     "build": "turbo build --cache-dir=.turbo",
@@ -66,7 +66,13 @@
   "pnpm": {
     "overrides": {
       "react-is": "19.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "@tailwindcss/oxide",
+      "better-sqlite3",
+      "msw"
+    ]
   },
   "devDependencies": {
     "@manypkg/cli": "^0.25.1",

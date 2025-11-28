@@ -64,7 +64,15 @@ describe('CreateNotebookService', () => {
     expect(result.slug).toBeDefined();
     expect(result.version).toBe(1);
     expect(result.datasources).toEqual([]);
-    expect(result.cells).toEqual([]);
+    expect(result.cells).toHaveLength(1);
+    expect(result.cells[0]).toMatchObject({
+      cellId: 1,
+      cellType: 'query',
+      query: '',
+      datasources: [],
+      isActive: true,
+      runMode: 'default',
+    });
     expect(result.createdAt).toBeInstanceOf(Date);
     expect(result.updatedAt).toBeInstanceOf(Date);
   });
@@ -114,7 +122,7 @@ describe('CreateNotebookService', () => {
     expect(result.version).toBe(1);
   });
 
-  it('should initialize with empty datasources and cells arrays', async () => {
+  it('should initialize with empty datasources and a default query cell', async () => {
     const repository = new MockNotebookRepository();
     const service = new CreateNotebookService(repository);
 
@@ -124,7 +132,15 @@ describe('CreateNotebookService', () => {
     });
 
     expect(result.datasources).toEqual([]);
-    expect(result.cells).toEqual([]);
+    expect(result.cells).toHaveLength(1);
+    expect(result.cells[0]).toMatchObject({
+      cellId: 1,
+      cellType: 'query',
+      query: '',
+      datasources: [],
+      isActive: true,
+      runMode: 'default',
+    });
   });
 
   it('should persist notebook to repository', async () => {

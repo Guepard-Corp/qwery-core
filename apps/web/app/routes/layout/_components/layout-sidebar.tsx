@@ -19,10 +19,11 @@ export function LayoutSidebar(
   const navigate = useNavigate();
   const project_id = params.slug as string;
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="none">
       <SidebarHeader className={'h-16 justify-center'}>
         <div className="flex w-full items-center justify-center">
           <NewDatasource
+            showLabel
             onClick={() => {
               navigate(
                 createPath(pathsConfig.app.availableSources, project_id),

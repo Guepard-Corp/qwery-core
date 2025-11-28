@@ -16,14 +16,16 @@ export function useNotebook(
 
   return useMutation({
     mutationFn: async (notebook: Notebook) => {
-      // Check if notebook exists by trying to find it
       try {
-        await notebookRepository.findById(notebook.id);
-        // If found, update it
         return await notebookRepository.update(notebook);
-      } catch {
-        // If not found, create it
-        return await notebookRepository.create(notebook);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.toLowerCase().includes('not found')
+        ) {
+          return await notebookRepository.create(notebook);
+        }
+        throw error;
       }
     },
     onSuccess: (notebook: Notebook) => {
@@ -34,6 +36,37 @@ export function useNotebook(
         queryKey: getNotebooksByProjectIdKey(notebook.projectId),
       });
       onSuccess(notebook);
+    },
+    onError,
+  });
+}
+
+type DeleteNotebookInput = {
+  id: string;
+  slug: string;
+  projectId: string;
+};
+
+export function useDeleteNotebook(
+  notebookRepository: NotebookRepositoryPort,
+  onSuccess?: (input: DeleteNotebookInput) => void,
+  onError?: (error: Error) => void,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: DeleteNotebookInput) => {
+      await notebookRepository.delete(input.id);
+      return input;
+    },
+    onSuccess: (input) => {
+      queryClient.invalidateQueries({
+        queryKey: getNotebookKey(input.slug),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getNotebooksByProjectIdKey(input.projectId),
+      });
+      onSuccess?.(input);
     },
     onError,
   });

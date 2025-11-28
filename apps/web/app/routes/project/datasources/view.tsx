@@ -2,12 +2,23 @@ import { useState } from 'react';
 import * as React from 'react';
 
 import { useNavigate, useParams } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { type Datasource } from '@qwery/domain/entities';
 import { FormRenderer } from '@qwery/extensions-sdk';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@qwery/ui/alert-dialog';
 import { Button } from '@qwery/ui/button';
 import {
   Card,
@@ -23,13 +34,18 @@ import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
-import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
+import {
+  getDatasourcesByProjectIdKey,
+  getDatasourcesKey,
+  useGetDatasourceBySlug,
+} from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 
 export default function ProjectDatasourceViewPage() {
   const navigate = useNavigate();
   const params = useParams();
   const slug = params.slug as string;
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
@@ -37,6 +53,8 @@ export default function ProjectDatasourceViewPage() {
   const [datasourceName, setDatasourceName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isHoveringName, setIsHoveringName] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const { repositories } = useWorkspace();
   const datasourceRepository = repositories.datasource;
@@ -175,6 +193,53 @@ export default function ProjectDatasourceViewPage() {
     });
   };
 
+  const invalidateDatasourceQueries = async (projectId?: string | null) => {
+    const invalidations = [
+      queryClient.invalidateQueries({ queryKey: getDatasourcesKey() }),
+    ];
+    if (projectId) {
+      invalidations.push(
+        queryClient.invalidateQueries({
+          queryKey: getDatasourcesByProjectIdKey(projectId),
+        }),
+      );
+    }
+    await Promise.all(invalidations);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!datasource.data?.id) {
+      toast.error('Missing datasource identifier');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await datasourceRepository.delete(datasource.data.id);
+      await invalidateDatasourceQueries(datasource.data.projectId);
+      toast.success('Datasource deleted successfully');
+
+      if (datasource.data.projectId) {
+        navigate(
+          createPath(
+            pathsConfig.app.projectDatasources,
+            datasource.data.projectId,
+          ),
+          { replace: true },
+        );
+      } else {
+        navigate(-1);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to delete datasource',
+      );
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <div className="p-2 lg:p-4">
       <Card className="mx-auto w-full max-w-2xl">
@@ -247,30 +312,46 @@ export default function ProjectDatasourceViewPage() {
               onFormReady={setFormValues}
             />
           )}
-          <div className="mt-6 flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handleTestConnection}
-              disabled={
-                testConnectionMutation.isPending || isSubmitting || !formValues
-              }
-            >
-              {testConnectionMutation.isPending
-                ? 'Testing...'
-                : 'Test Connection'}
-            </Button>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={handleTestConnection}
+                disabled={
+                  testConnectionMutation.isPending ||
+                  isSubmitting ||
+                  !formValues
+                }
+              >
+                {testConnectionMutation.isPending
+                  ? 'Testing...'
+                  : 'Test Connection'}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                disabled={isSubmitting || isDeleting}
+                data-test="datasource-delete-button"
+              >
+                Delete
+              </Button>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => navigate(-1)}
-                disabled={isSubmitting || testConnectionMutation.isPending}
+                disabled={
+                  isSubmitting || testConnectionMutation.isPending || isDeleting
+                }
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 form="datasource-form"
-                disabled={isSubmitting || testConnectionMutation.isPending}
+                disabled={
+                  isSubmitting || testConnectionMutation.isPending || isDeleting
+                }
               >
                 {isSubmitting ? 'Updating...' : 'Update'}
               </Button>
@@ -278,6 +359,36 @@ export default function ProjectDatasourceViewPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setIsDeleteDialogOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete datasource?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently remove{' '}
+              <span className="font-semibold">{datasourceName}</span> and any
+              associated playground data. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

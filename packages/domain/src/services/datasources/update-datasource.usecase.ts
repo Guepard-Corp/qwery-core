@@ -1,9 +1,8 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { IUpdateDatasourceDTO } from '../../dtos/datasource.dto';
-import { DatasourceEntity, Datasource } from '../../entities/datasource.type';
-import { DatasourceRepositoryPort } from '../../repositories/datasource-repository.port';
-import { DatasourceUseCaseDto } from '../../usecases/dto/datasource-usecase-dto';
+import { DatasourceEntity, Datasource } from '../../entities';
+import { DatasourceRepositoryPort } from '../../repositories';
+import { DatasourceOutput, UpdateDatasourceInput } from '../../usecases';
 import { UpdateDatasourceUseCase } from '../../usecases';
 
 export class UpdateDatasourceService implements UpdateDatasourceUseCase {
@@ -12,8 +11,8 @@ export class UpdateDatasourceService implements UpdateDatasourceUseCase {
   ) {}
 
   public async execute(
-    datasourceDTO: IUpdateDatasourceDTO,
-  ): Promise<DatasourceUseCaseDto> {
+    datasourceDTO: UpdateDatasourceInput,
+  ): Promise<DatasourceOutput> {
     const existingDatasource = await this.datasourceRepository.findById(
       datasourceDTO.id,
     );
@@ -33,6 +32,6 @@ export class UpdateDatasourceService implements UpdateDatasourceUseCase {
     const datasource = await this.datasourceRepository.update(
       newDatasource as unknown as Datasource,
     );
-    return DatasourceUseCaseDto.new(datasource);
+    return DatasourceOutput.new(datasource);
   }
 }

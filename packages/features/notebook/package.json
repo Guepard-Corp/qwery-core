@@ -23,7 +23,10 @@
     "@qwery/domain": "workspace:*",
     "@uiw/react-codemirror": "^4.25.2",
     "codemirror": "^6.0.2",
-    "nanoid": "^5.1.6"
+    "motion": "^12.23.24",
+    "nanoid": "^5.1.6",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
