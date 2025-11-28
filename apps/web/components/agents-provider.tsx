@@ -88,7 +88,7 @@ export function AgentsProvider({ children, options }: AgentsProviderProps) {
           : JSON.stringify(lastMessage.content);
       }
 
-      return null;
+      return JSON.stringify(result);
     } catch (error) {
       console.error('Error running query with agent:', error);
       throw error;
