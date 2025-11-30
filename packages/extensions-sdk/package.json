@@ -27,7 +27,7 @@
     "eslint": "^9.39.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-hook-form": "^7.66.0"
+    "react-hook-form": "^7.67.0"
   },
   "prettier": "@qwery/prettier-config",
   "typesVersions": {
