@@ -1,9 +1,9 @@
 import type { Nullable } from '@qwery/domain/common';
 import type { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Notebook } from '@qwery/domain/entities';
-import { NotebookRepositoryPort } from '@qwery/domain/repositories';
+import { INotebookRepository } from '@qwery/domain/repositories';
 
-export class NotebookRepository extends NotebookRepositoryPort {
+export class NotebookRepository extends INotebookRepository {
   private notebooks = new Map<string, Notebook>();
 
   async findAll(options?: RepositoryFindOptions): Promise<Notebook[]> {

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { DomainException } from '../../../src/exceptions';
 import type { Datasource } from '../../../src/entities/datasource.type';
 import { DatasourceKind } from '../../../src/entities/datasource.type';
-import { DatasourceRepositoryPort } from '../../../src/repositories/datasource-repository.port';
+import { IDatasourceRepository } from '../../../src/repositories/datasource-repository.port';
 import {
   GetDatasourceService,
   GetDatasourceBySlugService,
 } from '../../../src/services/datasources/get-datasource-by-slug.usecase';
 
-class MockDatasourceRepository implements DatasourceRepositoryPort {
+class MockDatasourceRepository implements IDatasourceRepository {
   private datasources = new Map<string, Datasource>();
 
   async findAll() {

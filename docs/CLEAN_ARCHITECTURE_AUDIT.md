@@ -50,11 +50,11 @@ We generated this file using AI Coder Agent (Cursor) to have a critical overview
 
 ```typescript
 export type Repositories = {
-    user: UserRepositoryPort;
-    organization: OrganizationRepositoryPort;
-    project: ProjectRepositoryPort;
-    datasource: DatasourceRepositoryPort;
-    notebook: NotebookRepositoryPort;
+    user: IUserRepository;
+    organization: IOrganizationRepository;
+    project: IProjectRepository;
+    datasource: IDatasourceRepository;
+    notebook: INotebookRepository;
 };
 ```
 
@@ -95,7 +95,7 @@ export type GetProjectsUseCase = UseCase<void, Project[]>;
 
 // packages/domain/src/services/get-projects-service.ts
 export class GetProjectsService implements GetProjectsUseCase {
-  constructor(private readonly projectRepository: ProjectRepositoryPort) {}
+  constructor(private readonly projectRepository: IProjectRepository) {}
   
   async execute(): Promise<Project[]> {
     return this.projectRepository.findAll();
@@ -109,7 +109,7 @@ Update all query/mutation hooks to use use cases instead of repositories:
 
 ```typescript
 // Instead of:
-export function useGetProjects(repository: ProjectRepositoryPort) {
+export function useGetProjects(repository: IProjectRepository) {
     return useQuery({
         queryKey: ['projects'],
         queryFn: () => repository.findAll(),

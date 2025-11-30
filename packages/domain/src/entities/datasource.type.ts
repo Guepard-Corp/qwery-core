@@ -1,7 +1,7 @@
 import { Entity } from '../common/entity';
 import { z } from 'zod';
-import { IUpdateDatasourceDTO } from '../dtos/datasource.dto';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
+import { UpdateDatasourceInput } from '../usecases';
 
 export enum DatasourceKind {
   EMBEDDED = 'embedded',
@@ -43,7 +43,7 @@ export type Datasource = z.infer<typeof DatasourceSchema>;
 @Exclude()
 export class DatasourceEntity extends Entity<string, typeof DatasourceSchema> {
   @Expose()
-  public id!: string;
+  declare public id: string;
   @Expose()
   public projectId!: string;
   @Expose()
@@ -71,7 +71,7 @@ export class DatasourceEntity extends Entity<string, typeof DatasourceSchema> {
 
   public static update(
     datasource: Datasource,
-    datasourceDTO: IUpdateDatasourceDTO,
+    datasourceDTO: UpdateDatasourceInput,
   ): DatasourceEntity {
     const date = new Date();
     const updatedDatasource: Datasource = {

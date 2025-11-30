@@ -7,9 +7,7 @@ import {
   PageNavigation,
   PageTopNavigation,
 } from '@qwery/ui/page';
-import { SidebarProvider, SidebarTrigger } from '@qwery/ui/shadcn-sidebar';
-
-import { sidebarStateCookie } from '~/lib/cookies';
+import { SidebarProvider } from '@qwery/ui/shadcn-sidebar';
 import type { Route } from '~/types/app/routes/layout/+types/layout';
 
 import { LayoutFooter } from './_components/layout-footer';
@@ -17,26 +15,11 @@ import { LayoutMobileNavigation } from './_components/layout-mobile-navigation';
 import { LayoutSidebar } from './_components/layout-sidebar';
 import { LayoutTopBar } from './_components/layout-topbar';
 
-export async function loader(args: Route.LoaderArgs) {
-  const request = args.request;
-
-  const [layoutState] = await Promise.all([getLayoutState(request)]);
-
+export async function loader(_args: Route.LoaderArgs) {
   return {
-    layoutState,
-  };
-}
-
-async function getLayoutState(request: Request) {
-  const cookieHeader = request.headers.get('Cookie');
-  const sidebarOpenCookie = await sidebarStateCookie.parse(cookieHeader);
-
-  const sidebarOpenCookieValue = sidebarOpenCookie
-    ? sidebarOpenCookie === 'false'
-    : true;
-
-  return {
-    open: sidebarOpenCookieValue,
+    layoutState: {
+      open: true,
+    },
   };
 }
 
@@ -46,7 +29,6 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
     <SidebarProvider defaultOpen={layoutState.open}>
       <Page>
-        <SidebarTrigger />
         <PageTopNavigation>
           <LayoutTopBar />
         </PageTopNavigation>

@@ -2,17 +2,29 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
 import { Entity } from '../common/entity';
-import { WorkspaceModeEnum } from '../enums/workspace-mode';
+import {
+  WorkspaceModeEnum,
+  WorkspaceRuntimeEnum,
+} from '../enums/workspace-mode';
 
 /**
  * The mode of the workspace.
- * - desktop: The workspace is running on a desktop device.
- * - mobile: The workspace is running on a mobile device.
- * - browser: The workspace is running in a browser using anonymous user.
+ * - simple: The workspace is running in a simple mode.
+ * - advanced: The workspace is running in a advanced mode.
  */
 export const WorkspaceModeSchema = z.nativeEnum(WorkspaceModeEnum);
 
 export type WorkspaceMode = z.infer<typeof WorkspaceModeSchema>;
+
+/**
+ * The runtime of the workspace.
+ * - desktop: The workspace is running on a desktop device.
+ * - mobile: The workspace is running on a mobile device.
+ * - browser: The workspace is running in a browser using anonymous user.
+ */
+export const WorkspaceRuntimeSchema = z.nativeEnum(WorkspaceRuntimeEnum);
+
+export type WorkspaceRuntime = z.infer<typeof WorkspaceRuntimeSchema>;
 
 export const WorkspaceSchema = z.object({
   id: z.string().uuid().describe('The unique identifier for the workspace'),
@@ -34,6 +46,7 @@ export const WorkspaceSchema = z.object({
     .default(true)
     .describe('Whether the user is anonymous'),
   mode: WorkspaceModeSchema.describe('The mode of the workspace'),
+  runtime: WorkspaceRuntimeSchema.describe('The runtime of the workspace'),
 });
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
@@ -45,6 +58,7 @@ export class WorkspaceEntity extends Entity<string, typeof WorkspaceSchema> {
   public projectId: string | undefined;
   public isAnonymous: boolean;
   public mode: WorkspaceMode;
+  public runtime: WorkspaceRuntime;
 
   constructor(data: Workspace) {
     super(WorkspaceSchema, data.id);
@@ -54,6 +68,7 @@ export class WorkspaceEntity extends Entity<string, typeof WorkspaceSchema> {
     this.projectId = data.projectId;
     this.isAnonymous = data.isAnonymous;
     this.mode = data.mode;
+    this.runtime = data.runtime;
   }
 
   protected getData(): Workspace {
@@ -65,6 +80,7 @@ export class WorkspaceEntity extends Entity<string, typeof WorkspaceSchema> {
       projectId: this.projectId,
       isAnonymous: this.isAnonymous,
       mode: this.mode,
+      runtime: this.runtime,
     };
   }
 
@@ -80,6 +96,7 @@ export class WorkspaceEntity extends Entity<string, typeof WorkspaceSchema> {
       projectId: data.projectId,
       isAnonymous: isAnonymous,
       mode: data.mode,
+      runtime: data.runtime,
     };
     return new WorkspaceEntity(workspace);
   }

@@ -1,5 +1,4 @@
-import { IWorkspaceDTO } from '../../dtos/workspace.dto';
-import { WorkspaceUseCaseDto } from '../dto/workspace-usecase-dto';
+import { WorkspaceInput, WorkspaceOutput } from '../dto';
 import { UseCase } from '../usecase';
 
-export type InitWorkspaceUseCase = UseCase<IWorkspaceDTO, WorkspaceUseCaseDto>;
+export type InitWorkspaceUseCase = UseCase<WorkspaceInput, WorkspaceOutput>;

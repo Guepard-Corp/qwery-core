@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DomainException } from '../../../src/exceptions';
 import type { Organization } from '../../../src/entities/organization.type';
-import { OrganizationRepositoryPort } from '../../../src/repositories/organization-repository.port';
+import { IOrganizationRepository } from '../../../src/repositories/organization-repository.port';
 import {
   GetOrganizationService,
   GetOrganizationBySlugService,
 } from '../../../src/services/organization/get-organization.usecase';
 
-class MockOrganizationRepository implements OrganizationRepositoryPort {
+class MockOrganizationRepository implements IOrganizationRepository {
   private organizations = new Map<string, Organization>();
 
   async findAll() {

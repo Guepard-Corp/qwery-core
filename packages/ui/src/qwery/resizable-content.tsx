@@ -49,15 +49,29 @@ export function ResizableContent(props: ResizableContentProps) {
     <ResizablePanelGroup
       key={isOpen ? 'open' : 'closed'}
       direction="horizontal"
-      className="w-full"
+      className="h-full w-full overflow-hidden"
     >
-      <ResizablePanel defaultSize={contentSize} minSize={isOpen ? 50 : 100}>
-        {Content}
+      <ResizablePanel
+        defaultSize={contentSize}
+        minSize={isOpen ? 50 : 100}
+        className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+      >
+        <div className="h-full min-h-0 w-full max-w-full min-w-0 overflow-hidden">
+          {Content}
+        </div>
       </ResizablePanel>
       {isOpen && <ResizableHandle withHandle />}
       {isOpen && (
-        <ResizablePanel defaultSize={sidebarSize} minSize={10} maxSize={80}>
-          {AgentSidebar}
+        <ResizablePanel
+          defaultSize={sidebarSize}
+          minSize={10}
+          maxSize={80}
+          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+          style={{ minWidth: '400px' }}
+        >
+          <div className="h-full min-h-0 w-full max-w-full min-w-0 overflow-hidden">
+            {AgentSidebar}
+          </div>
         </ResizablePanel>
       )}
     </ResizablePanelGroup>

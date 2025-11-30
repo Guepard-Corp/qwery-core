@@ -1,16 +1,16 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { ProjectRepositoryPort } from '../../repositories/project-repository.port';
+import { IProjectRepository } from '../../repositories';
 import {
   GetProjectBySlugUseCase,
   GetProjectUseCase,
-  ProjectUseCaseDto,
+  ProjectOutput,
 } from '../../usecases';
 
 export class GetProjectService implements GetProjectUseCase {
-  constructor(private readonly projectRepository: ProjectRepositoryPort) {}
+  constructor(private readonly projectRepository: IProjectRepository) {}
 
-  public async execute(id: string): Promise<ProjectUseCaseDto> {
+  public async execute(id: string): Promise<ProjectOutput> {
     const project = await this.projectRepository.findById(id);
     if (!project) {
       throw DomainException.new({
@@ -19,14 +19,14 @@ export class GetProjectService implements GetProjectUseCase {
         data: { projectId: id },
       });
     }
-    return ProjectUseCaseDto.new(project);
+    return ProjectOutput.new(project);
   }
 }
 
 export class GetProjectBySlugService implements GetProjectBySlugUseCase {
-  constructor(private readonly projectRepository: ProjectRepositoryPort) {}
+  constructor(private readonly projectRepository: IProjectRepository) {}
 
-  public async execute(slug: string): Promise<ProjectUseCaseDto> {
+  public async execute(slug: string): Promise<ProjectOutput> {
     const project = await this.projectRepository.findBySlug(slug);
     if (!project) {
       throw DomainException.new({
@@ -35,6 +35,6 @@ export class GetProjectBySlugService implements GetProjectBySlugUseCase {
         data: { projectSlug: slug },
       });
     }
-    return ProjectUseCaseDto.new(project);
+    return ProjectOutput.new(project);
   }
 }

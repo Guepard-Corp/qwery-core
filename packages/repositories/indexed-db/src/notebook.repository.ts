@@ -1,14 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Notebook } from '@qwery/domain/entities';
-import { NotebookRepositoryPort } from '@qwery/domain/repositories';
+import { INotebookRepository } from '@qwery/domain/repositories';
 
 const DB_NAME = 'qwery-notebooks';
 const DB_VERSION = 2;
 const STORE_NAME = 'notebooks';
 const VERSIONS_STORE_NAME = 'notebook_versions';
 
-export class NotebookRepository extends NotebookRepositoryPort {
+export class NotebookRepository extends INotebookRepository {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

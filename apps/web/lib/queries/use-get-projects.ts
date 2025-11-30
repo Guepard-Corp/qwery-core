@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { ProjectRepositoryPort } from '@qwery/domain/repositories';
+import { IProjectRepository } from '@qwery/domain/repositories';
 import {
   GetProjectBySlugService,
   GetProjectService,
   GetProjectsService,
 } from '@qwery/domain/services';
 
-export function useGetProjects(repository: ProjectRepositoryPort) {
+export function useGetProjects(repository: IProjectRepository) {
   const useCase = new GetProjectsService(repository);
   return useQuery({
     queryKey: ['projects'],
@@ -16,10 +16,7 @@ export function useGetProjects(repository: ProjectRepositoryPort) {
   });
 }
 
-export function useGetProjectById(
-  repository: ProjectRepositoryPort,
-  id: string,
-) {
+export function useGetProjectById(repository: IProjectRepository, id: string) {
   const useCase = new GetProjectService(repository);
   return useQuery({
     queryKey: ['project', id],
@@ -29,7 +26,7 @@ export function useGetProjectById(
 }
 
 export function useGetProjectBySlug(
-  repository: ProjectRepositoryPort,
+  repository: IProjectRepository,
   slug: string,
 ) {
   const useCase = new GetProjectBySlugService(repository);

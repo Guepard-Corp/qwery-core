@@ -2,13 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import type { User } from '@qwery/domain/entities';
-import { UserRepositoryPort } from '@qwery/domain/repositories';
+import { IUserRepository } from '@qwery/domain/repositories';
 
 const DB_NAME = 'qwery-users';
 const DB_VERSION = 1;
 const STORE_NAME = 'users';
 
-export class UserRepository extends UserRepositoryPort {
+export class UserRepository extends IUserRepository {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

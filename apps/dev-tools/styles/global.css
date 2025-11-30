@@ -1,0 +1,45 @@
+/*
+* global.css
+*
+* Global styles for the dev-tools application
+*/
+
+/* Tailwind CSS */
+@import 'tailwindcss';
+
+/* local styles - reuse web app styles */
+@import '../../web/styles/theme.css';
+@import '../../web/styles/theme.utilities.css';
+@import '../../web/styles/shadcn-ui.css';
+
+/* plugins */
+@plugin "tailwindcss-animate";
+
+/* content sources */
+@source "../../../packages/*/src/**/*.{ts,tsx}";
+@source "../../../packages/features/*/src/**/*.{ts,tsx}";
+@source "../{app,src}/**/*.{ts,tsx}";
+
+/* variants */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: theme(--color-muted-foreground);
+  }
+}
+

@@ -1,8 +1,8 @@
-import { Exclude, Expose, plainToClass } from 'class-transformer';
-import { Datasource, DatasourceKind } from '../../entities/datasource.type';
+import { Exclude, Expose, plainToClass, Type } from 'class-transformer';
+import { Datasource, DatasourceKind } from '../../entities';
 
 @Exclude()
-export class DatasourceUseCaseDto {
+export class DatasourceOutput {
   @Expose()
   public id!: string;
   @Expose()
@@ -22,15 +22,39 @@ export class DatasourceUseCaseDto {
   @Expose()
   public config!: Record<string, unknown>;
   @Expose()
+  @Type(() => Date)
   public createdAt!: Date;
   @Expose()
+  @Type(() => Date)
   public updatedAt!: Date;
   @Expose()
   public createdBy!: string;
   @Expose()
   public updatedBy!: string;
 
-  public static new(datasource: Datasource): DatasourceUseCaseDto {
-    return plainToClass(DatasourceUseCaseDto, datasource);
+  public static new(datasource: Datasource): DatasourceOutput {
+    return plainToClass(DatasourceOutput, datasource);
   }
 }
+
+export type CreateDatasourceInput = {
+  projectId: string;
+  name: string;
+  description?: string;
+  datasource_provider: string;
+  datasource_driver: string;
+  datasource_kind: string;
+  config?: Record<string, unknown>;
+  createdBy: string;
+};
+
+export type UpdateDatasourceInput = {
+  id: string;
+  name?: string;
+  description?: string;
+  datasource_provider?: string;
+  datasource_driver?: string;
+  datasource_kind?: string;
+  config?: Record<string, unknown>;
+  updatedBy?: string;
+};

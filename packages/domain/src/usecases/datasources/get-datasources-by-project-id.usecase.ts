@@ -1,7 +1,7 @@
-import { DatasourceUseCaseDto } from '../dto/datasource-usecase-dto';
+import { DatasourceOutput } from '../dto';
 import { UseCase } from '../usecase';
 
 export type GetDatasourcesByProjectIdUseCase = UseCase<
   string,
-  DatasourceUseCaseDto[]
+  DatasourceOutput[]
 >;

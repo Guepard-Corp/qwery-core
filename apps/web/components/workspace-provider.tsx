@@ -5,19 +5,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Workspace } from '@qwery/domain/entities';
+import type { Repositories } from '@qwery/domain/repositories';
 import { InitWorkspaceService } from '@qwery/domain/services';
-import {
-  DatasourceRepository as IndexedDBDatasourceRepository,
-  NotebookRepository as IndexedDBNotebookRepository,
-  OrganizationRepository as IndexedDBOrganizationRepository,
-  ProjectRepository as IndexedDBProjectRepository,
-  UserRepository as IndexedDBUserRepository,
-} from '@qwery/repository-indexed-db';
 import { LoadingOverlay } from '@qwery/ui/loading-overlay';
 import { Trans } from '@qwery/ui/trans';
 
 import { WorkspaceContext } from '~/lib/context/workspace-context';
 import { useWorkspaceMode } from '~/lib/hooks/use-workspace-mode';
+import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { WorkspaceService } from '~/lib/services/workspace-service';
 import {
   getWorkspaceFromLocalStorage,
@@ -29,19 +24,24 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
 
   const workspaceQuery = useWorkspaceMode(localWorkspace);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [repositories, setRepositories] = useState<Repositories | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const repositories = useMemo(() => {
+  useEffect(() => {
     if (!workspaceQuery.data) {
-      return null;
+      return;
     }
 
-    return {
-      user: new IndexedDBUserRepository(),
-      organization: new IndexedDBOrganizationRepository(),
-      project: new IndexedDBProjectRepository(),
-      datasource: new IndexedDBDatasourceRepository(),
-      notebook: new IndexedDBNotebookRepository(),
+    let cancelled = false;
+
+    createRepositories().then((repos) => {
+      if (!cancelled) {
+        setRepositories(repos);
+      }
+    });
+
+    return () => {
+      cancelled = true;
     };
   }, [workspaceQuery.data]);
 
@@ -66,33 +66,22 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
           projectId: workspaceQuery.data?.projectId as string,
         });
 
-        // Convert WorkspaceUseCaseDto to Workspace format
-        const workspaceData: Workspace = {
-          id: uuidv4(),
-          userId: initializedWorkspace.user.id,
-          username: initializedWorkspace.user.username,
-          organizationId: initializedWorkspace.organization?.id,
-          projectId: initializedWorkspace.project?.id,
-          isAnonymous: initializedWorkspace.isAnonymous,
-          mode: initializedWorkspace.mode,
-        };
-
-        setWorkspace(workspaceData);
-
         // Only update localStorage for organization/project changes, not for anonymous user IDs
         // Anonymous users get new IDs each time, which would cause infinite loops
         const currentStored = getWorkspaceFromLocalStorage();
-        const workspaceToStore: Workspace = {
-          id: workspaceData.id,
+        const workspaceData: Workspace = {
+          id: currentStored.id || uuidv4(),
           userId: currentStored.userId || initializedWorkspace.user.id,
           username:
             currentStored.username || initializedWorkspace.user.username,
           organizationId: initializedWorkspace.organization?.id,
           projectId: initializedWorkspace.project?.id,
           isAnonymous: initializedWorkspace.isAnonymous,
-          mode: initializedWorkspace.mode,
+          mode: currentStored.mode || initializedWorkspace.mode,
+          runtime: initializedWorkspace.runtime,
         };
-        setWorkspaceInLocalStorage(workspaceToStore);
+        setWorkspaceInLocalStorage(workspaceData);
+        setWorkspace(workspaceData);
       } finally {
         setIsInitializing(false);
       }
@@ -100,6 +89,16 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
 
     initWorkspace();
   }, [repositories, workspaceQuery.data]);
+
+  const contextValue = useMemo(() => {
+    if (!repositories || !workspace) {
+      return null;
+    }
+    return {
+      repositories,
+      workspace,
+    };
+  }, [repositories, workspace]);
 
   const isLoading =
     workspaceQuery.isLoading || !repositories || isInitializing || !workspace;
@@ -112,12 +111,12 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
     );
   }
 
-  if (!repositories || !workspace) {
+  if (!contextValue) {
     return null;
   }
 
   return (
-    <WorkspaceContext.Provider value={{ repositories, workspace }}>
+    <WorkspaceContext.Provider value={contextValue}>
       {props.children}
     </WorkspaceContext.Provider>
   );

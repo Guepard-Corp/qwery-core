@@ -16,7 +16,7 @@ export default function IndexPage() {
 
   useEffect(() => {
     if (project.data?.slug) {
-      navigate(`/prj/${project.data.slug}`, { replace: true });
+      navigate(`/prj/${project.data.slug}/c`, { replace: true });
     } else if (!workspace.projectId) {
       // If no project yet, redirect to organizations page
       navigate('/organizations', { replace: true });

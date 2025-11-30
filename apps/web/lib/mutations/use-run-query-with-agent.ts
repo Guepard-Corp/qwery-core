@@ -1,13 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 
-import type { DatasourceRepositoryPort } from '@qwery/domain/repositories';
-import { useAgents } from '@qwery/ai-agents/hooks/use-agents';
+import type { IDatasourceRepository } from '@qwery/domain/repositories';
+import { useAgents } from '~/lib/hooks/use-agents';
 
 type RunQueryWithAgentPayload = {
   cellId: number;
   query: string;
   datasourceId: string;
-  datasourceRepository: DatasourceRepositoryPort;
+  datasourceRepository: IDatasourceRepository;
 };
 
 export function useRunQueryWithAgent(
@@ -21,10 +21,6 @@ export function useRunQueryWithAgent(
       payload: RunQueryWithAgentPayload,
     ): Promise<{ sqlQuery: string; datasourceId: string }> => {
       const { query, datasourceId, datasourceRepository } = payload;
-
-      if (!query.trim()) {
-        throw new Error('Query cannot be empty');
-      }
 
       const sqlQuery = await runQueryWithAgent(
         datasourceRepository,

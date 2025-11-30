@@ -31,6 +31,8 @@ const PathsSchema = z.object({
     availableSources: z.string().min(1),
     projectNotebook: z.string().min(1),
     projectPlayground: z.string().min(1),
+    projectConversation: z.string().min(1),
+    conversation: z.string().min(1),
   }),
 });
 
@@ -65,6 +67,8 @@ const pathsConfig = PathsSchema.parse({
     newProjectDatasource: '/prj/[slug]/ds/[name]/new',
     projectNotebook: '/notebook/[slug]',
     projectPlayground: '/prj/[slug]/playground',
+    projectConversation: '/prj/[slug]/c',
+    conversation: '/c/[slug]',
   },
 } satisfies z.infer<typeof PathsSchema>);
 

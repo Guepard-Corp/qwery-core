@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { OrganizationRepositoryPort } from '@qwery/domain/repositories';
+import { IOrganizationRepository } from '@qwery/domain/repositories';
 import {
   GetOrganizationService,
   GetOrganizationsService,
   GetOrganizationBySlugService,
 } from '@qwery/domain/services';
 
-export function useGetOrganizations(repository: OrganizationRepositoryPort) {
+export function useGetOrganizations(repository: IOrganizationRepository) {
   const useCase = new GetOrganizationsService(repository);
   return useQuery({
     queryKey: ['organizations'],
@@ -17,7 +17,7 @@ export function useGetOrganizations(repository: OrganizationRepositoryPort) {
 }
 
 export function useGetOrganization(
-  repository: OrganizationRepositoryPort,
+  repository: IOrganizationRepository,
   slug: string,
 ) {
   const useCase = new GetOrganizationBySlugService(repository);
@@ -30,7 +30,7 @@ export function useGetOrganization(
 }
 
 export function useGetOrganizationById(
-  repository: OrganizationRepositoryPort,
+  repository: IOrganizationRepository,
   id: string,
 ) {
   const useCase = new GetOrganizationService(repository);

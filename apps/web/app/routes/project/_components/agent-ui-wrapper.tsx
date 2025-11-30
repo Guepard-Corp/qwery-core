@@ -1,20 +1,46 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useImperativeHandle, forwardRef, useRef } from 'react';
 import QweryAgentUI from '@qwery/ui/agent-ui';
-import { LangGraphTransport } from '@qwery/ai-agents/langgraph-transport';
+import { defaultTransport } from '@qwery/agent-factory-sdk';
+import { MessageOutput } from '@qwery/domain/usecases';
+import { convertMessages } from '~/lib/utils/messages-converter';
 
-export function AgentUIWrapper() {
+export interface AgentUIWrapperRef {
+  sendMessage: (text: string) => void;
+}
+
+export interface AgentUIWrapperProps {
+  agentName?: string;
+  conversationSlug: string;
+  initialMessages?: MessageOutput[];
+}
+
+export const AgentUIWrapper = forwardRef<
+  AgentUIWrapperRef,
+  AgentUIWrapperProps
+>(function AgentUIWrapper({ conversationSlug, initialMessages }, ref) {
+  const sendMessageRef = useRef<((text: string) => void) | null>(null);
+
   const transport = useMemo(
-    () =>
-      new LangGraphTransport({
-        model: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
-        maxIterations: 10,
-        // Tools can be added here later
-        // tools: [/* custom tools */],
-      }),
+    () => defaultTransport(`/api/chat/${conversationSlug}`),
+    [conversationSlug],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      sendMessage: (text: string) => {
+        sendMessageRef.current?.(text);
+      },
+    }),
     [],
   );
 
-  return <QweryAgentUI transport={transport} />;
-}
+  return (
+    <QweryAgentUI
+      transport={transport}
+      initialMessages={convertMessages(initialMessages)}
+    />
+  );
+});

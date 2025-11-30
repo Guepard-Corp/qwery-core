@@ -41,5 +41,5 @@ export default meta;
 type Story = StoryObj<typeof AgentUIWrapper>;
 
 export const Default: Story = {
-  render: () => <AgentUIWrapper />,
+  render: () => <AgentUIWrapper conversationSlug="test-conversation" />,
 };

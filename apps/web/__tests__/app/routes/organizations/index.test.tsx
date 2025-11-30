@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Organization } from '@qwery/domain/entities';
-import { WorkspaceModeEnum } from '@qwery/domain/enums';
+import { WorkspaceModeEnum, WorkspaceRuntimeEnum } from '@qwery/domain/enums';
 
 import * as WorkspaceContext from '~/lib/context/workspace-context';
 import * as UseGetOrganizations from '~/lib/queries/use-get-organizations';
@@ -21,14 +21,16 @@ vi.mock('react-router', () => ({
 
 describe('OrganizationsPage', () => {
   const mockRepository = {
-    findAll: vi.fn(),
-    findBySlug: vi.fn(),
-    findById: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    shortenId: vi.fn(),
-    findByProjectId: vi.fn(),
+    findAll: vi.fn().mockResolvedValue([]),
+    findBySlug: vi.fn().mockResolvedValue(null),
+    findById: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue(null),
+    update: vi.fn().mockResolvedValue(null),
+    delete: vi.fn().mockResolvedValue(true),
+    shortenId: vi.fn().mockReturnValue(''),
+    findByProjectId: vi.fn().mockResolvedValue([]),
+    findByTaskId: vi.fn().mockResolvedValue([]),
+    findByConversationId: vi.fn().mockResolvedValue([]),
   };
 
   const mockWorkspace = {
@@ -38,7 +40,8 @@ describe('OrganizationsPage', () => {
     organizationId: undefined,
     projectId: undefined,
     isAnonymous: false,
-    mode: WorkspaceModeEnum.BROWSER,
+    mode: WorkspaceModeEnum.SIMPLE,
+    runtime: WorkspaceRuntimeEnum.BROWSER,
   };
 
   beforeEach(() => {
@@ -50,6 +53,8 @@ describe('OrganizationsPage', () => {
         project: mockRepository,
         datasource: mockRepository,
         notebook: mockRepository,
+        conversation: mockRepository,
+        message: mockRepository,
       },
       workspace: mockWorkspace,
     });

@@ -1,13 +1,14 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
-import { type Datasource, DatasourceKind } from '@qwery/domain/entities';
+import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { FormRenderer, getExtension } from '@qwery/extensions-sdk';
 import { Button } from '@qwery/ui/button';
 import {
@@ -26,6 +27,7 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { getDatasourcesByProjectIdKey } from '~/lib/queries/use-get-datasources';
 
 import type { Route } from './+types/new';
 
@@ -62,8 +64,10 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isHoveringName, setIsHoveringName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const { repositories } = useWorkspace();
+  const { repositories, workspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const datasourceRepository = repositories.datasource;
+  const projectRepository = repositories.project;
 
   const extension = useGetExtension(extensionId);
 
@@ -150,8 +154,16 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       // Generate UUID for datasource ID
       const datasourceId = uuidv4();
 
-      // For now, use a default projectId - in a real app this would come from context/storage
-      const projectId = '550e8400-e29b-41d4-a716-446655440000'; // Default project ID
+      let projectId = workspace.projectId;
+      if (!projectId) {
+        const projectRecord = await projectRepository.findBySlug(project_id);
+        projectId = projectRecord?.id;
+      }
+
+      if (!projectId) {
+        toast.error('Unable to resolve project context for datasource');
+        return;
+      }
       const userId = 'system'; // Default user - replace with actual user context
 
       // Create datasource object
@@ -171,13 +183,18 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         updatedBy: userId,
       };
 
-      // Save to IndexedDB using repository
+      // Save and refetch datasources list
       await datasourceRepository.create(datasource);
+      await queryClient.invalidateQueries({
+        queryKey: getDatasourcesByProjectIdKey(projectId),
+      });
 
       toast.success(<Trans i18nKey="datasources:saveSuccess" />);
 
       // Navigate back to datasources list
-      navigate(createPath(pathsConfig.app.projectNotebook, project_id));
+      navigate(createPath(pathsConfig.app.projectDatasources, project_id), {
+        replace: true,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? (

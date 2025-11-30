@@ -1,18 +1,15 @@
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
-import {
-  GetOrganizationsUseCase,
-  OrganizationUseCaseDto,
-} from '../../usecases';
+import { IOrganizationRepository } from '../../repositories';
+import { GetOrganizationsUseCase, OrganizationOutput } from '../../usecases';
 
 export class GetOrganizationsService implements GetOrganizationsUseCase {
   constructor(
-    private readonly organizationRepository: OrganizationRepositoryPort,
+    private readonly organizationRepository: IOrganizationRepository,
   ) {}
 
-  public async execute(): Promise<OrganizationUseCaseDto[]> {
+  public async execute(): Promise<OrganizationOutput[]> {
     const organizations = await this.organizationRepository.findAll();
     return organizations.map((organization) =>
-      OrganizationUseCaseDto.new(organization),
+      OrganizationOutput.new(organization),
     );
   }
 }

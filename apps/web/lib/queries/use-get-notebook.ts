@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { NotebookRepositoryPort } from '@qwery/domain/repositories';
+import { INotebookRepository } from '@qwery/domain/repositories';
 import {
   GetNotebookBySlugService,
   GetNotebooksByProjectIdService,
@@ -20,7 +20,7 @@ export function getNotebooksByProjectIdKey(projectId: string) {
 }
 
 export function useGetNotebooksByProjectId(
-  repository: NotebookRepositoryPort,
+  repository: INotebookRepository,
   projectId: string | undefined,
 ) {
   const useCase = new GetNotebooksByProjectIdService(repository);
@@ -32,10 +32,7 @@ export function useGetNotebooksByProjectId(
   });
 }
 
-export function useGetNotebook(
-  repository: NotebookRepositoryPort,
-  slug: string,
-) {
+export function useGetNotebook(repository: INotebookRepository, slug: string) {
   const useCase = new GetNotebookBySlugService(repository);
   return useQuery({
     queryKey: getNotebookKey(slug),
@@ -46,7 +43,7 @@ export function useGetNotebook(
 }
 
 export function useGetNotebookById(
-  repository: NotebookRepositoryPort,
+  repository: INotebookRepository,
   id: string,
 ) {
   const useCase = new GetNotebookService(repository);

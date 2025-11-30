@@ -14,8 +14,3 @@ export const layoutStyleCookie = createCookie('layout-style', {
   path: '/',
   sameSite: 'lax',
 });
-
-export const sidebarStateCookie = createCookie('sidebar:state', {
-  path: '/',
-  sameSite: 'lax',
-});

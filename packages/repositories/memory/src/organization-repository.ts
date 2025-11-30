@@ -1,9 +1,9 @@
 import type { Nullable } from '@qwery/domain/common';
 import type { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Organization } from '@qwery/domain/entities';
-import { OrganizationRepositoryPort } from '@qwery/domain/repositories';
+import { IOrganizationRepository } from '@qwery/domain/repositories';
 
-export class OrganizationRepository extends OrganizationRepositoryPort {
+export class OrganizationRepository extends IOrganizationRepository {
   private organizations = new Map<string, Organization>();
 
   async findAll(options?: RepositoryFindOptions): Promise<Organization[]> {

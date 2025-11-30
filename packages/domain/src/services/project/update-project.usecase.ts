@@ -1,17 +1,17 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { IUpdateProjectDTO } from '../../dtos/project.dto';
-import { Project, ProjectEntity } from '../../entities/project.type';
-import { ProjectRepositoryPort } from '../../repositories/project-repository.port';
-import { ProjectUseCaseDto } from '../../usecases/dto/project-usecase-dto';
-import { UpdateProjectUseCase } from '../../usecases';
+import { Project, ProjectEntity } from '../../entities';
+import { IProjectRepository } from '../../repositories';
+import {
+  ProjectOutput,
+  UpdateProjectInput,
+  UpdateProjectUseCase,
+} from '../../usecases';
 
 export class UpdateProjectService implements UpdateProjectUseCase {
-  constructor(private readonly projectRepository: ProjectRepositoryPort) {}
+  constructor(private readonly projectRepository: IProjectRepository) {}
 
-  public async execute(
-    projectDTO: IUpdateProjectDTO,
-  ): Promise<ProjectUseCaseDto> {
+  public async execute(projectDTO: UpdateProjectInput): Promise<ProjectOutput> {
     const existingProject = await this.projectRepository.findById(
       projectDTO.id,
     );
@@ -27,6 +27,6 @@ export class UpdateProjectService implements UpdateProjectUseCase {
     const project = await this.projectRepository.update(
       updatedProject as unknown as Project,
     );
-    return ProjectUseCaseDto.new(project);
+    return ProjectOutput.new(project);
   }
 }

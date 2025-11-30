@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DomainException } from '../../../src/exceptions';
 import type { Notebook } from '../../../src/entities/notebook.type';
-import { NotebookRepositoryPort } from '../../../src/repositories/notebook-repository.port';
+import { INotebookRepository } from '../../../src/repositories/notebook-repository.port';
 import { DeleteNotebookService } from '../../../src/services/notebook/delete-notebook.usecase';
 
-class MockNotebookRepository implements NotebookRepositoryPort {
+class MockNotebookRepository implements INotebookRepository {
   private notebooks = new Map<string, Notebook>();
 
   async findAll() {

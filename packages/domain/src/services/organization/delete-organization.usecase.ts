@@ -1,11 +1,11 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
+import { IOrganizationRepository } from '../../repositories';
 import { DeleteOrganizationUseCase } from '../../usecases';
 
 export class DeleteOrganizationService implements DeleteOrganizationUseCase {
   constructor(
-    private readonly organizationRepository: OrganizationRepositoryPort,
+    private readonly organizationRepository: IOrganizationRepository,
   ) {}
 
   public async execute(id: string): Promise<boolean> {

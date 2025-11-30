@@ -8,7 +8,8 @@ export * from './project.type';
 export * from './user.type';
 export * from './resultset.type';
 export * from './playground.type';
-export * from './resultset.type';
 export * from './schema.type';
 export * from './template.type';
-export * from './user.type';
+
+// AI Entities
+export * from './ai/index';

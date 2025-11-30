@@ -43,8 +43,13 @@ export function useRunQuery(
         throw new Error('Extension not found');
       }
 
+      const driverStorageKey =
+        (datasource.config as { storageKey?: string })?.storageKey ??
+        datasource.id ??
+        datasource.slug ??
+        datasource.name;
       const driver = await extension.getDriver(
-        datasource.name,
+        driverStorageKey,
         datasource.config,
       );
       if (!driver) {

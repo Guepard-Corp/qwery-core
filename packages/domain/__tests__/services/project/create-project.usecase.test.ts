@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Project } from '../../../src/entities/project.type';
-import { ProjectRepositoryPort } from '../../../src/repositories/project-repository.port';
+import { IProjectRepository } from '../../../src/repositories/project-repository.port';
 import { CreateProjectService } from '../../../src/services/project/create-project.usecase';
 
-class MockProjectRepository implements ProjectRepositoryPort {
+class MockProjectRepository implements IProjectRepository {
   private projects = new Map<string, Project>();
 
   async findAll() {

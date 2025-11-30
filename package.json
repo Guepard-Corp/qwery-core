@@ -35,7 +35,7 @@
     "name": "Guepard Inc."
   },
   "scripts": {
-    "pretest": "pnpm exec playwright install --with-deps",
+    "pretest": "pnpm exec playwright install chromium firefox webkit || true",
     "turbo": "turbo",
     "postinstall": "manypkg fix && node node_modules/.pnpm/electron@39.1.1/node_modules/electron/install.js",
     "build": "turbo build --cache-dir=.turbo",
@@ -59,14 +59,20 @@
     "syncpack:fix": "pnpm dlx syncpack fix-mismatches",
     "env:generate": "turbo gen env",
     "env:validate": "turbo gen validate-env",
-    "check": "pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test"
+    "check": "pnpm format:fix &&pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test"
   },
   "prettier": "@qwery/prettier-config",
   "packageManager": "pnpm@10.18.1",
   "pnpm": {
     "overrides": {
       "react-is": "19.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "@tailwindcss/oxide",
+      "better-sqlite3",
+      "msw"
+    ]
   },
   "devDependencies": {
     "@manypkg/cli": "^0.25.1",

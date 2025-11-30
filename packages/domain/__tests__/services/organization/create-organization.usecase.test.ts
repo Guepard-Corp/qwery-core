@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Organization } from '../../../src/entities/organization.type';
-import { OrganizationRepositoryPort } from '../../../src/repositories/organization-repository.port';
+import { IOrganizationRepository } from '../../../src/repositories/organization-repository.port';
 import { CreateOrganizationService } from '../../../src/services/organization/create-organization.usecase';
 
-class MockOrganizationRepository implements OrganizationRepositoryPort {
+class MockOrganizationRepository implements IOrganizationRepository {
   private organizations = new Map<string, Organization>();
 
   async findAll() {

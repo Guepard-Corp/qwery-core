@@ -1,0 +1,61 @@
+import type { ActionFunctionArgs } from 'react-router';
+import { DomainException } from '@qwery/domain/exceptions';
+import { CreateNotebookService } from '@qwery/domain/services';
+import { createRepositories } from '~/lib/repositories/repositories-factory';
+
+function handleDomainException(error: unknown): Response {
+  if (error instanceof DomainException) {
+    const status =
+      error.code >= 2000 && error.code < 3000
+        ? 404
+        : error.code >= 400 && error.code < 500
+          ? error.code
+          : 500;
+    return Response.json(
+      {
+        error: error.message,
+        code: error.code,
+        data: error.data,
+      },
+      { status },
+    );
+  }
+  const errorMessage =
+    error instanceof Error ? error.message : 'Internal server error';
+  return Response.json({ error: errorMessage }, { status: 500 });
+}
+
+export async function loader() {
+  const repositories = await createRepositories();
+  const repository = repositories.notebook;
+
+  try {
+    // GET /api/notebooks - Get all notebooks
+    // TODO: Create GetNotebooksService use case
+    const notebooks = await repository.findAll();
+    return Response.json(notebooks);
+  } catch (error) {
+    console.error('Error in get-all-notebooks loader:', error);
+    return handleDomainException(error);
+  }
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const repositories = await createRepositories();
+  const repository = repositories.notebook;
+
+  try {
+    // POST /api/notebooks - Create notebook
+    if (request.method === 'POST') {
+      const body = await request.json();
+      const useCase = new CreateNotebookService(repository);
+      const notebook = await useCase.execute(body);
+      return Response.json(notebook, { status: 201 });
+    }
+
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  } catch (error) {
+    console.error('Error in get-all-notebooks action:', error);
+    return handleDomainException(error);
+  }
+}

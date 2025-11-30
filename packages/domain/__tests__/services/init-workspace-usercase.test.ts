@@ -1,20 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Roles } from '../../src/common/roles';
-import type { Organization } from '../../src/entities/organization.type';
-import type { Project } from '../../src/entities/project.type';
-import type { User } from '../../src/entities/user.type';
-import type { Notebook } from '../../src/entities/notebook.type';
-import { WorkspaceModeEnum } from '../../src/enums/workspace-mode';
-import type { OrganizationRepositoryPort } from '../../src/repositories/organization-repository.port';
-import type { ProjectRepositoryPort } from '../../src/repositories/project-repository.port';
-import type { UserRepositoryPort } from '../../src/repositories/user-repository.port';
-import type { NotebookRepositoryPort } from '../../src/repositories/notebook-repository.port';
-import { InitWorkspaceService } from '../../src/services/workspace/init-workspace-usercase';
-import type { WorkspaceModeUseCase } from '../../src/usecases/workspace/workspace-mode.usecase';
+import type { Organization } from '../../src/entities';
+import type { Project } from '../../src/entities';
+import type { User } from '../../src/entities';
+import type { Notebook } from '../../src/entities';
+import { WorkspaceRuntimeEnum } from '../../src/enums/workspace-mode';
+import type { IOrganizationRepository } from '../../src/repositories';
+import type { IProjectRepository } from '../../src/repositories';
+import type { IUserRepository } from '../../src/repositories';
+import type { INotebookRepository } from '../../src/repositories';
+import {
+  CreateOrganizationService,
+  InitWorkspaceService,
+} from '../../src/services';
+import type { WorkspaceRuntimeUseCase } from '../../src/usecases';
 
 // Mock in-memory repositories
-class MockUserRepository implements UserRepositoryPort {
+class MockUserRepository implements IUserRepository {
   private users = new Map<string, User>();
 
   async findAll() {
@@ -52,7 +55,7 @@ class MockUserRepository implements UserRepositoryPort {
   }
 }
 
-class MockOrganizationRepository implements OrganizationRepositoryPort {
+class MockOrganizationRepository implements IOrganizationRepository {
   private organizations = new Map<string, Organization>();
 
   async findAll() {
@@ -90,7 +93,7 @@ class MockOrganizationRepository implements OrganizationRepositoryPort {
   }
 }
 
-class MockProjectRepository implements ProjectRepositoryPort {
+class MockProjectRepository implements IProjectRepository {
   private projects = new Map<string, Project>();
 
   async findAll() {
@@ -128,7 +131,7 @@ class MockProjectRepository implements ProjectRepositoryPort {
   }
 }
 
-class MockNotebookRepository implements NotebookRepositoryPort {
+class MockNotebookRepository implements INotebookRepository {
   private notebooks = new Map<string, Notebook>();
 
   async findAll() {
@@ -176,7 +179,7 @@ describe('InitWorkspaceService', () => {
   let userRepository: MockUserRepository;
   let organizationRepository: MockOrganizationRepository;
   let projectRepository: MockProjectRepository;
-  let workspaceModeUseCase: WorkspaceModeUseCase;
+  let workspaceModeUseCase: WorkspaceRuntimeUseCase;
   let service: InitWorkspaceService;
 
   const userId = '550e8400-e29b-41d4-a716-446655440000';
@@ -190,8 +193,8 @@ describe('InitWorkspaceService', () => {
 
     // Mock workspace mode usecase
     workspaceModeUseCase = {
-      execute: vi.fn().mockResolvedValue(WorkspaceModeEnum.BROWSER),
-    } as WorkspaceModeUseCase;
+      execute: vi.fn().mockResolvedValue(WorkspaceRuntimeEnum.BROWSER),
+    } as WorkspaceRuntimeUseCase;
 
     service = new InitWorkspaceService(
       userRepository,
@@ -209,7 +212,7 @@ describe('InitWorkspaceService', () => {
       expect(result.user.username).toBe('anonymous');
       expect(result.user.role).toBe(Roles.SUPER_ADMIN);
       expect(result.isAnonymous).toBe(true);
-      expect(result.mode).toBe(WorkspaceModeEnum.BROWSER);
+      expect(result.runtime).toBe(WorkspaceRuntimeEnum.BROWSER);
     });
 
     it('should create anonymous user when userId not found', async () => {
@@ -355,7 +358,6 @@ describe('InitWorkspaceService', () => {
         name: 'Test Project',
         slug: 'test-project',
         description: 'Test description',
-        region: 'us-west-2',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -450,7 +452,6 @@ describe('InitWorkspaceService', () => {
         name: 'Test Project',
         slug: 'test-project',
         description: 'Test description',
-        region: 'us-west-2',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -480,28 +481,28 @@ describe('InitWorkspaceService', () => {
       expect(result.project?.id).toBe(projectId);
       expect(result.project?.name).toBe('Test Project');
 
-      expect(result.mode).toBe(WorkspaceModeEnum.BROWSER);
+      expect(result.runtime).toBe(WorkspaceRuntimeEnum.BROWSER);
       expect(result.isAnonymous).toBe(false);
     });
 
     it('should handle desktop mode', async () => {
       workspaceModeUseCase.execute = vi
         .fn()
-        .mockResolvedValue(WorkspaceModeEnum.DESKTOP);
+        .mockResolvedValue(WorkspaceRuntimeEnum.DESKTOP);
 
       const result = await service.execute({ userId: '' });
 
-      expect(result.mode).toBe(WorkspaceModeEnum.DESKTOP);
+      expect(result.runtime).toBe(WorkspaceRuntimeEnum.DESKTOP);
     });
 
     it('should handle mobile mode', async () => {
       workspaceModeUseCase.execute = vi
         .fn()
-        .mockResolvedValue(WorkspaceModeEnum.MOBILE);
+        .mockResolvedValue(WorkspaceRuntimeEnum.MOBILE);
 
       const result = await service.execute({ userId: '' });
 
-      expect(result.mode).toBe(WorkspaceModeEnum.MOBILE);
+      expect(result.runtime).toBe(WorkspaceRuntimeEnum.MOBILE);
     });
   });
 
@@ -614,7 +615,7 @@ describe('InitWorkspaceService', () => {
       );
       expect(notebooks).not.toBeNull();
       expect(notebooks!.length).toBeGreaterThan(0);
-      expect(notebooks![0].title).toBe('Default Notebook');
+      expect(notebooks?.[0]?.title).toBe('Default Notebook');
     });
 
     it('should not create notebook when notebooks already exist', async () => {
@@ -663,21 +664,16 @@ describe('InitWorkspaceService', () => {
       );
 
       // Create an organization with empty string id to test the fallback (line 123: organization.id || uuidv4())
-      const org: Organization = {
-        id: '', // Empty string is falsy, will trigger uuidv4() fallback
+      const orgUseCase = new CreateOrganizationService(organizationRepository);
+      const newOrg = await orgUseCase.execute({
         name: 'Test Org',
-        slug: 'test-org',
         is_owner: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
         createdBy: userId,
-        updatedBy: userId,
-      };
-      await organizationRepository.create(org);
+      });
 
       // Mock findAll to return the org with empty id
       const originalFindAll = organizationRepository.findAll;
-      organizationRepository.findAll = vi.fn().mockResolvedValue([org]);
+      organizationRepository.findAll = vi.fn().mockResolvedValue([newOrg]);
 
       try {
         const result = await serviceWithNotebook.execute({ userId: '' });

@@ -44,5 +44,6 @@ export default defineConfig({
         inline: ['@qwery/ui', 'react', 'react-dom'],
       },
     },
+    pool: 'vmThreads',
   },
 });

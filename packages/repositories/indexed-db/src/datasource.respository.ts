@@ -2,13 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Datasource } from '@qwery/domain/entities';
-import { DatasourceRepositoryPort } from '@qwery/domain/repositories';
+import { IDatasourceRepository } from '@qwery/domain/repositories';
 
 const DB_VERSION = 2;
 const STORE_NAME = 'datasources';
 const DB_NAME = 'qwery-datasources';
 
-export class DatasourceRepository extends DatasourceRepositoryPort {
+export class DatasourceRepository extends IDatasourceRepository {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

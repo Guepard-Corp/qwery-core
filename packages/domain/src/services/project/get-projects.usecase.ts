@@ -1,11 +1,11 @@
-import { ProjectRepositoryPort } from '../../repositories/project-repository.port';
-import { GetProjectsUseCase, ProjectUseCaseDto } from '../../usecases';
+import { IProjectRepository } from '../../repositories';
+import { GetProjectsUseCase, ProjectOutput } from '../../usecases';
 
 export class GetProjectsService implements GetProjectsUseCase {
-  constructor(private readonly projectRepository: ProjectRepositoryPort) {}
+  constructor(private readonly projectRepository: IProjectRepository) {}
 
-  public async execute(): Promise<ProjectUseCaseDto[]> {
+  public async execute(): Promise<ProjectOutput[]> {
     const projects = await this.projectRepository.findAll();
-    return projects.map((project) => ProjectUseCaseDto.new(project));
+    return projects.map((project) => ProjectOutput.new(project));
   }
 }

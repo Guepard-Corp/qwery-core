@@ -1,19 +1,16 @@
-import { NotebookRepositoryPort } from '../../repositories/notebook-repository.port';
-import {
-  GetNotebooksByProjectIdUseCase,
-  NotebookUseCaseDto,
-} from '../../usecases';
+import { INotebookRepository } from '../../repositories';
+import { GetNotebooksByProjectIdUseCase, NotebookOutput } from '../../usecases';
 
 export class GetNotebooksByProjectIdService
   implements GetNotebooksByProjectIdUseCase
 {
-  constructor(private readonly notebookRepository: NotebookRepositoryPort) {}
+  constructor(private readonly notebookRepository: INotebookRepository) {}
 
-  public async execute(projectId: string): Promise<NotebookUseCaseDto[]> {
+  public async execute(projectId: string): Promise<NotebookOutput[]> {
     const notebooks = await this.notebookRepository.findByProjectId(projectId);
     if (!notebooks) {
       return [];
     }
-    return notebooks.map((notebook) => NotebookUseCaseDto.new(notebook));
+    return notebooks.map((notebook) => NotebookOutput.new(notebook));
   }
 }

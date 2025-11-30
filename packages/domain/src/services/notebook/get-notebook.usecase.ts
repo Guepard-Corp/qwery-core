@@ -1,16 +1,16 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { NotebookRepositoryPort } from '../../repositories/notebook-repository.port';
+import { INotebookRepository } from '../../repositories';
 import {
   GetNotebookBySlugUseCase,
   GetNotebookUseCase,
-  NotebookUseCaseDto,
+  NotebookOutput,
 } from '../../usecases';
 
 export class GetNotebookService implements GetNotebookUseCase {
-  constructor(private readonly notebookRepository: NotebookRepositoryPort) {}
+  constructor(private readonly notebookRepository: INotebookRepository) {}
 
-  public async execute(id: string): Promise<NotebookUseCaseDto> {
+  public async execute(id: string): Promise<NotebookOutput> {
     const notebook = await this.notebookRepository.findById(id);
     if (!notebook) {
       throw DomainException.new({
@@ -19,14 +19,14 @@ export class GetNotebookService implements GetNotebookUseCase {
         data: { notebookId: id },
       });
     }
-    return NotebookUseCaseDto.new(notebook);
+    return NotebookOutput.new(notebook);
   }
 }
 
 export class GetNotebookBySlugService implements GetNotebookBySlugUseCase {
-  constructor(private readonly notebookRepository: NotebookRepositoryPort) {}
+  constructor(private readonly notebookRepository: INotebookRepository) {}
 
-  public async execute(id: string): Promise<NotebookUseCaseDto> {
+  public async execute(id: string): Promise<NotebookOutput> {
     const notebook = await this.notebookRepository.findBySlug(id);
     if (!notebook) {
       throw DomainException.new({
@@ -35,6 +35,6 @@ export class GetNotebookBySlugService implements GetNotebookBySlugUseCase {
         data: { notebookId: id },
       });
     }
-    return NotebookUseCaseDto.new(notebook);
+    return NotebookOutput.new(notebook);
   }
 }

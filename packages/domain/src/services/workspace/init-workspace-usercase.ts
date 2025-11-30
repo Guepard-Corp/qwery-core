@@ -1,23 +1,28 @@
 import { v4 as uuidv4 } from 'uuid';
-import { classToPlain } from 'class-transformer';
 
 import { Roles } from '../../common/roles';
+import { User } from '../../entities';
 import {
-  Organization,
-  OrganizationEntity,
-} from '../../entities/organization.type';
-import { Project, ProjectEntity } from '../../entities/project.type';
-import { User } from '../../entities/user.type';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
-import { ProjectRepositoryPort } from '../../repositories/project-repository.port';
-import { UserRepositoryPort } from '../../repositories/user-repository.port';
-import { UserUseCaseDto } from '../../usecases/dto/user-usecase-dto';
-import { WorkspaceUseCaseDto } from '../../usecases/dto/workspace-usecase-dto';
-import { InitWorkspaceUseCase } from '../../usecases/workspace/init-workspace-usecase';
-import { WorkspaceModeUseCase } from '../../usecases/workspace/workspace-mode.usecase';
-import { NotebookRepositoryPort } from '../../repositories/notebook-repository.port';
-import { CreateNotebookService } from '../notebook/create-notebook.usecase';
-import { IWorkspaceDTO } from '../../dtos/workspace.dto';
+  IOrganizationRepository,
+  IProjectRepository,
+  IUserRepository,
+  INotebookRepository,
+} from '../../repositories';
+import {
+  InitWorkspaceUseCase,
+  UserOutput,
+  OrganizationOutput,
+  WorkspaceOutput,
+  ProjectOutput,
+  WorkspaceRuntimeUseCase,
+  WorkspaceInput,
+} from '../../usecases';
+import { WorkspaceModeEnum } from '../../enums';
+import {
+  CreateOrganizationService,
+  CreateProjectService,
+  CreateNotebookService,
+} from '..';
 
 function createAnonymousUser(): User {
   const now = new Date();
@@ -30,40 +35,50 @@ function createAnonymousUser(): User {
   };
 }
 
-function createDefaultOrganization(userId: string): Organization {
-  const organization = OrganizationEntity.create({
+async function createDefaultOrganization(
+  userId: string,
+  organizationRepository: IOrganizationRepository,
+): Promise<OrganizationOutput> {
+  const useCase = new CreateOrganizationService(organizationRepository);
+  const organization = await useCase.execute({
     name: 'Default Organization',
     is_owner: true,
     createdBy: userId,
   });
-
-  return classToPlain(organization) as Organization;
+  return organization;
 }
 
-function createDefaultProject(orgId: string, userId: string): Project {
-  const project = ProjectEntity.create({
+async function createDefaultProject(
+  orgId: string,
+  userId: string,
+  projectRepository: IProjectRepository,
+): Promise<ProjectOutput> {
+  const useCase = new CreateProjectService(projectRepository);
+  const project = await useCase.execute({
     org_id: orgId,
     name: 'Default Project',
-    description: 'Default project created automatically',
-    status: 'active',
     createdBy: userId,
   });
-
-  return classToPlain(project) as Project;
+  return project;
 }
 
 export class InitWorkspaceService implements InitWorkspaceUseCase {
   constructor(
-    private readonly userRepository: UserRepositoryPort,
-    private readonly workspaceModeUseCase: WorkspaceModeUseCase,
-    private readonly organizationRepository?: OrganizationRepositoryPort,
-    private readonly projectRepository?: ProjectRepositoryPort,
-    private readonly notebookRepository?: NotebookRepositoryPort,
+    private readonly userRepository: IUserRepository,
+    private readonly workspaceRuntimeUseCase: WorkspaceRuntimeUseCase,
+    private readonly organizationRepository?: IOrganizationRepository,
+    private readonly projectRepository?: IProjectRepository,
+    private readonly notebookRepository?: INotebookRepository,
   ) {}
 
-  public async execute(port: IWorkspaceDTO): Promise<WorkspaceUseCaseDto> {
+  public async execute(port: WorkspaceInput): Promise<WorkspaceOutput> {
     let user: User | null = null;
     let isAnonymous = false;
+    const mode: WorkspaceModeEnum = Object.values(WorkspaceModeEnum).includes(
+      port.mode as WorkspaceModeEnum,
+    )
+      ? (port.mode as WorkspaceModeEnum)
+      : WorkspaceModeEnum.SIMPLE;
 
     if (port.userId) {
       user = await this.userRepository.findById(port.userId);
@@ -74,7 +89,7 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
       isAnonymous = true;
     }
 
-    const userDto = UserUseCaseDto.new(user);
+    const userDto = UserOutput.new(user);
 
     let organization;
     if (port.organizationId && this.organizationRepository) {
@@ -95,8 +110,10 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
       if (organizations.length > 0) {
         organization = organizations[0];
       } else {
-        const defaultOrg = createDefaultOrganization(user.id);
-        organization = await this.organizationRepository.create(defaultOrg);
+        organization = await createDefaultOrganization(
+          user.id,
+          this.organizationRepository,
+        );
       }
     }
 
@@ -117,11 +134,11 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
       if (projects.length > 0) {
         project = projects[0];
       } else {
-        const defaultProject = createDefaultProject(
-          organization.id || uuidv4(),
+        project = await createDefaultProject(
+          organization.id,
           user.id,
+          this.projectRepository,
         );
-        project = await this.projectRepository.create(defaultProject);
       }
     }
 
@@ -141,13 +158,14 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
       }
     }
 
-    const mode = await this.workspaceModeUseCase.execute();
+    const runtime = await this.workspaceRuntimeUseCase.execute();
 
-    return WorkspaceUseCaseDto.new({
+    return WorkspaceOutput.new({
       user: userDto,
       organization: organization || undefined,
       project: project || undefined,
       mode: mode,
+      runtime: runtime,
       isAnonymous: isAnonymous,
     });
   }

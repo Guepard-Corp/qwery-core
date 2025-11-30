@@ -1,9 +1,9 @@
 import type { Nullable } from '@qwery/domain/common';
 import type { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Datasource } from '@qwery/domain/entities';
-import { DatasourceRepositoryPort } from '@qwery/domain/repositories';
+import { IDatasourceRepository } from '@qwery/domain/repositories';
 
-export class DatasourceRepository extends DatasourceRepositoryPort {
+export class DatasourceRepository extends IDatasourceRepository {
   private datasources = new Map<string, Datasource>();
 
   async findAll(options?: RepositoryFindOptions): Promise<Datasource[]> {

@@ -11,6 +11,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     testTimeout: 60000,
     hookTimeout: 120000,
+    pool: 'vmThreads',
   },
   resolve: {
     alias: {

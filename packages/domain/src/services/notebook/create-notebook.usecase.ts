@@ -1,17 +1,20 @@
-import { ICreateNotebookDTO } from '../../dtos/notebook.dto';
-import { NotebookEntity } from '../../entities/notebook.type';
-import { NotebookRepositoryPort } from '../../repositories/notebook-repository.port';
-import { CreateNotebookUseCase, NotebookUseCaseDto } from '../../usecases';
+import { NotebookEntity } from '../../entities';
+import { INotebookRepository } from '../../repositories';
+import {
+  CreateNotebookInput,
+  NotebookOutput,
+  CreateNotebookUseCase,
+} from '../../usecases';
 
 export class CreateNotebookService implements CreateNotebookUseCase {
-  constructor(private readonly notebookRepository: NotebookRepositoryPort) {}
+  constructor(private readonly notebookRepository: INotebookRepository) {}
 
   public async execute(
-    notebookDTO: ICreateNotebookDTO,
-  ): Promise<NotebookUseCaseDto> {
+    notebookDTO: CreateNotebookInput,
+  ): Promise<NotebookOutput> {
     const newNotebook = NotebookEntity.create(notebookDTO);
 
     const notebook = await this.notebookRepository.create(newNotebook);
-    return NotebookUseCaseDto.new(notebook);
+    return NotebookOutput.new(notebook);
   }
 }

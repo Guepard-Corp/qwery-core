@@ -14,6 +14,7 @@ export default defineConfig(({ command }) => ({
       command === 'build'
         ? true
         : ['posthog-js', '@posthog/react', 'streamdown'],
+    external: ['better-sqlite3', '@duckdb/node-api'],
   },
   plugins: [
     devtoolsJson(),
@@ -26,30 +27,30 @@ export default defineConfig(({ command }) => ({
     allowedHosts: ALLOWED_HOSTS,
     proxy: {
       // Proxy specific agent API routes to the query agent service
-      '/api/ping': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/test-connection': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/query': {
-        target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+      //'/api': {
+      //  target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:8000',
+      //  changeOrigin: true,
+      //},
     },
   },
   build: {
     rollupOptions: {
-      external: ['fsevents'],
+      external: (id: string) => {
+        if (id === 'fsevents') return true;
+        if (id === 'better-sqlite3') return true;
+        if (id === '@duckdb/node-api') return true;
+        if (id.startsWith('node:')) return true;
+        return false;
+      },
     },
   },
   optimizeDeps: {
-    exclude: ['fsevents', '@electric-sql/pglite'],
+    exclude: [
+      'fsevents',
+      '@electric-sql/pglite',
+      '@duckdb/node-api',
+      '@qwery/agent-factory-sdk',
+    ],
     entries: [
       './app/root.tsx',
       './app/entry.server.tsx',

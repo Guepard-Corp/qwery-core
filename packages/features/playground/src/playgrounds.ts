@@ -1,6 +1,6 @@
 import type { Datasource, Playground } from '@qwery/domain/entities';
 import { DatasourceKind } from '@qwery/domain/entities';
-import { DatasourceRepositoryPort } from '@qwery/domain/repositories';
+import { IDatasourceRepository } from '@qwery/domain/repositories';
 import { getExtension } from '@qwery/extensions-sdk';
 
 import { PlaygroundFactory } from './factory/playground-factory';
@@ -24,9 +24,7 @@ export const PLAYGROUNDS = [
 ] as Playground[];
 
 export class PlaygroundBuilder {
-  constructor(
-    private readonly datasourceRepository: DatasourceRepositoryPort,
-  ) {}
+  constructor(private readonly datasourceRepository: IDatasourceRepository) {}
 
   async build(id: string, projectId: string): Promise<Datasource> {
     const selectedPlayground = PLAYGROUNDS.find(

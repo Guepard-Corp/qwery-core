@@ -150,7 +150,10 @@
     "./oauth-provider-logo-image": "./src/qwery/oauth-provider-logo-image.tsx",
     "./organization": "./src/qwery/organization/index.ts",
     "./sidebar-navigation": "./src/qwery/sidebar-navigation.tsx",
-    "./agent-ui": "./src/qwery/agent-ui.tsx"
+    "./agent-ui": "./src/qwery/agent-ui.tsx",
+    "./ai-elements": "./src/ai-elements/index.ts",
+    "./workspace-mode-switch": "./src/qwery/workspace-mode-switch.tsx",
+    "./ai": "./src/qwery/ai/index.ts"
   },
   "typesVersions": {
     "*": {

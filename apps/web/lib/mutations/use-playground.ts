@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Datasource } from '@qwery/domain/entities';
-import { DatasourceRepositoryPort } from '@qwery/domain/repositories';
+import { IDatasourceRepository } from '@qwery/domain/repositories';
 import { PlaygroundBuilder } from '@qwery/playground/playgrounds';
 
 import { getDatasourcesKey } from '../queries/use-get-datasources';
 
 export function usePlayground(
-  repository: DatasourceRepositoryPort,
+  repository: IDatasourceRepository,
   onSuccess: () => void,
   onError: (error: Error) => void,
 ) {

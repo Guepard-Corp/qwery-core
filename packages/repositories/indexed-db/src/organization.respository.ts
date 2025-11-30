@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Organization } from '@qwery/domain/entities';
-import { OrganizationRepositoryPort } from '@qwery/domain/repositories';
+import { IOrganizationRepository } from '@qwery/domain/repositories';
 
 const DB_NAME = 'qwery-organizations';
 const DB_VERSION = 1;
 const STORE_NAME = 'organizations';
 
-export class OrganizationRepository extends OrganizationRepositoryPort {
+export class OrganizationRepository extends IOrganizationRepository {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

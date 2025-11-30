@@ -8,7 +8,6 @@ import { Button } from '@qwery/ui/button';
 import { PageTopBar } from '@qwery/ui/page';
 
 import { AppLogo } from '~/components/app-logo';
-import { SidebarTrigger } from '@qwery/ui/shadcn-sidebar';
 
 export function LayoutTopBar() {
   return (
@@ -16,12 +15,11 @@ export function LayoutTopBar() {
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center space-x-4">
           <AppLogo />
-          <SidebarTrigger />
         </div>
         <div className="flex items-center space-x-4">
           <Button asChild size="icon" variant="ghost">
             <Link
-              to="https://docs.guepard.run"
+              to="https://docs.qwery.run"
               target="_blank"
               data-test="docs-link"
               rel="noopener noreferrer"

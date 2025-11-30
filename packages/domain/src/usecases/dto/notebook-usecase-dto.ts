@@ -1,7 +1,6 @@
-import { Exclude, Expose, plainToClass } from 'class-transformer';
-import { Notebook } from '../../entities/notebook.type';
-import { CellType } from '../../enums/cellType';
-import { RunMode } from '../../enums/runMode';
+import { Exclude, Expose, plainToClass, Type } from 'class-transformer';
+import { Notebook } from '../../entities';
+import { CellType, RunMode } from '../../enums';
 
 type Cell = {
   query?: string;
@@ -13,7 +12,7 @@ type Cell = {
 };
 
 @Exclude()
-export class NotebookUseCaseDto {
+export class NotebookOutput {
   @Expose()
   public id!: string;
   @Expose()
@@ -29,15 +28,40 @@ export class NotebookUseCaseDto {
   @Expose()
   public version!: number;
   @Expose()
+  @Type(() => Date)
   public createdAt!: Date;
   @Expose()
+  @Type(() => Date)
   public updatedAt!: Date;
   @Expose()
   public datasources!: string[];
   @Expose()
   public cells!: Cell[];
 
-  public static new(notebook: Notebook): NotebookUseCaseDto {
-    return plainToClass(NotebookUseCaseDto, notebook);
+  public static new(notebook: Notebook): NotebookOutput {
+    return plainToClass(NotebookOutput, notebook);
   }
 }
+
+export type CreateNotebookInput = {
+  projectId: string;
+  title: string;
+  description?: string;
+};
+
+export type CellInput = {
+  query?: string;
+  cellType?: CellType;
+  cellId?: number;
+  datasources?: string[];
+  isActive?: boolean;
+  runMode?: RunMode;
+};
+
+export type UpdateNotebookInput = {
+  id: string;
+  title?: string;
+  description?: string;
+  cells?: CellInput[];
+  datasources?: string[];
+};

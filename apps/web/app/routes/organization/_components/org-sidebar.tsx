@@ -15,7 +15,7 @@ export function OrgSidebar() {
   const slug = params.slug as string;
   const navigationConfig = createNavigationConfig(slug);
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="none">
       <SidebarContent>
         <SidebarNavigation config={navigationConfig} />
       </SidebarContent>

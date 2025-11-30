@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Project } from '@qwery/domain/entities';
-import { ProjectRepositoryPort } from '@qwery/domain/repositories';
+import { IProjectRepository } from '@qwery/domain/repositories';
 
 const DB_NAME = 'qwery-projects';
 const DB_VERSION = 1;
 const STORE_NAME = 'projects';
 
-export class ProjectRepository extends ProjectRepositoryPort {
+export class ProjectRepository extends IProjectRepository {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

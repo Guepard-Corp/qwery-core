@@ -3,3 +3,5 @@ export * from './notebook-repository';
 export * from './organization-repository';
 export * from './project-repository';
 export * from './user-repository';
+export * from './message-repository';
+export * from './conversation-repository';

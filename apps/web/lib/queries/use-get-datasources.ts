@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { DatasourceRepositoryPort } from '@qwery/domain/repositories';
+import { IDatasourceRepository } from '@qwery/domain/repositories';
 import {
   GetDatasourceBySlugService,
   GetDatasourcesByProjectIdService,
@@ -19,7 +19,7 @@ export function getDatasourceKey(id: string) {
 }
 
 export function useGetDatasourcesByProjectId(
-  repository: DatasourceRepositoryPort,
+  repository: IDatasourceRepository,
   projectId: string,
 ) {
   const useCase = new GetDatasourcesByProjectIdService(repository);
@@ -32,7 +32,7 @@ export function useGetDatasourcesByProjectId(
 }
 
 export function useGetDatasourceBySlug(
-  repository: DatasourceRepositoryPort,
+  repository: IDatasourceRepository,
   slug: string,
 ) {
   const useCase = new GetDatasourceBySlugService(repository);

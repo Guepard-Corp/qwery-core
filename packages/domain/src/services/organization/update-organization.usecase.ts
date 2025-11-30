@@ -1,22 +1,21 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { IUpdateOrganizationDTO } from '../../dtos/organization.dto';
+import { Organization, OrganizationEntity } from '../../entities';
+import { IOrganizationRepository } from '../../repositories';
 import {
-  Organization,
-  OrganizationEntity,
-} from '../../entities/organization.type';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
-import { OrganizationUseCaseDto } from '../../usecases/dto/organization-usecase-dto';
+  OrganizationOutput,
+  UpdateOrganizationInput,
+} from '../../usecases/dto/organization-usecase-dto';
 import { UpdateOrganizationUseCase } from '../../usecases';
 
 export class UpdateOrganizationService implements UpdateOrganizationUseCase {
   constructor(
-    private readonly organizationRepository: OrganizationRepositoryPort,
+    private readonly organizationRepository: IOrganizationRepository,
   ) {}
 
   public async execute(
-    organizationDTO: IUpdateOrganizationDTO,
-  ): Promise<OrganizationUseCaseDto> {
+    organizationDTO: UpdateOrganizationInput,
+  ): Promise<OrganizationOutput> {
     const existingOrganization = await this.organizationRepository.findById(
       organizationDTO.id,
     );
@@ -35,6 +34,6 @@ export class UpdateOrganizationService implements UpdateOrganizationUseCase {
     const organization = await this.organizationRepository.update(
       updatedOrganization as unknown as Organization,
     );
-    return OrganizationUseCaseDto.new(organization);
+    return OrganizationOutput.new(organization);
   }
 }

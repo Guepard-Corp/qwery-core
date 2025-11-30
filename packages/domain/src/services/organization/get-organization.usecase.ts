@@ -1,18 +1,18 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { OrganizationRepositoryPort } from '../../repositories/organization-repository.port';
+import { IOrganizationRepository } from '../../repositories';
 import {
   GetOrganizationBySlugUseCase,
   GetOrganizationUseCase,
-  OrganizationUseCaseDto,
+  OrganizationOutput,
 } from '../../usecases';
 
 export class GetOrganizationService implements GetOrganizationUseCase {
   constructor(
-    private readonly organizationRepository: OrganizationRepositoryPort,
+    private readonly organizationRepository: IOrganizationRepository,
   ) {}
 
-  public async execute(id: string): Promise<OrganizationUseCaseDto> {
+  public async execute(id: string): Promise<OrganizationOutput> {
     const organization = await this.organizationRepository.findById(id);
     if (!organization) {
       throw DomainException.new({
@@ -21,7 +21,7 @@ export class GetOrganizationService implements GetOrganizationUseCase {
         data: { organizationId: id },
       });
     }
-    return OrganizationUseCaseDto.new(organization);
+    return OrganizationOutput.new(organization);
   }
 }
 
@@ -29,10 +29,10 @@ export class GetOrganizationBySlugService
   implements GetOrganizationBySlugUseCase
 {
   constructor(
-    private readonly organizationRepository: OrganizationRepositoryPort,
+    private readonly organizationRepository: IOrganizationRepository,
   ) {}
 
-  public async execute(id: string): Promise<OrganizationUseCaseDto> {
+  public async execute(id: string): Promise<OrganizationOutput> {
     const organization = await this.organizationRepository.findBySlug(id);
     if (!organization) {
       throw DomainException.new({
@@ -41,6 +41,6 @@ export class GetOrganizationBySlugService
         data: { organizationId: id },
       });
     }
-    return OrganizationUseCaseDto.new(organization);
+    return OrganizationOutput.new(organization);
   }
 }

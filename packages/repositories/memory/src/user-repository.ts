@@ -1,8 +1,8 @@
 import type { Nullable, RepositoryFindOptions } from '@qwery/domain/common';
 import type { User } from '@qwery/domain/entities';
-import { UserRepositoryPort } from '@qwery/domain/repositories';
+import { IUserRepository } from '@qwery/domain/repositories';
 
-export class UserRepository extends UserRepositoryPort {
+export class UserRepository extends IUserRepository {
   private users = new Map<string, User>();
 
   async findAll(options?: RepositoryFindOptions): Promise<User[]> {

@@ -1,14 +1,24 @@
 import 'reflect-metadata';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
-import type { Organization } from '../../entities/organization.type';
-import type { Project } from '../../entities/project.type';
-import type { UserUseCaseDto } from './user-usecase-dto';
-import type { WorkspaceMode } from '../../entities/workspace.type';
+import type { UserOutput } from './user-usecase-dto';
+import type {
+  WorkspaceMode,
+  WorkspaceRuntime,
+  Organization,
+  Project,
+} from '../../entities';
+
+export interface WorkspaceInput {
+  userId: string;
+  organizationId?: string;
+  projectId?: string;
+  mode?: string;
+}
 
 @Exclude()
-export class WorkspaceUseCaseDto {
+export class WorkspaceOutput {
   @Expose()
-  public user!: UserUseCaseDto;
+  public user!: UserOutput;
 
   @Expose()
   public organization?: Organization;
@@ -23,16 +33,20 @@ export class WorkspaceUseCaseDto {
   public mode!: WorkspaceMode;
 
   @Expose()
+  public runtime!: WorkspaceRuntime;
+
+  @Expose()
   public isAnonymous!: boolean;
 
   public static new(data: {
-    user: UserUseCaseDto;
+    user: UserOutput;
     organization?: Organization;
     project?: Project;
     permissions?: string[];
     mode: WorkspaceMode;
+    runtime: WorkspaceRuntime;
     isAnonymous: boolean;
-  }): WorkspaceUseCaseDto {
-    return plainToClass(WorkspaceUseCaseDto, data);
+  }): WorkspaceOutput {
+    return plainToClass(WorkspaceOutput, data);
   }
 }

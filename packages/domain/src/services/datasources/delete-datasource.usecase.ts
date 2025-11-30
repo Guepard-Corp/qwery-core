@@ -1,12 +1,10 @@
 import { Code } from '../../common/code';
 import { DomainException } from '../../exceptions';
-import { DatasourceRepositoryPort } from '../../repositories/datasource-repository.port';
+import { IDatasourceRepository } from '../../repositories';
 import { DeleteDatasourceUseCase } from '../../usecases';
 
 export class DeleteDatasourceService implements DeleteDatasourceUseCase {
-  constructor(
-    private readonly datasourceRepository: DatasourceRepositoryPort,
-  ) {}
+  constructor(private readonly datasourceRepository: IDatasourceRepository) {}
 
   public async execute(id: string): Promise<boolean> {
     const datasource = await this.datasourceRepository.findById(id);
