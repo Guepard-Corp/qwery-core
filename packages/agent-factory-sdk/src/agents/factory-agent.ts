@@ -1,4 +1,4 @@
-import { UIMessage } from 'ai';
+import { FinishReason, UIMessage } from 'ai';
 import { createActor } from 'xstate';
 import { nanoid } from 'nanoid';
 import { createStateMachine } from './state-machine';
@@ -143,7 +143,19 @@ export class FactoryAgent {
               clearTimeout(timeout);
               try {
                 const response = ctx.streamResult.toUIMessageStreamResponse({
-                  onFinish: ({ messages }: { messages: UIMessage[] }) => {
+                  onFinish: async ({
+                    messages,
+                    finishReason,
+                  }: {
+                    messages: UIMessage[];
+                    finishReason?: FinishReason;
+                  }) => {
+                    if (finishReason === 'stop') {
+                      this.factoryActor.send({
+                        type: 'FINISH_STREAM',
+                      });
+                    }
+
                     const messagePersistenceService =
                       new MessagePersistenceService(
                         this.repositories.message,

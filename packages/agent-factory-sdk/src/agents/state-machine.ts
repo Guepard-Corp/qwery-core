@@ -36,7 +36,7 @@ export const createStateMachine = (
     },
   });
   return defaultSetup.createMachine({
-    /** @xstate-layout N4IgpgJg5mDOIC5QDMCGBjALgewE4E8BaVGAO0wDoAbbVCAYW3LAA9MBiCJsCgS1IBu2ANY8AMgHkAggBEA+vQkA5ACoBRABoqA2gAYAuolAAHbLF6ZeTIyBaIALLoBsFAIxOPAVgDMADm+eugDsQa4ANCD4iK5BLp5Bvq4BTq723gCcPvYAvtkRaFh4RCRg5NS0DEyYrBxguLh4FMZUqJjIeAC2FJKyCsrqWnqGSCCm5pbWI3YIji7uXn4BwaERUQgATE6+FL7rnp6u6Sn2IYm5+Rg4BMRklLwQVGDsAKoAymoASnIAkkoACs8dAYbGMLFZSDZpp51qtEIkKN51ut0utdPYFgdPOcQAUrsVbnwHk9XioJH8hiCzGDJqBpu57K4KOldL4nOkAidvGjYTN4Y4gvZfIF9hkMtjcUUbqVKLgAK6kUj8KAvd5fX4AoHDExUiYQqaITweCi6fbpUKuVmpbw8vxBY3rbwWoLBda+U7iy6SkplOUKpXsElkikjUG6yHRdb2dI7TEMzZBTKeXw21yeChOLkxXSpdL2dZBbwewrXb0y+WK0hQCgQMDVLDfZjkTjcPiCEQ8ADiahUP1UalUwe143B4ZmnmjuhNMUcvjR3jSPK29nTh3RqTdnnsaSLeKlPvLSurtbA9cbHC4pB4-CEogoXZ7v3UA9cWtGOpH+rHE6nApZc4XkSIAm0YMq4WaoiEaTpDuXoEr6FZVjWdaYA21RNheV5tre969k+OjrK+oYfrSDjjsaP4zv+1qAQgzLLqEaJRm66yHOOMElnBB6VkeyGodK7B1A0uBNC0bSdHe3a4f2mqUsONK2BGZFCqmcZOAm+zJjR3hOGmW6bCcRy6CxSLsfi0oUPBh6wLKHQdKguC8AAXmAfHoS217thQrzPAAsj5UgfN8ABaahSQOwIhu+8l0ps0bKZurjxommlrPY8TpsyuiOoZ46CkEpl7mWfrcdZtn2U5LlngJ9SNM0rTtLgXTeX5AXBaFj7SYOb5yXqJEIIlCYxipiVqclPKbtG7ICqmhlmiEBWlhZXFVlAuBgLW-oYa2N48K8UhiM8ahdUR0URr4cWxiN6lJoueZuL4BnpEcSROM4C2ccVK1rRtlbVUJIn1eJe0HUdEVDtSvUKf1yIXcNSUaTyBbLmkSJ+O4Jr6e95mWdxa10DIrSoM2l7bZ5HxqL0MhSCoUjHVFkMxU9Q0JfDN00bsLijfE8RorOuZY-un0WWA+OE39tWiQ1XTk5T1O02D3UQ6OiUZMzqnXSliDpBaTL5tmGRZWa0K5HkICkNgNbwCMEocdKslK5+9g8oQLiTm77vuyxAuUDQdCMMwbD22Gn7QjySJxSk0LuAcQQw4Wps22ZZT3I8QfEVDqZJhQmyZg6+aRtRqXwoa52RscKQCk43tLZ9aenQg448uidqhA9r3zrMiLVzjiHHqeaGYHXDPRME437MaDJ+CyrgmukD3d8tFClXZDnOa5g+RT1o4JtsG7Zs6uYBAmi4Fm42abA9vgPcy6wL0Lq3rZYlZD6OV+6Om3gH2l7KikEiNmgiIUugURbHiE4PMd8ELC1FpgVAL9Pz+HWBQPSscwJBGhIETWtEjLpgeicLYsQtxvQTp6W2ZRYA4GMMYSA8C+rTmXDpCuDIvApCbrOBEewtxHASE4MuOQTZAA */
+    /** @xstate-layout N4IgpgJg5mDOIC5QDMCGBjALgewE4E8BaVGAO0wDoAbbVCAYW3LAA9MBiCJsCgS1IBu2ANY8AMgHkAggBEA+vQkA5ACoBRABoqA2gAYAuolAAHbLF6ZeTIyBaIALLoBsFAIwAOAOwBWVwGZvAE5dP3dXbwAaEHxEACZXVwp7QJSnFMD3b1inAF8cqLQsPCISMHJqWgYmTFYOMFxcPApjKlRMZDwAWwpJWQVldS09QyQQU3NLa1G7BFcnDwpdcO80gMD7Tz8omIQ-XXsKQO89wPiw-bC8gowcAmIySl4IKjB2AFUAZTUAJTkASSUAAU3joDDZxhYrKQbDMsttEGEkulPJ40u57LENlcQIVbiUHnxnq8PioJIDhuCzJCpqAZq4MroKE4-LEfO5dO5Yt4QoF4QgVozHE4uX5AgFHCtsbjivcypRcABXUikfhQd5fX4A4GgkYmKmTaHTRA+A6eU5i1w+MUs+x8lmBCiebK+eJOTy6WLiqU3GWlcqK5Wq9gkskU0YQg0wxBzUKLZarIIbLbRByZQ6xQLuj3uQL+J25fI4n13P3ypUq0hQCgQMA1LB-ZjkTjcPiCEQ8ADiahU-1UalUYb1EyhUYQ9iCcZWrmSTk5GycfOF7gosRCHO8ni8flcHu9RRLBIDFarNbrmAbNSbXFIPH4QlEFC7PYB6gHrl1Y31I6NY4nSynM5zqifKZsu7icps9hOPMHh+H4e54rK-rlqq1a1mA9aNhw163m2D5Pr2r46LEH4Rt+tIOH+4TzIBmLASmCCePYfgriEHhLKiHK6IECG+oeKGVmhZ4XnK7D1I0uDNK07RdI+3aEf2OqUsONK2NGzLLv+Kxiommx8scLgYoEs7HCk4QeLxB5yhQR6obACqdJ0qC4LwABeYAiVeLZ3u2FAfG8ACyAVSN8fwAFpqApA5guGX6qXSq7eEy3GhNBYS+Byi7jky9IotOPiopsln4tZtmCfZjnOW5HlYWJDRNC0bQdLg3T+UFIXhZFL6KYOn4qYaFGzEuk7aWsSaLhmFDgbE7JsnMmw8YW0pWchgaCVAuBgLWQY4a2948B8UhiG8ai9WR8XRolyViu4aXmZlDGZIywTCt4UEZAE9LFUhZZrVWG1bZYlZ1RJUlNbJh3HadMVDtSA1qUNCxaQm6x6QxKQsf4rLBGxXhON432ljZAlVptdAyG0qDNjee2+d8ah9DIUgqFIZ1xfDCW6ElTgpbds73e4fIFUkxwcjuughBu7iE-xf02WA5OUyDDXSc13T04zzOszDfVw6OcxI-GOmo8mOxOixcFBBmqL2PSBbXPuJWrceFCwJgZOdEGABiAJ-B8AAScgkhrAVs-1+vzJpRtjWjOxhC4m65iEUHxME8HYqQ2A1vAozLU7mDKXrP62gxhD20Wjs-RUdCMMwbCF5GP5wgxsSYiuzoSr4czgTL1lPC8DfkQjHiZm4LL5vYGLzKE+k84czgijpEqeL3zuqoPF38ryDFZA6brGTmoRmu4oqr79Lunhh55YRvHPRronggb4jopWuXMJItDuIUTZVVhVTkuXcp5AusVw4-jNHvFKuYeahCgq4Rclo3BmjSDNSe04oJn2JnLAG21Ky31HOBRIfgfBc2YjmRwyQQIogoGsE46xxyWkwb-eWitMCoHwT+E+mNOQZm8GET03Eha2yZMgrIGJ0TulcEwkmrt3YK09ng0BRdBroJcAvSeGZyFMUfgxFEDojIblbsyRw25MFu2wMYYwkAOGDVXOiRY7ptwvXWHwyIO8Jz42FNuCWrJPR5DyEAA */
     id: 'factory-agent',
     context: {
       inputMessage: '',
@@ -157,7 +157,7 @@ export const createStateMachine = (
                 previousMessages: context.previousMessages,
               }),
               onDone: {
-                target: '#factory-agent.idle',
+                target: 'streaming',
                 actions: assign({
                   streamResult: ({ event }) => event.output,
                 }),
@@ -190,7 +190,7 @@ export const createStateMachine = (
                 inputMessage: context.inputMessage,
               }),
               onDone: {
-                target: '#factory-agent.idle',
+                target: 'streaming',
                 actions: assign({
                   streamResult: ({ event }) => event.output,
                 }),
@@ -221,7 +221,7 @@ export const createStateMachine = (
                 previousMessages: context.previousMessages,
               }),
               onDone: {
-                target: '#factory-agent.idle',
+                target: 'streaming',
                 actions: assign({
                   streamResult: ({ event }) => event.output,
                 }),
@@ -239,6 +239,13 @@ export const createStateMachine = (
                   },
                   streamResult: undefined,
                 }),
+              },
+            },
+          },
+          streaming: {
+            on: {
+              FINISH_STREAM: {
+                target: '#factory-agent.idle',
               },
             },
           },

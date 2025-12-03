@@ -24,6 +24,33 @@ const config: StorybookConfig = {
       esbuild: {
         jsx: 'automatic',
       },
+      ssr: {
+        external: [
+          '@duckdb/node-api',
+          '@duckdb/node-bindings-win32-x64',
+          '@duckdb/node-bindings-darwin-x64',
+          '@duckdb/node-bindings-linux-x64',
+        ],
+      },
+      build: {
+        rollupOptions: {
+          external: (id: string) => {
+            if (id === 'better-sqlite3') return true;
+            if (id === '@duckdb/node-api') return true;
+            if (id.startsWith('@duckdb/node-bindings')) return true;
+            if (id.startsWith('node:')) return true;
+            return false;
+          },
+        },
+      },
+      optimizeDeps: {
+        exclude: [
+          '@duckdb/node-api',
+          '@duckdb/node-bindings-win32-x64',
+          '@duckdb/node-bindings-darwin-x64',
+          '@duckdb/node-bindings-linux-x64',
+        ],
+      },
     });
   },
   typescript: {

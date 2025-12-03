@@ -1,36 +1,19 @@
-'use server';
-
-import { Experimental_Agent, stepCountIs, tool } from 'ai';
-import type { LanguageModel, UIMessage } from 'ai';
 import { z } from 'zod';
-import { extractSchema } from '../../tools/extract-schema';
-import { gsheetToDuckdb } from '../../tools/gsheet-to-duckdb';
-import { runQuery } from '../../tools/run-query';
-import { testConnection } from '../../tools/test-connection';
+import {
+  Experimental_Agent as Agent,
+  convertToModelMessages,
+  UIMessage,
+  tool,
+  validateUIMessages,
+  stepCountIs,
+} from 'ai';
 import { fromPromise } from 'xstate/actors';
-import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
 import { resolveModel } from '../../services';
-
-export const readDataAgentActor = fromPromise(
-  async ({
-    input,
-  }: {
-    input: {
-      inputMessage: string;
-      conversationId: string;
-      previousMessages: UIMessage[];
-    };
-  }) => {
-    const agent = new ReadDataAgent({
-      conversationId: input.conversationId,
-    });
-    const agentInstance = await agent.getAgent();
-    const result = agentInstance.stream({
-      prompt: input.inputMessage,
-    });
-    return result;
-  },
-);
+import { testConnection } from '../../tools/test-connection';
+import { gsheetToDuckdb } from '../../tools/gsheet-to-duckdb';
+import { extractSchema } from '../../tools/extract-schema';
+import { runQuery } from '../../tools/run-query';
+import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
 
 // Support both import.meta.env (Vite/browser) and process.env (Node.js)
 const WORKSPACE = resolveWorkspaceDir();
@@ -56,131 +39,113 @@ function resolveWorkspaceDir(): string | undefined {
   }
 }
 
-export interface ReadDataAgentOptions {
-  conversationId: string;
-}
-
-export class ReadDataAgent {
-  private agentPromise: Promise<
-    ReturnType<ReadDataAgent['createAgent']>
-  > | null = null;
-  private readonly conversationId: string;
-
-  constructor(opts: ReadDataAgentOptions) {
-    this.conversationId = opts.conversationId;
-  }
-
-  async getAgent(): Promise<ReturnType<ReadDataAgent['createAgent']>> {
-    if (!this.agentPromise) {
-      this.agentPromise = this.initializeAgent();
-    }
-    return this.agentPromise;
-  }
-
-  private async initializeAgent(): Promise<
-    ReturnType<ReadDataAgent['createAgent']>
-  > {
-    const model = await resolveModel('azure/gpt-5-mini');
-
-    if (!isLanguageModel(model)) {
-      throw new Error('AgentFactory resolved model is not a LanguageModel');
-    }
-
-    return this.createAgent(model);
-  }
-
-  private createAgent(model: LanguageModel) {
-    return new Experimental_Agent({
-      model,
-      system: READ_DATA_AGENT_PROMPT,
-      tools: {
-        testConnection: tool({
-          description:
-            'Test the connection to the database to check if the database is accessible',
-          inputSchema: z.object({}),
-          execute: async () => {
-            if (!WORKSPACE) {
-              throw new Error('WORKSPACE environment variable is not set');
-            }
-            const { join } = await import('node:path');
-            const dbPath = join(WORKSPACE, this.conversationId, 'database.db');
-            const result = await testConnection({
-              dbPath: dbPath,
-            });
-            return result.toString();
-          },
+export const readDataAgent = async (
+  conversationId: string,
+  messages: UIMessage[],
+) => {
+  const result = new Agent({
+    model: await resolveModel('azure/gpt-5-mini'),
+    system: READ_DATA_AGENT_PROMPT,
+    tools: {
+      testConnection: tool({
+        description:
+          'Test the connection to the database to check if the database is accessible',
+        inputSchema: z.object({}),
+        execute: async () => {
+          if (!WORKSPACE) {
+            throw new Error('WORKSPACE environment variable is not set');
+          }
+          const { join } = await import('node:path');
+          const dbPath = join(WORKSPACE, conversationId, 'database.db');
+          const result = await testConnection({
+            dbPath: dbPath,
+          });
+          return result.toString();
+        },
+      }),
+      createDbViewFromSheet: tool({
+        description: 'Create a View from a Google Sheet',
+        inputSchema: z.object({
+          sharedLink: z.string(),
         }),
-        createDbViewFromSheet: tool({
-          description: 'Create a View from a Google Sheet',
-          inputSchema: z.object({
-            sharedLink: z.string(),
-          }),
-          execute: async ({ sharedLink }) => {
-            if (!WORKSPACE) {
-              throw new Error('WORKSPACE environment variable is not set');
-            }
-            const { join } = await import('node:path');
-            const { mkdir } = await import('node:fs/promises');
-            await mkdir(WORKSPACE, { recursive: true });
-            const fileDir = join(WORKSPACE, this.conversationId);
-            await mkdir(fileDir, { recursive: true });
-            const dbPath = join(fileDir, 'database.db');
+        execute: async ({ sharedLink }) => {
+          if (!WORKSPACE) {
+            throw new Error('WORKSPACE environment variable is not set');
+          }
+          const { join } = await import('node:path');
+          const { mkdir } = await import('node:fs/promises');
+          await mkdir(WORKSPACE, { recursive: true });
+          const fileDir = join(WORKSPACE, conversationId);
+          await mkdir(fileDir, { recursive: true });
+          const dbPath = join(fileDir, 'database.db');
 
-            console.debug(
-              `[ReadDataAgent:${this.conversationId}] Creating DuckDB view from sheet: ${sharedLink}`,
-            );
-            const message = await gsheetToDuckdb({
-              dbPath,
-              sharedLink,
-            });
-            return {
-              content: message,
-            };
-          },
+          console.debug(
+            `[ReadDataAgent:${conversationId}] Creating DuckDB view from sheet: ${sharedLink}`,
+          );
+          const message = await gsheetToDuckdb({
+            dbPath,
+            sharedLink,
+          });
+          return {
+            content: message,
+          };
+        },
+      }),
+      getSchema: tool({
+        description: 'Get the schema of the Google Sheet view',
+        inputSchema: z.object({}),
+        execute: async () => {
+          if (!WORKSPACE) {
+            throw new Error('WORKSPACE environment variable is not set');
+          }
+          const { join } = await import('node:path');
+          const dbPath = join(WORKSPACE, conversationId, 'database.db');
+
+          const schema = await extractSchema({ dbPath });
+          return {
+            schema: schema,
+          };
+        },
+      }),
+      runQuery: tool({
+        description: 'Run a SQL query against the Google Sheet view',
+        inputSchema: z.object({
+          query: z.string(),
         }),
-        getSchema: tool({
-          description: 'Get the schema of the Google Sheet view',
-          inputSchema: z.object({}),
-          execute: async () => {
-            if (!WORKSPACE) {
-              throw new Error('WORKSPACE environment variable is not set');
-            }
-            const { join } = await import('node:path');
-            const dbPath = join(WORKSPACE, this.conversationId, 'database.db');
+        execute: async ({ query }) => {
+          if (!WORKSPACE) {
+            throw new Error('WORKSPACE environment variable is not set');
+          }
+          const { join } = await import('node:path');
+          const dbPath = join(WORKSPACE, conversationId, 'database.db');
 
-            const schema = await extractSchema({ dbPath });
-            return {
-              schema: schema,
-            };
-          },
-        }),
-        runQuery: tool({
-          description: 'Run a SQL query against the Google Sheet view',
-          inputSchema: z.object({
-            query: z.string(),
-          }),
-          execute: async ({ query }) => {
-            if (!WORKSPACE) {
-              throw new Error('WORKSPACE environment variable is not set');
-            }
-            const { join } = await import('node:path');
-            const dbPath = join(WORKSPACE, this.conversationId, 'database.db');
+          const result = await runQuery({
+            dbPath,
+            query,
+          });
+          return {
+            result: result,
+          };
+        },
+      }),
+    },
+    stopWhen: stepCountIs(20),
+  });
 
-            const result = await runQuery({
-              dbPath,
-              query,
-            });
-            return {
-              result: result,
-            };
-          },
-        }),
-      },
-      stopWhen: stepCountIs(20), // Stop after 20 steps maximum
-    });
-  }
-}
+  return result.stream({
+    messages: convertToModelMessages(await validateUIMessages({ messages })),
+  });
+};
 
-function isLanguageModel(model: unknown): model is LanguageModel {
-  return typeof model === 'object' && model !== null;
-}
+export const readDataAgentActor = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      conversationId: string;
+      previousMessages: UIMessage[];
+    };
+  }) => {
+    return readDataAgent(input.conversationId, input.previousMessages);
+  },
+);
