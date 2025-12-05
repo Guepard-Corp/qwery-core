@@ -20,21 +20,23 @@ export interface FactoryAgentOptions {
 export class FactoryAgent {
   readonly id: string;
   private readonly conversationSlug: string;
+  private readonly conversationId: string;
   private lifecycle: ReturnType<typeof createStateMachine>;
   private factoryActor: ReturnType<typeof createActor>;
   private repositories: Repositories;
   private actorRegistry: ActorRegistry; // NEW: Actor registry
   private model: string;
 
-  constructor(opts: FactoryAgentOptions) {
+  constructor(opts: FactoryAgentOptions & { conversationId: string }) {
     this.id = nanoid();
     this.conversationSlug = opts.conversationSlug;
+    this.conversationId = opts.conversationId;
     this.repositories = opts.repositories;
     this.actorRegistry = new ActorRegistry(); // NEW
     this.model = opts.model;
 
     this.lifecycle = createStateMachine(
-      this.conversationSlug,
+      this.conversationId,
       this.model,
       this.repositories,
     );
@@ -65,15 +67,22 @@ export class FactoryAgent {
     this.factoryActor.start();
   }
 
-  // NEW: Method to get registry
-  getActorRegistry(): ActorRegistry {
-    return this.actorRegistry;
-  }
+  static async create(
+    opts: FactoryAgentOptions,
+  ): Promise<FactoryAgent> {
+    const conversation = await opts.repositories.conversation.findBySlug(
+      opts.conversationSlug,
+    );
+    if (!conversation) {
+      throw new Error(
+        `Conversation with slug '${opts.conversationSlug}' not found`,
+      );
+    }
 
-  // NEW: Cleanup on destroy
-  destroy(): void {
-    this.actorRegistry.stopAll();
-    this.factoryActor.stop();
+    return new FactoryAgent({
+      ...opts,
+      conversationId: conversation.id,
+    });
   }
 
   /**
@@ -105,26 +114,34 @@ export class FactoryAgent {
     // Get the current input message to track which request this is for
     const lastMessage = opts.messages[opts.messages.length - 1];
 
-    // Persist latest user message (non-blocking, errors are logged but don't block)
-    // If conversation doesn't exist, we'll log a warning but allow the agent to respond
+    // Persist latest user message (non-blocking, errors collected but don't block response)
     const messagePersistenceService = new MessagePersistenceService(
       this.repositories.message,
       this.repositories.conversation,
       this.conversationSlug,
     );
+    
+    const persistenceErrors: Error[] = [];
+    
     messagePersistenceService
       .persistMessages([lastMessage as UIMessage])
-      .catch((error) => {
-        if (error instanceof DomainException) {
+      .then((result) => {
+        if (result.errors.length > 0) {
+          persistenceErrors.push(...result.errors);
           console.warn(
-            `Conversation ${this.conversationSlug} not found - messages will not be persisted. Agent will still respond.`,
-          );
-        } else {
-          console.warn(
-            `Failed to persist message for conversation ${this.conversationSlug}:`,
-            error instanceof Error ? error.message : String(error),
+            `Failed to persist user message for conversation ${this.conversationSlug}:`,
+            result.errors.map((e) => e.message).join(', '),
           );
         }
+      })
+      .catch((error) => {
+        persistenceErrors.push(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        console.warn(
+          `Failed to persist message for conversation ${this.conversationSlug}:`,
+          error instanceof Error ? error.message : String(error),
+        );
       });
 
     const textPart = lastMessage?.parts.find((p) => p.type === 'text');
@@ -286,18 +303,20 @@ export class FactoryAgent {
                         this.conversationSlug,
                       );
                     try {
-                      await messagePersistenceService.persistMessages(messages);
-                    } catch (error) {
-                      if (error instanceof DomainException) {
+                      const result = await messagePersistenceService.persistMessages(messages);
+                      if (result.errors.length > 0) {
                         console.warn(
-                          `Conversation ${this.conversationSlug} not found - messages will not be persisted. Response already sent to client.`,
+                          `Failed to persist some assistant messages for conversation ${this.conversationSlug}:`,
+                          result.errors.map((e) => e.message).join(', '),
                         );
-                      } else {
-                        console.warn(
-                          `Failed to persist messages for conversation ${this.conversationSlug}:`,
-                          error instanceof Error ? error.message : String(error),
-                        );
+                        // Note: Errors are logged but response already sent to client
+                        // In future, could send error notification via separate channel
                       }
+                    } catch (error) {
+                      console.warn(
+                        `Failed to persist messages for conversation ${this.conversationSlug}:`,
+                        error instanceof Error ? error.message : String(error),
+                      );
                     }
                   },
                 });

@@ -6,7 +6,7 @@ import {
   CreateConversationService,
   UpdateConversationService,
 } from '@qwery/domain/services';
-import { getConversationsKey } from '~/lib/queries/use-get-conversations';
+import { getConversationsByProjectKey } from '~/lib/queries/use-get-conversations-by-project';
 import {
   ConversationOutput,
   CreateConversationInput,
@@ -21,6 +21,7 @@ export function useConversation(
   conversationRepository: IConversationRepository,
   onSuccess: (conversation: Conversation) => void,
   onError: (error: Error) => void,
+  projectId?: string,
 ) {
   const queryClient = useQueryClient();
 
@@ -35,9 +36,12 @@ export function useConversation(
       queryClient.invalidateQueries({
         queryKey: getConversationKey(conversation.slug),
       });
-      queryClient.invalidateQueries({
-        queryKey: getConversationsKey(),
-      });
+      // Invalidate project-scoped conversations list
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: getConversationsByProjectKey(projectId),
+        });
+      }
       // Convert DTO back to Conversation for the callback
       onSuccess(conversation as unknown as Conversation);
     },

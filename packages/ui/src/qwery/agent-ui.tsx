@@ -81,6 +81,8 @@ export interface QweryAgentUIProps {
   onDatasourceSelectionChange?: (datasourceIds: string[]) => void;
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
+  // Message persistence
+  onMessageUpdate?: (messageId: string, content: string) => Promise<void>;
 }
 
 export default function QweryAgentUI(props: QweryAgentUIProps) {
@@ -96,6 +98,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
     onDatasourceSelectionChange,
     pluginLogoMap,
     datasourcesLoading,
+    onMessageUpdate,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const hasFocusedRef = useRef(false);
@@ -144,6 +147,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
     useChat({
       messages: initialMessages,
       transport: transportInstance,
+      experimental_throttle: 50,
     });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -163,16 +167,19 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
     setEditText('');
   }, []);
 
-  const handleEditSubmit = useCallback(() => {
+  const handleEditSubmit = useCallback(async () => {
     if (!editingMessageId || !editText.trim()) return;
 
+    const updatedText = editText.trim();
+
+    // Update UI state immediately
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id === editingMessageId) {
           return {
             ...msg,
             parts: msg.parts.map((p) =>
-              p.type === 'text' ? { ...p, text: editText.trim() } : p,
+              p.type === 'text' ? { ...p, text: updatedText } : p,
             ),
           };
         }
@@ -182,7 +189,17 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
 
     setEditingMessageId(null);
     setEditText('');
-  }, [editingMessageId, editText, setMessages]);
+
+    // Persist to database if callback provided
+    if (onMessageUpdate) {
+      try {
+        await onMessageUpdate(editingMessageId, updatedText);
+      } catch (error) {
+        console.error('Failed to persist message edit:', error);
+        // Optionally show error toast here
+      }
+    }
+  }, [editingMessageId, editText, setMessages, onMessageUpdate]);
 
   const handleRegenerate = useCallback(async () => {
     const lastAssistantMessage = messages

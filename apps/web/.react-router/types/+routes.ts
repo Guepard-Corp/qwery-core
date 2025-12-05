@@ -73,6 +73,11 @@ type Pages = {
       "id": string;
     };
   };
+  "/api/conversations/project/:projectId": {
+    params: {
+      "projectId": string;
+    };
+  };
   "/api/messages": {
     params: {};
   };
@@ -159,7 +164,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/:id" | "/api/projects" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/messages" | "/api/usage" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings";
+    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/:id" | "/api/projects" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings";
   };
   "routes/version.ts": {
     id: "routes/version";
@@ -220,6 +225,10 @@ type RouteFiles = {
   "routes/api/conversation/conversation.ts": {
     id: "routes/api/conversation/conversation";
     page: "/api/conversations/:id";
+  };
+  "routes/api/conversations/project/$projectId.ts": {
+    id: "routes/api/conversations/project/$projectId";
+    page: "/api/conversations/project/:projectId";
   };
   "routes/api/conversation/get-messages.ts": {
     id: "routes/api/conversation/get-messages";
@@ -332,6 +341,7 @@ type RouteModules = {
   "routes/api/notebook/notebook": typeof import("./app/routes/api/notebook/notebook.ts");
   "routes/api/conversation/get-all-conversations": typeof import("./app/routes/api/conversation/get-all-conversations.ts");
   "routes/api/conversation/conversation": typeof import("./app/routes/api/conversation/conversation.ts");
+  "routes/api/conversations/project/$projectId": typeof import("./app/routes/api/conversations/project/$projectId.ts");
   "routes/api/conversation/get-messages": typeof import("./app/routes/api/conversation/get-messages.ts");
   "routes/api/usage/usage": typeof import("./app/routes/api/usage/usage.ts");
   "routes/layout/layout": typeof import("./app/routes/layout/layout.tsx");

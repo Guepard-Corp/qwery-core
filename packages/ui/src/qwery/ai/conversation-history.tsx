@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,10 +12,12 @@ import {
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import {
-  ClockIcon,
-  MessageSquareIcon,
-  PencilIcon,
-  TrashIcon,
+  History,
+  MessageCircle,
+  Plus,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 
 export interface Conversation {
@@ -31,7 +33,7 @@ export interface ConversationHistoryProps {
   currentConversationId?: string;
   onConversationSelect?: (conversationId: string) => void;
   onNewConversation?: () => void;
-  onConversationEdit?: (conversationId: string) => void;
+  onConversationEdit?: (conversationId: string, newTitle: string) => void;
   onConversationDelete?: (conversationId: string) => void;
 }
 
@@ -46,15 +48,11 @@ function formatRelativeTime(date: Date): string {
   if (diffDays === 1) {
     return 'Yesterday';
   }
-  if (diffDays < 7) {
-    return `${diffDays}d ago`;
-  }
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return `${weeks}w ago`;
-  }
-  const months = Math.floor(diffDays / 30);
-  return `${months}mo ago`;
+  
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function groupConversationsByTime(
@@ -67,10 +65,9 @@ function groupConversationsByTime(
     if (!groups[group]) {
       groups[group] = [];
     }
-    groups[group].push(conversation);
+    groups[group]!.push(conversation);
   });
 
-  // Sort conversations within each group by date (newest first)
   Object.keys(groups).forEach((key) => {
     const group = groups[key];
     if (group) {
@@ -81,35 +78,40 @@ function groupConversationsByTime(
   return groups;
 }
 
-const TIME_ORDER = [
-  'Today',
-  'Yesterday',
-  '2d ago',
-  '3d ago',
-  '4d ago',
-  '5d ago',
-  '6d ago',
-  '1w ago',
-  '2w ago',
-  '1mo ago',
-];
-
 function sortTimeGroups(groups: Record<string, Conversation[]>): string[] {
   const keys = Object.keys(groups);
   return keys.sort((a, b) => {
-    const aIndex = TIME_ORDER.indexOf(a);
-    const bIndex = TIME_ORDER.indexOf(b);
-
-    // If both are in the order list, sort by index
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
+    if (a === 'Today') return -1;
+    if (b === 'Today') return 1;
+    
+    if (a === 'Yesterday') return -1;
+    if (b === 'Yesterday') return 1;
+    const dateA = parseDateString(a);
+    const dateB = parseDateString(b);
+    
+    if (dateA && dateB) {
+      return dateB.getTime() - dateA.getTime();
     }
-    // If only one is in the list, prioritize it
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
-    // If neither is in the list, sort alphabetically
+    
     return a.localeCompare(b);
   });
+}
+
+function parseDateString(dateStr: string): Date | null {
+  const parts = dateStr.split(' ');
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+    const day = parseInt(parts[0], 10);
+    const monthName = parts[1];
+    const year = parseInt(parts[2], 10);
+    
+    if (!isNaN(day) && !isNaN(year) && monthName) {
+      const monthIndex = new Date(`${monthName} 1, 2000`).getMonth();
+      if (!isNaN(monthIndex)) {
+        return new Date(year, monthIndex, day);
+      }
+    }
+  }
+  return null;
 }
 
 export function ConversationHistory({
@@ -122,6 +124,9 @@ export function ConversationHistory({
   onConversationDelete,
 }: ConversationHistoryProps) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   const groupedConversations = useMemo(() => {
     return groupConversationsByTime(conversations);
@@ -141,21 +146,33 @@ export function ConversationHistory({
     setOpen(false);
   };
 
-  const handleConversationEdit = (
-    e: React.MouseEvent,
-    conversationId: string,
-  ) => {
-    e.stopPropagation();
-    onConversationEdit?.(conversationId);
+  const handleStartEdit = (conversationId: string, currentTitle: string) => {
+    setEditingId(conversationId);
+    setEditValue(currentTitle);
   };
 
-  const handleConversationDelete = (
-    e: React.MouseEvent,
-    conversationId: string,
-  ) => {
-    e.stopPropagation();
-    onConversationDelete?.(conversationId);
+  const handleSaveEdit = (conversationId: string) => {
+    const trimmedValue = editValue.trim();
+    const currentTitle = conversations.find(c => c.id === conversationId)?.title;
+    
+    if (trimmedValue && trimmedValue !== currentTitle) {
+      onConversationEdit?.(conversationId, trimmedValue);
+    }
+    setEditingId(null);
+    setEditValue('');
   };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
 
   return (
     <>
@@ -166,33 +183,41 @@ export function ConversationHistory({
         className="cursor-pointer"
         data-test="conversation-history-button"
       >
-        <ClockIcon className="size-4" />
+        <History className="size-4" />
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search..." />
+        <div className="border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="text-primary size-4" />
+            <h2 className="font-semibold">Conversations</h2>
+          </div>
+        </div>
+        <div className="mb-3 border-b flex items-center gap-2 p-2 [&_[cmdk-input-wrapper]]:border-0 [&_[cmdk-input-wrapper]]:flex-1 [&_[cmdk-input-wrapper]]:min-w-0">
+          <CommandInput placeholder="Search conversations..." />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleNewConversation}
+            className="gap-1.5 shrink-0"
+          >
+            <Plus className="size-3.5" />
+            New
+          </Button>
+        </div>
         <CommandList className="max-h-[500px]">
-          <CommandEmpty>No conversations found.</CommandEmpty>
-
-          {/* New Conversation Option */}
-          <CommandGroup heading="Today">
-            <CommandItem
-              onSelect={handleNewConversation}
-              className={cn(
-                'flex cursor-pointer items-center justify-between',
-                !currentConversationId && 'bg-accent text-accent-foreground',
-              )}
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <MessageSquareIcon className="size-4 shrink-0" />
-                <span className="truncate">New Conversation</span>
+          <CommandEmpty>
+            <div className="flex flex-col items-center gap-3 py-8">
+              <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                <MessageCircle className="text-muted-foreground size-5" />
               </div>
-              {!currentConversationId && (
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-muted-foreground text-xs">Current</span>
-                </div>
-              )}
-            </CommandItem>
-          </CommandGroup>
+              <div className="text-center">
+                <p className="text-sm font-medium">No conversations found</p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Start a new conversation to get started
+                </p>
+              </div>
+            </div>
+          </CommandEmpty>
 
           {/* Existing Conversations */}
           {sortedGroups.map((groupKey) => {
@@ -201,53 +226,117 @@ export function ConversationHistory({
               return null;
 
             return (
-              <CommandGroup key={groupKey} heading={groupKey}>
+              <div key={groupKey} className="space-y-1">
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <div className="bg-border h-px flex-1" />
+                  <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                    {groupKey}
+                  </span>
+                  <div className="bg-border h-px flex-1" />
+                </div>
+                <CommandGroup heading="">
                 {groupConversations.map((conversation) => {
                   const isCurrent = conversation.id === currentConversationId;
+                  const isEditing = editingId === conversation.id;
+                  
                   return (
                     <CommandItem
                       key={conversation.id}
-                      onSelect={() =>
-                        handleConversationSelect(conversation.slug)
-                      }
+                      value={conversation.id}
+                      onSelect={() => {
+                        if (!isEditing) {
+                          handleConversationSelect(conversation.slug);
+                        }
+                      }}
                       className={cn(
-                        'flex items-center justify-between',
-                        isCurrent && 'bg-accent text-accent-foreground',
+                        'group relative mx-2 my-0.5 rounded-md transition-all',
+                        'hover:bg-accent/50',
+                        isCurrent &&
+                          'bg-primary/10 border border-primary/20',
+                        'data-[selected=true]:bg-accent',
                       )}
                     >
-                      <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                        <MessageSquareIcon className="size-4 shrink-0" />
-                        <span className="truncate">{conversation.title}</span>
-                      </div>
-                      {isCurrent && (
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-muted-foreground text-xs">
-                            Current
-                          </span>
-                          <button
-                            onClick={(e) =>
-                              handleConversationEdit(e, conversation.id)
-                            }
-                            className="hover:bg-accent rounded p-1"
-                            data-test="conversation-edit-button"
-                          >
-                            <PencilIcon className="size-3" />
-                          </button>
-                          <button
-                            onClick={(e) =>
-                              handleConversationDelete(e, conversation.id)
-                            }
-                            className="hover:bg-accent rounded p-1"
-                            data-test="conversation-delete-button"
-                          >
-                            <TrashIcon className="size-3" />
-                          </button>
+                      <div className="flex w-full items-center gap-2 px-2 py-1.5">
+                        <div
+                          className={cn(
+                            'flex size-6 shrink-0 items-center justify-center rounded transition-colors',
+                            isCurrent
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary',
+                          )}
+                        >
+                          <MessageCircle className="size-3" />
                         </div>
-                      )}
+                        {isEditing ? (
+                          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <input
+                              ref={editInputRef}
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveEdit(conversation.id);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 bg-background border border-input rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveEdit(conversation.id);
+                              }}
+                              className="text-primary hover:bg-accent rounded p-1 transition-colors"
+                            >
+                              <Check className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelEdit();
+                              }}
+                              className="text-muted-foreground hover:bg-accent rounded p-1 transition-colors"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex min-w-0 flex-1 items-center">
+                              <span
+                                className={cn(
+                                  'truncate text-sm font-medium',
+                                  isCurrent && 'text-primary',
+                                )}
+                              >
+                                {conversation.title}
+                              </span>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(conversation.id, conversation.title);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-accent rounded p-1 transition-all shrink-0"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                            {isCurrent && (
+                              <div className="flex shrink-0 items-center">
+                                <div className="bg-primary size-1.5 rounded-full" />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </CommandItem>
                   );
                 })}
-              </CommandGroup>
+                </CommandGroup>
+              </div>
             );
           })}
         </CommandList>

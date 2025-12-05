@@ -30,6 +30,10 @@ const apiRoutes = [
     'routes/api/conversation/get-all-conversations.ts',
   ),
   route('api/conversations/:id', 'routes/api/conversation/conversation.ts'),
+  route(
+    'api/conversations/project/:projectId',
+    'routes/api/conversations/project/$projectId.ts',
+  ),
   route('api/messages', 'routes/api/conversation/get-messages.ts'),
   route('api/usage', 'routes/api/usage/usage.ts'),
 ];

@@ -47,30 +47,62 @@ export class MessagePersistenceService {
   ) {}
 
   /**
-   * Persists UIMessages to the database
+   * Persists UIMessages to the database with idempotency checks
    * @param messages - Array of UIMessages to persist
    * @param createdBy - User/agent identifier who created the messages (default: 'agent')
+   * @returns Array of errors encountered during persistence (empty if all succeeded)
    */
   async persistMessages(
     messages: UIMessage[],
     createdBy: string = 'agent',
-  ): Promise<void> {
+  ): Promise<{ errors: Error[] }> {
     const useCase = new CreateMessageService(
       this.messageRepository,
       this.conversationRepository,
     );
 
-    // Persist each message
+    const errors: Error[] = [];
+
+    // Persist each message with idempotency check
     for (const message of messages) {
-      await useCase.execute({
-        input: {
-          content: convertUIMessageToContent(message),
-          role: mapUIRoleToMessageRole(message.role),
-          createdBy,
-        },
-        conversationSlug: this.conversationSlug,
-      });
+      try {
+        // Check if message already exists (idempotency)
+        const existingMessage = await this.messageRepository.findById(
+          message.id,
+        );
+        if (existingMessage) {
+          // Message already exists, skip
+          continue;
+        }
+
+        await useCase.execute({
+          input: {
+            content: convertUIMessageToContent(message),
+            role: mapUIRoleToMessageRole(message.role),
+            createdBy,
+          },
+          conversationSlug: this.conversationSlug,
+        });
+      } catch (error) {
+        // Check if error is due to duplicate (idempotency)
+        if (
+          error instanceof Error &&
+          (error.message.includes('already exists') ||
+            error.message.includes('UNIQUE constraint'))
+        ) {
+          // Message already exists, skip (idempotent)
+          continue;
+        }
+        // Record other errors
+        errors.push(
+          error instanceof Error
+            ? error
+            : new Error(String(error)),
+        );
+      }
     }
+
+    return { errors };
   }
 
   /**

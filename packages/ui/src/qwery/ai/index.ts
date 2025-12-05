@@ -14,6 +14,7 @@ export {
 } from './message-parts';
 
 export { QweryConversationInit } from './init-conversation';
+export { ConversationWelcome } from './conversation-welcome';
 export { type PromptInputMessage } from '../../ai-elements/prompt-input';
 export { type ChatStatus } from 'ai';
 export { AgentTabs } from './agent-tabs';

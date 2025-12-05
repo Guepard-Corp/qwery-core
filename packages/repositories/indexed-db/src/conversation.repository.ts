@@ -184,7 +184,11 @@ export class ConversationRepository extends IConversationRepository {
         const results = (request.result as Record<string, unknown>[]).map(
           (item) => this.deserialize(item),
         );
-        resolve(results);
+        // Deduplicate by ID - keep only unique conversations by ID
+        const uniqueResults = Array.from(
+          new Map(results.map((item) => [item.id, item])).values(),
+        );
+        resolve(uniqueResults);
       };
     });
   }

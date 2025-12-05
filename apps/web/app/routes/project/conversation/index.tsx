@@ -1,11 +1,9 @@
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useParams, useNavigate } from 'react-router';
-import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import {
-  QweryConversationInit,
-  ChatStatus,
+  ConversationWelcome,
   PromptInputMessage,
 } from '@qwery/ui/ai';
 import { useConversation } from '~/lib/mutations/use-conversation';
@@ -17,9 +15,6 @@ export default function ConversationIndexPage() {
   const { workspace, repositories } = useWorkspace();
   const navigate = useNavigate();
   const projectSlug = useParams().slug;
-
-  const [input, setInput] = useState('');
-  const [status] = useState<ChatStatus | undefined>(undefined);
 
   const project = useGetProjectBySlug(repositories.project, projectSlug || '');
 
@@ -51,12 +46,12 @@ export default function ConversationIndexPage() {
       return;
     }
 
-    const messageText = message.text || '';
+    const messageText = message.text?.trim() || 'New Conversation';
 
     createConversationMutation.mutate({
       projectId: project.data.id,
       taskId: uuidv4(), // TODO: Create or get actual task
-      title: messageText.slice(0, 100) || 'New Conversation',
+      title: messageText.slice(0, 100),
       seedMessage: messageText,
       datasources: [],
       createdBy: workspace.userId,
@@ -64,15 +59,9 @@ export default function ConversationIndexPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-start justify-center px-4 pt-32">
-      <div className="w-full max-w-3xl">
-        <QweryConversationInit
-          onSubmit={handleSubmit}
-          input={input}
-          setInput={setInput}
-          status={createConversationMutation.isPending ? 'streaming' : status}
-        />
-      </div>
-    </div>
+    <ConversationWelcome
+      onSubmit={handleSubmit}
+      status={createConversationMutation.isPending ? 'streaming' : undefined}
+    />
   );
 }
