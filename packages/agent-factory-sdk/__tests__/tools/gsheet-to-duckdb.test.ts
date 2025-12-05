@@ -60,13 +60,15 @@ describe('gsheetToDuckdb', () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
     // Use local CSV file path instead of URL for testing
     const sharedLink = csvFilePath;
+    const viewName = 'test_sheet';
 
     const result = await gsheetToDuckdb({
       dbPath,
       sharedLink,
+      viewName,
     });
 
-    expect(result).toContain("Successfully created view 'my_sheet'");
+    expect(result).toContain(`Successfully created view '${viewName}'`);
     expect(result).toContain('database.db');
 
     // Verify database file was created
@@ -79,7 +81,7 @@ describe('gsheetToDuckdb', () => {
 
     try {
       const resultReader = await conn.runAndReadAll(
-        'SELECT * FROM my_sheet LIMIT 1',
+        `SELECT * FROM "${viewName}" LIMIT 1`,
       );
       await resultReader.readAll();
       const rows = resultReader.getRowObjectsJS();
@@ -98,22 +100,26 @@ describe('gsheetToDuckdb', () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
     // Use local CSV file path
     const sharedLink = csvFilePath;
+    const viewName = 'test_sheet';
 
     const result = await gsheetToDuckdb({
       dbPath,
       sharedLink,
+      viewName,
     });
 
-    expect(result).toContain("Successfully created view 'my_sheet'");
+    expect(result).toContain(`Successfully created view '${viewName}'`);
   });
 
   it('should create directories if they do not exist', async () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
     const newDbPath = join(testWorkspace, 'new-conversation', 'database.db');
+    const viewName = 'test_sheet';
 
     await gsheetToDuckdb({
       dbPath: newDbPath,
       sharedLink: csvFilePath,
+      viewName,
     });
 
     expect(existsSync(newDbPath)).toBe(true);

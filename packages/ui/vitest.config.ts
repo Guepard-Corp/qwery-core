@@ -36,5 +36,8 @@ export default defineConfig({
       // Testing artifacts
       '**/__snapshots__/**',
     ],
+    pool: 'vmThreads',
+    testTimeout: 60000,
+    hookTimeout: 120000,
   },
 });

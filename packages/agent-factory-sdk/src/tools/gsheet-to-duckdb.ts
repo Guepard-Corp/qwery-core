@@ -10,6 +10,7 @@ const convertToCsvLink = (message: string) => {
 export interface GSheetToDuckDbOptions {
   dbPath: string;
   sharedLink: string;
+  viewName: string;
 }
 
 export const gsheetToDuckdb = async (
@@ -31,14 +32,15 @@ export const gsheetToDuckdb = async (
 
   try {
     const escapedUrl = csvLink.replace(/'/g, "''");
+    const escapedViewName = opts.viewName.replace(/"/g, '""');
 
-    // Create a view directly from the CSV URL
+    // Create or replace view directly from the CSV URL
     await conn.run(`
-      CREATE VIEW my_sheet AS
+      CREATE OR REPLACE VIEW "${escapedViewName}" AS
       SELECT * FROM read_csv_auto('${escapedUrl}')
     `);
 
-    return `Successfully created view 'my_sheet' from Google Sheet in database at ${opts.dbPath}`;
+    return `Successfully created view '${opts.viewName}' from Google Sheet in database at ${opts.dbPath}`;
   } finally {
     conn.closeSync();
     instance.closeSync();

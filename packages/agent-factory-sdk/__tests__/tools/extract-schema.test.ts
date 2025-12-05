@@ -73,9 +73,17 @@ describe('extractSchema', () => {
     expect(schema).toBeDefined();
     expect(schema.databaseName).toBe('google_sheet');
     expect(schema.schemaName).toBe('google_sheet');
-    expect(schema.tables).toHaveLength(1);
-    expect(schema.tables[0].tableName).toBe('my_sheet');
-    expect(schema.tables[0].columns).toHaveLength(4);
+    // Filter to only user-created views (exclude system views)
+    const userViews = schema.tables.filter(
+      (t) =>
+        t.tableName === 'my_sheet' ||
+        t.tableName.startsWith('sheet_') ||
+        t.tableName.startsWith('my_'),
+    );
+    expect(userViews.length).toBeGreaterThanOrEqual(1);
+    const mySheet = schema.tables.find((t) => t.tableName === 'my_sheet');
+    expect(mySheet).toBeDefined();
+    expect(mySheet!.columns).toHaveLength(4);
 
     // Verify column structure
     const columns = schema.tables[0].columns;
@@ -143,5 +151,54 @@ describe('extractSchema', () => {
     } catch {
       // Ignore cleanup errors
     }
+  });
+
+  it('should extract schema from specific view when viewName is provided', async () => {
+    const { extractSchema } = await import('../../src/tools/extract-schema');
+    const schema = await extractSchema({
+      dbPath,
+      viewName: 'my_sheet',
+    });
+
+    expect(schema).toBeDefined();
+    expect(schema.tables).toHaveLength(1);
+    expect(schema.tables[0].tableName).toBe('my_sheet');
+    expect(schema.tables[0].columns).toHaveLength(4);
+  });
+
+  it('should extract schemas from all views when viewName is not provided', async () => {
+    // Add another view to the database
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    const instance = await DuckDBInstance.create(dbPath);
+    const conn = await instance.connect();
+
+    try {
+      await conn.run(`
+        CREATE TABLE test_data2 (
+          id INTEGER,
+          value VARCHAR
+        )
+      `);
+      await conn.run(`
+        INSERT INTO test_data2 VALUES
+        (1, 'Value 1'),
+        (2, 'Value 2')
+      `);
+      await conn.run(`CREATE VIEW my_sheet2 AS SELECT * FROM test_data2`);
+    } finally {
+      conn.closeSync();
+      instance.closeSync();
+    }
+
+    const { extractSchema } = await import('../../src/tools/extract-schema');
+    const schema = await extractSchema({
+      dbPath,
+    });
+
+    expect(schema).toBeDefined();
+    expect(schema.tables.length).toBeGreaterThanOrEqual(2);
+    const viewNames = schema.tables.map((t) => t.tableName);
+    expect(viewNames).toContain('my_sheet');
+    expect(viewNames).toContain('my_sheet2');
   });
 });

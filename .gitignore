@@ -156,3 +156,21 @@ qwery-db
 qwery.db-shm
 qwery.db-journal
 qwery.db-wal
+qwery-db-*
+
+# Workspace directories (DuckDB databases and view registries)
+**/workspace/
+packages/agent-factory-sdk/workspace/
+apps/cli/workspace/
+apps/web/workspace/
+
+# Test files (temporary test scripts)
+test-*.txt
+test-*.ts
+test-*.js
+test-*.mjs
+test-*.sh
+test-*.log
+test-business-context/
+packages/agent-factory-sdk/test-business-context/.vscode/
+.vscode/

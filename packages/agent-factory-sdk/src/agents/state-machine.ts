@@ -8,6 +8,7 @@ import {
   loadContextActor,
 } from './actors';
 import { Repositories } from '@qwery/domain/repositories';
+import { createCachedActor } from './utils/actor-cache';
 
 export const createStateMachine = (
   conversationId: string,
@@ -20,6 +21,11 @@ export const createStateMachine = (
     },
     actors: {
       detectIntentActor,
+      detectIntentActorCached: createCachedActor(
+        detectIntentActor,
+        (input: { inputMessage: string }) => input.inputMessage, // Cache key
+        60000, // 1 minute TTL
+      ),
       summarizeIntentActor,
       greetingActor,
       readDataAgentActor,
@@ -33,6 +39,25 @@ export const createStateMachine = (
       isOther: ({ event }) => event.output?.intent === 'other',
 
       isReadData: ({ event }) => event.output?.intent === 'read-data',
+
+      // NEW: Check if should retry
+      shouldRetry: ({ context }) => {
+        const retryCount = context.retryCount || 0;
+        return retryCount < 3; // Max 3 retries
+      },
+
+      // NEW: Check if retry limit exceeded
+      retryLimitExceeded: ({ context }) => {
+        const retryCount = context.retryCount || 0;
+        return retryCount >= 3;
+      },
+    },
+    delays: {
+      // NEW: Exponential backoff delays
+      retryDelay: ({ context }) => {
+        const retryCount = context.retryCount || 0;
+        return Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+      },
     },
   });
   return defaultSetup.createMachine({
@@ -49,6 +74,9 @@ export const createStateMachine = (
         complexity: 'simple',
       },
       error: undefined,
+      retryCount: 0,
+      lastError: undefined,
+      enhancementActors: [],
     },
     initial: 'loadContext',
     states: {
@@ -102,48 +130,81 @@ export const createStateMachine = (
         },
         states: {
           detectIntent: {
-            invoke: {
-              src: 'detectIntentActor',
-              id: 'GET_INTENT',
-              input: ({ context }: { context: AgentContext }) => ({
-                inputMessage: context.inputMessage,
-              }),
-              onDone: [
-                {
-                  guard: 'isOther',
-                  target: 'summarizeIntent',
-                  actions: assign({
-                    intent: ({ event }) => event.output,
+            initial: 'attempting',
+            states: {
+              attempting: {
+                invoke: {
+                  src: 'detectIntentActorCached',
+                  id: 'GET_INTENT',
+                  input: ({ context }: { context: AgentContext }) => ({
+                    inputMessage: context.inputMessage,
                   }),
+                  onDone: [
+                    {
+                      guard: 'isOther',
+                      target: '#factory-agent.running.summarizeIntent',
+                      actions: assign({
+                        intent: ({ event }) => event.output,
+                        retryCount: () => 0, // Reset on success
+                      }),
+                    },
+                    {
+                      guard: 'isGreeting',
+                      target: '#factory-agent.running.greeting',
+                      actions: assign({
+                        intent: ({ event }) => event.output,
+                        retryCount: () => 0,
+                      }),
+                    },
+                    {
+                      guard: 'isReadData',
+                      target: '#factory-agent.running.readData',
+                      actions: assign({
+                        intent: ({ event }) => event.output,
+                        retryCount: () => 0,
+                      }),
+                    },
+                  ],
+                  onError: [
+                    {
+                      guard: 'shouldRetry',
+                      target: 'retrying',
+                      actions: assign({
+                        retryCount: ({ context }) =>
+                          (context.retryCount || 0) + 1,
+                        lastError: ({ event }) => event.error as Error,
+                      }),
+                    },
+                    {
+                      guard: 'retryLimitExceeded',
+                      target: '#factory-agent.idle',
+                      actions: assign({
+                        error: ({ context }) =>
+                          `Intent detection failed after 3 retries: ${context.lastError?.message}`,
+                      }),
+                    },
+                  ],
                 },
-                {
-                  guard: 'isGreeting',
-                  target: 'greeting',
-                  actions: assign({
-                    intent: ({ event }) => event.output,
-                  }),
-                },
-                {
-                  guard: 'isReadData',
-                  target: 'readData',
-                  actions: assign({
-                    intent: ({ event }) => event.output,
-                  }),
-                },
-              ],
-              onError: {
-                target: '#factory-agent.idle',
-                actions: assign({
-                  error: ({ event }) => {
-                    const errorMsg =
-                      event.error instanceof Error
-                        ? event.error.message
-                        : String(event.error);
-                    console.error('detectIntent error:', errorMsg, event.error);
-                    return errorMsg;
+                // NEW: Timeout
+                after: {
+                  30000: {
+                    target: 'retrying',
+                    guard: 'shouldRetry',
+                    actions: assign({
+                      retryCount: ({ context }) =>
+                        (context.retryCount || 0) + 1,
+                      error: () => 'Intent detection timeout',
+                    }),
                   },
-                  streamResult: undefined,
-                }),
+                },
+              },
+              retrying: {
+                // NEW: Wait for exponential backoff delay
+                after: {
+                  retryDelay: {
+                    target: 'attempting',
+                  },
+                },
               },
             },
           },
@@ -212,34 +273,95 @@ export const createStateMachine = (
             },
           },
           readData: {
-            invoke: {
-              src: 'readDataAgentActor',
-              id: 'READ_DATA',
-              input: ({ context }: { context: AgentContext }) => ({
-                inputMessage: context.inputMessage,
-                conversationId: context.conversationId,
-                previousMessages: context.previousMessages,
-              }),
-              onDone: {
-                target: 'streaming',
-                actions: assign({
-                  streamResult: ({ event }) => event.output,
-                }),
-              },
-              onError: {
-                target: '#factory-agent.idle',
-                actions: assign({
-                  error: ({ event }) => {
-                    const errorMsg =
-                      event.error instanceof Error
-                        ? event.error.message
-                        : String(event.error);
-                    console.error('readData error:', errorMsg, event.error);
-                    return errorMsg;
+            type: 'parallel', // NEW: Enable parallel execution
+            states: {
+              processRequest: {
+                initial: 'invoking',
+                states: {
+                  invoking: {
+                    invoke: {
+                      src: 'readDataAgentActor',
+                      id: 'READ_DATA',
+                      input: ({ context }: { context: AgentContext }) => ({
+                        inputMessage: context.inputMessage,
+                        conversationId: context.conversationId,
+                        previousMessages: context.previousMessages,
+                      }),
+                      onDone: {
+                        target: 'completed',
+                        actions: assign({
+                          streamResult: ({ event }) => event.output,
+                          retryCount: () => 0, // Reset on success
+                        }),
+                      },
+                      onError: [
+                        {
+                          guard: 'shouldRetry',
+                          target: 'retrying',
+                          actions: assign({
+                            retryCount: ({ context }) =>
+                              (context.retryCount || 0) + 1,
+                            lastError: ({ event }) => event.error as Error,
+                          }),
+                        },
+                        {
+                          target: 'failed',
+                          actions: assign({
+                            error: ({ event }) => {
+                              const errorMsg =
+                                event.error instanceof Error
+                                  ? event.error.message
+                                  : String(event.error);
+                              console.error(
+                                'readData error:',
+                                errorMsg,
+                                event.error,
+                              );
+                              return errorMsg;
+                            },
+                            streamResult: undefined,
+                          }),
+                        },
+                      ],
+                    },
+                    after: {
+                      120000: {
+                        target: 'failed',
+                        actions: assign({
+                          error: () => 'ReadData timeout after 120 seconds',
+                        }),
+                      },
+                    },
                   },
-                  streamResult: undefined,
-                }),
+                  retrying: {
+                    after: {
+                      retryDelay: {
+                        target: 'invoking',
+                      },
+                    },
+                  },
+                  completed: {
+                    type: 'final',
+                  },
+                  failed: {
+                    type: 'final',
+                  },
+                },
               },
+              // NEW: Background enhancement (runs in parallel)
+              backgroundEnhancement: {
+                initial: 'idle',
+                states: {
+                  idle: {
+                    // Background enhancement is handled by enhanceBusinessContextInBackground
+                    // which is already non-blocking, so this state just tracks it
+                    type: 'final',
+                  },
+                },
+              },
+            },
+            onDone: {
+              target: 'streaming',
             },
           },
           streaming: {
