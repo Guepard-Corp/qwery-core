@@ -69,7 +69,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "^19.2.2",
     "@vercel/react-router": "^1.2.4",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-istanbul": "^4.0.7",
     "cross-env": "^10.1.0",
     "dotenv-cli": "^11.0.0",
