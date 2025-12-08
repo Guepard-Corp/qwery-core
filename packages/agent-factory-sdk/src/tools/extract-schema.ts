@@ -13,6 +13,13 @@ export interface ExtractSchemaOptions {
 export const extractSchema = async (
   opts: ExtractSchemaOptions,
 ): Promise<SimpleSchema> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
+
+  // Ensure directory exists
+  const dbDir = dirname(opts.dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const { DuckDBInstance } = await import('@duckdb/node-api');
   const instance = await DuckDBInstance.create(opts.dbPath);
   const conn = await instance.connect();

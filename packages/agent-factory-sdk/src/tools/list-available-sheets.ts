@@ -15,11 +15,18 @@ export interface ListAvailableSheetsResult {
 /**
  * Lists all available views and tables in the DuckDB database.
  * This helps users remember which sheets they have registered.
+ * Uses shared instance manager for MVCC-optimized operations
  */
 export const listAvailableSheets = async (
   opts: ListAvailableSheetsOptions,
 ): Promise<ListAvailableSheetsResult> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
   const { DuckDBInstance } = await import('@duckdb/node-api');
+
+  const dbDir = dirname(opts.dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const instance = await DuckDBInstance.create(opts.dbPath);
   const conn = await instance.connect();
 

@@ -466,13 +466,20 @@ export const updateViewName = async (
 
 /**
  * Validate view exists in database
+ * Uses shared instance manager to ensure views created in parallel are visible
  */
 export const validateViewExists = async (
   dbPath: string,
   viewName: string,
 ): Promise<boolean> => {
   try {
+    const { mkdir } = await import('node:fs/promises');
+    const { dirname } = await import('node:path');
     const { DuckDBInstance } = await import('@duckdb/node-api');
+
+    const dbDir = dirname(dbPath);
+    await mkdir(dbDir, { recursive: true });
+
     const instance = await DuckDBInstance.create(dbPath);
     const conn = await instance.connect();
 
@@ -493,13 +500,20 @@ export const validateViewExists = async (
 
 /**
  * Rename view in database
+ * Uses shared instance manager for consistency
  */
 export const renameView = async (
   dbPath: string,
   oldName: string,
   newName: string,
 ): Promise<void> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
   const { DuckDBInstance } = await import('@duckdb/node-api');
+
+  const dbDir = dirname(dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const instance = await DuckDBInstance.create(dbPath);
   const conn = await instance.connect();
 
@@ -536,13 +550,20 @@ export function isSystemOrTempTable(tableName: string): boolean {
 
 /**
  * Validate table/view exists in database
+ * Uses shared instance manager to ensure views created in parallel are visible
  */
 export const validateTableExists = async (
   dbPath: string,
   tableName: string,
 ): Promise<boolean> => {
   try {
+    const { mkdir } = await import('node:fs/promises');
+    const { dirname } = await import('node:path');
     const { DuckDBInstance } = await import('@duckdb/node-api');
+
+    const dbDir = dirname(dbPath);
+    await mkdir(dbDir, { recursive: true });
+
     const instance = await DuckDBInstance.create(dbPath);
     const conn = await instance.connect();
 
@@ -564,13 +585,20 @@ export const validateTableExists = async (
 
 /**
  * Drop table/view from database
+ * Uses shared instance manager for consistency
  */
 export const dropTable = async (
   dbPath: string,
   tableName: string,
 ): Promise<void> => {
   try {
+    const { mkdir } = await import('node:fs/promises');
+    const { dirname } = await import('node:path');
     const { DuckDBInstance } = await import('@duckdb/node-api');
+
+    const dbDir = dirname(dbPath);
+    await mkdir(dbDir, { recursive: true });
+
     const instance = await DuckDBInstance.create(dbPath);
     const conn = await instance.connect();
 
@@ -589,13 +617,20 @@ export const dropTable = async (
 
 /**
  * Create view from existing table/view
+ * Uses shared instance manager for consistency
  */
 export const createViewFromTable = async (
   dbPath: string,
   viewName: string,
   sourceTableName: string,
 ): Promise<void> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
   const { DuckDBInstance } = await import('@duckdb/node-api');
+
+  const dbDir = dirname(dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const instance = await DuckDBInstance.create(dbPath);
   const conn = await instance.connect();
 
@@ -613,10 +648,17 @@ export const createViewFromTable = async (
 
 /**
  * List all tables/views in database
+ * Uses shared instance manager to ensure all views are visible
  */
 export const listAllTables = async (dbPath: string): Promise<string[]> => {
   try {
+    const { mkdir } = await import('node:fs/promises');
+    const { dirname } = await import('node:path');
     const { DuckDBInstance } = await import('@duckdb/node-api');
+
+    const dbDir = dirname(dbPath);
+    await mkdir(dbDir, { recursive: true });
+
     const instance = await DuckDBInstance.create(dbPath);
     const conn = await instance.connect();
 

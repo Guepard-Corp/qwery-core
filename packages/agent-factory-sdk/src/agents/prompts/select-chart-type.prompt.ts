@@ -10,7 +10,12 @@ export const SELECT_CHART_TYPE_PROMPT = (
     rows: Array<Record<string, unknown>>;
     columns: string[];
   },
-  businessContext?: { domain: string; entities: Array<{ name: string; columns: string[] }>; relationships: Array<{ from: string; to: string; join: string }> } | null,
+  businessContext?: {
+    domain: string;
+    entities: Array<{ name: string; columns: string[] }>;
+    relationships: Array<{ from: string; to: string; join: string }>;
+    vocabulary?: Array<{ businessTerm: string; technicalTerms: string[]; synonyms: string[] }>;
+  } | null,
 ) => `You are a Chart Type Selection Agent. Your task is to analyze the user's request, SQL query, and query results to determine the best chart type for visualization.
 
 ${getChartsInfoForPrompt()}
@@ -31,7 +36,9 @@ ${businessContext ? `- Use business context to understand data semantics:
   * Use entity relationships to understand data connections
   * If query involves time-based entities or temporal relationships → prefer line chart
   * If query involves categorical entities or comparisons → prefer bar chart
-  * If query involves proportions or parts of a whole → prefer pie chart` : ''}
+  * If query involves proportions or parts of a whole → prefer pie chart
+  ${businessContext.vocabulary && businessContext.vocabulary.length > 0 ? `* Vocabulary mappings (use to understand column meanings):
+    ${businessContext.vocabulary.map(v => `  - "${v.businessTerm}" → [${v.technicalTerms.join(', ')}]${v.synonyms.length > 0 ? ` (synonyms: ${v.synonyms.join(', ')})` : ''}`).join('\n    ')}` : ''}` : ''}
 
 User Input: string (the original user request)
 

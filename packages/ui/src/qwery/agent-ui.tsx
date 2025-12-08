@@ -19,6 +19,7 @@ import {
 } from '../ai-elements/prompt-input';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { useAgentStatus } from './agent-status-context';
 import {
   CopyIcon,
   RefreshCcwIcon,
@@ -149,6 +150,12 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
       experimental_throttle: 100,
       transport: transportInstance,
     });
+  
+  const { setIsProcessing } = useAgentStatus();
+  
+  useEffect(() => {
+    setIsProcessing(status === 'streaming' || status === 'submitted');
+  }, [status, setIsProcessing]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const regenCountRef = useRef<Map<string, number>>(new Map());
@@ -365,10 +372,12 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                 )}
                               >
                                 {message.role === 'assistant' && (
+                                  <div className="mt-1 shrink-0">
                                   <BotAvatar
                                     size={6}
-                                    className="mt-1 shrink-0"
+                                      isLoading={isStreaming}
                                   />
+                                  </div>
                                 )}
                                 <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2">
                                   {isEditing && message.role === 'user' ? (
@@ -440,7 +449,6 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                               <MessageResponse>
                                                 {part.text}
                                               </MessageResponse>
-                                              <span className="inline-block h-4 w-0.5 animate-pulse bg-current" />
                                             </div>
                                           </MessageContent>
                                         </Message>
@@ -473,9 +481,9 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                               <RefreshCcwIcon className="size-3" />
                                             </Button>
                                           )}
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
                                             onClick={async () => {
                                               const partId = `${message.id}-${i}`;
                                               try {
@@ -490,7 +498,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                                 console.error('Failed to copy:', error);
                                               }
                                             }}
-                                            className="h-7 w-7"
+                                              className="h-7 w-7"
                                             title={
                                               copiedMessagePartId === `${message.id}-${i}`
                                                 ? 'Copied!'
@@ -500,7 +508,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                             {copiedMessagePartId === `${message.id}-${i}` ? (
                                               <CheckIcon className="size-3 text-green-600" />
                                             ) : (
-                                              <CopyIcon className="size-3" />
+                                            <CopyIcon className="size-3" />
                                             )}
                                           </Button>
                                         </div>
@@ -878,13 +886,12 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
               )}
               {status === 'submitted' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 flex items-start gap-3 duration-300">
-                  <BotAvatar size={6} className="mt-1 shrink-0" />
+                  <BotAvatar size={6} isLoading={true} className="mt-1 shrink-0" />
                   <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2">
                     <Message from="assistant" className="w-full">
                       <MessageContent>
                         <div className="inline-flex items-baseline gap-0.5">
                           <MessageResponse></MessageResponse>
-                          <span className="inline-block h-4 w-0.5 animate-pulse bg-current" />
                         </div>
                       </MessageContent>
                     </Message>

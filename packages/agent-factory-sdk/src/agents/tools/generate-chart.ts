@@ -52,6 +52,13 @@ export async function selectChartType(
             to: r.toView,
             join: `${r.fromColumn} = ${r.toColumn}`,
           })),
+          vocabulary: Array.from(businessContext.vocabulary.entries()).map(
+            ([term, entry]) => ({
+              businessTerm: entry.businessTerm,
+              technicalTerms: entry.technicalTerms,
+              synonyms: entry.synonyms,
+            }),
+          ),
         }
       : null;
 

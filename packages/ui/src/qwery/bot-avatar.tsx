@@ -16,14 +16,25 @@ export function BotAvatar({
   const sizePx = size * 4; // Convert Tailwind size (6 = 1.5rem = 24px) to pixels
 
   return (
-    <div
-      className={cn(
-        'bg-background flex items-center justify-center rounded-full',
-        `size-${size}`,
-        isLoading && 'animate-pulse',
-        className,
+    <>
+      {isLoading && (
+        <style>
+          {`
+            @keyframes flicker {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.4; }
+            }
+          `}
+        </style>
       )}
-    >
+      <div
+        className={cn(
+          'bg-background flex items-center justify-center rounded-full',
+          `size-${size}`,
+          isLoading && 'animate-[flicker_1s_ease-in-out_infinite]',
+          className,
+        )}
+      >
       <svg
         width={sizePx}
         height={sizePx}
@@ -118,5 +129,6 @@ export function BotAvatar({
         </g>
       </svg>
     </div>
+    </>
   );
 }

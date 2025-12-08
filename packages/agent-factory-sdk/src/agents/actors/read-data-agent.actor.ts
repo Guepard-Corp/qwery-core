@@ -1,56 +1,62 @@
+'use server';
+
+import { Experimental_Agent, stepCountIs, tool } from 'ai';
+import type { LanguageModel, UIMessage } from 'ai';
 import { z } from 'zod';
-import {
-  Experimental_Agent as Agent,
-  convertToModelMessages,
-  UIMessage,
-  tool,
-  validateUIMessages,
-  stepCountIs,
-} from 'ai';
 import { fromPromise } from 'xstate/actors';
 import { resolveModel } from '../../services';
 import { testConnection } from '../../tools/test-connection';
+import { gsheetToDuckdb } from '../../tools/gsheet-to-duckdb';
+import { extractSchema } from '../../tools/extract-schema';
 import type { SimpleSchema } from '@qwery/domain/entities';
 import { runQuery } from '../../tools/run-query';
+import { viewSheet } from '../../tools/view-sheet';
 import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
 import { getConfig } from '../../tools/utils/business-context.config';
 import { buildBusinessContext } from '../../tools/build-business-context';
 import { enhanceBusinessContextInBackground } from './enhance-business-context.actor';
-import type { Repositories } from '@qwery/domain/repositories';
-import { initializeDatasources } from '../../tools/datasource-initializer';
-import {
-  GetConversationService,
-  GetConversationBySlugService,
-} from '@qwery/domain/services';
-import {
-  loadDatasources,
-  groupDatasourcesByType,
-} from '../../tools/datasource-loader';
-import { listAvailableSheets } from '../../tools/list-available-sheets';
-import { viewSheet } from '../../tools/view-sheet';
 import { generateChart, selectChartType } from '../tools/generate-chart';
 import { renameSheet } from '../../tools/rename-sheet';
 import { deleteSheet } from '../../tools/delete-sheet';
-import { gsheetToDuckdb } from '../../tools/gsheet-to-duckdb';
-import { extractSchema } from '../../tools/extract-schema';
 import {
   registerSheetView,
   loadViewRegistry,
   updateViewUsage,
   generateSemanticViewName,
+  updateViewName,
+  validateViewExists,
   validateTableExists,
-  createViewFromTable,
-  dropTable,
   cleanupOrphanedTempTables,
-  withRetry,
-  formatViewCreationError,
+  deleteViewFromRegistry,
+  getViewByName,
   renameView,
+  dropTable,
   type RegistryContext,
 } from '../../tools/view-registry';
-import { generateSheetName } from '../../services/generate-sheet-name.service';
 import { loadBusinessContext } from '../../tools/utils/business-context.storage';
+
+export const readDataAgentActor = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      inputMessage: string;
+      conversationId: string;
+      previousMessages: UIMessage[];
+    };
+  }) => {
+    const agent = new ReadDataAgent({
+      conversationId: input.conversationId,
+    });
+    const agentInstance = await agent.getAgent();
+    const result = agentInstance.stream({
+      prompt: input.inputMessage,
+    });
+    return result;
+  },
+);
 
 // Lazy workspace resolution - only resolve when actually needed, not at module load time
 // This prevents side effects when the module is imported in browser/SSR contexts
@@ -84,442 +90,151 @@ function getWorkspace(): string | undefined {
   return WORKSPACE_CACHE;
 }
 
-export const readDataAgent = async (
-  conversationId: string,
-  messages: UIMessage[],
-  model: string,
-  repositories?: Repositories,
-) => {
-  // Initialize datasources if repositories are provided
-  if (repositories) {
-    const workspace = getWorkspace();
-    if (workspace) {
-      try {
-        // Get conversation to find datasources
-        // conversationId is the actual conversation ID (UUID), not a slug
-        const getConversationService = new GetConversationService(
-          repositories.conversation,
-        );
-        const conversation =
-          await getConversationService.execute(conversationId);
+export interface ReadDataAgentOptions {
+  conversationId: string;
+}
 
-        if (conversation?.datasources && conversation.datasources.length > 0) {
-          // Initialize all datasources
-          const initResults = await initializeDatasources({
-            conversationId,
-            datasourceIds: conversation.datasources,
-            datasourceRepository: repositories.datasource,
-            workspace,
-          });
+export class ReadDataAgent {
+  private agentPromise: Promise<
+    ReturnType<ReadDataAgent['createAgent']>
+  > | null = null;
+  private readonly conversationId: string;
 
-          // Log initialization results for debugging
-          const successful = initResults.filter((r) => r.success);
-          const failed = initResults.filter((r) => !r.success);
-
-          if (successful.length > 0) {
-            console.log(
-              `[ReadDataAgent] Initialized ${successful.length} datasource(s) with ${successful.reduce((sum, r) => sum + r.viewsCreated, 0)} view(s)`,
-            );
-          }
-
-          if (failed.length > 0) {
-            console.warn(
-              `[ReadDataAgent] Failed to initialize ${failed.length} datasource(s):`,
-              failed.map((f) => `${f.datasourceName} (${f.error})`).join(', '),
-            );
-          }
-        } else {
-          console.log(
-            `[ReadDataAgent] No datasources found in conversation ${conversationId}`,
-          );
-        }
-      } catch (error) {
-        // Log but don't fail - datasources might not be available yet
-        console.warn(
-          `[ReadDataAgent] Failed to initialize datasources:`,
-          error,
-        );
-      }
-    }
+  constructor(opts: ReadDataAgentOptions) {
+    this.conversationId = opts.conversationId;
   }
 
-  const result = new Agent({
-    model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
-    tools: {
-      testConnection: tool({
-        description:
-          'Test the connection to the database to check if the database is accessible',
-        inputSchema: z.object({}),
-        execute: async () => {
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
-          }
-          const { join } = await import('node:path');
-          const dbPath = join(workspace, conversationId, 'database.db');
-          const result = await testConnection({
-            dbPath: dbPath,
-          });
-          return result.toString();
-        },
-      }),
-      getSchema: tool({
-        description:
-          'Discover available data structures directly from DuckDB (views + attached databases). If viewName is provided, returns schema for that specific view/table (accepts fully qualified paths). If not provided, returns schemas for everything discovered in DuckDB. This updates the business context automatically.',
-        inputSchema: z.object({
-          viewName: z.string().optional(),
+  async getAgent(): Promise<ReturnType<ReadDataAgent['createAgent']>> {
+    if (!this.agentPromise) {
+      this.agentPromise = this.initializeAgent();
+    }
+    return this.agentPromise;
+  }
+
+  private async initializeAgent(): Promise<
+    ReturnType<ReadDataAgent['createAgent']>
+  > {
+    const model = await resolveModel('azure/gpt-5-mini');
+
+    if (!isLanguageModel(model)) {
+      throw new Error('AgentFactory resolved model is not a LanguageModel');
+    }
+
+    return this.createAgent(model);
+  }
+
+  private createAgent(model: LanguageModel) {
+    return new Experimental_Agent({
+      model,
+      system: READ_DATA_AGENT_PROMPT,
+      tools: {
+        testConnection: tool({
+          description:
+            'Test the connection to the database to check if the database is accessible',
+          inputSchema: z.object({}),
+          execute: async () => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const dbPath = join(workspace, this.conversationId, 'database.db');
+            const result = await testConnection({
+              dbPath: dbPath,
+            });
+            return result.toString();
+          },
         }),
-        execute: async ({ viewName }) => {
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
-          }
-          const { join } = await import('node:path');
-          const dbPath = join(workspace, conversationId, 'database.db');
-          const fileDir = join(workspace, conversationId);
-
-          // Helper to describe a single table/view
-          const describeObject = async (
-            db: string,
-            schemaName: string,
-            tableName: string,
-          ): Promise<SimpleSchema | null> => {
-            const { DuckDBInstance } = await import('@duckdb/node-api');
-            const instance = await DuckDBInstance.create(dbPath);
-            const conn = await instance.connect();
-            try {
-              const escapedDb = db.replace(/"/g, '""');
-              const escapedSchema = schemaName.replace(/"/g, '""');
-              const escapedTable = tableName.replace(/"/g, '""');
-              const describeQuery = `DESCRIBE "${escapedDb}"."${escapedSchema}"."${escapedTable}"`;
-              const reader = await conn.runAndReadAll(describeQuery);
-              await reader.readAll();
-              const rows = reader.getRowObjectsJS() as Array<{
-                column_name: string;
-                column_type: string;
-              }>;
-              return {
-                databaseName: db,
-                schemaName,
-                tables: [
-                  {
-                    tableName,
-                    columns: rows.map((row) => ({
-                      columnName: row.column_name,
-                      columnType: row.column_type,
-                    })),
-                  },
-                ],
-              };
-            } catch {
-              return null;
-            } finally {
-              conn.closeSync();
-              instance.closeSync();
+        createDbViewFromSheet: tool({
+          description: 'Create View(s) from Google Sheet(s). Supports single or multiple sheets. If multiple links are provided (separated by |), process them all. Each sheet gets a unique semantic name automatically based on its content.',
+          inputSchema: z.object({
+            sharedLink: z.union([
+              z.string().describe('Single Google Sheet URL, or multiple URLs separated by | (pipe character)'),
+              z.array(z.string()).describe('Array of Google Sheet URLs for batch creation'),
+            ]).describe('Google Sheet shared link/URL(s). Can be a single URL, multiple URLs separated by |, or an array of URLs.'),
+            sheetName: z.union([
+              z.string(),
+              z.array(z.string()),
+            ]).optional().describe('Optional meaningful name(s) for the sheet(s). If not provided, semantic names will be generated automatically based on sheet content. For multiple sheets, provide array of names or omit for auto-naming.'),
+          }),
+          execute: async ({ sharedLink, sheetName }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
             }
-          };
+            const { join } = await import('node:path');
+            const { mkdir } = await import('node:fs/promises');
+            await mkdir(workspace, { recursive: true });
+            const fileDir = join(workspace, this.conversationId);
+            await mkdir(fileDir, { recursive: true });
+            const dbPath = join(fileDir, 'database.db');
 
-          // Enumerate all databases/schemas/tables/views from DuckDB
-          const { DuckDBInstance } = await import('@duckdb/node-api');
-          const instance = await DuckDBInstance.create(dbPath);
-          const conn = await instance.connect();
+            // Cleanup orphaned temp tables on startup
+            await cleanupOrphanedTempTables(dbPath);
 
-          const collectedSchemas: Map<string, SimpleSchema> = new Map();
-
-          try {
-            // Re-attach foreign datasources for this connection (attachments are session-scoped)
-            if (repositories) {
-              try {
-                const getConversationService = new GetConversationService(
-                  repositories.conversation,
-                );
-                const conversation =
-                  await getConversationService.execute(conversationId);
-                if (conversation?.datasources?.length) {
-                  const loaded = await loadDatasources(
-                    conversation.datasources,
-                    repositories.datasource,
-                  );
-                  const { foreignDatabases } = groupDatasourcesByType(loaded);
-                  for (const { datasource } of foreignDatabases) {
-                    const provider =
-                      datasource.datasource_provider.toLowerCase();
-                    const config = datasource.config as Record<string, unknown>;
-                    const attachedDatabaseName = `ds_${datasource.id.replace(
-                      /-/g,
-                      '_',
-                    )}`;
-                    try {
-                      if (
-                        provider === 'postgresql' ||
-                        provider === 'neon' ||
-                        provider === 'supabase'
-                      ) {
-                        await conn.run('INSTALL postgres');
-                        await conn.run('LOAD postgres');
-                        const connectionUrl = config.connectionUrl as string;
-                        if (!connectionUrl) continue;
-                        await conn.run(
-                          `ATTACH '${connectionUrl.replace(/'/g, "''")}' AS "${attachedDatabaseName}" (TYPE POSTGRES)`,
-                        );
-                        console.log(
-                          `[ReadDataAgent] Attached ${attachedDatabaseName} with query: ${connectionUrl.replace(/'/g, "''")}`,
-                        );
-                      } else if (provider === 'mysql') {
-                        await conn.run('INSTALL mysql');
-                        await conn.run('LOAD mysql');
-                        const connectionUrl =
-                          (config.connectionUrl as string) ||
-                          `host=${(config.host as string) || 'localhost'} port=${
-                            (config.port as number) || 3306
-                          } user=${(config.user as string) || 'root'} password=${
-                            (config.password as string) || ''
-                          } database=${(config.database as string) || ''}`;
-                        await conn.run(
-                          `ATTACH '${connectionUrl.replace(/'/g, "''")}' AS "${attachedDatabaseName}" (TYPE MYSQL)`,
-                        );
-                      } else if (provider === 'sqlite') {
-                        const sqlitePath =
-                          (config.path as string) ||
-                          (config.connectionUrl as string);
-                        if (!sqlitePath) continue;
-                        await conn.run(
-                          `ATTACH '${sqlitePath.replace(/'/g, "''")}' AS "${attachedDatabaseName}"`,
-                        );
-                      }
-                    } catch (error) {
-                      const msg =
-                        error instanceof Error ? error.message : String(error);
-                      if (
-                        !msg.includes('already attached') &&
-                        !msg.includes('already exists')
-                      ) {
-                        console.warn(
-                          `[ReadDataAgent] Failed to attach datasource ${datasource.id}: ${msg}`,
-                        );
-                      }
-                    }
-                  }
-                }
-              } catch (error) {
-                console.warn(
-                  '[ReadDataAgent] attachForeignForConnection failed:',
-                  error,
-                );
-              }
-            }
-
-            const dbReader = await conn.runAndReadAll(
-              'SELECT name FROM pragma_database_list;',
-            );
-            await dbReader.readAll();
-            const dbRows = dbReader.getRowObjectsJS() as Array<{
-              name: string;
-            }>;
-            const databases = dbRows.map((r) => r.name);
-
-            const targets: Array<{
-              db: string;
-              schema: string;
-              table: string;
-            }> = [];
-
-            for (const db of databases) {
-              const escapedDb = db.replace(/"/g, '""');
-              const tablesReader = await conn.runAndReadAll(`
-                SELECT table_schema, table_name, table_type
-                FROM information_schema.tables
-                WHERE table_catalog = '${escapedDb}'
-                  AND table_type IN ('BASE TABLE', 'VIEW')
-              `);
-              await tablesReader.readAll();
-              const tableRows = tablesReader.getRowObjectsJS() as Array<{
-                table_schema: string;
-                table_name: string;
-                table_type: string;
-              }>;
-              for (const row of tableRows) {
-                targets.push({
-                  db,
-                  schema: row.table_schema || 'main',
-                  table: row.table_name,
-                });
-              }
-            }
-
-            if (viewName) {
-              // Describe only the requested object
-              const viewId = viewName as string;
-              let db = 'main';
-              let schemaName = 'main';
-              let tableName = viewId;
-              if (viewId.includes('.')) {
-                const parts = viewId.split('.').filter(Boolean);
-                if (parts.length === 3) {
-                  db = parts[0] ?? db;
-                  schemaName = parts[1] ?? schemaName;
-                  tableName = parts[2] ?? tableName;
-                } else if (parts.length === 2) {
-                  schemaName = parts[0] ?? schemaName;
-                  tableName = parts[1] ?? tableName;
-                } else if (parts.length === 1) {
-                  tableName = parts[0] ?? tableName;
-                }
-              }
-              const schema = await describeObject(db, schemaName, tableName);
-              if (!schema) {
-                throw new Error(`Object "${viewId}" not found in DuckDB`);
-              }
-              collectedSchemas.set(viewId, schema);
-            } else {
-              // Describe everything discovered
-              for (const target of targets) {
-                const fullName = `${target.db}.${target.schema}.${target.table}`;
-                const schema = await describeObject(
-                  target.db,
-                  target.schema,
-                  target.table,
-                );
-                if (schema) {
-                  collectedSchemas.set(fullName, schema);
-                }
-              }
-            }
-          } finally {
-            conn.closeSync();
-            instance.closeSync();
-          }
-
-          // Get performance configuration
-          const perfConfig = await getConfig(fileDir);
-
-          // Build schemasMap and primary schema
-          const schemasMap = collectedSchemas;
-          const schema = (viewName && collectedSchemas.get(viewName)) ||
-            collectedSchemas.values().next().value || {
-              databaseName: 'main',
-              schemaName: 'main',
-              tables: [],
+            const context: RegistryContext = {
+              conversationDir: fileDir,
             };
 
-          // Build fast context (synchronous, < 100ms)
-          let fastContext: BusinessContext;
-          if (viewName) {
-            // Single view - build fast context
-            fastContext = await buildBusinessContext({
-              conversationDir: fileDir,
-              viewName,
-              schema,
-            });
-
-            // Start enhancement in background (don't await)
-            enhanceBusinessContextInBackground({
-              conversationDir: fileDir,
-              viewName,
-              schema,
-              dbPath,
-            });
-          } else {
-            // Multiple views - build fast context for each
-            const fastContexts: BusinessContext[] = [];
-            for (const [vName, vSchema] of schemasMap.entries()) {
-              const ctx = await buildBusinessContext({
-                conversationDir: fileDir,
-                viewName: vName,
-                schema: vSchema,
-              });
-              fastContexts.push(ctx);
-
-              // Start enhancement in background for each view
-              enhanceBusinessContextInBackground({
-                conversationDir: fileDir,
-                viewName: vName,
-                schema: vSchema,
-                dbPath,
-              });
+            // Parse links: handle string with | separator or array
+            let links: string[];
+            if (Array.isArray(sharedLink)) {
+              links = sharedLink;
+            } else if (typeof sharedLink === 'string' && sharedLink.includes('|')) {
+              links = sharedLink.split('|').map((link) => link.trim()).filter(Boolean);
+            } else {
+              links = [sharedLink];
             }
-            // Merge all fast contexts into one
-            fastContext = mergeBusinessContexts(fastContexts);
-          }
 
-          // Use fast context for immediate response
-          const entities = Array.from(fastContext.entities.values()).slice(
-            0,
-            perfConfig.expectedViewCount * 2,
-          );
-          const relationships = fastContext.relationships.slice(
-            0,
-            perfConfig.expectedViewCount * 3,
-          );
-          const vocabulary = Object.fromEntries(
-            Array.from(fastContext.vocabulary.entries())
-              .slice(0, perfConfig.expectedViewCount * 10)
-              .map(([key, entry]) => [key, entry]),
-          );
+            // Deduplicate links before processing (remove duplicates)
+            // This prevents processing the same sheet multiple times
+            const originalLinkCount = links.length;
+            const uniqueLinks = [...new Set(links)];
+            const duplicateCount = originalLinkCount - uniqueLinks.length;
+            if (duplicateCount > 0) {
+              console.debug(
+                `[ReadDataAgent:${this.conversationId}] Removed ${duplicateCount} duplicate link(s). Processing ${uniqueLinks.length} unique link(s) from ${originalLinkCount} total.`,
+              );
+            }
+            links = uniqueLinks;
 
-          // Return schema and data insights (hide technical jargon)
-          return {
-            schema: schema,
-            businessContext: {
-              domain: fastContext.domain.domain, // Just the domain name string
-              entities: entities.map((e) => ({
-                name: e.name,
-                columns: e.columns,
-              })), // Simplified - just name and columns
-              relationships: relationships.map((r) => ({
-                from: r.fromView,
-                to: r.toView,
-                join: r.joinCondition,
-              })), // Simplified - just connection info
-              vocabulary: vocabulary, // Keep for internal use but don't expose structure
-            },
-          };
-        },
-      }),
-      createDbViewFromSheet: tool({
-        description:
-          'Create a View from a Google Sheet. Can handle single or multiple sheets. IMPORTANT: Only use this when the user explicitly provides NEW Google Sheet URLs that are not already in the registry. Always call listAvailableSheets first to check if sheets already exist. This tool works alongside the datasource initialization system - use it for ad-hoc imports during conversation.',
-        inputSchema: z.object({
-          sharedLink: z.union([z.string(), z.array(z.string())]),
-        }),
-        execute: async ({ sharedLink }) => {
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
-          }
-          const { join } = await import('node:path');
-          const { mkdir } = await import('node:fs/promises');
-          await mkdir(workspace, { recursive: true });
-          const fileDir = join(workspace, conversationId);
-          await mkdir(fileDir, { recursive: true });
-          const dbPath = join(fileDir, 'database.db');
+            // Parse sheet names: handle array or single string
+            const names = Array.isArray(sheetName)
+              ? sheetName
+              : sheetName
+                ? [sheetName]
+                : [];
 
-          await cleanupOrphanedTempTables(dbPath);
+            const results: Array<{
+              success: boolean;
+              viewName?: string;
+              displayName?: string;
+              error?: string;
+              link: string;
+              schema?: SimpleSchema;
+              errorDetails?: {
+                stack?: string;
+                type?: string;
+              };
+            }> = [];
 
-          const context: RegistryContext = {
-            conversationDir: fileDir,
-          };
+            const existing = await loadViewRegistry(context);
+            const existingNamesSet = new Set(existing.map((r) => r.viewName));
 
-          // Handle single or multiple links
-          const links = Array.isArray(sharedLink) ? sharedLink : [sharedLink];
+            // Sequential processing
+            console.debug(
+              `[ReadDataAgent:${this.conversationId}] Processing ${links.length} links sequentially`,
+            );
 
-          const results: Array<{
-            success: boolean;
-            viewName?: string;
-            displayName?: string;
-            error?: string;
-            link: string;
-          }> = [];
+            const existingNames = Array.from(existingNamesSet);
+              
+              for (let i = 0; i < links.length; i++) {
+                const link = links[i];
+                if (!link) continue;
+                const providedName = names[i];
 
-          // Process sequentially to avoid race conditions
-          for (const link of links) {
-
-            try {
-              const result = await withRetry(
-                async () => {
-                  // Check if view already exists
-                  const existing = await loadViewRegistry(context);
+                try {
+                  // Extract sourceId from link
                   const sourceId = link.match(
                     /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
                   )?.[1];
@@ -528,243 +243,680 @@ export const readDataAgent = async (
                     : null;
 
                   if (existingRecord) {
-                    // Validate view exists in database
-                    const exists = await validateTableExists(
-                      dbPath,
-                      existingRecord.viewName,
-                    );
-                    if (!exists) {
-                      // View in registry but not in DB - recreate it
-                      console.debug(
-                        `[ReadDataAgent:${conversationId}] View in registry but missing in DB, recreating: ${existingRecord.viewName}`,
+                    // View exists in registry, validate it exists in DB
+                    try {
+                      const exists = await validateTableExists(
+                        dbPath,
+                        existingRecord.viewName,
                       );
+                      if (exists) {
+                        // Update usage and continue
+                        await updateViewUsage(context, existingRecord.viewName);
+                        results.push({
+                          success: true,
+                          viewName: existingRecord.viewName,
+                          displayName: existingRecord.displayName,
+                          link,
+                        });
+                        existingNames.push(existingRecord.viewName);
+                        continue;
+                      }
+                    } catch (validateError) {
+                      console.warn(
+                        `[ReadDataAgent:${this.conversationId}] Error validating existing view:`,
+                        validateError,
+                      );
+                    }
+                    // View in registry but not in DB - recreate it
+                    console.debug(
+                      `[ReadDataAgent:${this.conversationId}] View in registry but missing in DB, recreating: ${existingRecord.viewName}`,
+                    );
+                    try {
                       await gsheetToDuckdb({
                         dbPath,
                         sharedLink: link,
                         viewName: existingRecord.viewName,
                       });
-                      // Validate it was created
-                      const recreated = await validateTableExists(
-                        dbPath,
-                        existingRecord.viewName,
+                      await updateViewUsage(context, existingRecord.viewName);
+                      results.push({
+                        success: true,
+                        viewName: existingRecord.viewName,
+                        displayName: existingRecord.displayName,
+                        link,
+                      });
+                      continue;
+                    } catch (recreateError) {
+                      const errorMsg =
+                        recreateError instanceof Error
+                          ? recreateError.message
+                          : String(recreateError);
+                      throw new Error(
+                        `Failed to recreate existing view: ${errorMsg}`,
                       );
-                      if (!recreated) {
-                        throw new Error('Failed to recreate view in database');
-                      }
                     }
-
-                    return {
-                      viewName: existingRecord.viewName,
-                      displayName:
-                        existingRecord.displayName || existingRecord.viewName,
-                      sharedLink: existingRecord.sharedLink,
-                    };
                   }
 
+                  // Generate temp name first
                   const tempViewName = `temp_${Date.now()}_${Math.random()
                     .toString(36)
                     .substring(2, 8)}`;
 
-                  let finalViewName: string | null = null;
-                  let schema: SimpleSchema | null = null;
+                  console.debug(
+                    `[ReadDataAgent:${this.conversationId}] Creating DuckDB view from sheet: ${link}`,
+                  );
+
+                  let schema;
+                  let finalViewName: string;
 
                   try {
-                    // Step 1: Create temp view to extract schema for semantic naming
-                    console.debug(
-                      `[ReadDataAgent:${conversationId}] Creating temp view to extract schema for naming: ${link}`,
-                    );
-
+                    // Step 1: Create view in database
                     await gsheetToDuckdb({
                       dbPath,
                       sharedLink: link,
                       viewName: tempViewName,
                     });
+                  } catch (createError) {
+                    const errorMsg =
+                      createError instanceof Error
+                        ? createError.message
+                        : String(createError);
+                    throw new Error(`Failed to create database view: ${errorMsg}`);
+                  }
 
-                    // Step 2: Extract schema from temp view (for semantic naming only)
+                  try {
+                    // Step 2: Extract schema from temp table (allow temp tables during creation)
                     schema = await extractSchema({
                       dbPath,
                       viewName: tempViewName,
                       allowTempTables: true,
                     });
+                  } catch (schemaError) {
+                    const errorMsg =
+                      schemaError instanceof Error
+                        ? schemaError.message
+                        : String(schemaError);
+                    throw new Error(`Failed to extract schema: ${errorMsg}`);
+                  }
 
-                    // Step 3: Generate semantic view name
-                    const existingNames = existing.map((rec) => rec.viewName);
-                    finalViewName = generateSemanticViewName(
-                      schema,
-                      existingNames,
-                    );
-
-                    // Step 4: Create final view directly from source (MATCHES NEW ARCHITECTURE)
-                    // This matches datasource-to-duckdb.ts lines 152-156 exactly
-                    await gsheetToDuckdb({
-                      dbPath,
-                      sharedLink: link,
-                      viewName: finalViewName,
-                    });
-
-                    // Step 5: Verify final view was created (MATCHES NEW ARCHITECTURE)
-                    // This matches datasource-to-duckdb.ts lines 198-208 pattern
-                    const { DuckDBInstance } = await import('@duckdb/node-api');
-                    const verifyInstance = await DuckDBInstance.create(dbPath);
-                    const verifyConn = await verifyInstance.connect();
-                    try {
-                      const escapedFinalName = finalViewName.replace(/"/g, '""');
-                      const verifyReader = await verifyConn.runAndReadAll(
-                        `SELECT 1 FROM "${escapedFinalName}" LIMIT 1`,
+                  try {
+                    // Step 3: Determine final view name
+                    if (providedName) {
+                      // Sanitize provided name
+                      finalViewName = providedName
+                        .replace(/[^a-zA-Z0-9_]/g, '_')
+                        .replace(/^([^a-zA-Z])/, 'v_$1')
+                        .toLowerCase();
+                    } else {
+                      // Generate semantic name
+                      finalViewName = generateSemanticViewName(
+                        schema,
+                        existingNames,
                       );
-                      await verifyReader.readAll();
-                    } catch (error) {
-                      const errorMsg =
-                        error instanceof Error ? error.message : String(error);
-                      throw new Error(
-                        `Failed to create or verify view "${finalViewName}": ${errorMsg}`,
-                      );
-                    } finally {
-                      verifyConn.closeSync();
-                      verifyInstance.closeSync();
                     }
 
-                    // Step 6: Extract schema from final view using new connection (MATCHES NEW ARCHITECTURE)
-                    // This matches datasource-to-duckdb.ts lines 215-220 exactly
-                    schema = await extractSchema({
-                      dbPath,
-                      viewName: finalViewName,
-                    });
+                  // Step 4: Rename in DB if different from temp name
+                  if (finalViewName !== tempViewName) {
+                    // Check if final name already exists (might be from a previous failed attempt)
+                    const finalNameExists = await validateTableExists(dbPath, finalViewName);
+                    if (finalNameExists) {
+                      // If it exists, append a suffix to make it unique
+                      let uniqueName = finalViewName;
+                      let counter = 1;
+                      while (await validateTableExists(dbPath, uniqueName)) {
+                        uniqueName = `${finalViewName}_${counter}`;
+                        counter++;
+                      }
+                      finalViewName = uniqueName;
+                    }
+                    
+                    await renameView(dbPath, tempViewName, finalViewName);
+                  }
+                } catch (nameError) {
+                  const errorMsg =
+                    nameError instanceof Error
+                      ? nameError.message
+                      : String(nameError);
+                  throw new Error(
+                    `Failed to determine or rename view: ${errorMsg}`,
+                  );
+                }
 
-                    // Step 7: Drop temp view (cleanup)
-                    await dropTable(dbPath, tempViewName);
+                  // Update existing names list for next iteration
+                  existingNames.push(finalViewName);
 
-                    // Step 8: Register in registry (for tracking - new architecture doesn't use registry)
-                    const { record } = await registerSheetView(
+                  try {
+                    // Step 5: Register in view registry
+                    await registerSheetView(
                       context,
                       link,
                       finalViewName,
-                      finalViewName,
+                      finalViewName, // displayName same as viewName for now
                       schema,
                     );
-
-                    return {
-                      viewName: record.viewName,
-                      displayName: record.displayName,
-                      sharedLink: record.sharedLink,
-                    };
-                  } catch (error) {
-                    // Cleanup temp view on error
-                    try {
-                      await dropTable(dbPath, tempViewName);
-                    } catch {
-                      // Ignore cleanup errors
-                    }
-                    throw error;
-                  }
-                },
-                {
-                  maxRetries: 3,
-                  retryDelay: 100,
-                  shouldRetry: (error) => {
-                    const msg = error.message;
-                    return (
-                      msg.includes('timeout') ||
-                      msg.includes('network') ||
-                      msg.includes('fetch') ||
-                      msg.includes('Catalog Error')
+                  } catch (registryError) {
+                    const errorMsg =
+                      registryError instanceof Error
+                        ? registryError.message
+                        : String(registryError);
+                    throw new Error(
+                      `Failed to register view in registry: ${errorMsg}`,
                     );
-                  },
-                },
-              );
+                  }
 
-              results.push({
-                success: true,
-                viewName: result.viewName,
-                displayName: result.displayName,
-                link,
-              });
-            } catch (error) {
-              const errorMsg =
-                error instanceof Error
-                  ? formatViewCreationError(error, link)
-                  : String(error);
-              results.push({
-                success: false,
-                error: errorMsg,
-                link,
-              });
+                  // Step 6: Build fast business context immediately (non-blocking)
+                  try {
+                    await buildBusinessContext({
+                      conversationDir: fileDir,
+                      viewName: finalViewName,
+                      schema,
+                    });
+                    // Trigger background enhancement (fire and forget)
+                    try {
+                      enhanceBusinessContextInBackground({
+                        conversationDir: fileDir,
+                        viewName: finalViewName,
+                        schema,
+                        dbPath,
+                      });
+                    } catch (bgError) {
+                      console.warn(
+                        `[ReadDataAgent:${this.conversationId}] Background context enhancement failed:`,
+                        bgError,
+                      );
+                    }
+                  } catch (contextError) {
+                    // Non-critical - log but don't fail
+                    console.warn(
+                      `[ReadDataAgent:${this.conversationId}] Failed to build business context:`,
+                      contextError,
+                    );
+                  }
+
+                  results.push({
+                    success: true,
+                    viewName: finalViewName,
+                    displayName: finalViewName,
+                    link,
+                  });
+                } catch (error) {
+                  const errorMsg =
+                    error instanceof Error ? error.message : String(error);
+                  const errorStack =
+                    error instanceof Error ? error.stack : undefined;
+                  console.error(
+                    `[ReadDataAgent:${this.conversationId}] Failed to create view from ${link}:`,
+                    error,
+                  );
+                  results.push({
+                    success: false,
+                    error: errorMsg,
+                    link,
+                    errorDetails: errorStack
+                      ? {
+                          stack: errorStack,
+                          type: error instanceof Error ? error.constructor.name : typeof error,
+                        }
+                      : undefined,
+                  });
+                }
+              }
+
+            // Build summary with detailed state tracking
+            const successful = results.filter((r) => r.success);
+            const failed = results.filter((r) => !r.success);
+
+            // Determine overall status
+            const overallStatus =
+              successful.length === 0
+                ? 'failed'
+                : failed.length > 0
+                  ? 'partial'
+                  : 'success';
+
+            // Build detailed results for each link
+            const detailedResults = results.map((r) => ({
+              link: r.link,
+              status: r.success ? 'success' : 'error',
+              viewName: r.viewName,
+              displayName: r.displayName,
+              error: r.error,
+              errorDetails: r.errorDetails,
+            }));
+
+            // Build user-friendly message with deduplication info
+            let message = '';
+            const deduplicationInfo = duplicateCount > 0 
+              ? ` Found ${originalLinkCount} link(s), processed ${links.length} unique link(s) (${duplicateCount} duplicate(s) removed), and created ${successful.length} sheet(s).`
+              : '';
+            
+            if (overallStatus === 'failed') {
+              message = `Failed to create views from all provided Google Sheets.${deduplicationInfo} Errors: ${failed.map((f) => f.error).join('; ')}`;
+            } else if (successful.length === 1) {
+              const first = successful[0];
+              if (!first?.viewName) {
+                message = `Successfully created view from Google Sheet.${deduplicationInfo}`;
+              } else {
+                message = `Successfully created view "${first.viewName}" from Google Sheet.${deduplicationInfo} Use this viewName in your queries.`;
+              }
+            } else {
+              // Multiple views created
+              const viewList = successful
+                .map((r) => {
+                  if (!r.viewName || !r.link) return '';
+                  return `${r.link} → ${r.viewName}${r.viewName !== r.displayName ? ` (${r.displayName})` : ''}`;
+                })
+                .filter(Boolean)
+                .join('\n');
+
+              message = `Successfully created ${successful.length} view(s) from Google Sheets.${deduplicationInfo}\n\n${viewList}`;
+              if (failed.length > 0) {
+                message += `\n\nFailed to create ${failed.length} view(s). Errors: ${failed.map((f) => f.error).join('; ')}`;
+              }
+              message +=
+                '\n\nAll views are now available - you can ask questions about their data.';
             }
-          }
 
-          const successful = results.filter((r) => r.success);
-          const failed = results.filter((r) => !r.success);
-
-          if (successful.length === 0) {
-            throw new Error(
-              `Failed to create views from Google Sheets:\n${failed
-                .map((f) => `- ${f.link}: ${f.error}`)
-                .join('\n')}`,
-            );
-          }
-
-          const response: Array<{
-            viewName: string;
-            displayName: string;
-            link: string;
-          }> = successful.map((s) => ({
-            viewName: s.viewName!,
-            displayName: s.displayName || s.viewName!,
-            link: s.link,
-          }));
-
-          if (failed.length > 0) {
             return {
-              success: true,
-              views: response,
-              warnings: failed.map((f) => ({
-                link: f.link,
-                error: f.error,
-              })),
-              message: `Successfully created ${successful.length} view(s), but ${failed.length} failed.`,
+              content: message,
+              status: overallStatus,
+              results: detailedResults,
+              summary: {
+                total: results.length,
+                successful: successful.length,
+                failed: failed.length,
+                viewNames: successful
+                  .map((r) => r.viewName)
+                  .filter((name): name is string => !!name),
+              },
             };
-          }
+          },
+        }),
+        listViews: tool({
+          description:
+            'List all available views (sheets) in the database. Returns views with their semantic names, display names, and metadata. CACHED: Results are cached for 1 minute. Only call when starting a new conversation or when user explicitly asks to refresh.',
+          inputSchema: z.object({
+            forceRefresh: z
+              .boolean()
+              .optional()
+              .describe('Force refresh cache (defaults to false)'),
+          }),
+          execute: async ({ forceRefresh }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const context: RegistryContext = {
+              conversationDir: fileDir,
+            };
 
-          return {
-            success: true,
-            views: response,
-            message: `Successfully created ${successful.length} view(s) from Google Sheet(s).`,
-          };
-        },
-      }),
+            const registry = await loadViewRegistry(context);
+            return {
+              views: registry.map((record) => ({
+                viewName: record.viewName,
+                displayName: record.displayName,
+                sharedLink: record.sharedLink,
+                sourceId: record.sourceId,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt,
+                lastUsedAt: record.lastUsedAt,
+              })),
+              message:
+                registry.length === 0
+                  ? 'No views are currently registered. Use createDbViewFromSheet to register a Google Sheet.'
+                  : `Found ${registry.length} view(s). Use the viewName in SQL queries.`,
+            };
+          },
+        }),
+        renameSheet: tool({
+          description:
+            'Rename a sheet/view to a more meaningful name. Use this when you want to give a sheet a better name based on its content, schema, or user context. Updates both database and registry.',
+          inputSchema: z.object({
+            oldSheetName: z.string().describe('Current name of the sheet/view to rename'),
+            newSheetName: z.string().describe('New meaningful name for the sheet (use lowercase, numbers, underscores only)'),
+          }),
+          execute: async ({ oldSheetName, newSheetName }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const dbPath = join(fileDir, 'database.db');
+            const context: RegistryContext = {
+              conversationDir: fileDir,
+            };
+
+            // Get view record to find sourceId
+            const viewRecord = await getViewByName(context, oldSheetName);
+            if (!viewRecord) {
+              throw new Error(
+                `View "${oldSheetName}" not found in registry. Use listViews to see available views.`,
+              );
+            }
+
+            // Rename in database
+            const result = await renameSheet({
+              dbPath,
+              oldSheetName,
+              newSheetName,
+            });
+
+            // Update registry
+            await updateViewName(
+              context,
+              viewRecord.sourceId,
+              newSheetName,
+              newSheetName, // displayName
+            );
+
+            return result;
+          },
+        }),
+        deleteSheet: tool({
+          description:
+            'Delete one or more sheets/views from the database. This permanently removes the views and all their data. Supports batch deletion of multiple sheets. Updates both database and registry. Only use this when the user explicitly requests to delete sheet(s).',
+          inputSchema: z.object({
+            sheetNames: z.array(z.string()).describe('Array of sheet/view names to delete. Can delete one or more sheets at once. Use listViews to see available sheets.'),
+          }),
+          execute: async ({ sheetNames }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const dbPath = join(fileDir, 'database.db');
+            const context: RegistryContext = {
+              conversationDir: fileDir,
+            };
+
+            // Delete from database
+            const result = await deleteSheet({
+              dbPath,
+              sheetNames,
+            });
+
+            for (const sheetName of result.deletedSheets) {
+              await deleteViewFromRegistry(context, sheetName);
+            }
+
+            return result;
+          },
+        }),
+        viewSheet: tool({
+          description:
+            'View/display the contents of a sheet. This is a convenient way to quickly see what data is in a sheet without writing a SQL query. Shows the first 50 rows by default.',
+          inputSchema: z.object({
+            sheetName: z
+              .string()
+              .describe('Name of the sheet to view. You MUST specify this. If unsure, call listViews first.'),
+            limit: z
+              .number()
+              .optional()
+              .describe('Maximum number of rows to display (defaults to 50)'),
+          }),
+          execute: async ({ sheetName, limit }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const dbPath = join(workspace, this.conversationId, 'database.db');
+
+            const result = await viewSheet({
+              dbPath,
+              sheetName,
+              limit,
+            });
+            return {
+              sheetName: result.sheetName,
+              totalRows: result.totalRows,
+              displayedRows: result.displayedRows,
+              columns: result.columns,
+              rows: result.rows,
+              message: result.message,
+            };
+          },
+        }),
+        getSchema: tool({
+          description:
+            'Get the schema of a Google Sheet view and business context. Use this to understand the data structure, entities, relationships, and vocabulary before writing queries. Business context helps translate business terms to column names and suggests JOIN conditions.',
+          inputSchema: z.object({
+            sheetName: z
+              .string()
+              .describe(
+                'Name of the sheet to get schema for. You MUST specify this. If unsure, call listViews first.',
+              ),
+          }),
+          execute: async ({ sheetName }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const dbPath = join(fileDir, 'database.db');
+
+            const schema = await extractSchema({ dbPath, viewName: sheetName });
+
+            // Load business context
+            let businessContext = await loadBusinessContext(fileDir);
+            if (!businessContext) {
+              // Build fast context if not exists
+              try {
+                businessContext = await buildBusinessContext({
+                  conversationDir: fileDir,
+                  viewName: sheetName,
+                  schema,
+                });
+                // Trigger background enhancement (fire and forget)
+                try {
+                  enhanceBusinessContextInBackground({
+                    conversationDir: fileDir,
+                    viewName: sheetName,
+                    schema,
+                    dbPath,
+                  });
+                } catch (error) {
+                  console.warn(
+                    `[ReadDataAgent:${this.conversationId}] Background context enhancement failed:`,
+                    error,
+                  );
+                }
+              } catch (contextError) {
+                console.warn(
+                  `[ReadDataAgent:${this.conversationId}] Failed to build business context:`,
+                  contextError,
+                );
+              }
+            }
+
+            // Update view usage
+            const context: RegistryContext = {
+              conversationDir: fileDir,
+            };
+            await updateViewUsage(context, sheetName);
+
+            return {
+              schema: schema,
+              businessContext: businessContext
+                ? {
+                    domain: businessContext.domain.domain,
+                    entities: Array.from(businessContext.entities.values()).map(
+                      (e) => ({
+                        name: e.name,
+                        columns: e.columns,
+                        views: e.views,
+                      }),
+                    ),
+                    relationships: businessContext.relationships.map((r) => ({
+                      fromView: r.fromView,
+                      toView: r.toView,
+                      fromColumn: r.fromColumn,
+                      toColumn: r.toColumn,
+                      type: r.type,
+                    })),
+                    vocabulary: Object.fromEntries(
+                      Array.from(businessContext.vocabulary.entries()).map(
+                        ([key, value]) => [
+                          key,
+                          {
+                            businessTerm: value.businessTerm,
+                            technicalTerms: value.technicalTerms,
+                            synonyms: value.synonyms,
+                          },
+                        ],
+                      ),
+                    ),
+                  }
+                : null,
+            };
+          },
+        }),
+        runQuery: tool({
+          description:
+            'Run a SQL query against the Google Sheet view. Business context is automatically used to improve query understanding. View usage is tracked automatically.',
+          inputSchema: z.object({
+            query: z.string(),
+          }),
+          execute: async ({ query }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const dbPath = join(fileDir, 'database.db');
+
+            // Load business context for query understanding
+            const businessContext = await loadBusinessContext(fileDir);
+
+            const result = await runQuery({
+              dbPath,
+              query,
+            });
+
+            // Extract view names from query and update usage
+            const context: RegistryContext = {
+              conversationDir: fileDir,
+            };
+            const registry = await loadViewRegistry(context);
+            // Simple extraction: look for view names in FROM/JOIN clauses
+            const viewNameRegex = /(?:FROM|JOIN)\s+["']?(\w+)["']?/gi;
+            const matches = query.matchAll(viewNameRegex);
+            const viewNames = new Set<string>();
+            for (const match of matches) {
+              const viewName = match[1];
+              if (viewName && registry.some((r) => r.viewName === viewName)) {
+                viewNames.add(viewName);
+              }
+            }
+            // Update usage for all views used in query
+            for (const viewName of viewNames) {
+              await updateViewUsage(context, viewName);
+            }
+
+            return {
+              result: result,
+              businessContext: businessContext
+                ? {
+                    domain: businessContext.domain.domain,
+                    entities: Array.from(businessContext.entities.values()).map(
+                      (e) => ({
+                        name: e.name,
+                        columns: e.columns,
+                      }),
+                    ),
+                    relationships: businessContext.relationships.map((r) => ({
+                      from: r.fromView,
+                      to: r.toView,
+                      join: `${r.fromColumn} = ${r.toColumn}`,
+                    })),
+                    vocabulary: Object.fromEntries(
+                      Array.from(businessContext.vocabulary.entries()).map(
+                        ([key, value]) => [
+                          key,
+                          {
+                            businessTerm: value.businessTerm,
+                            technicalTerms: value.technicalTerms,
+                            synonyms: value.synonyms,
+                          },
+                        ],
+                      ),
+                    ),
+                  }
+                : null,
+            };
+          },
+        }),
+        selectChartType: tool({
+          description:
+            'Select the best chart type (bar, line, or pie) for visualizing the query results. Uses business context to understand data semantics for better chart selection. This should be called before generateChart.',
+          inputSchema: z.object({
+            queryResults: z.object({
+              rows: z.array(z.record(z.unknown())),
+              columns: z.array(z.string()),
+            }),
+            sqlQuery: z.string(),
+            userInput: z.string(),
+          }),
+          execute: async ({ queryResults, sqlQuery, userInput }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const businessContext = await loadBusinessContext(fileDir);
+
+            const selection = await selectChartType(
+              queryResults,
+              sqlQuery,
+              userInput,
+              businessContext,
+            );
+            return selection;
+          },
+        }),
+        generateChart: tool({
+          description:
+            'Generate chart configuration JSON for the selected chart type. Uses business context to create better labels and understand data semantics. Call selectChartType first to determine the chart type.',
+          inputSchema: z.object({
+            chartType: z.enum(['bar', 'line', 'pie']),
+            queryResults: z.object({
+              rows: z.array(z.record(z.unknown())),
+              columns: z.array(z.string()),
+            }),
+            sqlQuery: z.string(),
+            userInput: z.string(),
+          }),
+          execute: async ({ chartType, queryResults, sqlQuery, userInput }) => {
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            const { join } = await import('node:path');
+            const fileDir = join(workspace, this.conversationId);
+            const businessContext = await loadBusinessContext(fileDir);
+
+            const chartConfig = await generateChart({
+              queryResults,
+              sqlQuery,
+              userInput,
+              chartType, // Pass the pre-selected chart type
+              businessContext,
+            });
+            return chartConfig;
+          },
+        }),
       },
       stopWhen: stepCountIs(20), // Stop after 20 steps maximum
     });
+  }
+}
 
-  return result.stream({
-    messages: convertToModelMessages(await validateUIMessages({ messages })),
-    providerOptions: {
-      openai: {
-        reasoningSummary: 'auto', // 'auto' for condensed or 'detailed' for comprehensive
-        reasoningEffort: 'medium',
-        reasoningDetailedSummary: true,
-        reasoningDetailedSummaryLength: 'long',
-      },
-    },
-  });
-};
-
-export const readDataAgentActor = fromPromise(
-  async ({
-    input,
-  }: {
-    input: {
-      conversationId: string;
-      previousMessages: UIMessage[];
-      model: string;
-      repositories?: Repositories;
-    };
-  }) => {
-    return readDataAgent(
-      input.conversationId,
-      input.previousMessages,
-      input.model,
-      input.repositories,
-    );
-  },
-);
+function isLanguageModel(model: unknown): model is LanguageModel {
+  return typeof model === 'object' && model !== null;
+}

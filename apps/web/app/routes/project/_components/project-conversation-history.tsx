@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { getConversationsByProjectKey } from '~/lib/queries/use-get-conversations-by-project';
 import { useEffect, useRef } from 'react';
+import { useAgentStatus } from '@qwery/ui/ai';
 
 export function ProjectConversationHistory() {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export function ProjectConversationHistory() {
   const currentSlug = conversationSlugMatch ? conversationSlugMatch[1] : null;
   const { repositories, workspace } = useWorkspace();
   const queryClient = useQueryClient();
+  
+  // Get agent processing status
+  const { isProcessing } = useAgentStatus();
 
   const { data: conversations = [], isLoading } = useGetConversationsByProject(
     repositories.conversation,
@@ -191,6 +195,7 @@ export function ProjectConversationHistory() {
       conversations={mappedConversations}
       isLoading={isLoading}
       currentConversationId={currentConversationId}
+      isProcessing={isProcessing}
       onConversationSelect={onConversationSelect}
       onNewConversation={onNewConversation}
       onConversationEdit={onConversationEdit}

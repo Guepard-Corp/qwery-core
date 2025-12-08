@@ -19,3 +19,4 @@ export { type PromptInputMessage } from '../../ai-elements/prompt-input';
 export { type ChatStatus } from 'ai';
 export { AgentTabs } from './agent-tabs';
 export { DatasourceSelector, type DatasourceItem } from './datasource-selector';
+export { AgentStatusProvider, useAgentStatus } from '../agent-status-context';

@@ -180,23 +180,23 @@ export const ToolHeader = ({
   state,
   ...props
 }: ToolHeaderProps) => (
-  <CollapsibleTrigger
-    className={cn(
+    <CollapsibleTrigger
+      className={cn(
       'sticky top-0 z-10 flex w-full items-center justify-between gap-4 border-b bg-background p-3',
-      className,
-    )}
-    {...props}
-  >
+        className,
+      )}
+      {...props}
+    >
     <div className="flex items-center gap-2">
       <WrenchIcon className="text-muted-foreground size-4" />
       <span className="text-sm font-medium">
         {title ?? type.split('-').slice(1).join('-')}
       </span>
       {getStatusBadge(state)}
-    </div>
+        </div>
     <ChevronDownIcon className="text-muted-foreground size-4 transition-transform group-data-[state=open]:rotate-180" />
-  </CollapsibleTrigger>
-);
+    </CollapsibleTrigger>
+  );
 
 export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 
@@ -215,18 +215,18 @@ export type ToolInputProps = ComponentProps<'div'> & {
 };
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <div
-    className={cn('min-w-0 space-y-2 overflow-hidden p-4', className)}
-    {...props}
-  >
+    <div
+      className={cn('min-w-0 space-y-2 overflow-hidden p-4', className)}
+      {...props}
+    >
     <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-      Parameters
-    </h4>
+          Parameters
+        </h4>
     <div className="bg-muted/50 max-w-full min-w-0 overflow-hidden rounded-md">
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+        </div>
     </div>
-  </div>
-);
+  );
 
 export type ToolOutputProps = ComponentProps<'div'> & {
   output: ToolUIPart['output'];
@@ -289,11 +289,11 @@ export const ToolOutput = ({
         </h4>
         <div className="bg-destructive/10 border-destructive/20 max-w-full min-w-0 rounded-md border p-4">
           <div className="flex items-start gap-2">
-            <XCircleIcon className="text-destructive mt-0.5 size-4 shrink-0" />
-            <div className="min-w-0 flex-1">
+          <XCircleIcon className="text-destructive mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0 flex-1">
               <pre className="text-destructive m-0 font-sans text-sm wrap-break-word whitespace-pre-wrap">
-                {errorText}
-              </pre>
+              {errorText}
+            </pre>
             </div>
           </div>
         </div>
@@ -304,8 +304,8 @@ export const ToolOutput = ({
   return (
     <div className={cn('min-w-0 space-y-2 p-4', className)} {...props}>
       <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-        Result
-      </h4>
+          Result
+        </h4>
       <div className="bg-muted/50 max-w-full min-w-0 overflow-hidden rounded-md">
         {Output}
       </div>

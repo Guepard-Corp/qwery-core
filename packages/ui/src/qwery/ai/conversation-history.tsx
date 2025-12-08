@@ -44,6 +44,7 @@ export interface ConversationHistoryProps {
   conversations?: Conversation[];
   isLoading?: boolean;
   currentConversationId?: string;
+  isProcessing?: boolean;
   onConversationSelect?: (conversationId: string) => void;
   onNewConversation?: () => void;
   onConversationEdit?: (conversationId: string, newTitle: string) => void;
@@ -155,6 +156,7 @@ export function ConversationHistory({
   conversations = [],
   isLoading: _isLoading = false,
   currentConversationId,
+  isProcessing = false,
   onConversationSelect,
   onNewConversation,
   onConversationEdit,
@@ -517,7 +519,11 @@ export function ConversationHistory({
                               )}
                               {isCurrent && (
                                 <div className="flex shrink-0 items-center">
-                                  <div className="bg-primary size-1.5 rounded-full" />
+                                  {isProcessing ? (
+                                    <div className="bg-yellow-500 size-2 rounded-full animate-pulse shadow-sm shadow-yellow-500/50" />
+                                  ) : (
+                                    <div className="bg-primary size-1.5 rounded-full" />
+                                  )}
                                 </div>
                               )}
                             </>

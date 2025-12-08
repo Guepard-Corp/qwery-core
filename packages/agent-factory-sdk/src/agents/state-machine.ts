@@ -138,32 +138,32 @@ export const createStateMachine = (
             initial: 'attempting',
             states: {
               attempting: {
-                invoke: {
+            invoke: {
                   src: 'detectIntentActorCached',
-                  id: 'GET_INTENT',
-                  input: ({ context }: { context: AgentContext }) => ({
-                    inputMessage: context.inputMessage,
+              id: 'GET_INTENT',
+              input: ({ context }: { context: AgentContext }) => ({
+                inputMessage: context.inputMessage,
                     model: context.model,
-                  }),
-                  onDone: [
-                    {
-                      guard: 'isOther',
+              }),
+              onDone: [
+                {
+                  guard: 'isOther',
                       target: '#factory-agent.running.summarizeIntent',
-                      actions: assign({
-                        intent: ({ event }) => event.output,
+                  actions: assign({
+                    intent: ({ event }) => event.output,
                         retryCount: () => 0, // Reset on success
-                      }),
-                    },
-                    {
-                      guard: 'isGreeting',
+                  }),
+                },
+                {
+                  guard: 'isGreeting',
                       target: '#factory-agent.running.greeting',
-                      actions: assign({
-                        intent: ({ event }) => event.output,
+                  actions: assign({
+                    intent: ({ event }) => event.output,
                         retryCount: () => 0,
-                      }),
-                    },
-                    {
-                      guard: 'isReadData',
+                  }),
+                },
+                {
+                  guard: 'isReadData',
                       target: '#factory-agent.running.readData',
                       actions: assign({
                         intent: ({ event }) => event.output,
@@ -173,12 +173,12 @@ export const createStateMachine = (
                     {
                       guard: 'isSystem',
                       target: '#factory-agent.running.systemInfo',
-                      actions: assign({
-                        intent: ({ event }) => event.output,
+                  actions: assign({
+                    intent: ({ event }) => event.output,
                         retryCount: () => 0,
-                      }),
-                    },
-                  ],
+                  }),
+                },
+              ],
                   onError: [
                     {
                       guard: 'shouldRetry',
@@ -191,8 +191,8 @@ export const createStateMachine = (
                     },
                     {
                       guard: 'retryLimitExceeded',
-                      target: '#factory-agent.idle',
-                      actions: assign({
+                target: '#factory-agent.idle',
+                actions: assign({
                         error: ({ context }) =>
                           `Intent detection failed after 3 retries: ${context.lastError?.message}`,
                       }),

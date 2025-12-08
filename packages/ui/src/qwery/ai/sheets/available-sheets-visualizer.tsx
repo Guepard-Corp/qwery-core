@@ -9,8 +9,6 @@ import {
   XIcon,
   CheckIcon,
   PencilIcon,
-  MoreVerticalIcon,
-  InfoIcon,
 } from 'lucide-react';
 import { Button } from '../../../shadcn/button';
 import {
@@ -23,20 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../../shadcn/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../../../shadcn/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../../../shadcn/tooltip';
 import { Input } from '../../../shadcn/input';
-import { Badge } from '../../../shadcn/badge';
 import { cn } from '../../../lib/utils';
 import { useState, useEffect, useRef } from 'react';
 
@@ -73,7 +58,6 @@ export function AvailableSheetsVisualizer({
   const [editingSheet, setEditingSheet] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  const [showCheckboxes, setShowCheckboxes] = useState<Set<string>>(new Set());
   const editInputRef = useRef<HTMLInputElement>(null);
 
   const handleViewClick = (sheetName: string) => {
@@ -90,63 +74,16 @@ export function AvailableSheetsVisualizer({
     }
   }, [isRequestInProgress, clickedSheet]);
 
-  const isBatchSelectMode = showCheckboxes.size > 0;
-
   const handleToggleSelection = (sheetName: string) => {
     setSelectedSheets((prev) => {
       const next = new Set(prev);
       if (next.has(sheetName)) {
         next.delete(sheetName);
-        // Hide checkbox if deselected and no other checkboxes are visible
-        setShowCheckboxes((prevCheckboxes) => {
-          const nextCheckboxes = new Set(prevCheckboxes);
-          nextCheckboxes.delete(sheetName);
-          return nextCheckboxes;
-        });
       } else {
         next.add(sheetName);
       }
       return next;
     });
-  };
-
-  const handleSelectItem = (sheetName: string) => {
-    if (!isEditMode) return;
-    // Show checkbox and select the item
-    setShowCheckboxes((prev) => {
-      const next = new Set(prev);
-      next.add(sheetName);
-      return next;
-    });
-    setSelectedSheets((prev) => {
-      const next = new Set(prev);
-      next.add(sheetName);
-      return next;
-    });
-  };
-
-  const handleDoubleClick = (sheetName: string, e: React.MouseEvent) => {
-    if (!isEditMode) return;
-    e.stopPropagation();
-    handleSelectItem(sheetName);
-  };
-
-  const handleSingleClick = (sheetName: string, e: React.MouseEvent) => {
-    if (!isEditMode || !isBatchSelectMode) return;
-    // Only handle if clicking on the item itself, not on buttons/menus/inputs
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('button') ||
-      target.closest('[role="menuitem"]') ||
-      target.closest('input') ||
-      target.closest('[role="dialog"]') ||
-      target.tagName === 'BUTTON' ||
-      target.tagName === 'INPUT'
-    ) {
-      return;
-    }
-    e.stopPropagation();
-    handleSelectItem(sheetName);
   };
 
   const handleDeleteSelected = () => {
@@ -159,7 +96,6 @@ export function AvailableSheetsVisualizer({
     if (selectedSheets.size > 0 && onDeleteSheets) {
       onDeleteSheets(Array.from(selectedSheets));
       setSelectedSheets(new Set());
-      setShowCheckboxes(new Set());
       setShowDeleteConfirm(false);
       setIsEditMode(false);
     }
@@ -241,27 +177,6 @@ export function AvailableSheetsVisualizer({
               {selectedSheets.size} selected
             </Badge>
           )}
-          {isEditMode && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Batch selection help"
-                  >
-                    <InfoIcon className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">
-                    Double-click an item to start batch selection, then click
-                    other items to select them
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
         <div className="flex items-center gap-2">
           {isEditMode && onDeleteSheets && selectedSheets.size > 0 && (
@@ -283,7 +198,6 @@ export function AvailableSheetsVisualizer({
               onClick={() => {
                 setIsEditMode(true);
                 setSelectedSheets(new Set());
-                setShowCheckboxes(new Set());
               }}
               disabled={isRequestInProgress}
               className="h-7 text-xs"
@@ -301,7 +215,6 @@ export function AvailableSheetsVisualizer({
                 setEditingSheet(null);
                 setEditValue('');
                 setSelectedSheets(new Set());
-                setShowCheckboxes(new Set());
               }}
               className="h-7 text-xs"
             >
@@ -322,13 +235,10 @@ export function AvailableSheetsVisualizer({
           const isSelected = selectedSheets.has(sheet.name);
           const isEditing = editingSheet === sheet.name;
           const isPendingDelete = pendingDelete === sheet.name;
-          const showCheckbox = showCheckboxes.has(sheet.name);
 
           return (
             <div
               key={sheet.name}
-              onDoubleClick={(e) => handleDoubleClick(sheet.name, e)}
-              onClick={(e) => handleSingleClick(sheet.name, e)}
               className={cn(
                 'group flex items-center gap-3 rounded-lg border-2 px-4 py-3 transition-all',
                 isEditMode && isSelected && 'border-destructive',
@@ -336,11 +246,10 @@ export function AvailableSheetsVisualizer({
                 isPendingDelete && 'border-destructive bg-destructive/5',
                 !isEditMode && !isClicked && !isPendingDelete && 'border-border',
                 isDisabled && !isSelected && !isEditMode && 'opacity-60',
-                isEditMode && 'cursor-pointer',
               )}
             >
-              {/* Checkbox for selection (only shown when double-clicked in edit mode) */}
-              {isEditMode && onDeleteSheets && showCheckbox && (
+              {/* Checkbox for selection (only in edit mode) */}
+              {isEditMode && onDeleteSheets && (
                 <input
                   type="checkbox"
                   checked={isSelected}
@@ -348,9 +257,6 @@ export function AvailableSheetsVisualizer({
                   disabled={isRequestInProgress}
                   className="size-4 cursor-pointer rounded border-gray-300 text-destructive focus:ring-destructive"
                 />
-              )}
-              {isEditMode && onDeleteSheets && !showCheckbox && (
-                <div className="size-4" />
               )}
 
               {/* Icon */}
@@ -426,76 +332,55 @@ export function AvailableSheetsVisualizer({
               {/* Actions */}
               {isEditMode ? (
                 <div className="flex items-center gap-2 shrink-0">
-                  {(onRenameSheet || onDeleteSheets) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={isRequestInProgress || isEditing}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVerticalIcon className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {onRenameSheet && !isPendingDelete && (
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEdit(sheet.name);
-                            }}
-                            disabled={isRequestInProgress || isEditing}
-                          >
-                            <PencilIcon className="mr-2 size-4" />
-                            Rename
-                          </DropdownMenuItem>
-                        )}
-                        {onDeleteSheets && (
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteInEditMode(sheet.name);
-                            }}
-                            disabled={isRequestInProgress}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2Icon className="mr-2 size-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {onRenameSheet && !isPendingDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => handleStartEdit(sheet.name)}
+                      disabled={isRequestInProgress || isEditing}
+                    >
+                      <PencilIcon className="mr-1.5 size-3.5" />
+                      Rename
+                    </Button>
                   )}
-                  {isPendingDelete && (
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 px-3"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteInEditMode(sheet.name);
-                        }}
-                        disabled={isRequestInProgress}
-                      >
-                        <CheckIcon className="mr-1.5 size-3.5" />
-                        Confirm
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCancelDelete();
-                        }}
-                        disabled={isRequestInProgress}
-                      >
-                        <XIcon className="size-4" />
-                      </Button>
-                    </div>
+                  {onDeleteSheets && (
+                    <>
+                      {isPendingDelete ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-8 px-3"
+                            onClick={() => handleDeleteInEditMode(sheet.name)}
+                            disabled={isRequestInProgress}
+                          >
+                            <CheckIcon className="mr-1.5 size-3.5" />
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={handleCancelDelete}
+                            disabled={isRequestInProgress}
+                          >
+                            <XIcon className="size-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => handleDeleteInEditMode(sheet.name)}
+                          disabled={isRequestInProgress}
+                        >
+                          <Trash2Icon className="mr-1.5 size-3.5" />
+                          Delete
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (

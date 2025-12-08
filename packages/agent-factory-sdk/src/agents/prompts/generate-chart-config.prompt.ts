@@ -61,10 +61,17 @@ ${getChartGenerationPrompt(chartType)}
   - Use hex colors like "#8884d8" or rgb colors like "rgb(136, 132, 216)"
   - Provide an array of 3-5 colors for variety
 - labels: Map column names to human-readable labels (REQUIRED - see precision guidelines below)
-  ${businessContext ? `- Use business context vocabulary to improve labels:
+  ${businessContext && businessContext.vocabulary && businessContext.vocabulary.size > 0 ? `- Use business context vocabulary to improve labels:
   * Domain: ${businessContext.domain.domain}
-  * Vocabulary: Use business terms from context to create meaningful labels
-  * Example: If column is "user_id" and vocabulary maps "user" to "Customer", use "Customer" in labels` : ''}
+  * Vocabulary mappings (technical column → business term):
+    ${Array.from(businessContext.vocabulary.entries())
+      .map(([term, entry]) => `  - "${entry.businessTerm}" → [${entry.technicalTerms.join(', ')}]${entry.synonyms.length > 0 ? ` (synonyms: ${entry.synonyms.join(', ')})` : ''}`)
+      .join('\n    ')}
+  * When creating labels, check if a column name matches any technical term in the vocabulary
+  * If found, use the business term as the label (e.g., if column is "user_id" and vocabulary maps "user" → "Customer", use "Customer" as the label)
+  * Example: Column "user_id" → Look up "user" in vocabulary → Find "Customer" → Use "Customer" as label` : businessContext ? `- Use business context to improve labels:
+  * Domain: ${businessContext.domain.domain}
+  * Use domain understanding to create meaningful labels` : ''}
 - Include chart-specific keys: ${chartDef.requirements.requiredKeys.join(', ')}
 ${businessContext ? `
 **Business Context:**

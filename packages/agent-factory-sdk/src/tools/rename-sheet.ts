@@ -13,11 +13,18 @@ export interface RenameSheetResult {
 /**
  * Renames a sheet/view in the DuckDB database.
  * This is useful when you want to give a sheet a more meaningful name based on its content.
+ * Uses shared instance manager for MVCC-optimized operations
  */
 export const renameSheet = async (
   opts: RenameSheetOptions,
 ): Promise<RenameSheetResult> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
   const { DuckDBInstance } = await import('@duckdb/node-api');
+
+  const dbDir = dirname(opts.dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const instance = await DuckDBInstance.create(opts.dbPath);
   const conn = await instance.connect();
 

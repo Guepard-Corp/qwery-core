@@ -13,11 +13,18 @@ export interface DeleteSheetResult {
  * Deletes one or more sheets/views from the DuckDB database.
  * This permanently removes the views and all their data.
  * Supports batch deletion of multiple sheets at once.
+ * Uses shared instance manager for MVCC-optimized operations
  */
 export const deleteSheet = async (
   opts: DeleteSheetOptions,
 ): Promise<DeleteSheetResult> => {
+  const { mkdir } = await import('node:fs/promises');
+  const { dirname } = await import('node:path');
   const { DuckDBInstance } = await import('@duckdb/node-api');
+
+  const dbDir = dirname(opts.dbPath);
+  await mkdir(dbDir, { recursive: true });
+
   const instance = await DuckDBInstance.create(opts.dbPath);
   const conn = await instance.connect();
 

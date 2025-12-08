@@ -185,7 +185,7 @@ export function TextPart({
             {isCopied ? (
               <CheckIcon className="size-3 text-green-600" />
             ) : (
-              <CopyIcon className="size-3" />
+            <CopyIcon className="size-3" />
             )}
           </MessageAction>
         </MessageActions>
