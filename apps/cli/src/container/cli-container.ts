@@ -1,4 +1,6 @@
 import type { Workspace } from '@qwery/domain/entities';
+import { TelemetryManager } from '@qwery/telemetry-opentelemetry';
+
 import {
   CreateProjectService,
   DeleteProjectService,
@@ -28,6 +30,7 @@ import { NotebookRunner } from '../services/notebook-runner';
 
 export class CliContainer {
   private state: CliState = createInitialState();
+  public telemetry: TelemetryManager;
 
   private readonly repositories = {
     user: new UserRepository(),
@@ -41,7 +44,7 @@ export class CliContainer {
   };
 
   private readonly workspaceModeService = new CliWorkspaceModeService();
-  private readonly notebookRunner = new NotebookRunner();
+  private readonly notebookRunner: NotebookRunner;
 
   private readonly useCases = {
     initWorkspace: new InitWorkspaceService(
@@ -70,11 +73,18 @@ export class CliContainer {
 
   constructor(
     private readonly stateStore: FileStateStore = new FileStateStore(),
-  ) {}
+  ) {
+    // Generate session ID for this CLI run
+    const sessionId = `cli-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    this.telemetry = new TelemetryManager('qwery-cli', sessionId);
+    this.notebookRunner = new NotebookRunner(this.telemetry);
+  }
 
   public async init(): Promise<void> {
     this.state = await this.stateStore.load();
     await this.seedRepositories();
+    // Initialize telemetry after repositories are seeded
+    await this.telemetry.init();
   }
 
   public async persist(): Promise<void> {
