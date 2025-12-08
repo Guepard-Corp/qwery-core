@@ -10,7 +10,9 @@
     "baseUrl": ".",
     "paths": {
       "@qwery/domain": ["../../packages/domain/src"],
-      "@qwery/domain/*": ["../../packages/domain/src/*"]
+      "@qwery/domain/*": ["../../packages/domain/src/*"],
+      "@qwery/telemetry-opentelemetry": ["../../apps/telemetry/src"],
+      "@qwery/telemetry-opentelemetry/*": ["../../apps/telemetry/src/*"]
     },
     "noEmit": true,
     "types": ["node"],
