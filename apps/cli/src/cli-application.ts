@@ -8,6 +8,7 @@ import { registerProjectCommands } from './commands/project';
 import { registerWorkspaceCommands } from './commands/workspace';
 import { CliContainer } from './container/cli-container';
 import { InteractiveRepl } from './services/interactive-repl';
+import type { TelemetryManager } from '@qwery/telemetry-opentelemetry';
 
 export class CliApplication {
   private readonly program: Command;
@@ -36,7 +37,6 @@ export class CliApplication {
     await this.container.init();
     try {
       if (argv.length <= 2) {
-        // Start interactive REPL mode (Cursor CLI style)
         const repl = new InteractiveRepl(this.container);
         await repl.start();
         return;
@@ -44,6 +44,14 @@ export class CliApplication {
       await this.program.parseAsync(argv);
     } finally {
       await this.container.persist();
+      if (argv.length > 2) {
+        await this.container.telemetry.shutdown();
+        setTimeout(() => process.exit(0), 100);
+      }
     }
+  }
+
+  public getTelemetry(): TelemetryManager {
+    return this.container.telemetry;
   }
 }
