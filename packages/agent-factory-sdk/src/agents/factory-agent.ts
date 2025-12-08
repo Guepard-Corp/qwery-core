@@ -11,7 +11,7 @@ import {
 } from '../services';
 import type { TelemetryManager } from '@qwery/telemetry-opentelemetry';
 import { AGENT_EVENTS } from '@qwery/telemetry-opentelemetry/events/agent.events';
-import { context, trace } from '@opentelemetry/api';
+import { context, trace, type SpanContext } from '@opentelemetry/api';
 
 export interface FactoryAgentOptions {
   conversationSlug: string;
@@ -29,6 +29,17 @@ export class FactoryAgent {
   private actorRegistry: ActorRegistry; // NEW: Actor registry
   private model: string;
   private readonly telemetry?: TelemetryManager;
+  // Store parent span contexts for linking actor spans
+  private parentSpanContexts:
+    | Array<{
+        context: SpanContext;
+        attributes?: Record<string, string | number | boolean>;
+      }>
+    | undefined;
+  // Store loadContext span reference to add links later
+  private loadContextSpan:
+    | ReturnType<TelemetryManager['startSpan']>
+    | undefined;
 
   constructor(opts: FactoryAgentOptions) {
     this.id = nanoid();
@@ -43,6 +54,10 @@ export class FactoryAgent {
       this.model,
       this.repositories,
       this.telemetry,
+      () => this.parentSpanContexts, // Function to get current parent span contexts
+      (span: ReturnType<TelemetryManager['startSpan']>) => {
+        this.loadContextSpan = span;
+      }, // Callback to store loadContext span
     );
 
     // NEW: Load persisted state (async, but we'll handle it)
@@ -134,6 +149,48 @@ export class FactoryAgent {
       'agent.message.index': opts.messages.length - 1,
       'agent.message.role': 'user',
     });
+
+    // Capture parent span contexts for linking actor spans
+    if (this.telemetry && conversationSpan && messageSpan) {
+      this.parentSpanContexts = [
+        {
+          context: conversationSpan.spanContext(),
+          attributes: {
+            'agent.span.type': 'conversation',
+            'agent.conversation.id': this.conversationSlug,
+          },
+        },
+        {
+          context: messageSpan.spanContext(),
+          attributes: {
+            'agent.span.type': 'message',
+            'agent.conversation.id': this.conversationSlug,
+          },
+        },
+      ];
+
+      // Add links to loadContext span if it exists and is still recording
+      if (this.loadContextSpan && this.loadContextSpan.isRecording()) {
+        this.loadContextSpan.addLinks([
+          {
+            context: conversationSpan.spanContext(),
+            attributes: {
+              'agent.span.type': 'conversation',
+              'agent.conversation.id': this.conversationSlug,
+            },
+          },
+          {
+            context: messageSpan.spanContext(),
+            attributes: {
+              'agent.span.type': 'message',
+              'agent.conversation.id': this.conversationSlug,
+            },
+          },
+        ]);
+      }
+    } else {
+      this.parentSpanContexts = undefined;
+    }
 
     if (this.telemetry && messageSpan) {
       this.telemetry.captureEvent({

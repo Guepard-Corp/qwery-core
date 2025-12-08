@@ -2,16 +2,19 @@
   "name": "@qwery/telemetry-opentelemetry",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./telemetry-manager": "./src/telemetry-manager.ts",
+    "./telemetry-utils": "./src/telemetry-utils.ts",
     "./events/agent.events": "./src/events/agent.events.ts",
     "./events/cli.events": "./src/events/cli.events.ts",
     "./events/web.events": "./src/events/web.events.ts",
     "./events/desktop.events": "./src/events/desktop.events.ts"
   },
   "scripts": {
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified for telemetry package\" && exit 0"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +28,9 @@
     "@opentelemetry/sdk-metrics": "^2.2.0",
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
+    "dotenv": "^16.6.1",
     "uuid": "^11.0.3"
   },
   "peerDependencies": {

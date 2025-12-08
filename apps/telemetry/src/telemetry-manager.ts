@@ -2,7 +2,7 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { ConsoleSpanExporter, type SpanExporter, type ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
   context,
   diag,
@@ -10,6 +10,7 @@ import {
   DiagLogLevel,
   metrics,
   Span,
+  SpanContext,
   SpanStatusCode,
   trace,
   type Meter,
@@ -22,6 +23,88 @@ import { ClientTelemetryService } from './client.telemetry.service';
 
 // Enable OpenTelemetry internal logging (optional)
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+
+/**
+ * Wraps an OTLP exporter to gracefully handle errors (e.g., when Jaeger is not running)
+ * Falls back to console logging on error instead of crashing
+ */
+class SafeOTLPExporter implements SpanExporter {
+  private otlpExporter: OTLPTraceExporter;
+  private consoleExporter: ConsoleSpanExporter;
+  private errorCount = 0;
+  private readonly ERROR_THRESHOLD = 3; // Fall back after 3 consecutive errors
+
+  constructor(baseEndpoint: string) {
+    this.otlpExporter = new OTLPTraceExporter({
+      url: baseEndpoint,
+    });
+    this.consoleExporter = new ConsoleSpanExporter();
+  }
+
+  export(spans: ReadableSpan[], resultCallback: (result: { code: number; error?: Error }) => void): void {
+    // Try OTLP export first, with error handling
+    try {
+      this.otlpExporter.export(spans, (result) => {
+        // Only treat as failure if there's an actual error object
+        const hasError = result.error !== undefined && result.error !== null;
+        
+        if (!hasError) {
+          // Success - reset error count
+          this.errorCount = 0;
+          resultCallback(result);
+          return;
+        }
+
+        // Increment error count
+        this.errorCount++;
+
+        // Only fall back after multiple consecutive errors
+        // This handles transient network issues gracefully
+        if (this.errorCount >= this.ERROR_THRESHOLD) {
+          // Log warning only once when threshold is reached
+          if (this.errorCount === this.ERROR_THRESHOLD) {
+            const errorMsg = result.error?.message || String(result.error);
+            console.warn(
+              `[Telemetry] OTLP export failed ${this.ERROR_THRESHOLD} times (${errorMsg}). ` +
+              `Falling back to console exporter. Make sure Jaeger is running if you want OTLP export.`
+            );
+          }
+          // Fallback to console exporter after threshold
+          this.consoleExporter.export(spans, resultCallback);
+        } else {
+          // Still trying OTLP, but pass through the error result
+          // This allows the SDK to handle retries
+          resultCallback(result);
+        }
+      });
+    } catch (error) {
+      // Catch any synchronous errors from the export call
+      this.errorCount++;
+      if (this.errorCount >= this.ERROR_THRESHOLD && this.errorCount === this.ERROR_THRESHOLD) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `[Telemetry] OTLP export error (${errorMsg}). ` +
+          `Falling back to console exporter. Make sure Jaeger is running if you want OTLP export.`
+        );
+      }
+      
+      if (this.errorCount >= this.ERROR_THRESHOLD) {
+        // Fallback to console exporter
+        this.consoleExporter.export(spans, resultCallback);
+      } else {
+        // Still trying, pass error through
+        resultCallback({ code: 1, error: error instanceof Error ? error : new Error(String(error)) });
+      }
+    }
+  }
+
+  shutdown(): Promise<void> {
+    return Promise.all([
+      this.otlpExporter.shutdown().catch(() => {}),
+      this.consoleExporter.shutdown().catch(() => {}),
+    ]).then(() => {});
+  }
+}
 
 export class TelemetryManager {
   private sdk: NodeSDK;
@@ -56,10 +139,10 @@ export class TelemetryManager {
     // Use ConsoleSpanExporter for local/CLI testing (prints spans to console)
     // OTLP exporter is optional and only used if OTEL_EXPORTER_OTLP_ENDPOINT is set
     const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    
+
     const traceExporter = otlpEndpoint
-      ? new OTLPTraceExporter({
-          url: otlpEndpoint,
-        })
+      ? new SafeOTLPExporter(otlpEndpoint)
       : new ConsoleSpanExporter();
 
     // Note: NodeSDK automatically handles metrics if metricExporter is provided
@@ -198,6 +281,39 @@ export class TelemetryManager {
     return span;
   }
 
+  /**
+   * Start a span with links to parent spans (useful for XState async actors)
+   * @param name Span name
+   * @param attributes Span attributes
+   * @param parentSpanContexts Array of parent span contexts to link to
+   */
+  startSpanWithLinks(
+    name: string,
+    attributes?: Record<string, any>,
+    parentSpanContexts?: Array<{ context: SpanContext; attributes?: Record<string, string | number | boolean> }>,
+  ): Span {
+    const tracer = trace.getTracer('qwery-telemetry');
+    const serializedAttributes = this.serializeAttributes(attributes);
+    const activeContext = context.active();
+
+    // Create links from parent span contexts
+    const links = parentSpanContexts?.map(({ context: spanContext, attributes: linkAttributes }) => ({
+      context: spanContext,
+      attributes: linkAttributes ? this.serializeAttributes(linkAttributes) : undefined,
+    })) || [];
+
+    const span = tracer.startSpan(
+      name,
+      {
+        attributes: serializedAttributes,
+        links,
+      },
+      activeContext,
+    );
+
+    return span;
+  }
+
   endSpan(span: Span, success: boolean): void {
     if (success) {
       span.setStatus({ code: SpanStatusCode.OK });
@@ -213,8 +329,19 @@ export class TelemetryManager {
   }): void {
     const activeSpan = trace.getActiveSpan();
     if (activeSpan) {
-      const serializedAttributes = this.serializeAttributes(options.attributes);
-      activeSpan.addEvent(options.name, serializedAttributes);
+      try {
+        const serializedAttributes = this.serializeAttributes(options.attributes);
+        activeSpan.addEvent(options.name, serializedAttributes);
+      } catch (error) {
+        // Ignore errors when trying to add events to ended spans
+        // This can happen when onFinish callbacks run after spans have been ended
+        if (error instanceof Error && error.message.includes('ended Span')) {
+          // Silently ignore - span is already ended
+          return;
+        }
+        // Re-throw other errors
+        throw error;
+      }
     }
   }
 

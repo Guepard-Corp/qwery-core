@@ -1,0 +1,515 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "qwery-cli"
+            }
+          },
+          {
+            "key": "session.id",
+            "value": {
+              "stringValue": "cli-1764691183960-mykss9v"
+            }
+          },
+          {
+            "key": "host.name",
+            "value": {
+              "stringValue": "khalil-guepard"
+            }
+          },
+          {
+            "key": "host.arch",
+            "value": {
+              "stringValue": "amd64"
+            }
+          },
+          {
+            "key": "host.id",
+            "value": {
+              "stringValue": "04c510dd276f414fb19a5681c02841d0"
+            }
+          },
+          {
+            "key": "process.pid",
+            "value": {
+              "intValue": "807750"
+            }
+          },
+          {
+            "key": "process.executable.name",
+            "value": {
+              "stringValue": "node"
+            }
+          },
+          {
+            "key": "process.executable.path",
+            "value": {
+              "stringValue": "/home/khalil/.local/share/fnm/node-versions/v22.21.1/installation/bin/node"
+            }
+          },
+          {
+            "key": "process.runtime.version",
+            "value": {
+              "stringValue": "22.21.1"
+            }
+          },
+          {
+            "key": "process.runtime.name",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "process.runtime.description",
+            "value": {
+              "stringValue": "Node.js"
+            }
+          },
+          {
+            "key": "process.command",
+            "value": {
+              "stringValue": "/home/khalil/guepard/qwery-core/apps/cli/dist/index.js"
+            }
+          },
+          {
+            "key": "process.owner",
+            "value": {
+              "stringValue": "khalil"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "qwery-telemetry",
+            "version": undefined
+          },
+          "spans": [
+            {
+              "traceId": "a160ed1f542f73f29b60f2dc40a3231f",
+              "spanId": "22aa9d3d0c3a6ee7",
+              "parentSpanId": "",
+              "name": "agent.conversation",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1764691190805000000",
+              "endTimeUnixNano": "1764691217410549000",
+              "attributes": [
+                {
+                  "key": "agent.conversation.id",
+                  "value": {
+                    "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                  }
+                },
+                {
+                  "key": "agent.id",
+                  "value": {
+                    "stringValue": "ngSFEY6EmGtj4Dhx_P5vr"
+                  }
+                },
+                {
+                  "key": "agent.conversation.message_count",
+                  "value": {
+                    "intValue": "1"
+                  }
+                }
+              ],
+              "events": [],
+              "links": [],
+              "status": {
+                "code": "STATUS_CODE_OK"
+              }
+            },
+            {
+              "traceId": "d91f0489cf6ae55ec8395dbccf250d90",
+              "spanId": "24ddc7feb96865ba",
+              "parentSpanId": "",
+              "name": "agent.message",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1764691190806000000",
+              "endTimeUnixNano": "1764691193903279000",
+              "attributes": [
+                {
+                  "key": "agent.conversation.id",
+                  "value": {
+                    "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                  }
+                },
+                {
+                  "key": "agent.message.text",
+                  "value": {
+                    "stringValue": "list all the data here https://docs.google.com/spreadsheets/d/1yfjcBF4X8waukFdI5u9ctkagFwAn-BRgM5IUCUK1Ay8/edit?gid=0#gid=0"
+                  }
+                },
+                {
+                  "key": "agent.message.index",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "agent.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                }
+              ],
+              "events": [],
+              "links": [],
+              "status": {
+                "code": "STATUS_CODE_OK"
+              }
+            },
+            {
+              "traceId": "2f30597d50882464e1282f3d5d7d21d9",
+              "spanId": "dc4f00c04de3ba65",
+              "parentSpanId": "",
+              "name": "agent.actor.loadContext",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1764691190794000000",
+              "endTimeUnixNano": "1764691190810836000",
+              "attributes": [
+                {
+                  "key": "agent.actor.id",
+                  "value": {
+                    "stringValue": "loadContext"
+                  }
+                },
+                {
+                  "key": "agent.actor.type",
+                  "value": {
+                    "stringValue": "loadContext"
+                  }
+                },
+                {
+                  "key": "agent.conversation.id",
+                  "value": {
+                    "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1764691190810700200",
+                  "name": "agent.actor.completed",
+                  "attributes": [
+                    {
+                      "key": "agent.actor.id",
+                      "value": {
+                        "stringValue": "loadContext"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.type",
+                      "value": {
+                        "stringValue": "loadContext"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.duration_ms",
+                      "value": {
+                        "stringValue": "18"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.status",
+                      "value": {
+                        "stringValue": "success"
+                      }
+                    },
+                    {
+                      "key": "agent.context.message_count",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "links": [
+                {
+                  "traceId": "a160ed1f542f73f29b60f2dc40a3231f",
+                  "spanId": "22aa9d3d0c3a6ee7",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "conversation"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "d91f0489cf6ae55ec8395dbccf250d90",
+                  "spanId": "24ddc7feb96865ba",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "message"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": "STATUS_CODE_OK"
+              }
+            },
+            {
+              "traceId": "d2c267fa282d5c699406c4dd34438510",
+              "spanId": "e1eb97cdce2ccdc1",
+              "parentSpanId": "",
+              "name": "agent.actor.detectIntent",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1764691190814000000",
+              "endTimeUnixNano": "1764691193893999000",
+              "attributes": [
+                {
+                  "key": "agent.actor.id",
+                  "value": {
+                    "stringValue": "detectIntent"
+                  }
+                },
+                {
+                  "key": "agent.actor.type",
+                  "value": {
+                    "stringValue": "detectIntent"
+                  }
+                },
+                {
+                  "key": "agent.actor.input",
+                  "value": {
+                    "stringValue": "{\"inputMessage\":\"list all the data here https://docs.google.com/spreadsheets/d/1yfjcBF4X8waukFdI5u9ctkagFwAn-BRgM5IUCUK1Ay8/edit?gid=0#gid=0\"}"
+                  }
+                },
+                {
+                  "key": "agent.conversation.id",
+                  "value": {
+                    "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1764691193893899077",
+                  "name": "agent.actor.completed",
+                  "attributes": [
+                    {
+                      "key": "agent.actor.id",
+                      "value": {
+                        "stringValue": "detectIntent"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.type",
+                      "value": {
+                        "stringValue": "detectIntent"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.duration_ms",
+                      "value": {
+                        "stringValue": "3080"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.status",
+                      "value": {
+                        "stringValue": "success"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "links": [
+                {
+                  "traceId": "a160ed1f542f73f29b60f2dc40a3231f",
+                  "spanId": "22aa9d3d0c3a6ee7",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "conversation"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "d91f0489cf6ae55ec8395dbccf250d90",
+                  "spanId": "24ddc7feb96865ba",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "message"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": "STATUS_CODE_OK"
+              }
+            },
+            {
+              "traceId": "210259d0648de818d0534b2b88b76a78",
+              "spanId": "80bf984149cd7dfa",
+              "parentSpanId": "",
+              "name": "agent.actor.readData",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1764691193896000000",
+              "endTimeUnixNano": "1764691193901975000",
+              "attributes": [
+                {
+                  "key": "agent.actor.id",
+                  "value": {
+                    "stringValue": "readData"
+                  }
+                },
+                {
+                  "key": "agent.actor.type",
+                  "value": {
+                    "stringValue": "readData"
+                  }
+                },
+                {
+                  "key": "agent.conversation.id",
+                  "value": {
+                    "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1764691193901973470",
+                  "name": "agent.actor.completed",
+                  "attributes": [
+                    {
+                      "key": "agent.actor.id",
+                      "value": {
+                        "stringValue": "readData"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.type",
+                      "value": {
+                        "stringValue": "readData"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.duration_ms",
+                      "value": {
+                        "stringValue": "6"
+                      }
+                    },
+                    {
+                      "key": "agent.actor.status",
+                      "value": {
+                        "stringValue": "success"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "links": [
+                {
+                  "traceId": "a160ed1f542f73f29b60f2dc40a3231f",
+                  "spanId": "22aa9d3d0c3a6ee7",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "conversation"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "d91f0489cf6ae55ec8395dbccf250d90",
+                  "spanId": "24ddc7feb96865ba",
+                  "traceState": "",
+                  "attributes": [
+                    {
+                      "key": "agent.span.type",
+                      "value": {
+                        "stringValue": "message"
+                      }
+                    },
+                    {
+                      "key": "agent.conversation.id",
+                      "value": {
+                        "stringValue": "cli-agent-fES8LG7bt4nMkdHBITsmf"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": "STATUS_CODE_OK"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

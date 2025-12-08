@@ -43,7 +43,7 @@
     "@qwery/telemetry-opentelemetry": "workspace:*",
     "ai": "^5.0.93",
     "commander": "^13.1.0",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.6.1",
     "nanoid": "^5.1.6",
     "pg": "^8.13.1",
     "react": "catalog:",

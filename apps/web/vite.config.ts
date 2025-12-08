@@ -73,6 +73,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
+    manifest: true, // Enable manifest generation for React Router
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;

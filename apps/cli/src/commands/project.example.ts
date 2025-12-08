@@ -7,9 +7,9 @@
 
 import type { Command } from 'commander';
 import type { CliContainer } from '../container/cli-container';
+import type { TelemetryManager } from '@qwery/telemetry-opentelemetry';
 import { withCommandSpan, CLI_EVENTS } from '../utils/telemetry-utils';
 import { printOutput, resolveFormat } from '../utils/output';
-import type { TelemetryManager } from '@qwery/telemetry-opentelemetry';
 
 interface ProjectListOptions {
   organizationId?: string;
@@ -98,72 +98,67 @@ export function registerProjectCreateCommand(
     .description('Create a new project')
     .requiredOption('-d, --description <description>', 'Project description')
     .option('-o, --organization-id <id>', 'Organization identifier')
-    .action(
-      async (
-        name: string,
-        options: { description: string; organizationId?: string },
-      ) => {
-        const telemetry = container.telemetry;
+    .action(async (name: string, options: Record<string, unknown>) => {
+      const telemetry = container.telemetry;
 
-        await withCommandSpan(
-          telemetry,
-          container,
-          'project.create',
-          { name, ...options },
-          'command',
-          async (_span) => {
-            // Validation milestone
+      await withCommandSpan(
+        telemetry,
+        container,
+        'project.create',
+        { name, ...options },
+        'command',
+        async (_span) => {
+          // Validation milestone
+          telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_VALIDATED,
+          });
+
+          const workspace = container.getWorkspace();
+          const organizationId =
+            options.organizationId ?? workspace?.organizationId;
+
+          if (!organizationId) {
+            // Record validation error
             telemetry.captureEvent({
-              name: CLI_EVENTS.COMMAND_VALIDATED,
-            });
-
-            const workspace = container.getWorkspace();
-            const organizationId =
-              options.organizationId ?? workspace?.organizationId;
-
-            if (!organizationId) {
-              // Record validation error
-              telemetry.captureEvent({
-                name: CLI_EVENTS.ERROR_VALIDATION,
-                attributes: {
-                  'error.type': 'missing_required_field',
-                  'error.field': 'organizationId',
-                },
-              });
-              throw new Error('Organization id missing');
-            }
-
-            // Record milestone: creating project
-            telemetry.captureEvent({
-              name: CLI_EVENTS.COMMAND_CREATING,
+              name: CLI_EVENTS.ERROR_VALIDATION,
               attributes: {
-                'cli.project.name': name,
-                'cli.project.organization_id': organizationId,
+                'error.type': 'missing_required_field',
+                'error.field': 'organizationId',
               },
             });
+            throw new Error('Organization id missing');
+          }
 
-            const useCases = container.getUseCases();
-            const project = await useCases.createProject.execute({
-              org_id: organizationId,
-              name,
-              description: options.description,
-              createdBy: workspace?.userId ?? 'cli',
-            });
+          // Record milestone: creating project
+          telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_CREATING,
+            attributes: {
+              'cli.project.name': name,
+              'cli.project.organization_id': organizationId,
+            },
+          });
 
-            // Record success with project details
-            telemetry.captureEvent({
-              name: CLI_EVENTS.COMMAND_CREATED,
-              attributes: {
-                'cli.project.id': project.id,
-                'cli.project.slug': project.slug,
-              },
-            });
+          const useCases = container.getUseCases();
+          const project = await useCases.createProject.execute({
+            org_id: organizationId as string, // TypeScript doesn't narrow after throw, but we know it's string here
+            name,
+            description: options.description as string | undefined,
+            createdBy: workspace?.userId ?? 'cli',
+          });
 
-            return project;
-          },
-        );
-      },
-    );
+          // Record success with project details
+          telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_CREATED,
+            attributes: {
+              'cli.project.id': project.id,
+              'cli.project.slug': project.slug,
+            },
+          });
+
+          return project;
+        },
+      );
+    });
 }
 
 /**

@@ -144,7 +144,7 @@ importers:
         specifier: ^13.1.0
         version: 13.1.0
       dotenv:
-        specifier: ^16.4.7
+        specifier: ^16.6.1
         version: 16.6.1
       nanoid:
         specifier: ^5.1.6
@@ -359,9 +359,15 @@ importers:
       '@opentelemetry/sdk-trace-base':
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node':
+        specifier: ^2.2.0
+        version: 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions':
         specifier: ^1.38.0
         version: 1.38.0
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
       uuid:
         specifier: ^11.0.3
         version: 11.1.0
@@ -429,6 +435,9 @@ importers:
       '@qwery/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
+      '@qwery/telemetry-opentelemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       '@qwery/ui':
         specifier: workspace:*
         version: link:../../packages/ui

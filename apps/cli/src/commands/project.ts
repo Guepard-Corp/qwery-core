@@ -116,7 +116,7 @@ export function registerProjectCommands(
         container.telemetry,
         container,
         'project.create',
-        { name, ...options },
+        { name, ...(options as Record<string, unknown>) },
         'command',
         async (_span) => {
           // Validation milestone
