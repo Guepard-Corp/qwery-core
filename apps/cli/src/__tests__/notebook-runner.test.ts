@@ -9,7 +9,7 @@ describe('NotebookRunner', () => {
   let testDatasource: Datasource;
 
   beforeEach(() => {
-    runner = new NotebookRunner();
+    runner = new NotebookRunner(undefined);
     testDatasource = {
       id: 'ds-1',
       projectId: 'proj-1',

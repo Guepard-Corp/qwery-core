@@ -1,6 +1,7 @@
 import type { Datasource } from '@qwery/domain/entities';
 import { createDriverForDatasource } from '../extensions/driver-factory';
 import { CliUsageError } from '../utils/errors';
+import type { TelemetryManager } from '@qwery/telemetry-opentelemetry';
 
 export interface RunCellOptions {
   datasource: Datasource;
@@ -15,6 +16,8 @@ export interface RunCellResult {
 }
 
 export class NotebookRunner {
+  constructor(private readonly telemetry?: TelemetryManager) {}
+
   public async testConnection(datasource: Datasource): Promise<void> {
     const driver = await createDriverForDatasource(datasource);
     try {
