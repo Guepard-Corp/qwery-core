@@ -2,7 +2,12 @@
   "extends": "@qwery/tsconfig/base.json",
   "compilerOptions": {
     "skipLibCheck": true,
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "baseUrl": ".",
+    "paths": {
+      "@qwery/telemetry-opentelemetry": ["../../apps/telemetry/src"],
+      "@qwery/telemetry-opentelemetry/*": ["../../apps/telemetry/src/*"]
+    }
   },
   "include": ["*.ts", "*.tsx", "src"],
   "exclude": ["node_modules"]

@@ -4,6 +4,8 @@ import {
   type MLCEngineInterface,
 } from '@mlc-ai/web-llm';
 import { LanguageModel } from 'ai';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { AGENT_EVENTS } from '@qwery/telemetry-opentelemetry/events/agent.events';
 
 type ModelProvider = {
   resolveModel: (modelName: string) => LanguageModel;
@@ -67,39 +69,112 @@ function createWebLLMModel(
       temperature?: number;
       maxTokens?: number;
     }) => {
-      const engine = await getOrCreateEngine(modelName, initProgressCallback);
-      const response = await engine.chat.completions.create({
-        messages: options.messages,
-        temperature: options.temperature ?? temperature,
-        max_tokens: options.maxTokens,
-        stream: false,
+      const tracer = trace.getTracer('agent-factory-sdk');
+      const span = tracer.startSpan('agent.llm.call', {
+        attributes: {
+          'agent.llm.model.name': modelName,
+          'agent.llm.provider.id': 'webllm',
+          'agent.llm.temperature': options.temperature ?? temperature,
+          'agent.llm.max_tokens': options.maxTokens || 0,
+        },
       });
 
-      const content = response.choices[0]?.message?.content ?? '';
-      const finishReason = response.choices[0]?.finish_reason;
+      try {
+        span.addEvent(AGENT_EVENTS.LLM_CALL_STARTED, {
+          'agent.llm.model.name': modelName,
+          'agent.llm.provider.id': 'webllm',
+        });
 
-      return {
-        text: content,
-        finishReason: finishReason === 'stop' ? 'stop' : 'length',
-        usage: {
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
-        },
-        response: {
-          id: response.id || `webllm-${Date.now()}`,
-          model: modelName,
-          choices: [
-            {
-              message: {
-                role: 'assistant' as const,
-                content,
+        const startTime = Date.now();
+        const engine = await getOrCreateEngine(modelName, initProgressCallback);
+        const response = await engine.chat.completions.create({
+          messages: options.messages,
+          temperature: options.temperature ?? temperature,
+          max_tokens: options.maxTokens,
+          stream: false,
+        });
+
+        const duration = Date.now() - startTime;
+        const content = response.choices[0]?.message?.content ?? '';
+        const finishReason = response.choices[0]?.finish_reason;
+
+        // Extract token usage if available
+        const promptTokens = response.usage?.prompt_tokens || 0;
+        const completionTokens = response.usage?.completion_tokens || 0;
+        const totalTokens = response.usage?.total_tokens || 0;
+
+        span.setAttributes({
+          'agent.llm.prompt.tokens': promptTokens,
+          'agent.llm.completion.tokens': completionTokens,
+          'agent.llm.total.tokens': totalTokens,
+          'agent.llm.duration_ms': String(duration),
+          'agent.llm.status': 'success',
+        });
+
+        span.addEvent(AGENT_EVENTS.LLM_CALL_COMPLETED, {
+          'agent.llm.model.name': modelName,
+          'agent.llm.provider.id': 'webllm',
+          'agent.llm.duration_ms': String(duration),
+        });
+
+        if (totalTokens > 0) {
+          span.addEvent(AGENT_EVENTS.LLM_TOKENS_USED, {
+            'agent.llm.model.name': modelName,
+            'agent.llm.provider.id': 'webllm',
+            'agent.llm.prompt.tokens': promptTokens,
+            'agent.llm.completion.tokens': completionTokens,
+            'agent.llm.total.tokens': totalTokens,
+          });
+        }
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+
+        return {
+          text: content,
+          finishReason: finishReason === 'stop' ? 'stop' : 'length',
+          usage: {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+          },
+          response: {
+            id: response.id || `webllm-${Date.now()}`,
+            model: modelName,
+            choices: [
+              {
+                message: {
+                  role: 'assistant' as const,
+                  content,
+                },
+                finish_reason: finishReason ?? 'stop',
               },
-              finish_reason: finishReason ?? 'stop',
-            },
-          ],
-        },
-      };
+            ],
+          },
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        span.setAttributes({
+          'agent.llm.status': 'error',
+          'error.type': error instanceof Error ? error.name : 'UnknownError',
+          'error.message': errorMessage,
+        });
+
+        span.addEvent(AGENT_EVENTS.LLM_CALL_ERROR, {
+          'agent.llm.model.name': modelName,
+          'agent.llm.provider.id': 'webllm',
+          'error.message': errorMessage,
+        });
+
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: errorMessage,
+        });
+        span.end();
+
+        throw error;
+      }
     },
   };
 
