@@ -28,6 +28,7 @@ export default defineConfig({
     '@qwery/extensions-sdk',
     '@qwery/extension-postgresql',
     '@qwery/agent-factory-sdk',
+    '@qwery/telemetry-opentelemetry',
   ],
 });
 
