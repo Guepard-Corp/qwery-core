@@ -15,6 +15,7 @@ import {
   createDriverForDatasource,
   createDriverFromExtension,
 } from '../extensions/driver-factory';
+import { withCommandSpan, CLI_EVENTS } from '../utils/telemetry-utils';
 
 interface DatasourceListOptions {
   projectId?: string;
@@ -44,6 +45,7 @@ export function registerDatasourceCommands(
     .command('datasource')
     .description('Inspect datasources via domain use cases');
 
+  // ------------------- CREATE -------------------
   datasource
     .command('create <name>')
     .description('Register a datasource powered by an extension provider')
@@ -62,69 +64,123 @@ export function registerDatasourceCommands(
     .option('--skip-test', 'Skip live connection test', false)
     .option('-f, --format <format>', 'Output format: table (default) or json')
     .action(async (name: string, options: DatasourceCreateOptions) => {
-      const workspace = container.getWorkspace();
-      const projectId = options.projectId ?? workspace?.projectId;
-      if (!projectId) {
-        throw new CliUsageError(
-          'Project id missing. Provide --project-id or initialize the workspace.',
-        );
-      }
+      await withCommandSpan(
+        container.telemetry,
+        container,
+        'datasource.create',
+        { name, ...options },
+        'command',
+        async (_span) => {
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_VALIDATED,
+          });
 
-      const providerId = options.provider ?? 'postgresql';
-      const driverId = options.driver ?? providerId;
-      const { config, summary } = resolveDatasourceConfig(providerId, options);
+          const workspace = container.getWorkspace();
+          const projectId = options.projectId ?? workspace?.projectId;
+          if (!projectId) {
+            container.telemetry.captureEvent({
+              name: CLI_EVENTS.ERROR_VALIDATION,
+              attributes: {
+                'error.type': 'missing_required_field',
+                'error.field': 'projectId',
+              },
+            });
+            throw new CliUsageError(
+              'Project id missing. Provide --project-id or initialize the workspace.',
+            );
+          }
 
-      if (!options.skipTest) {
-        const driver = await createDriverFromExtension(
-          providerId,
-          name,
-          config,
-        );
-        try {
-          await driver.testConnection(config);
-        } finally {
-          await driver.close?.();
-        }
-      }
+          const providerId = options.provider ?? 'postgresql';
+          const driverId = options.driver ?? providerId;
+          const { config, summary } = resolveDatasourceConfig(
+            providerId,
+            options,
+          );
 
-      const identity = createIdentity();
-      const now = new Date();
+          // Record connection test milestone
+          if (!options.skipTest) {
+            container.telemetry.captureEvent({
+              name: CLI_EVENTS.COMMAND_TESTING_CONNECTION,
+              attributes: {
+                'datasource.provider': providerId,
+              },
+            });
 
-      const datasource: Datasource = {
-        id: identity.id,
-        projectId,
-        name,
-        description:
-          options.description ?? `Remote datasource ${summary.descriptionHint}`,
-        datasource_provider: providerId,
-        datasource_driver: driverId,
-        datasource_kind: DatasourceKind.REMOTE,
-        slug: identity.slug,
-        config,
-        createdAt: now,
-        updatedAt: now,
-        createdBy: workspace?.userId ?? 'cli',
-        updatedBy: workspace?.userId ?? 'cli',
-      };
+            const driver = await createDriverFromExtension(
+              providerId,
+              name,
+              config,
+            );
+            try {
+              await driver.testConnection(config);
+              container.telemetry.captureEvent({
+                name: CLI_EVENTS.COMMAND_CONNECTION_SUCCESS,
+              });
+            } finally {
+              driver.close?.();
+            }
+          }
 
-      const repositories = container.getRepositories();
-      await repositories.datasource.create(datasource);
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_CREATING,
+            attributes: {
+              'datasource.name': name,
+              'datasource.provider': providerId,
+            },
+          });
 
-      const format = resolveFormat(options.format);
-      printOutput(
-        {
-          id: datasource.id,
-          name: datasource.name,
-          provider: datasource.datasource_provider,
-          driver: datasource.datasource_driver,
-          host: summary.host ?? '(n/a)',
-          database: summary.database ?? '(n/a)',
+          const identity = createIdentity();
+          const now = new Date();
+
+          const datasource: Datasource = {
+            id: identity.id,
+            projectId,
+            name,
+            description:
+              options.description ??
+              `Remote datasource ${summary.descriptionHint}`,
+            datasource_provider: providerId,
+            datasource_driver: driverId,
+            datasource_kind: DatasourceKind.REMOTE,
+            slug: identity.slug,
+            config,
+            createdAt: now,
+            updatedAt: now,
+            createdBy: workspace?.userId ?? 'cli',
+            updatedBy: workspace?.userId ?? 'cli',
+          };
+
+          const repositories = container.getRepositories();
+          await repositories.datasource.create(datasource);
+
+          const format = resolveFormat(options.format);
+          printOutput(
+            {
+              id: datasource.id,
+              name: datasource.name,
+              provider: datasource.datasource_provider,
+              driver: datasource.datasource_driver,
+              host: summary.host ?? '(n/a)',
+              database: summary.database ?? '(n/a)',
+            },
+            format,
+            'Datasource created.',
+          );
+
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_CREATED,
+            attributes: {
+              'datasource.id': datasource.id,
+              'datasource.slug': datasource.slug,
+            },
+          });
+
+          return datasource;
         },
-        format,
-        'Datasource created.',
       );
     });
 
+  // ------------------- LIST -------------------
   datasource
     .command('list')
     .description('List datasources for the active project')
@@ -134,54 +190,135 @@ export function registerDatasourceCommands(
     )
     .option('-f, --format <format>', 'Output format: table (default) or json')
     .action(async (options: DatasourceListOptions) => {
-      const workspace = container.getWorkspace();
-      const projectId = options.projectId ?? workspace?.projectId;
+      await withCommandSpan(
+        container.telemetry,
+        container,
+        'datasource.list',
+        options as Record<string, unknown>,
+        'command',
+        async (_span) => {
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_VALIDATED,
+          });
 
-      if (!projectId) {
-        throw new CliUsageError(
-          'Project id missing. Provide --project-id or initialize the workspace.',
-        );
-      }
+          const workspace = container.getWorkspace();
+          const projectId = options.projectId ?? workspace?.projectId;
 
-      const useCases = container.getUseCases();
-      const datasources =
-        await useCases.getDatasourcesByProjectId.execute(projectId);
+          if (!projectId) {
+            container.telemetry.captureEvent({
+              name: CLI_EVENTS.ERROR_VALIDATION,
+              attributes: {
+                'error.type': 'missing_required_field',
+                'error.field': 'projectId',
+              },
+            });
+            throw new CliUsageError(
+              'Project id missing. Provide --project-id or initialize the workspace.',
+            );
+          }
 
-      const rows = datasources.map((datasource: DatasourceOutput) => ({
-        id: datasource.id,
-        name: datasource.name,
-        projectId: datasource.projectId,
-        provider: datasource.datasource_provider,
-        driver: datasource.datasource_driver,
-        kind: datasource.datasource_kind,
-        updatedAt: datasource.updatedAt.toISOString(),
-      }));
+          const useCases = container.getUseCases();
+          const datasources =
+            await useCases.getDatasourcesByProjectId.execute(projectId);
 
-      const format = resolveFormat(options.format);
-      printOutput(rows, format, 'No datasources found.');
+          const rows = datasources.map((ds: DatasourceOutput) => ({
+            id: ds.id,
+            name: ds.name,
+            projectId: ds.projectId,
+            provider: ds.datasource_provider,
+            driver: ds.datasource_driver,
+            kind: ds.datasource_kind,
+            updatedAt: ds.updatedAt.toISOString(),
+          }));
+
+          const format = resolveFormat(options.format);
+          printOutput(rows, format, 'No datasources found.');
+
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_RESULT,
+            attributes: {
+              'cli.command.result.count': datasources.length,
+              'cli.command.result.format': format,
+            },
+          });
+
+          return { count: datasources.length };
+        },
+      );
     });
 
+  // ------------------- TEST -------------------
   datasource
     .command('test <datasourceId>')
     .description('Test connectivity for a stored datasource')
     .action(async (datasourceId: string, _options: DatasourceTestOptions) => {
-      const repositories = container.getRepositories();
-      const datasource = await repositories.datasource.findById(datasourceId);
-      if (!datasource) {
-        throw new CliUsageError(`Datasource with id ${datasourceId} not found`);
-      }
-      const driver = await createDriverForDatasource(datasource);
-      try {
-        await driver.testConnection(datasource.config ?? {});
-      } finally {
-        await driver.close?.();
-      }
-      console.log(
-        `Connection to ${datasource.name} (${datasource.datasource_provider}) succeeded.`,
+      await withCommandSpan(
+        container.telemetry,
+        container,
+        'datasource.test',
+        { datasourceId },
+        'command',
+        async (_span) => {
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_VALIDATED,
+            attributes: {
+              'datasource.id': datasourceId,
+            },
+          });
+
+          const repositories = container.getRepositories();
+          const datasource =
+            await repositories.datasource.findById(datasourceId);
+          if (!datasource) {
+            container.telemetry.captureEvent({
+              name: CLI_EVENTS.ERROR_NOT_FOUND,
+              attributes: {
+                'error.type': 'resource_not_found',
+                'resource.type': 'datasource',
+                'resource.id': datasourceId,
+              },
+            });
+            throw new CliUsageError(
+              `Datasource with id ${datasourceId} not found`,
+            );
+          }
+
+          container.telemetry.captureEvent({
+            name: CLI_EVENTS.COMMAND_TESTING_CONNECTION,
+            attributes: {
+              'datasource.id': datasource.id,
+              'datasource.provider': datasource.datasource_provider,
+            },
+          });
+
+          const startTime = Date.now();
+          const driver = await createDriverForDatasource(datasource);
+          try {
+            await driver.testConnection(datasource.config ?? {});
+            const duration = Date.now() - startTime;
+
+            container.telemetry.captureEvent({
+              name: CLI_EVENTS.COMMAND_CONNECTION_SUCCESS,
+              attributes: {
+                'datasource.id': datasource.id,
+                'connection.duration_ms': String(duration),
+              },
+            });
+
+            console.log(
+              `Connection to ${datasource.name} (${datasource.datasource_provider}) succeeded.`,
+            );
+          } finally {
+            driver.close?.();
+          }
+
+          return { datasourceId: datasource.id, success: true };
+        },
       );
     });
 }
 
+// ------------------- UTILS -------------------
 function parseConfigJson(raw?: string): Record<string, unknown> | null {
   if (!raw) {
     return null;
