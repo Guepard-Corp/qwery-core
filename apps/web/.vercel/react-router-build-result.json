@@ -318,15 +318,15 @@
     }
   },
   "reactRouterConfig": {
-    "appDirectory": "/Users/hani.chalouati/Documents/work/guepard/qwery-core/apps/web/app",
+    "appDirectory": "/home/khalil/guepard/qwery-core/apps/web/app",
     "basename": "/",
-    "buildDirectory": "/Users/hani.chalouati/Documents/work/guepard/qwery-core/apps/web/build",
+    "buildDirectory": "/home/khalil/guepard/qwery-core/apps/web/build",
     "future": {
-      "v8_middleware": false,
       "unstable_optimizeDeps": false,
-      "unstable_splitRouteModules": false,
       "unstable_subResourceIntegrity": false,
-      "unstable_viteEnvironmentApi": false
+      "v8_middleware": false,
+      "v8_splitRouteModules": false,
+      "v8_viteEnvironmentApi": false
     },
     "routes": {
       "root": {

@@ -2,7 +2,9 @@
   "extends": "@qwery/tsconfig/base.json",
   "compilerOptions": {
     "skipLibCheck": true,
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "baseUrl": ".",
+    "paths": {}
   },
   "include": ["*.ts", "*.tsx", "src"],
   "exclude": ["node_modules"]

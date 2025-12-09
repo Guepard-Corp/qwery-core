@@ -15,3 +15,7 @@ catalog:
   'vite': '^7.1.12'
   'typescript': '^5.9.3'
 
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - '@sentry/cli'
+  - better-sqlite3

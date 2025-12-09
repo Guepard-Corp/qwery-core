@@ -10,12 +10,30 @@
     "typecheck": "tsc --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./opentelemetry": "./src/opentelemetry/index.ts",
+    "./opentelemetry/telemetry-manager": "./src/opentelemetry/telemetry-manager.ts",
+    "./opentelemetry/telemetry-utils": "./src/opentelemetry/telemetry-utils.ts",
+    "./opentelemetry/events/agent.events": "./src/opentelemetry/events/agent.events.ts",
+    "./opentelemetry/events/cli.events": "./src/opentelemetry/events/cli.events.ts",
+    "./opentelemetry/events/web.events": "./src/opentelemetry/events/web.events.ts",
+    "./opentelemetry/events/desktop.events": "./src/opentelemetry/events/desktop.events.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-metrics": "^2.2.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
     "@posthog/react": "^1.4.0",
+    "dotenv": "^16.6.1",
     "posthog-js": "^1.292.0",
-    "sentry": "^0.1.2"
+    "sentry": "^0.1.2",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
@@ -34,6 +52,10 @@
     "react-i18next": "^16.2.3",
     "sonner": "^2.0.7",
     "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "prettier": "@qwery/prettier-config",
   "typesVersions": {

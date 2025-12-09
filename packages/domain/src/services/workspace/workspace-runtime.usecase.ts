@@ -1,9 +1,7 @@
 import { WorkspaceRuntimeEnum } from '../../enums/workspace-mode';
 import { WorkspaceRuntimeUseCase } from '../../usecases/workspace/workspace-runtime.usecase';
 
-export abstract class WorkspaceRuntimeService
-  implements WorkspaceRuntimeUseCase
-{
+export abstract class WorkspaceRuntimeService implements WorkspaceRuntimeUseCase {
   public abstract detectWorkspaceRuntime(): Promise<WorkspaceRuntimeEnum>;
 
   public async execute(): Promise<WorkspaceRuntimeEnum> {

@@ -40,9 +40,8 @@ async function createProvider(
 ): Promise<ModelProvider> {
   switch (providerId) {
     case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
-      );
+      const { createAzureModelProvider } =
+        await import('./models/azure-model.provider');
       return createAzureModelProvider({
         resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
         apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
@@ -52,33 +51,29 @@ async function createProvider(
       });
     }
     case 'ollama': {
-      const { createOllamaModelProvider } = await import(
-        './models/ollama-model.provider'
-      );
+      const { createOllamaModelProvider } =
+        await import('./models/ollama-model.provider');
       return createOllamaModelProvider({
         baseUrl: getEnv('OLLAMA_BASE_URL'),
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
       });
     }
     case 'browser': {
-      const { createBuiltInModelProvider } = await import(
-        './models/built-in-model.provider'
-      );
+      const { createBuiltInModelProvider } =
+        await import('./models/built-in-model.provider');
       return createBuiltInModelProvider({});
     }
     case 'transformer-browser':
     case 'transformer': {
-      const { createTransformerJSModelProvider } = await import(
-        './models/transformerjs-model.provider'
-      );
+      const { createTransformerJSModelProvider } =
+        await import('./models/transformerjs-model.provider');
       return createTransformerJSModelProvider({
         defaultModel: getEnv('TRANSFORMER_MODEL') ?? modelName,
       });
     }
     case 'webllm': {
-      const { createWebLLMModelProvider } = await import(
-        './models/webllm-model.provider'
-      );
+      const { createWebLLMModelProvider } =
+        await import('./models/webllm-model.provider');
       return createWebLLMModelProvider({
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });

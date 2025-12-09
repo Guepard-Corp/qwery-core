@@ -18,9 +18,8 @@ export const extractSchema = async (
   const conn = await instance.connect();
 
   // Import validation function
-  const { isSystemOrTempTable, validateTableExists } = await import(
-    './view-registry'
-  );
+  const { isSystemOrTempTable, validateTableExists } =
+    await import('./view-registry');
 
   try {
     // Validate view exists and is not temp if viewName is provided

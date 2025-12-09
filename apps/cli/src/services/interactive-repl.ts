@@ -260,16 +260,14 @@ export class InteractiveRepl {
   private async processReadDataAgentQuery(query: string): Promise<void> {
     try {
       // Import using file path since it's not exported from package index
-      const readDataAgentModule = await import(
-        '../../../../packages/agent-factory-sdk/src/agents/actors/read-data-agent.actor.js'
-      );
+      const readDataAgentModule =
+        await import('../../../../packages/agent-factory-sdk/src/agents/actors/read-data-agent.actor.js');
       const { readDataAgent } = readDataAgentModule;
       const { nanoid } = await import('nanoid');
       const { validateUIMessages } = await import('ai');
       const { v4: uuidv4 } = await import('uuid');
-      const { GetMessagesByConversationIdService } = await import(
-        '@qwery/domain/services'
-      );
+      const { GetMessagesByConversationIdService } =
+        await import('@qwery/domain/services');
 
       // Use a persistent conversation ID for follow-up questions
       if (!this.conversationId || !this.conversationId.includes('read-data')) {
@@ -454,6 +452,7 @@ export class InteractiveRepl {
       if (!this.agent || !this.conversationId) {
         this.conversationId = `cli-agent-${nanoid()}`;
         const repositories = this.container.getRepositories();
+        const workspace = this.container.getWorkspace();
 
         // Create the conversation before creating the FactoryAgent
         // (FactoryAgent needs the conversation to exist when persisting messages)
@@ -463,20 +462,21 @@ export class InteractiveRepl {
         await repositories.conversation.create({
           id: conversationId,
           slug: this.conversationId,
-          title: 'CLI Conversation',
-          projectId: uuidv4(), // Use dummy project ID for CLI
-          taskId: uuidv4(), // Use dummy task ID for CLI
+          title: 'CLI Interactive Conversation',
+          projectId: workspace?.projectId ?? uuidv4(),
+          taskId: uuidv4(),
           datasources: [],
           createdAt: now,
           updatedAt: now,
-          createdBy: 'cli',
-          updatedBy: 'cli',
+          createdBy: workspace?.userId ?? 'cli',
+          updatedBy: workspace?.userId ?? 'cli',
         });
 
         this.agent = new FactoryAgent({
           conversationSlug: this.conversationId,
           model: 'azure/gpt-5-mini', // Default model for CLI
           repositories,
+          telemetry: this.container.telemetry,
         });
       }
       const agent = this.agent;

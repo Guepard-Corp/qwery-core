@@ -1,20 +1,649 @@
 import { setup, assign } from 'xstate';
+import { fromPromise } from 'xstate/actors';
 import { AgentContext, AgentEvents } from './types';
-import {
-  detectIntentActor,
-  summarizeIntentActor,
-  greetingActor,
-  readDataAgentActor,
-  loadContextActor,
-} from './actors';
+import { detectIntent } from './actors/detect-intent.actor';
+import { summarizeIntent } from './actors/summarize-intent.actor';
+import { greeting } from './actors/greeting.actor';
+import { readDataAgent } from './actors/read-data-agent.actor';
+import { loadContext } from './actors/load-context.actor';
+import { MessagePersistenceService } from '../services/message-persistence.service';
 import { Repositories } from '@qwery/domain/repositories';
 import { createCachedActor } from './utils/actor-cache';
+import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import { AGENT_EVENTS } from '@qwery/telemetry/opentelemetry/events/agent.events';
+import type { UIMessage } from 'ai';
+import {
+  context as otelContext,
+  trace,
+  type SpanContext,
+} from '@opentelemetry/api';
 
 export const createStateMachine = (
   conversationId: string,
   model: string,
   repositories: Repositories,
+  telemetry?: TelemetryManager,
+  getParentSpanContexts?: () =>
+    | Array<{
+        context: SpanContext;
+        attributes?: Record<string, string | number | boolean>;
+      }>
+    | undefined,
+  storeLoadContextSpan?: (
+    span: ReturnType<TelemetryManager['startSpan']>,
+  ) => void,
 ) => {
+  // Helper to safely extract token usage from usage objects
+  // Different providers use different property names
+  const extractTokenUsage = (
+    usage: unknown,
+  ): {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  } => {
+    if (!usage || typeof usage !== 'object') {
+      return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+    }
+
+    const usageObj = usage as Record<string, unknown>;
+    const promptTokens =
+      (typeof usageObj.inputTokens === 'number' ? usageObj.inputTokens : 0) ||
+      (typeof usageObj.promptTokens === 'number' ? usageObj.promptTokens : 0) ||
+      (typeof usageObj.prompt_tokens === 'number'
+        ? usageObj.prompt_tokens
+        : 0) ||
+      0;
+
+    const completionTokens =
+      (typeof usageObj.outputTokens === 'number' ? usageObj.outputTokens : 0) ||
+      (typeof usageObj.completionTokens === 'number'
+        ? usageObj.completionTokens
+        : 0) ||
+      (typeof usageObj.completion_tokens === 'number'
+        ? usageObj.completion_tokens
+        : 0) ||
+      0;
+
+    const totalTokens =
+      (typeof usageObj.totalTokens === 'number' ? usageObj.totalTokens : 0) ||
+      (typeof usageObj.total_tokens === 'number' ? usageObj.total_tokens : 0) ||
+      promptTokens + completionTokens;
+
+    return { promptTokens, completionTokens, totalTokens };
+  };
+
+  // Create telemetry-wrapped actors
+  // All actors use startSpan for consistent nesting behavior
+  // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+  // Since we wrap _executeRespond in context.with(), the message span should be active
+  // when actors are invoked, allowing proper parent-child nesting
+  const detectIntentActor = fromPromise(
+    async ({
+      input,
+    }: {
+      input: {
+        inputMessage: string;
+      };
+    }): Promise<AgentContext['intent']> => {
+      if (!telemetry) {
+        const result = await detectIntent(input.inputMessage, model);
+        return result.object;
+      }
+
+      const startTime = Date.now();
+      // Use startSpan for proper parent-child nesting
+      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+      // If context is preserved (message span is active), spans will nest properly
+      const span = telemetry.startSpan('agent.actor.detectIntent', {
+        'agent.actor.id': 'detectIntent',
+        'agent.actor.type': 'detectIntent',
+        'agent.actor.input': JSON.stringify({
+          inputMessage: input.inputMessage,
+        }),
+        'agent.conversation.id': conversationId,
+      });
+
+      telemetry.captureEvent({
+        name: AGENT_EVENTS.ACTOR_INVOKED,
+        attributes: {
+          'agent.actor.id': 'detectIntent',
+          'agent.actor.type': 'detectIntent',
+          'agent.conversation.id': conversationId,
+        },
+      });
+
+      // Run within the span's context to ensure proper nesting
+      return otelContext.with(
+        trace.setSpan(otelContext.active(), span),
+        async () => {
+          try {
+            const result = await detectIntent(input.inputMessage, model);
+            const duration = Date.now() - startTime;
+
+            // Record token usage if available
+            // Usage might be a promise or synchronous depending on provider
+            let usage: unknown = null;
+            if (result.usage) {
+              // Handle both promise and synchronous usage
+              if (result.usage instanceof Promise) {
+                try {
+                  usage = await result.usage;
+                } catch {
+                  // Ignore errors in usage promise
+                }
+              } else {
+                usage = result.usage;
+              }
+            }
+
+            if (usage) {
+              // LanguageModelV2Usage structure varies by provider
+              // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
+              const { promptTokens, completionTokens, totalTokens } =
+                extractTokenUsage(usage);
+
+              if (promptTokens > 0 || completionTokens > 0) {
+                // Add token usage as span attributes so it appears in exported data
+                span.setAttributes({
+                  'agent.llm.prompt.tokens': promptTokens,
+                  'agent.llm.completion.tokens': completionTokens,
+                  'agent.llm.total.tokens': totalTokens,
+                });
+
+                // Also record as metrics
+                telemetry.recordTokenUsage(promptTokens, completionTokens, {
+                  'agent.llm.model.name': 'gpt-5-mini',
+                  'agent.llm.provider.id': 'azure',
+                  'agent.actor.id': 'detectIntent',
+                  'agent.conversation.id': conversationId,
+                });
+              }
+            }
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_COMPLETED,
+              attributes: {
+                'agent.actor.id': 'detectIntent',
+                'agent.actor.type': 'detectIntent',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'success',
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, true);
+            return result.object;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_FAILED,
+              attributes: {
+                'agent.actor.id': 'detectIntent',
+                'agent.actor.type': 'detectIntent',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'error',
+                'error.type':
+                  error instanceof Error ? error.name : 'UnknownError',
+                'error.message': errorMessage,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, false);
+            throw error;
+          }
+        },
+      );
+    },
+  );
+
+  const summarizeIntentActor = fromPromise(
+    async ({
+      input,
+    }: {
+      input: {
+        inputMessage: string;
+        intent: AgentContext['intent'];
+        previousMessages: UIMessage[];
+      };
+    }) => {
+      if (!telemetry) {
+        return summarizeIntent(input.inputMessage, input.intent);
+      }
+
+      const startTime = Date.now();
+      // Use startSpan for proper parent-child nesting
+      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+      // If context is preserved (message span is active), spans will nest properly
+      const span = telemetry.startSpan('agent.actor.summarizeIntent', {
+        'agent.actor.id': 'summarizeIntent',
+        'agent.actor.type': 'summarizeIntent',
+        'agent.conversation.id': conversationId,
+      });
+
+      telemetry.captureEvent({
+        name: AGENT_EVENTS.ACTOR_INVOKED,
+        attributes: {
+          'agent.actor.id': 'summarizeIntent',
+          'agent.actor.type': 'summarizeIntent',
+          'agent.conversation.id': conversationId,
+        },
+      });
+
+      // Run within the span's context to ensure proper nesting
+      return otelContext.with(
+        trace.setSpan(otelContext.active(), span),
+        async () => {
+          try {
+            const result = await summarizeIntent(
+              input.inputMessage,
+              input.intent,
+            );
+            const duration = Date.now() - startTime;
+
+            // Capture token usage from streamText result (usage is a promise)
+            // For Azure/Ollama providers, usage will be available when stream completes
+            if (result.usage) {
+              try {
+                const usage = await result.usage;
+                if (usage && telemetry) {
+                  // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
+                  const { promptTokens, completionTokens, totalTokens } =
+                    extractTokenUsage(usage);
+
+                  if (promptTokens > 0 || completionTokens > 0) {
+                    // Add token usage as span attributes so it appears in exported data
+                    span.setAttributes({
+                      'agent.llm.prompt.tokens': promptTokens,
+                      'agent.llm.completion.tokens': completionTokens,
+                      'agent.llm.total.tokens': totalTokens,
+                    });
+
+                    // Also record as metrics
+                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
+                      'agent.llm.model.name': 'gpt-5-mini',
+                      'agent.llm.provider.id': 'azure',
+                      'agent.actor.id': 'summarizeIntent',
+                      'agent.conversation.id': conversationId,
+                    });
+                  }
+                }
+              } catch {
+                // Ignore errors in usage capture
+              }
+            }
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_COMPLETED,
+              attributes: {
+                'agent.actor.id': 'summarizeIntent',
+                'agent.actor.type': 'summarizeIntent',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'success',
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, true);
+            return result;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_FAILED,
+              attributes: {
+                'agent.actor.id': 'summarizeIntent',
+                'agent.actor.type': 'summarizeIntent',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'error',
+                'error.type':
+                  error instanceof Error ? error.name : 'UnknownError',
+                'error.message': errorMessage,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, false);
+            throw error;
+          }
+        },
+      );
+    },
+  );
+
+  const greetingActor = fromPromise(
+    async ({
+      input,
+    }: {
+      input: {
+        inputMessage: string;
+      };
+    }) => {
+      if (!telemetry) {
+        return greeting(input.inputMessage, model);
+      }
+
+      const startTime = Date.now();
+      // Use startSpan for proper parent-child nesting
+      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+      // If context is preserved (message span is active), spans will nest properly
+      const span = telemetry.startSpan('agent.actor.greeting', {
+        'agent.actor.id': 'greeting',
+        'agent.actor.type': 'greeting',
+        'agent.conversation.id': conversationId,
+      });
+
+      telemetry.captureEvent({
+        name: AGENT_EVENTS.ACTOR_INVOKED,
+        attributes: {
+          'agent.actor.id': 'greeting',
+          'agent.actor.type': 'greeting',
+          'agent.conversation.id': conversationId,
+        },
+      });
+
+      // Run within the span's context to ensure proper nesting
+      return otelContext.with(
+        trace.setSpan(otelContext.active(), span),
+        async () => {
+          try {
+            const result = await greeting(input.inputMessage, model);
+            const duration = Date.now() - startTime;
+
+            // Capture token usage from streamText result (usage is a promise)
+            // For Azure/Ollama providers, usage will be available when stream completes
+            if (result.usage) {
+              try {
+                const usage = await result.usage;
+                if (usage && telemetry) {
+                  // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
+                  const { promptTokens, completionTokens, totalTokens } =
+                    extractTokenUsage(usage);
+
+                  if (promptTokens > 0 || completionTokens > 0) {
+                    // Add token usage as span attributes so it appears in exported data
+                    span.setAttributes({
+                      'agent.llm.prompt.tokens': promptTokens,
+                      'agent.llm.completion.tokens': completionTokens,
+                      'agent.llm.total.tokens': totalTokens,
+                    });
+
+                    // Also record as metrics
+                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
+                      'agent.llm.model.name': 'gpt-5-mini',
+                      'agent.llm.provider.id': 'azure',
+                      'agent.actor.id': 'greeting',
+                      'agent.conversation.id': conversationId,
+                    });
+                  }
+                }
+              } catch {
+                // Ignore errors in usage capture
+              }
+            }
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_COMPLETED,
+              attributes: {
+                'agent.actor.id': 'greeting',
+                'agent.actor.type': 'greeting',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'success',
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, true);
+            return result;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_FAILED,
+              attributes: {
+                'agent.actor.id': 'greeting',
+                'agent.actor.type': 'greeting',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'error',
+                'error.type':
+                  error instanceof Error ? error.name : 'UnknownError',
+                'error.message': errorMessage,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, false);
+            throw error;
+          }
+        },
+      );
+    },
+  );
+
+  const readDataAgentActor = fromPromise(
+    async ({
+      input,
+    }: {
+      input: {
+        inputMessage: string;
+        conversationId: string;
+        previousMessages: UIMessage[];
+      };
+    }) => {
+      if (!telemetry) {
+        return readDataAgent(
+          input.conversationId,
+          input.previousMessages,
+          model,
+        );
+      }
+
+      const startTime = Date.now();
+      // Use startSpan for proper parent-child nesting
+      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+      // If context is preserved (message span is active), spans will nest properly
+      const span = telemetry.startSpan('agent.actor.readData', {
+        'agent.actor.id': 'readData',
+        'agent.actor.type': 'readData',
+        'agent.conversation.id': conversationId,
+      });
+
+      telemetry.captureEvent({
+        name: AGENT_EVENTS.ACTOR_INVOKED,
+        attributes: {
+          'agent.actor.id': 'readData',
+          'agent.actor.type': 'readData',
+          'agent.conversation.id': conversationId,
+        },
+      });
+
+      // Run within the span's context to ensure proper nesting
+      return otelContext.with(
+        trace.setSpan(otelContext.active(), span),
+        async () => {
+          try {
+            const result = await readDataAgent(
+              input.conversationId,
+              input.previousMessages,
+              model,
+            );
+            const duration = Date.now() - startTime;
+
+            // Capture token usage from Experimental_Agent stream result (usage is a promise)
+            if (result.usage) {
+              try {
+                const usage = await result.usage;
+                if (usage && telemetry) {
+                  // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
+                  const { promptTokens, completionTokens, totalTokens } =
+                    extractTokenUsage(usage);
+
+                  if (promptTokens > 0 || completionTokens > 0) {
+                    // Add token usage as span attributes so it appears in exported data
+                    span.setAttributes({
+                      'agent.llm.prompt.tokens': promptTokens,
+                      'agent.llm.completion.tokens': completionTokens,
+                      'agent.llm.total.tokens': totalTokens,
+                    });
+
+                    // Also record as metrics
+                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
+                      'agent.llm.model.name': 'gpt-5-mini',
+                      'agent.llm.provider.id': 'azure',
+                      'agent.actor.id': 'readData',
+                      'agent.conversation.id': conversationId,
+                    });
+                  }
+                }
+              } catch {
+                // Ignore errors in usage capture
+              }
+            }
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_COMPLETED,
+              attributes: {
+                'agent.actor.id': 'readData',
+                'agent.actor.type': 'readData',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'success',
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, true);
+            return result;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_FAILED,
+              attributes: {
+                'agent.actor.id': 'readData',
+                'agent.actor.type': 'readData',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'error',
+                'error.type':
+                  error instanceof Error ? error.name : 'UnknownError',
+                'error.message': errorMessage,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, false);
+            throw error;
+          }
+        },
+      );
+    },
+  );
+
+  const loadContextActor = fromPromise(
+    async ({
+      input,
+    }: {
+      input: {
+        repositories: Repositories;
+        conversationId: string;
+      };
+    }) => {
+      if (!telemetry) {
+        const result = await loadContext(
+          input.repositories,
+          input.conversationId,
+        );
+        return MessagePersistenceService.convertToUIMessages(result);
+      }
+
+      const startTime = Date.now();
+      // Use startSpan for proper parent-child nesting
+      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
+      // If context is preserved (message span is active), spans will nest properly
+      // Note: loadContext may run before conversation/message spans, so it might not nest
+      const span = telemetry.startSpan('agent.actor.loadContext', {
+        'agent.actor.id': 'loadContext',
+        'agent.actor.type': 'loadContext',
+        'agent.conversation.id': conversationId,
+      });
+
+      // Store span reference so we can add links later when conversation/message spans are created
+      if (storeLoadContextSpan) {
+        storeLoadContextSpan(span);
+      }
+
+      telemetry.captureEvent({
+        name: AGENT_EVENTS.ACTOR_INVOKED,
+        attributes: {
+          'agent.actor.id': 'loadContext',
+          'agent.actor.type': 'loadContext',
+          'agent.conversation.id': conversationId,
+        },
+      });
+
+      // Run within the span's context to ensure proper nesting
+      return otelContext.with(
+        trace.setSpan(otelContext.active(), span),
+        async () => {
+          try {
+            const result = await loadContext(
+              input.repositories,
+              input.conversationId,
+            );
+            const messages =
+              MessagePersistenceService.convertToUIMessages(result);
+            const duration = Date.now() - startTime;
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_COMPLETED,
+              attributes: {
+                'agent.actor.id': 'loadContext',
+                'agent.actor.type': 'loadContext',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'success',
+                'agent.context.message_count': messages.length,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, true);
+            return messages;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+
+            telemetry.captureEvent({
+              name: AGENT_EVENTS.ACTOR_FAILED,
+              attributes: {
+                'agent.actor.id': 'loadContext',
+                'agent.actor.type': 'loadContext',
+                'agent.actor.duration_ms': String(duration),
+                'agent.actor.status': 'error',
+                'error.type':
+                  error instanceof Error ? error.name : 'UnknownError',
+                'error.message': errorMessage,
+                'agent.conversation.id': conversationId,
+              },
+            });
+
+            telemetry.endSpan(span, false);
+            throw error;
+          }
+        },
+      );
+    },
+  );
+
   const defaultSetup = setup({
     types: {
       context: {} as AgentContext,

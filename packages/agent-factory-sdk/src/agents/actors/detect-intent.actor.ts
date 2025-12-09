@@ -13,7 +13,10 @@ export const detectIntent = async (text: string, model: string) => {
       prompt: DETECT_INTENT_PROMPT(text),
     });
 
-    return result.object;
+    return {
+      object: result.object,
+      usage: result.usage,
+    };
   } catch (error) {
     console.error(
       '[detectIntent] ERROR:',
@@ -36,8 +39,8 @@ export const detectIntentActor = fromPromise(
     };
   }): Promise<z.infer<typeof IntentSchema>> => {
     try {
-      const intent = await detectIntent(input.inputMessage, input.model);
-      return intent;
+      const result = await detectIntent(input.inputMessage, input.model);
+      return result.object;
     } catch (error) {
       console.error('[detectIntentActor] ERROR:', error);
       throw error;
