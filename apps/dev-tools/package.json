@@ -16,7 +16,7 @@
   "dependencies": {
     "@qwery/domain": "workspace:*",
     "@qwery/ui": "workspace:*",
-    "@react-router/fs-routes": "7.9.5",
+    "@react-router/fs-routes": "7.10.1",
     "@react-router/node": "^7.9.5",
     "@react-router/serve": "^7.9.5",
     "@xyflow/react": "^12.9.3",
