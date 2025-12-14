@@ -1,11 +1,6 @@
 import type { z } from 'zod';
 
-import type {
-  DatasourceHeader,
-  DatasourceResultStat,
-  DatasourceRow,
-} from './model/resultset.type';
-import type { DatasourceMetadata } from './metadata';
+import type { DatasourceMetadata, DatasourceResultSet } from './metadata';
 
 /**
  * Datasource plugin interface
@@ -109,19 +104,9 @@ export interface DriverContext {
   runtime?: DriverRuntime;
 }
 
-export interface QueryResult {
-  columns: DatasourceHeader[];
-  rows: DatasourceRow[];
-  stat?: DatasourceResultStat;
-  lastInsertRowid?: number;
-}
-
-// Alias for backward compatibility
-export type QueryColumn = DatasourceHeader;
-
 export interface IDataSourceDriver {
   testConnection(config: unknown): Promise<void>;
-  query(sql: string, config: unknown): Promise<QueryResult>;
+  query(sql: string, config: unknown): Promise<DatasourceResultSet>;
   metadata(config: unknown): Promise<DatasourceMetadata>;
   close?(): Promise<void>;
 }

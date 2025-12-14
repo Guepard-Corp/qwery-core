@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type {
   DriverContext,
   IDataSourceDriver,
-  QueryResult,
+  DatasourceResultSet,
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
@@ -184,7 +184,7 @@ export function makePGliteDriver(context: DriverContext): IDataSourceDriver {
       });
     },
 
-    async query(sql: string, config: unknown): Promise<QueryResult> {
+    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
       const parsed = ConfigSchema.parse(config);
       const db = await getDb(parsed);
       const startTime = performance.now();

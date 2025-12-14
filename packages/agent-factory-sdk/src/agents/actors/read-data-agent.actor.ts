@@ -11,7 +11,6 @@ import { fromPromise } from 'xstate/actors';
 import { resolveModel } from '../../services';
 import { testConnection } from '../../tools/test-connection';
 import type { SimpleSchema, SimpleTable } from '@qwery/domain/entities';
-import { runQuery } from '../../tools/run-query';
 import { renameSheet } from '../../tools/rename-sheet';
 import { deleteSheet } from '../../tools/delete-sheet';
 import { selectChartType, generateChart } from '../tools/generate-chart';
@@ -23,9 +22,11 @@ import { getConfig } from '../../tools/utils/business-context.config';
 import { buildBusinessContext } from '../../tools/build-business-context';
 import { enhanceBusinessContextInBackground } from './enhance-business-context.actor';
 import type { Repositories } from '@qwery/domain/repositories';
-import { initializeDatasources } from '../../tools/datasource-initializer';
 import { GetConversationBySlugService } from '@qwery/domain/services';
-import { DuckDBInstanceManager } from '../../tools/duckdb-instance-manager';
+import { AbstractQueryEngine } from '@qwery/domain/ports';
+import { loadDatasources } from '../../tools/datasource-loader';
+import { getDatasourceDatabaseName } from '../../tools/datasource-name-utils';
+import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
 
 // Lazy workspace resolution - only resolve when actually needed, not at module load time
 // This prevents side effects when the module is imported in browser/SSR contexts
@@ -63,76 +64,87 @@ export const readDataAgent = async (
   conversationId: string,
   messages: UIMessage[],
   model: string,
+  queryEngine: AbstractQueryEngine,
   repositories?: Repositories,
 ) => {
-  // Initialize datasources if repositories are provided
+  // Initialize engine and attach datasources if repositories are provided
   const agentInitStartTime = performance.now();
-  if (repositories) {
-    const workspace = getWorkspace();
-    if (workspace) {
-      try {
-        // Get conversation to find datasources
-        // Note: conversationId is actually a slug in this context
-        const getConvStartTime = performance.now();
-        const getConversationService = new GetConversationBySlugService(
-          repositories.conversation,
-        );
-        const conversation =
-          await getConversationService.execute(conversationId);
-        const getConvTime = performance.now() - getConvStartTime;
-        console.log(
-          `[ReadDataAgent] [PERF] Agent init getConversation took ${getConvTime.toFixed(2)}ms`,
-        );
+  if (repositories && queryEngine) {
+    try {
+      // Get conversation to find datasources
+      // Note: conversationId is actually a slug in this context
+      const getConvStartTime = performance.now();
+      const getConversationService = new GetConversationBySlugService(
+        repositories.conversation,
+      );
+      const conversation = await getConversationService.execute(conversationId);
+      const getConvTime = performance.now() - getConvStartTime;
+      console.log(
+        `[ReadDataAgent] [PERF] Agent init getConversation took ${getConvTime.toFixed(2)}ms`,
+      );
 
-        if (conversation?.datasources && conversation.datasources.length > 0) {
-          // Initialize all datasources with checked state
-          const initStartTime = performance.now();
-          const initResults = await initializeDatasources({
-            conversationId,
-            datasourceIds: conversation.datasources,
-            datasourceRepository: repositories.datasource,
-            workspace,
-            checkedDatasourceIds: conversation.datasources, // All are checked initially
+      if (conversation?.datasources && conversation.datasources.length > 0) {
+        // Initialize engine (in-memory, no workingDir needed but required by schema)
+        const initStartTime = performance.now();
+        try {
+          await queryEngine.initialize({
+            workingDir: 'file://', // Not used for in-memory, but required by schema
+            config: {},
           });
-          const initTime = performance.now() - initStartTime;
-          console.log(
-            `[ReadDataAgent] [PERF] initializeDatasources took ${initTime.toFixed(2)}ms (${conversation.datasources.length} datasources)`,
+
+          // Load datasources
+          const loaded = await loadDatasources(
+            conversation.datasources,
+            repositories.datasource,
           );
 
-          // Log initialization results for debugging
-          const successful = initResults.filter((r) => r.success);
-          const failed = initResults.filter((r) => !r.success);
-
-          if (successful.length > 0) {
+          // Attach all datasources
+          if (loaded.length > 0) {
+            await queryEngine.attach(loaded.map((d) => d.datasource));
+            await queryEngine.connect();
             console.log(
-              `[ReadDataAgent] Initialized ${successful.length} datasource(s) with ${successful.reduce((sum, r) => sum + r.viewsCreated, 0)} view(s)`,
+              `[ReadDataAgent] Initialized engine and attached ${loaded.length} datasource(s)`,
             );
           }
-
-          if (failed.length > 0) {
-            console.warn(
-              `[ReadDataAgent] Failed to initialize ${failed.length} datasource(s):`,
-              failed.map((f) => `${f.datasourceName} (${f.error})`).join(', '),
-            );
-            // Log detailed error for debugging
-            for (const fail of failed) {
-              console.warn(
-                `[ReadDataAgent] Datasource ${fail.datasourceName} (${fail.datasourceId}) error: ${fail.error}`,
-              );
-            }
-          }
-        } else {
+        } catch (_initError) {
+          const errorMsg =
+            _initError instanceof Error
+              ? _initError.message
+              : String(_initError);
+          console.warn(
+            `[ReadDataAgent] Failed to initialize engine or attach datasources:`,
+            errorMsg,
+          );
+          // Continue - engine might already be initialized or datasources might fail individually
+        }
+        const initTime = performance.now() - initStartTime;
+        console.log(
+          `[ReadDataAgent] [PERF] Engine initialization and datasource attachment took ${initTime.toFixed(2)}ms (${conversation.datasources.length} datasources)`,
+        );
+      } else {
+        // Initialize engine even if no datasources (for queries without datasources)
+        try {
+          await queryEngine.initialize({
+            workingDir: 'file://',
+            config: {},
+          });
+          await queryEngine.connect();
+        } catch {
+          // Engine might already be initialized, ignore error
           console.log(
-            `[ReadDataAgent] No datasources found in conversation ${conversationId}`,
+            `[ReadDataAgent] Engine already initialized or initialization skipped`,
           );
         }
-      } catch (error) {
-        // Log but don't fail - datasources might not be available yet
-        console.warn(
-          `[ReadDataAgent] Failed to initialize datasources:`,
-          error,
+        console.log(
+          `[ReadDataAgent] No datasources found in conversation ${conversationId}, engine initialized`,
         );
       }
+    } catch (error) {
+      // Log but don't fail - datasources might not be available yet
+      console.warn(
+        `[ReadDataAgent] Failed to initialize engine or datasources:`,
+        error,
+      );
     }
   }
   const agentInitTime = performance.now() - agentInitStartTime;
@@ -188,33 +200,28 @@ export const readDataAgent = async (
             }`,
           );
 
+          if (!queryEngine) {
+            throw new Error('Query engine not available');
+          }
+
           const workspace = getWorkspace();
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
           }
           const { join } = await import('node:path');
           const fileDir = join(workspace, conversationId);
-          const dbPath = join(fileDir, 'database.db');
+          const dbPath = join(fileDir, 'database.duckdb');
 
           console.log(
             `[ReadDataAgent] Workspace: ${workspace}, ConversationId: ${conversationId}, dbPath: ${dbPath}`,
           );
 
-          // Get connection from manager
-          const connStartTime = performance.now();
-          const conn = await DuckDBInstanceManager.getConnection(
-            conversationId,
-            workspace,
-          );
-          const connTime = performance.now() - connStartTime;
-          console.log(
-            `[ReadDataAgent] [PERF] getConnection took ${connTime.toFixed(2)}ms`,
-          );
-
           // Sync datasources before querying schema
-          // If specific views requested, only sync datasources needed for those views
           const syncStartTime = performance.now();
           let syncTime = 0;
+          let allDatasources: Array<{
+            datasource: import('@qwery/domain/entities').Datasource;
+          }> = [];
           if (repositories) {
             try {
               const getConvStartTime = performance.now();
@@ -228,71 +235,15 @@ export const readDataAgent = async (
                 `[ReadDataAgent] [PERF] getConversation took ${getConvTime.toFixed(2)}ms`,
               );
               if (conversation?.datasources?.length) {
-                let datasourcesToSync = conversation.datasources;
-
-                // If specific views requested, determine which datasources are needed
-                if (requestedViews && requestedViews.length > 0) {
-                  const { getDatasourceDatabaseName } = await import(
-                    '../../tools/datasource-name-utils'
-                  );
-                  const { loadDatasources } = await import(
-                    '../../tools/datasource-loader'
-                  );
-
-                  // Load all datasources to map names to IDs
-                  const allDatasources = await loadDatasources(
-                    conversation.datasources,
-                    repositories.datasource,
-                  );
-
-                  // Extract datasource names from requested views
-                  const neededDatasourceNames = new Set<string>();
-                  const neededViewNames = new Set<string>();
-
-                  for (const view of requestedViews) {
-                    if (view.includes('.')) {
-                      // Format: "datasourcename.tablename" or "datasourcename.schema.tablename"
-                      const parts = view.split('.');
-                      const datasourceName = parts[0];
-                      if (datasourceName) {
-                        neededDatasourceNames.add(datasourceName);
-                      }
-                    } else {
-                      // Simple view name - check if it's from a DuckDB-native datasource
-                      neededViewNames.add(view);
-                    }
-                  }
-
-                  // Find datasource IDs that match the needed names
-                  const neededDatasourceIds = new Set<string>();
-                  for (const { datasource } of allDatasources) {
-                    const dbName = getDatasourceDatabaseName(datasource);
-                    if (neededDatasourceNames.has(dbName)) {
-                      neededDatasourceIds.add(datasource.id);
-                    }
-                  }
-
-                  // For simple view names, we need to check viewRegistry to find their datasources
-                  // But for now, if we have simple view names, we'll sync all DuckDB-native datasources
-                  // This is a limitation - we'd need viewRegistry lookup to optimize further
-                  if (neededViewNames.size > 0) {
-                    // Include all datasources for now (could be optimized with viewRegistry lookup)
-                    datasourcesToSync = conversation.datasources;
-                  } else if (neededDatasourceIds.size > 0) {
-                    // Only sync the needed datasources
-                    datasourcesToSync = Array.from(neededDatasourceIds);
-                    console.log(
-                      `[ReadDataAgent] Selective sync: Only syncing ${datasourcesToSync.length} datasource(s) for requested views`,
-                    );
-                  }
-                }
-
-                await DuckDBInstanceManager.syncDatasources(
-                  conversationId,
-                  workspace,
-                  datasourcesToSync,
+                // Load all datasources
+                allDatasources = await loadDatasources(
+                  conversation.datasources,
                   repositories.datasource,
-                  false, // OPTIMIZATION: Phase 5.2 - Don't detach in getSchema, just attach needed ones
+                );
+
+                // Attach all datasources (engine handles deduplication)
+                await queryEngine.attach(
+                  allDatasources.map((d) => d.datasource),
                 );
               }
             } catch (error) {
@@ -307,550 +258,147 @@ export const readDataAgent = async (
             `[ReadDataAgent] [PERF] syncDatasources took ${syncTime.toFixed(2)}ms`,
           );
 
-          // Helper to describe a single table/view
-          const describeObject = async (
-            db: string,
-            schemaName: string,
-            tableName: string,
-          ): Promise<SimpleSchema | null> => {
-            try {
-              const escapedDb = db.replace(/"/g, '""');
-              const escapedSchema = schemaName.replace(/"/g, '""');
-              const escapedTable = tableName.replace(/"/g, '""');
-              const describeQuery = `DESCRIBE "${escapedDb}"."${escapedSchema}"."${escapedTable}"`;
-              const reader = await conn.runAndReadAll(describeQuery);
-              await reader.readAll();
-              const rows = reader.getRowObjectsJS() as Array<{
-                column_name: string;
-                column_type: string;
-              }>;
-              return {
-                databaseName: db,
-                schemaName,
-                tables: [
-                  {
-                    tableName,
-                    columns: rows.map((row) => ({
-                      columnName: row.column_name,
-                      columnType: row.column_type,
-                    })),
-                  },
-                ],
-              };
-            } catch {
-              return null;
-            }
-          };
-
-          const collectedSchemas: Map<string, SimpleSchema> = new Map();
-
-          // Check cache for single view requests (OPTIMIZATION: Phase 4.2)
-          if (requestedViews && requestedViews.length === 1) {
-            const singleView = requestedViews[0] ?? '';
-            if (singleView) {
-              const cachedSchema = DuckDBInstanceManager.getCachedSchema(
-                conversationId,
-                workspace,
-                singleView,
-              );
-              if (cachedSchema) {
-                console.log(
-                  `[ReadDataAgent] [PERF] Using cached schema for ${singleView}`,
-                );
-                return cachedSchema;
-              }
-            }
-          }
-
+          // Get metadata from query engine
           const schemaDiscoveryStartTime = performance.now();
           let schemaDiscoveryTime = 0;
+          let collectedSchemas: Map<string, SimpleSchema> = new Map();
+
           try {
-            const dbListStartTime = performance.now();
-            const dbReader = await conn.runAndReadAll(
-              'SELECT name FROM pragma_database_list;',
-            );
-            await dbReader.readAll();
-            const dbRows = dbReader.getRowObjectsJS() as Array<{
-              name: string;
-            }>;
-            const allDatabases = dbRows.map((r) => r.name);
-            const dbListTime = performance.now() - dbListStartTime;
-            console.log(
-              `[ReadDataAgent] [PERF] pragma_database_list took ${dbListTime.toFixed(2)}ms (found ${allDatabases.length} databases)`,
-            );
-
-            // Filter databases to only include those from conversation datasources
-            let allowedDatabases = new Set<string>(allDatabases);
-            if (repositories) {
-              try {
-                const getConversationService = new GetConversationBySlugService(
-                  repositories.conversation,
-                );
-                const conversation =
-                  await getConversationService.execute(conversationId);
-                if (conversation?.datasources?.length) {
-                  const { getDatasourceDatabaseName } = await import(
-                    '../../tools/datasource-name-utils'
-                  );
-                  const { loadDatasources } = await import(
-                    '../../tools/datasource-loader'
-                  );
-
-                  const allDatasources = await loadDatasources(
-                    conversation.datasources,
-                    repositories.datasource,
-                  );
-
-                  // Build set of allowed database names from conversation datasources
-                  const allowedDbNames = new Set<string>();
-                  for (const { datasource } of allDatasources) {
-                    const dbName = getDatasourceDatabaseName(datasource);
-                    allowedDbNames.add(dbName);
-                  }
-
-                  // Filter: only include 'main' and databases that match conversation datasources
-                  allowedDatabases = new Set<string>();
-                  allowedDatabases.add('main'); // Always include main database
-                  for (const db of allDatabases) {
-                    if (allowedDbNames.has(db)) {
-                      allowedDatabases.add(db);
-                    }
-                  }
-
-                  console.log(
-                    `[ReadDataAgent] Filtered databases: ${allDatabases.length} total, ${allowedDatabases.size} from conversation datasources`,
-                  );
-                }
-              } catch (error) {
-                console.warn(
-                  '[ReadDataAgent] Failed to filter databases by conversation datasources:',
-                  error,
-                );
-                // Continue with all databases if filtering fails
-              }
+            // Build datasource database map for transformation
+            const datasourceDatabaseMap = new Map<string, string>();
+            for (const { datasource } of allDatasources) {
+              const dbName = getDatasourceDatabaseName(datasource);
+              datasourceDatabaseMap.set(datasource.id, dbName);
             }
 
-            const databases = Array.from(allowedDatabases);
-
-            const targets: Array<{
-              db: string;
-              schema: string;
-              table: string;
-            }> = [];
-
-            // Get system schemas using extension abstraction
-            const { getAllSystemSchemas, isSystemTableName } = await import(
-              '../../tools/system-schema-filter'
+            // Get metadata from query engine
+            const metadataStartTime = performance.now();
+            const metadata = await queryEngine.metadata(
+              allDatasources.length > 0
+                ? allDatasources.map((d) => d.datasource)
+                : undefined,
             );
-            const systemSchemas = getAllSystemSchemas();
-
-            const tableQueryStartTime = performance.now();
-            let totalTablesFound = 0;
-            for (const db of databases) {
-              // Skip "database" - it's the DuckDB file name, not an attached database (FIX: Phase 4.3)
-              if (db === 'database') {
-                continue;
-              }
-
-              const dbQueryStartTime = performance.now();
-              const escapedDb = db.replace(/"/g, '""');
-
-              // For attached foreign databases, query their information_schema directly
-              // For main database, query the default information_schema
-              // Attached databases are any database that's not 'main' (the default DuckDB database)
-              const isAttachedDb = db !== 'main';
-
-              let tableRows: Array<{
-                table_schema: string;
-                table_name: string;
-                table_type: string;
-              }> = [];
-              let viewRows: Array<{
-                table_schema: string;
-                table_name: string;
-                table_type: string;
-              }> = [];
-
-              if (isAttachedDb) {
-                // For attached databases, try information_schema first (works for real DBs like PostgreSQL)
-                // If that fails, fall back to SHOW TABLES (works for in-memory databases like Google Sheets)
-                try {
-                  const tablesReader = await conn.runAndReadAll(`
-                    SELECT table_schema, table_name, table_type
-                    FROM "${escapedDb}".information_schema.tables
-                    WHERE table_type IN ('BASE TABLE', 'VIEW')
-                  `);
-                  await tablesReader.readAll();
-                  tableRows = tablesReader.getRowObjectsJS() as Array<{
-                    table_schema: string;
-                    table_name: string;
-                    table_type: string;
-                  }>;
-                  viewRows = [];
-                } catch (error) {
-                  // Fallback: Use duckdb_tables() for in-memory databases (like Google Sheets)
-                  // This gives us the actual schema name, not hardcoded 'main'
-                  try {
-                    const duckdbTablesReader = await conn.runAndReadAll(
-                      `SELECT database_name, schema_name, table_name, table_type
-                       FROM duckdb_tables()
-                       WHERE database_name = '${escapedDb.replace(/'/g, "''")}'
-                       ORDER BY schema_name, table_name`,
-                    );
-                    await duckdbTablesReader.readAll();
-                    const duckdbTablesRows =
-                      duckdbTablesReader.getRowObjectsJS() as Array<{
-                        database_name: string;
-                        schema_name: string;
-                        table_name: string;
-                        table_type: string;
-                      }>;
-                    // Use actual schema from duckdb_tables()
-                    tableRows = duckdbTablesRows.map((row) => ({
-                      table_schema: row.schema_name || 'main',
-                      table_name: row.table_name,
-                      table_type: row.table_type || 'BASE TABLE',
-                    }));
-                    viewRows = [];
-                  } catch (fallbackError) {
-                    // Last resort: Use SHOW TABLES (but try to get schema from duckdb_tables for each table)
-                    try {
-                      const showTablesReader = await conn.runAndReadAll(
-                        `SHOW TABLES FROM "${escapedDb}"`,
-                      );
-                      await showTablesReader.readAll();
-                      const showTablesRows =
-                        showTablesReader.getRowObjectsJS() as Array<{
-                          name: string;
-                        }>;
-                      // Try to get schema for each table from duckdb_tables
-                      const tableNames = showTablesRows.map((r) => r.name);
-                      const schemaMap = new Map<string, string>();
-                      try {
-                        for (const tableName of tableNames) {
-                          const schemaReader = await conn.runAndReadAll(
-                            `SELECT schema_name FROM duckdb_tables() 
-                             WHERE database_name = '${escapedDb.replace(/'/g, "''")}' 
-                             AND table_name = '${tableName.replace(/'/g, "''")}' 
-                             LIMIT 1`,
-                          );
-                          await schemaReader.readAll();
-                          const schemaRows =
-                            schemaReader.getRowObjectsJS() as Array<{
-                              schema_name: string;
-                            }>;
-                          if (schemaRows.length > 0 && schemaRows[0]) {
-                            schemaMap.set(tableName, schemaRows[0].schema_name);
-                          }
-                        }
-                      } catch {
-                        // If schema lookup fails, use 'main' as fallback
-                      }
-                      // Convert to same format as information_schema, using actual schema or 'main' as fallback
-                      tableRows = showTablesRows.map((row) => ({
-                        table_schema: schemaMap.get(row.name) || 'main',
-                        table_name: row.name,
-                        table_type: 'BASE TABLE',
-                      }));
-                      viewRows = [];
-                    } catch (showTablesError) {
-                      console.warn(
-                        `[ReadDataAgent] Failed to query tables from attached database ${db} (information_schema, duckdb_tables, and SHOW TABLES all failed):`,
-                        error,
-                        fallbackError,
-                        showTablesError,
-                      );
-                      continue;
-                    }
-                  }
-                }
-              } else {
-                // For main database, query the default information_schema
-                try {
-                  // Include both tables AND views in single query
-                  const tablesReader = await conn.runAndReadAll(`
-                    SELECT table_schema, table_name, table_type
-                    FROM information_schema.tables
-                    WHERE table_catalog = '${escapedDb}'
-                      AND table_type IN ('BASE TABLE', 'VIEW')
-                  `);
-                  await tablesReader.readAll();
-                  tableRows = tablesReader.getRowObjectsJS() as Array<{
-                    table_schema: string;
-                    table_name: string;
-                    table_type: string;
-                  }>;
-                  // No separate views query needed - already included above
-                  viewRows = [];
-                } catch (error) {
-                  console.warn(
-                    `[ReadDataAgent] Failed to query tables from database ${db}: ${error}`,
-                  );
-                  continue;
-                }
-              }
-
-              // Combine tables and views
-              const allRows = [...tableRows, ...viewRows];
-
-              let skippedSystemSchemas = 0;
-              let skippedSystemTables = 0;
-
-              for (const row of allRows) {
-                // Use actual schema from database query, don't hardcode 'main'
-                // For PostgreSQL: 'public', 'auth', etc.
-                // For MySQL: database name or 'public'
-                // For SQLite/in-memory: 'main' (from duckdb_tables or information_schema)
-                const actualSchema = row.table_schema || 'main';
-                const schemaName = actualSchema.toLowerCase();
-
-                // Skip system schemas (NO LOGGING - just count)
-                if (systemSchemas.has(schemaName)) {
-                  skippedSystemSchemas++;
-                  continue;
-                }
-
-                // Skip system tables (NO LOGGING - just count)
-                if (isSystemTableName(row.table_name)) {
-                  skippedSystemTables++;
-                  continue;
-                }
-
-                // Use actual schema from database, not hardcoded 'main'
-                targets.push({
-                  db,
-                  schema: actualSchema,
-                  table: row.table_name,
-                });
-                totalTablesFound++;
-              }
-
-              // Log summary only if there were skips
-              if (skippedSystemSchemas > 0 || skippedSystemTables > 0) {
-                console.debug(
-                  `[ReadDataAgent] Filtered ${skippedSystemSchemas} system schemas and ${skippedSystemTables} system tables from ${db}`,
-                );
-              }
-              const dbQueryTime = performance.now() - dbQueryStartTime;
-              console.log(
-                `[ReadDataAgent] [PERF] Querying ${db} took ${dbQueryTime.toFixed(2)}ms (found ${targets.filter((t) => t.db === db).length} tables)`,
-              );
-            }
-            const tableQueryTime = performance.now() - tableQueryStartTime;
+            const metadataTime = performance.now() - metadataStartTime;
             console.log(
-              `[ReadDataAgent] [PERF] Total table discovery took ${tableQueryTime.toFixed(2)}ms (found ${totalTablesFound} total tables)`,
+              `[ReadDataAgent] [PERF] queryEngine.metadata took ${metadataTime.toFixed(2)}ms`,
             );
 
+            // Transform metadata to SimpleSchema format using domain service
+            const transformStartTime = performance.now();
+            const transformService =
+              new TransformMetadataToSimpleSchemaService();
+            collectedSchemas = await transformService.execute({
+              metadata,
+              datasourceDatabaseMap,
+            });
+            const transformTime = performance.now() - transformStartTime;
+            console.log(
+              `[ReadDataAgent] [PERF] transformMetadataToSimpleSchema took ${transformTime.toFixed(2)}ms`,
+            );
+
+            // Filter by requested views if provided
             if (requestedViews && requestedViews.length > 0) {
-              // Describe only the requested objects
+              const filteredSchemas = new Map<string, SimpleSchema>();
               for (const viewId of requestedViews) {
+                let foundSchema: SimpleSchema | undefined;
+                let foundKey: string | undefined;
+
+                // Parse viewId to extract database, schema, and table
                 let db = 'main';
-                let schemaName = 'main';
-                let tableName = viewId;
+                let schema = 'main';
+                let table = viewId;
                 if (viewId.includes('.')) {
-                  const parts = viewId.split('.').filter(Boolean);
+                  const parts = viewId.split('.');
                   if (parts.length === 3) {
                     // Format: datasourcename.schema.tablename
                     db = parts[0] ?? db;
-                    schemaName = parts[1] ?? schemaName;
-                    tableName = parts[2] ?? tableName;
+                    schema = parts[1] ?? schema;
+                    table = parts[2] ?? table;
                   } else if (parts.length === 2) {
                     // Format: datasourcename.tablename
-                    // Try to find the actual schema from targets we discovered
                     db = parts[0] ?? db;
-                    tableName = parts[1] ?? tableName;
-                    // Look up actual schema from discovered targets
-                    const foundTarget = targets.find(
-                      (t) => t.db === db && t.table === tableName,
-                    );
-                    schemaName = foundTarget?.schema || 'main'; // Use actual schema or fallback to 'main'
-                  } else if (parts.length === 1) {
-                    tableName = parts[0] ?? tableName;
+                    table = parts[1] ?? table;
+                    schema = 'main'; // Default to main schema
                   }
                 }
-                // Check if this is a system table before describing
-                // Only check the table name itself, not the full path, since datasource names can be anything
-                const { isSystemOrTempTable } = await import(
-                  '../../tools/utils/business-context.utils'
-                );
 
-                // For attached databases, only check the table name, not the full path
-                // The datasource name is user-defined and shouldn't be checked as a system schema
-                if (db !== 'main') {
-                  // This is an attached database - only check table name
-                  if (isSystemOrTempTable(tableName)) {
-                    throw new Error(
-                      `Cannot access system table: ${viewId}. Please query user tables only.`,
-                    );
+                // Try exact schema key match first
+                const schemaKey = `${db}.${schema}`;
+                foundSchema = collectedSchemas.get(schemaKey);
+                if (foundSchema) {
+                  foundKey = schemaKey;
+                }
+
+                // If not found, try with main schema
+                if (!foundSchema && db !== 'main') {
+                  const mainSchemaKey = `${db}.main`;
+                  foundSchema = collectedSchemas.get(mainSchemaKey);
+                  if (foundSchema) {
+                    foundKey = mainSchemaKey;
+                  }
+                }
+
+                // If still not found, search by table name across all schemas
+                if (!foundSchema) {
+                  for (const [key, schemaData] of collectedSchemas.entries()) {
+                    for (const t of schemaData.tables) {
+                      // Check if table name matches (handle both formatted and simple names)
+                      const tableNameMatch =
+                        t.tableName === table ||
+                        t.tableName === viewId ||
+                        t.tableName.endsWith(`.${table}`) ||
+                        t.tableName.endsWith(`.${viewId}`);
+                      if (tableNameMatch) {
+                        foundSchema = schemaData;
+                        foundKey = key;
+                        break;
+                      }
+                    }
+                    if (foundSchema) break;
+                  }
+                }
+
+                if (foundSchema && foundKey) {
+                  // Create a filtered schema with only the matching table
+                  const filteredTables = foundSchema.tables.filter((t) => {
+                    const tableNameMatch =
+                      t.tableName === table ||
+                      t.tableName === viewId ||
+                      t.tableName.endsWith(`.${table}`) ||
+                      t.tableName.endsWith(`.${viewId}`);
+                    return tableNameMatch;
+                  });
+
+                  if (filteredTables.length > 0) {
+                    filteredSchemas.set(viewId, {
+                      ...foundSchema,
+                      tables: filteredTables,
+                    });
+                  } else {
+                    // If no matching table found, use the whole schema
+                    filteredSchemas.set(viewId, foundSchema);
                   }
                 } else {
-                  // Main database - check full name
-                  const fullName = `${db}.${schemaName}.${tableName}`;
-                  if (isSystemOrTempTable(fullName)) {
-                    throw new Error(
-                      `Cannot access system table: ${viewId}. Please query user tables only.`,
-                    );
-                  }
-                }
-
-                const schema = await describeObject(db, schemaName, tableName);
-                if (!schema) {
                   console.warn(
-                    `[ReadDataAgent] Object "${viewId}" not found in DuckDB, skipping`,
+                    `[ReadDataAgent] View "${viewId}" not found in metadata, skipping`,
                   );
-                  continue;
-                }
-                collectedSchemas.set(viewId, schema);
-              }
-            } else {
-              // Describe everything discovered (OPTIMIZATION: Phase 4.1 - Batch queries)
-              const describeStartTime = performance.now();
-              let describedCount = 0;
-
-              // Group targets by database for batch processing
-              const targetsByDb = new Map<
-                string,
-                Array<{ db: string; schema: string; table: string }>
-              >();
-              for (const target of targets) {
-                if (!targetsByDb.has(target.db)) {
-                  targetsByDb.set(target.db, []);
-                }
-                targetsByDb.get(target.db)!.push(target);
-              }
-
-              // Process each database
-              for (const [db, dbTargets] of targetsByDb.entries()) {
-                if (db === 'main') {
-                  // For main database, describe individually (DuckDB views)
-                  for (const target of dbTargets) {
-                    const fullName = `${target.db}.${target.schema}.${target.table}`;
-                    const schema = await describeObject(
-                      target.db,
-                      target.schema,
-                      target.table,
-                    );
-                    if (schema) {
-                      collectedSchemas.set(fullName, schema);
-                      describedCount++;
-                    }
-                  }
-                } else {
-                  // For attached databases, batch query information_schema.columns
-                  const escapedDb = db.replace(/"/g, '""');
-                  try {
-                    // Build list of (schema, table) pairs for the query
-                    const tableFilters = dbTargets
-                      .map((t) => {
-                        const schema = t.schema.replace(/'/g, "''");
-                        const table = t.table.replace(/'/g, "''");
-                        return `('${schema}', '${table}')`;
-                      })
-                      .join(', ');
-
-                    if (tableFilters.length > 0) {
-                      const columnsQuery = `
-                        SELECT 
-                          table_schema,
-                          table_name,
-                          column_name,
-                          data_type
-                        FROM "${escapedDb}".information_schema.columns
-                        WHERE (table_schema, table_name) IN (${tableFilters})
-                        ORDER BY table_schema, table_name, ordinal_position
-                      `;
-
-                      const batchStartTime = performance.now();
-                      const columnsReader =
-                        await conn.runAndReadAll(columnsQuery);
-                      await columnsReader.readAll();
-                      const allColumns =
-                        columnsReader.getRowObjectsJS() as Array<{
-                          table_schema: string;
-                          table_name: string;
-                          column_name: string;
-                          data_type: string;
-                        }>;
-                      const batchTime = performance.now() - batchStartTime;
-                      console.log(
-                        `[ReadDataAgent] [PERF] Batch column query for ${db} took ${batchTime.toFixed(2)}ms (${allColumns.length} columns for ${dbTargets.length} tables)`,
-                      );
-
-                      // Group columns by table
-                      const columnsByTable = new Map<
-                        string,
-                        Array<{ columnName: string; columnType: string }>
-                      >();
-                      for (const col of allColumns) {
-                        const key = `${col.table_schema || 'main'}.${col.table_name}`;
-                        if (!columnsByTable.has(key)) {
-                          columnsByTable.set(key, []);
-                        }
-                        columnsByTable.get(key)!.push({
-                          columnName: col.column_name,
-                          columnType: col.data_type,
-                        });
-                      }
-
-                      // Create schemas for each target
-                      for (const target of dbTargets) {
-                        const tableKey = `${target.schema}.${target.table}`;
-                        const columns = columnsByTable.get(tableKey) || [];
-                        const fullName = `${target.db}.${target.schema}.${target.table}`;
-
-                        if (columns.length > 0) {
-                          collectedSchemas.set(fullName, {
-                            databaseName: target.db,
-                            schemaName: target.schema,
-                            tables: [
-                              {
-                                tableName: target.table,
-                                columns,
-                              },
-                            ],
-                          });
-                          describedCount++;
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    // Fallback to individual describes if batch fails
-                    console.warn(
-                      `[ReadDataAgent] Batch describe failed for ${db}, falling back to individual:`,
-                      error,
-                    );
-                    for (const target of dbTargets) {
-                      const fullName = `${target.db}.${target.schema}.${target.table}`;
-                      const schema = await describeObject(
-                        target.db,
-                        target.schema,
-                        target.table,
-                      );
-                      if (schema) {
-                        collectedSchemas.set(fullName, schema);
-                        describedCount++;
-                      }
-                    }
-                  }
                 }
               }
-
-              const describeTime = performance.now() - describeStartTime;
-              console.log(
-                `[ReadDataAgent] [PERF] Describing ${describedCount} tables took ${describeTime.toFixed(2)}ms (avg ${(describeTime / Math.max(describedCount, 1)).toFixed(2)}ms per table)`,
-              );
+              collectedSchemas = filteredSchemas;
             }
+
             schemaDiscoveryTime = performance.now() - schemaDiscoveryStartTime;
             console.log(
               `[ReadDataAgent] [PERF] Total schema discovery took ${schemaDiscoveryTime.toFixed(2)}ms`,
             );
-          } finally {
-            // Return connection to pool
-            DuckDBInstanceManager.returnConnection(
-              conversationId,
-              workspace,
-              conn,
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
+            console.error(
+              `[ReadDataAgent] Failed to get metadata: ${errorMsg}`,
+              error,
             );
+            throw error;
           }
 
           // Get performance configuration
@@ -924,32 +472,11 @@ export const readDataAgent = async (
             }
           } else {
             // All views - combine all schemas into one
+            // Table names are already formatted in transformMetadataToSimpleSchema
             const allTables: SimpleTable[] = [];
-            for (const [schemaKey, schemaData] of collectedSchemas.entries()) {
-              // Add tables from each schema
-              for (const table of schemaData.tables) {
-                // Format table name: for attached databases, show as datasourcename.schema.tablename
-                // schemaKey format: "datasourcename.schema.tablename" or "tablename" for main
-                let formattedTableName = table.tableName;
-                if (schemaKey.includes('.')) {
-                  // This is an attached database table
-                  // schemaKey is like "mydatasource.main.companies" or "mydatasource.public.companies"
-                  // We need to preserve the full path: datasourcename.schema.tablename
-                  const parts = schemaKey.split('.');
-                  if (parts.length >= 3) {
-                    // Format: datasourcename.schema.tablename (preserve schema)
-                    formattedTableName = `${parts[0]}.${parts[1]}.${parts[parts.length - 1]}`;
-                  } else if (parts.length === 2) {
-                    // Format: datasourcename.tablename (assume main schema)
-                    formattedTableName = `${parts[0]}.main.${parts[1]}`;
-                  }
-                }
-
-                allTables.push({
-                  ...table,
-                  tableName: formattedTableName,
-                });
-              }
+            for (const [, schemaData] of collectedSchemas.entries()) {
+              // Add tables from each schema (table names already formatted)
+              allTables.push(...schemaData.tables);
             }
 
             // Determine primary database/schema from first entry or use defaults
@@ -1076,37 +603,14 @@ export const readDataAgent = async (
           );
 
           // Include information about all discovered tables in the response
-          // Format table names: datasourcename.schema.tablename for attached databases
-          const allTableNames = Array.from(collectedSchemas.keys()).map(
-            (key) => {
-              // Format: datasourcename.schema.tablename (preserve schema)
-              if (key.includes('.')) {
-                const parts = key.split('.');
-                if (parts.length >= 3) {
-                  // "mydatasource.main.companies" -> "mydatasource.main.companies" (preserve schema)
-                  return `${parts[0]}.${parts[1]}.${parts[parts.length - 1]}`;
-                } else if (parts.length === 2) {
-                  // "mydatasource.companies" -> "mydatasource.main.companies" (assume main schema)
-                  return `${parts[0]}.main.${parts[1]}`;
-                }
-              }
-              return key;
-            },
-          );
-          const tableCount = allTableNames.length;
-
-          // Cache schema for single view requests (OPTIMIZATION: Phase 4.2)
-          if (requestedViews && requestedViews.length === 1) {
-            const singleView = requestedViews[0];
-            if (singleView) {
-              DuckDBInstanceManager.cacheSchema(
-                conversationId,
-                workspace,
-                singleView,
-                schema,
-              );
+          // Extract table names from schemas (table names are already formatted)
+          const allTableNames: string[] = [];
+          for (const schemaData of collectedSchemas.values()) {
+            for (const table of schemaData.tables) {
+              allTableNames.push(table.tableName);
             }
           }
+          const tableCount = allTableNames.length;
 
           const totalTime = performance.now() - startTime;
           console.log(
@@ -1142,9 +646,9 @@ export const readDataAgent = async (
         }),
         execute: async ({ query }) => {
           const startTime = performance.now();
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
+
+          if (!queryEngine) {
+            throw new Error('Query engine not available');
           }
 
           // Sync datasources before querying if repositories available
@@ -1157,13 +661,16 @@ export const readDataAgent = async (
               const conversation =
                 await getConversationService.execute(conversationId);
               if (conversation?.datasources?.length) {
-                await DuckDBInstanceManager.syncDatasources(
-                  conversationId,
-                  workspace,
+                // Load all datasources
+                const loaded = await loadDatasources(
                   conversation.datasources,
                   repositories.datasource,
-                  true, // OPTIMIZATION: Phase 5.2 - Detach unchecked in runQuery
                 );
+
+                // Get currently attached datasources (we'll need to track this or reattach all)
+                // For now, just reattach all datasources (simple approach)
+                // In the future, we could track attached datasources and only attach/detach changed ones
+                await queryEngine.attach(loaded.map((d) => d.datasource));
               }
             } catch (error) {
               console.warn(
@@ -1180,11 +687,7 @@ export const readDataAgent = async (
           }
 
           const queryStartTime = performance.now();
-          const result = await runQuery({
-            conversationId,
-            workspace,
-            query,
-          });
+          const result = await queryEngine.query(query);
           const queryTime = performance.now() - queryStartTime;
           const totalTime = performance.now() - startTime;
           console.log(
@@ -1204,15 +707,13 @@ export const readDataAgent = async (
           newSheetName: z.string(),
         }),
         execute: async ({ oldSheetName, newSheetName }) => {
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
+          if (!queryEngine) {
+            throw new Error('Query engine not available');
           }
           const result = await renameSheet({
-            conversationId,
-            workspace,
             oldSheetName,
             newSheetName,
+            queryEngine,
           });
           return result;
         },
@@ -1224,14 +725,12 @@ export const readDataAgent = async (
           sheetNames: z.array(z.string()),
         }),
         execute: async ({ sheetNames }) => {
-          const workspace = getWorkspace();
-          if (!workspace) {
-            throw new Error('WORKSPACE environment variable is not set');
+          if (!queryEngine) {
+            throw new Error('Query engine not available');
           }
           const result = await deleteSheet({
-            conversationId,
-            workspace,
             sheetNames,
+            queryEngine,
           });
           return result;
         },
@@ -1355,12 +854,14 @@ export const readDataAgentActor = fromPromise(
       previousMessages: UIMessage[];
       model: string;
       repositories?: Repositories;
+      queryEngine: AbstractQueryEngine;
     };
   }) => {
     return readDataAgent(
       input.conversationId,
       input.previousMessages,
       input.model,
+      input.queryEngine,
       input.repositories,
     );
   },

@@ -36,6 +36,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.936.0",
     "@hookform/resolvers": "^5.2.2",
     "@qwery/eslint-config": "workspace:*",
     "@qwery/i18n": "workspace:*",
@@ -59,6 +60,7 @@
     "react-hook-form": "^7.66.0",
     "react-i18next": "^16.2.3",
     "sonner": "^2.0.7",
+    "testcontainers": "^10.12.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

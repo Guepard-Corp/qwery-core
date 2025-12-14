@@ -12,8 +12,15 @@ export interface DataGridColumn {
   width?: number;
 }
 
+export interface DataGridColumnHeader {
+  displayName: string;
+  name: string;
+  originalType: string;
+  type: string;
+}
+
 export interface DataGridProps {
-  columns: string[];
+  columns: DataGridColumnHeader[] | string[];
   rows: Array<Record<string, unknown>>;
   pageSize?: number;
   className?: string;
@@ -50,7 +57,10 @@ function isISOString(value: string): boolean {
 /**
  * Formats a cell value for display, handling dates, nulls, and other types
  */
-function formatCellValue(value: unknown, columnName?: string): string {
+function formatCellValue(
+  value: unknown,
+  column?: DataGridColumnHeader | string,
+): string {
   if (value === null || value === undefined) {
     return 'null';
   }
@@ -58,7 +68,7 @@ function formatCellValue(value: unknown, columnName?: string): string {
     return formatDate(value);
   }
   if (typeof value === 'string') {
-    if (isISOString(value) || (columnName && isDateTimeColumn(columnName))) {
+    if (isISOString(value) || (column && isDateTimeColumn(column))) {
       try {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
@@ -104,17 +114,47 @@ function formatCellValue(value: unknown, columnName?: string): string {
 }
 
 /**
- * Checks if a column name suggests it's a date/time column
+ * Checks if a column suggests it's a date/time column
  */
-function isDateTimeColumn(columnName: string): boolean {
-  const name = columnName.toLowerCase();
-  return (
-    name.includes('date') ||
-    name.includes('time') ||
-    name.includes('timestamp') ||
-    name.includes('created_at') ||
-    name.includes('updated_at')
-  );
+function isDateTimeColumn(
+  column: DataGridColumnHeader | string | unknown,
+): boolean {
+  if (typeof column === 'string') {
+    const name = column.toLowerCase();
+    return (
+      name.includes('date') ||
+      name.includes('time') ||
+      name.includes('timestamp') ||
+      name.includes('created_at') ||
+      name.includes('updated_at')
+    );
+  }
+  if (typeof column === 'object' && column !== null && 'name' in column) {
+    const col = column as DataGridColumnHeader;
+    const name = col.name.toLowerCase();
+    const type = (col.type || col.originalType || '').toLowerCase();
+    // Check normalized type first (more reliable)
+    if (
+      col.type === 'date' ||
+      col.type === 'datetime' ||
+      col.type === 'timestamp' ||
+      col.type === 'time'
+    ) {
+      return true;
+    }
+    // Fallback to name and originalType checks
+    return (
+      name.includes('date') ||
+      name.includes('time') ||
+      name.includes('timestamp') ||
+      name.includes('created_at') ||
+      name.includes('updated_at') ||
+      type.includes('date') ||
+      type.includes('time') ||
+      type.includes('timestamp')
+    );
+  }
+  return false;
 }
 
 /**
@@ -128,6 +168,19 @@ export function DataGrid({
   className,
 }: DataGridProps) {
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Normalize columns: convert string[] to DataGridColumnHeader[]
+  const normalizedColumns: DataGridColumnHeader[] = columns.map((col) => {
+    if (typeof col === 'string') {
+      return {
+        displayName: col,
+        name: col,
+        originalType: '',
+        type: 'unknown',
+      };
+    }
+    return col;
+  });
 
   const totalPages = Math.ceil(rows.length / pageSize);
 
@@ -168,12 +221,12 @@ export function DataGrid({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-muted/30 border-b">
-                {columns.map((column) => (
+                {normalizedColumns.map((column) => (
                   <th
-                    key={column}
+                    key={column.name}
                     className="text-muted-foreground px-4 py-2 text-left text-xs font-medium whitespace-nowrap"
                   >
-                    {column}
+                    {column.displayName}
                   </th>
                 ))}
               </tr>
@@ -184,15 +237,15 @@ export function DataGrid({
                   key={startIndex + rowIndex}
                   className="hover:bg-muted/20 border-b transition-colors"
                 >
-                  {columns.map((column) => {
-                    const value = row[column];
+                  {normalizedColumns.map((column) => {
+                    const value = row[column.name];
                     const formattedValue = formatCellValue(value, column);
                     const isNull = value === null || value === undefined;
                     const isDateColumn = isDateTimeColumn(column);
 
                     return (
                       <td
-                        key={column}
+                        key={column.name}
                         className={cn(
                           'px-4 py-2 text-sm',
                           isDateColumn

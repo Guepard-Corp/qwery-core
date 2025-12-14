@@ -1,4 +1,4 @@
-import type { DatasourceResultSet } from './model';
+import type { DatasourceResultSet } from './metadata';
 
 export abstract class DatasourceDriver {
   constructor(

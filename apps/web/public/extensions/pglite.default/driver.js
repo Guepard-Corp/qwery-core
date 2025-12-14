@@ -14604,6 +14604,86 @@ var DatasourceMetadataZodSchema = external_exports.object({
   extensions: DatasourceExtensionArrayZod.optional()
 }).passthrough();
 
+// packages/domain/src/entities/datasource-meta/resultset.type.ts
+var ColumnTypeSchema = external_exports.enum([
+  "string",
+  "number",
+  "integer",
+  "boolean",
+  "date",
+  "datetime",
+  "timestamp",
+  "time",
+  "json",
+  "jsonb",
+  "array",
+  "blob",
+  "binary",
+  "uuid",
+  "decimal",
+  "float",
+  "null",
+  "unknown"
+]);
+var DatasourceResultStatSchema = external_exports.object({
+  rowsAffected: external_exports.number().int().min(0).describe("Number of rows affected by the query"),
+  rowsRead: external_exports.number().int().min(0).nullable().describe("Number of rows read during query execution"),
+  rowsWritten: external_exports.number().int().min(0).nullable().describe("Number of rows written during query execution"),
+  queryDurationMs: external_exports.number().min(0).nullable().describe("Query execution duration in milliseconds")
+}).passthrough();
+var ColumnHeaderSchema = external_exports.object({
+  /**
+   * The key of row data that this column represents.
+   */
+  name: external_exports.string().min(1).describe("The key of row data that this column represents"),
+  /**
+   * The display name of the column. This is the name that should be used when displaying the column to the user.
+   */
+  displayName: external_exports.string().min(1).describe("The display name of the column"),
+  /**
+   * The original type of the column returned from database driver.
+   * This is database-specific (e.g., 'VARCHAR', 'INTEGER', 'TIMESTAMP', 'BIGINT').
+   */
+  originalType: external_exports.string().nullable().describe("The original database-specific type of the column"),
+  /**
+   * Normalized type hint for client rendering and visualization.
+   * Frontend should use this to adapt visualization (e.g., date pickers for dates, number formatting for numbers).
+   */
+  type: ColumnTypeSchema.optional().describe(
+    "Normalized type hint for frontend visualization"
+  ),
+  /**
+   * Database name or schema name
+   */
+  schema: external_exports.string().optional().describe("Database name or schema name"),
+  /**
+   * The actual table name
+   */
+  table: external_exports.string().optional().describe("The actual table name"),
+  /**
+   * The original column name returned from database driver.
+   */
+  originalName: external_exports.string().optional().describe("The original column name returned from database driver"),
+  /**
+   * Indicate if this column is a primary key.
+   */
+  primaryKey: external_exports.boolean().optional().describe("Indicate if this column is a primary key"),
+  /**
+   * The column id in the table. Useful for Postgres and other databases that expose column OIDs.
+   */
+  columnId: external_exports.number().int().optional().describe("The column id in the table (useful for Postgres OIDs)"),
+  /**
+   * The table id in the database. Useful for Postgres and other databases that expose table OIDs.
+   */
+  tableId: external_exports.number().int().optional().describe("The table id in the database (useful for Postgres OIDs)")
+}).passthrough();
+var DatasourceRowSchema = external_exports.record(external_exports.unknown());
+var DatasourceResultSetZodSchema = external_exports.object({
+  rows: external_exports.array(DatasourceRowSchema).describe("Array of result rows"),
+  columns: external_exports.array(ColumnHeaderSchema).describe("Array of column metadata"),
+  stat: DatasourceResultStatSchema.describe("Query execution statistics")
+}).passthrough();
+
 // packages/extensions/pglite/dist/driver.js
 var ConfigSchema = external_exports.object({
   database: external_exports.string().default("playground").describe("Database name")

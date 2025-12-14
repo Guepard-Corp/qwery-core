@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Clock, Type } from 'lucide-react';
 
 import type {
-  DatasourceHeader,
+  ColumnHeader,
   DatasourceResultSet,
   DatasourceRow,
 } from '@qwery/domain/entities';
@@ -83,7 +83,7 @@ function isDateTimeColumn(header: {
 }
 
 export function NotebookDataGrid({ result, className }: NotebookDataGridProps) {
-  const { rows, headers, stat } = result;
+  const { rows, columns, stat } = result;
   const displayedRows = rows.length;
   const totalRows = stat.rowsRead ?? displayedRows;
   const duration = formatDuration(stat.queryDurationMs);
@@ -114,7 +114,7 @@ export function NotebookDataGrid({ result, className }: NotebookDataGridProps) {
                   <span className="text-muted-foreground text-xs">#</span>
                 </TableHead>
                 {/* Data columns */}
-                {headers.map((header: DatasourceHeader, index: number) => {
+                {columns.map((header: ColumnHeader, index: number) => {
                   const isDateTime = isDateTimeColumn(header);
                   return (
                     <TableHead
@@ -143,7 +143,7 @@ export function NotebookDataGrid({ result, className }: NotebookDataGridProps) {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={headers.length + 1}
+                    colSpan={columns.length + 1}
                     className="text-muted-foreground py-8 text-center"
                   >
                     No rows returned
@@ -157,32 +157,30 @@ export function NotebookDataGrid({ result, className }: NotebookDataGridProps) {
                       {rowIndex + 1}
                     </TableCell>
                     {/* Data cells */}
-                    {headers.map(
-                      (header: DatasourceHeader, colIndex: number) => {
-                        const value = row[header.name];
-                        const formattedValue = formatCellValue(value);
-                        const isNull = value === null || value === undefined;
-                        const displayValue = isNull
-                          ? 'NULL'
-                          : truncateText(formattedValue);
+                    {columns.map((header: ColumnHeader, colIndex: number) => {
+                      const value = row[header.name];
+                      const formattedValue = formatCellValue(value);
+                      const isNull = value === null || value === undefined;
+                      const displayValue = isNull
+                        ? 'NULL'
+                        : truncateText(formattedValue);
 
-                        return (
-                          <TableCell
-                            key={header.name}
-                            className={cn(
-                              'max-w-[300px]',
-                              colIndex === 0 && 'border-border border-l',
-                              isNull && 'text-muted-foreground italic',
-                            )}
-                            title={isNull ? 'NULL' : formattedValue}
-                          >
-                            <div className="truncate" title={formattedValue}>
-                              {displayValue}
-                            </div>
-                          </TableCell>
-                        );
-                      },
-                    )}
+                      return (
+                        <TableCell
+                          key={header.name}
+                          className={cn(
+                            'max-w-[300px]',
+                            colIndex === 0 && 'border-border border-l',
+                            isNull && 'text-muted-foreground italic',
+                          )}
+                          title={isNull ? 'NULL' : formattedValue}
+                        >
+                          <div className="truncate" title={formattedValue}>
+                            {displayValue}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}

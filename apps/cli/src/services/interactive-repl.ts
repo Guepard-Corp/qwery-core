@@ -352,11 +352,19 @@ export class InteractiveRepl {
 
       console.log('\n' + colored('💬 Processing...', colors.brand) + '\n');
 
+      // Create query engine for readDataAgent
+      const { createQueryEngine } = await import('@qwery/domain/ports');
+      const { DuckDBQueryEngine } = await import(
+        '../../../../packages/agent-factory-sdk/src/services/duckdb-query-engine.service.js'
+      );
+      const queryEngine = createQueryEngine(DuckDBQueryEngine);
+
       // Get the stream from readDataAgent function
       const streamResult = await readDataAgent(
         conversation.id,
         messages,
         'azure/gpt-5-mini',
+        queryEngine,
         repositories,
       );
 

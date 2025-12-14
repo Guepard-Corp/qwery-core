@@ -8,3 +8,4 @@ export * from './browser-transport';
 export * from './transport-factory';
 export * from './usage-persistence.service';
 export * from './generate-conversation-title.service';
+export * from './duckdb-query-engine.service';

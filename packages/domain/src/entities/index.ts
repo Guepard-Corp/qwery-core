@@ -6,7 +6,6 @@ export * from './workspace.type';
 export * from './organization.type';
 export * from './project.type';
 export * from './user.type';
-export * from './resultset.type';
 export * from './playground.type';
 export * from './template.type';
 

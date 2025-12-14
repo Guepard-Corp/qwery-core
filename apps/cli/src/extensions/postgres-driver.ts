@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type {
   IDataSourceDriver,
-  QueryResult,
+  DatasourceResultSet,
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
@@ -40,7 +40,7 @@ export class PostgresDatasourceDriver implements IDataSourceDriver {
     });
   }
 
-  async query(sql: string, config: unknown): Promise<QueryResult> {
+  async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
     PostgresDriverConfigSchema.parse(config);
     const startTime = performance.now();
 

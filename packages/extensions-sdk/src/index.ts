@@ -1,6 +1,5 @@
 export * from './types';
 export * from './registry';
-export * from './model';
 export * from './datasource.driver';
 export * from './driver';
 export * from './metadata';

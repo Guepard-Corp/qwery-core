@@ -7,7 +7,7 @@ import type {
   DatasourceMetadata,
   DriverContext,
   IDataSourceDriver,
-  QueryResult,
+  DatasourceResultSet,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
 
@@ -442,7 +442,7 @@ export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
       return toMetadata(entry);
     },
 
-    async query(sql: string, config: unknown): Promise<QueryResult> {
+    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
       const parsed = ConfigSchema.parse(config);
       const entry = await ensureInstanceReady(parsed, context);
       const conn = await entry.instance.connect();

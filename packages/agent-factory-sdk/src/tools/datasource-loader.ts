@@ -16,6 +16,7 @@ export interface LoadedDatasource {
  * to support multiple tabs with datasourcename.tablename format
  */
 const DUCKDB_NATIVE_PROVIDERS = [
+  'gsheet-csv',
   'csv',
   'json-online',
   'parquet-online',

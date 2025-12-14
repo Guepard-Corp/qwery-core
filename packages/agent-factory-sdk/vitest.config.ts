@@ -8,8 +8,8 @@ export default defineConfig({
     },
     globals: true,
     environment: 'node',
-    testTimeout: 60000,
-    hookTimeout: 120000, // 2 minutes for container startup
+    testTimeout: 120000, // 2 minutes for tests with containers
+    hookTimeout: 180000, // 3 minutes for container startup
   },
   resolve: {
     alias: {

@@ -10,12 +10,14 @@ import {
 } from './actors';
 import { Repositories } from '@qwery/domain/repositories';
 import { createCachedActor } from './utils/actor-cache';
+import { AbstractQueryEngine } from '@qwery/domain/ports';
 
 export const createStateMachine = (
   conversationId: string,
   conversationSlug: string,
   model: string,
   repositories: Repositories,
+  queryEngine: AbstractQueryEngine,
 ) => {
   const defaultSetup = setup({
     types: {
@@ -317,6 +319,7 @@ export const createStateMachine = (
                           previousMessages: context.previousMessages,
                           model: context.model,
                           repositories: repositories,
+                          queryEngine: queryEngine,
                         };
                       },
                       onDone: {

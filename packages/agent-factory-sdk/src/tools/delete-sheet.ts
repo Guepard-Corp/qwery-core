@@ -1,9 +1,8 @@
-import { dropTable } from './view-registry';
+import type { AbstractQueryEngine } from '@qwery/domain/ports';
 
 export interface DeleteSheetOptions {
-  conversationId: string;
-  workspace: string;
   sheetNames: string[];
+  queryEngine: AbstractQueryEngine;
 }
 
 export interface DeleteSheetResult {
@@ -15,22 +14,27 @@ export interface DeleteSheetResult {
 export const deleteSheet = async (
   opts: DeleteSheetOptions,
 ): Promise<DeleteSheetResult> => {
-  const { conversationId, workspace, sheetNames } = opts;
+  const { sheetNames, queryEngine } = opts;
 
   if (!sheetNames || sheetNames.length === 0) {
     throw new Error('At least one sheet name is required');
   }
 
+  if (!queryEngine) {
+    throw new Error('Query engine is required');
+  }
+
   const deletedSheets: string[] = [];
   const failedSheets: Array<{ sheetName: string; error: string }> = [];
 
-  const { join } = await import('node:path');
-  const dbPath = join(workspace, conversationId, 'database.db');
-
-  // Delete each sheet
+  // Delete each sheet using queryEngine
   for (const sheetName of sheetNames) {
     try {
-      await dropTable(dbPath, sheetName);
+      const escapedName = sheetName.replace(/"/g, '""');
+      // Try to drop as VIEW first, then as TABLE
+      // DROP VIEW IF EXISTS and DROP TABLE IF EXISTS won't error if the object doesn't exist
+      await queryEngine.query(`DROP VIEW IF EXISTS "${escapedName}"`);
+      await queryEngine.query(`DROP TABLE IF EXISTS "${escapedName}"`);
       deletedSheets.push(sheetName);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type {
   DriverContext,
   IDataSourceDriver,
-  QueryResult as ExtensionQueryResult,
+  DatasourceResultSet,
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
@@ -196,7 +196,7 @@ export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
       });
     },
 
-    async query(sql: string, config: unknown): Promise<ExtensionQueryResult> {
+    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
       const parsed = ConfigSchema.parse(config);
       const startTime = Date.now();
       const result = await withConnection(parsed, (connection) =>

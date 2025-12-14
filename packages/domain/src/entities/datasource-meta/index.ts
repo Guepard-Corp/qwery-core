@@ -17,3 +17,4 @@ export * from './table-privileges.type';
 export * from './triggers.type';
 export * from './types.type';
 export * from './metadata.type';
+export * from './resultset.type';

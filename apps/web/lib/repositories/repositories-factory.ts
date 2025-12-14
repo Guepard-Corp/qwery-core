@@ -3,7 +3,7 @@ import { Repositories } from '@qwery/domain/repositories';
 // Detect if we're in a server/API context (Node.js environment)
 const IS_SERVER = typeof process !== 'undefined' && process.env !== undefined;
 
-const STORAGE_ADAPTER = (import.meta.env?.VITE_STORAGE_ADAPTER ||
+const DATABASE_PROVIDER = (import.meta.env?.VITE_DATABASE_PROVIDER ||
   'indexed-db') as 'indexed-db' | 'sqlite';
 
 export async function createRepositories(): Promise<Repositories> {
@@ -20,7 +20,7 @@ export async function createRepositories(): Promise<Repositories> {
       UsageRepository,
     } = await import('@qwery/repository-sqlite');
 
-    const DB_PATH = process.env.VITE_DB_NAME || undefined;
+    const DB_PATH = process.env.VITE_DATABASE_PATH || undefined;
 
     return {
       user: new UserRepository(DB_PATH),
@@ -35,7 +35,7 @@ export async function createRepositories(): Promise<Repositories> {
   }
 
   // Browser context: use IndexedDB or API repositories based on STORAGE_ADAPTER
-  if (STORAGE_ADAPTER === 'sqlite') {
+  if (DATABASE_PROVIDER === 'sqlite') {
     // When using SQLite, use API repositories that call the backend API
     // (which uses SQLite repositories on the server)
     const [

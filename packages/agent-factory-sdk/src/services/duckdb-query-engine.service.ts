@@ -1,0 +1,760 @@
+import type {
+  Datasource,
+  DatasourceMetadata,
+  DatasourceResultSet,
+} from '@qwery/domain/entities';
+import {
+  AbstractQueryEngine,
+  type QueryEngineConfig,
+} from '@qwery/domain/ports';
+import type { DuckDBInstance } from '@duckdb/node-api';
+import { DatasourceMetadataZodSchema } from '@qwery/domain/entities';
+import { datasourceToDuckdb } from '../tools/datasource-to-duckdb';
+import { attachForeignDatasourceToConnection } from '../tools/foreign-datasource-attach';
+import { getDatasourceDatabaseName } from '../tools/datasource-name-utils';
+import {
+  groupDatasourcesByType,
+  getDatasourceType,
+  type LoadedDatasource,
+} from '../tools/datasource-loader';
+
+// Connection type from DuckDB instance
+type Connection = Awaited<ReturnType<DuckDBInstance['connect']>>;
+
+/**
+ * Recursively converts BigInt values to numbers for JSON serialization.
+ */
+const convertBigInt = (value: unknown): unknown => {
+  if (typeof value === 'bigint') {
+    if (value <= Number.MAX_SAFE_INTEGER && value >= Number.MIN_SAFE_INTEGER) {
+      return Number(value);
+    }
+    return value.toString();
+  }
+  if (Array.isArray(value)) {
+    return value.map(convertBigInt);
+  }
+  if (value && typeof value === 'object') {
+    const converted: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      converted[key] = convertBigInt(val);
+    }
+    return converted;
+  }
+  return value;
+};
+
+/**
+ * DuckDB implementation of the AbstractQueryEngine.
+ *
+ * This service provides federated query capabilities using DuckDB as the query engine.
+ * It supports attaching multiple datasources (both DuckDB-native and foreign databases)
+ * and executing SQL queries across them.
+ *
+ * @example
+ * ```typescript
+ * const engine = createQueryEngine(DuckDBQueryEngine);
+ * await engine.initialize({
+ *   workingDir: 'file:///tmp/duckdb-engine',
+ *   config: {}
+ * });
+ * await engine.attach(datasources);
+ * await engine.connect();
+ * const result = await engine.query('SELECT * FROM table1 JOIN table2 ON ...');
+ * ```
+ */
+export class DuckDBQueryEngine extends AbstractQueryEngine {
+  private instance: DuckDBInstance | null = null;
+  private connection: Connection | null = null;
+  private workingDir: string | null = null;
+  private attachedDatasources: Set<string> = new Set(); // datasource IDs
+  private initialized = false;
+
+  /**
+   * Determines which DuckDB extension to load based on the workingDir URI protocol.
+   */
+  private getRequiredExtension(uri: string): string | null {
+    const url = new URL(uri);
+    const protocol = url.protocol.replace(':', '');
+
+    switch (protocol) {
+      case 's3':
+      case 'http':
+      case 'https':
+      case 'hf':
+      case 'gs':
+        return 'httpfs';
+      case 'az':
+      case 'azure':
+        return 'azure';
+      case 'file':
+        return null; // No extension needed for file://
+      default:
+        // For unknown protocols, try httpfs as it's the most common
+        return 'httpfs';
+    }
+  }
+
+  /**
+   * Initialize the DuckDB query engine with the provided configuration.
+   * Creates an in-memory transient instance, loads required extensions based on
+   * workingDir URI protocol, and applies configuration.
+   */
+  async initialize(config: QueryEngineConfig): Promise<void> {
+    if (this.initialized) {
+      throw new Error('DuckDBQueryEngine is already initialized');
+    }
+
+    const { workingDir, config: engineConfig } = config;
+
+    // Store workingDir for reference
+    this.workingDir = workingDir;
+
+    // Create in-memory transient DuckDB instance
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    this.instance = await DuckDBInstance.create(':memory:');
+
+    // Create initial connection
+    this.connection = await this.instance.connect();
+
+    // Load required extension based on workingDir URI protocol
+    const requiredExtension = this.getRequiredExtension(workingDir);
+    if (requiredExtension) {
+      try {
+        // Check if extension is already installed
+        const checkReader = await this.connection.runAndReadAll(
+          `SELECT extension_name FROM duckdb_extensions() WHERE extension_name = '${requiredExtension}'`,
+        );
+        await checkReader.readAll();
+        const extensions = checkReader.getRowObjectsJS() as Array<{
+          extension_name: string;
+        }>;
+
+        if (extensions.length === 0) {
+          await this.connection.run(`INSTALL ${requiredExtension}`);
+        }
+      } catch {
+        // If check fails, try installing anyway
+        try {
+          await this.connection.run(`INSTALL ${requiredExtension}`);
+        } catch (installError) {
+          const errorMsg =
+            installError instanceof Error
+              ? installError.message
+              : String(installError);
+          console.warn(
+            `Failed to install extension ${requiredExtension}: ${errorMsg}`,
+          );
+        }
+      }
+
+      // Load the extension
+      try {
+        await this.connection.run(`LOAD ${requiredExtension}`);
+      } catch (loadError) {
+        const errorMsg =
+          loadError instanceof Error ? loadError.message : String(loadError);
+        throw new Error(
+          `Failed to load extension ${requiredExtension}: ${errorMsg}`,
+        );
+      }
+    }
+
+    // Apply engine-specific configuration
+    if (engineConfig) {
+      for (const [key, value] of Object.entries(engineConfig)) {
+        try {
+          // Apply SET statements for configuration
+          const escapedValue =
+            typeof value === 'string'
+              ? `'${value.replace(/'/g, "''")}'`
+              : value;
+          await this.connection.run(`SET ${key} = ${escapedValue}`);
+        } catch (configError) {
+          const errorMsg =
+            configError instanceof Error
+              ? configError.message
+              : String(configError);
+          console.warn(`Failed to apply config ${key} = ${value}: ${errorMsg}`);
+        }
+      }
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Attach one or more datasources to the query engine.
+   */
+  async attach(datasources: Datasource[]): Promise<void> {
+    if (!this.initialized || !this.connection) {
+      throw new Error(
+        'DuckDBQueryEngine must be initialized before attaching datasources',
+      );
+    }
+
+    if (datasources.length === 0) {
+      return;
+    }
+
+    // Convert Datasource[] to LoadedDatasource[]
+    const loaded: LoadedDatasource[] = datasources.map((ds) => ({
+      datasource: ds,
+      type: getDatasourceType(ds.datasource_provider),
+    }));
+
+    const { duckdbNative, foreignDatabases } = groupDatasourcesByType(loaded);
+
+    // Attach foreign databases (PostgreSQL, MySQL, etc.)
+    for (const { datasource } of foreignDatabases) {
+      try {
+        await attachForeignDatasourceToConnection({
+          conn: this.connection,
+          datasource,
+        });
+        this.attachedDatasources.add(datasource.id);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Failed to attach datasource ${datasource.id}: ${errorMsg}`,
+        );
+      }
+    }
+
+    // Create views for DuckDB-native datasources
+    for (const { datasource } of duckdbNative) {
+      try {
+        await datasourceToDuckdb({
+          connection: this.connection,
+          datasource,
+        });
+        this.attachedDatasources.add(datasource.id);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Failed to create view for datasource ${datasource.id}: ${errorMsg}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Detach one or more datasources from the query engine.
+   */
+  async detach(datasources: Datasource[]): Promise<void> {
+    if (!this.initialized || !this.connection) {
+      throw new Error(
+        'DuckDBQueryEngine must be initialized before detaching datasources',
+      );
+    }
+
+    if (datasources.length === 0) {
+      return;
+    }
+
+    // Convert Datasource[] to LoadedDatasource[]
+    const loaded: LoadedDatasource[] = datasources.map((ds) => ({
+      datasource: ds,
+      type: getDatasourceType(ds.datasource_provider),
+    }));
+
+    const { foreignDatabases, duckdbNative } = groupDatasourcesByType(loaded);
+
+    // Detach foreign databases
+    for (const { datasource } of foreignDatabases) {
+      try {
+        const attachedDatabaseName = getDatasourceDatabaseName(datasource);
+        const escapedDbName = attachedDatabaseName.replace(/"/g, '""');
+        await this.connection.run(`DETACH "${escapedDbName}"`);
+        this.attachedDatasources.delete(datasource.id);
+      } catch (error) {
+        // DuckDB doesn't support DETACH IF EXISTS, so we catch errors
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `Failed to detach datasource ${datasource.id}: ${errorMsg}`,
+        );
+        // Continue with other datasources
+      }
+    }
+
+    // Drop views for DuckDB-native datasources
+    for (const { datasource } of duckdbNative) {
+      try {
+        // Generate view name (same logic as datasourceToDuckdb)
+        const baseName =
+          datasource.name?.trim() ||
+          datasource.datasource_provider?.trim() ||
+          'data';
+        const sanitizeName = (value: string): string => {
+          const cleaned = value.replace(/[^a-zA-Z0-9_]/g, '_');
+          return /^[a-zA-Z]/.test(cleaned) ? cleaned : `v_${cleaned}`;
+        };
+        const viewName = sanitizeName(
+          `${datasource.id}_${baseName}_sheet`.toLowerCase(),
+        );
+        const escapedViewName = viewName.replace(/"/g, '""');
+        await this.connection.run(`DROP VIEW IF EXISTS "${escapedViewName}"`);
+        this.attachedDatasources.delete(datasource.id);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `Failed to drop view for datasource ${datasource.id}: ${errorMsg}`,
+        );
+        // Continue with other datasources
+      }
+    }
+  }
+
+  /**
+   * Establish connections to all attached datasources.
+   * For DuckDB, connections are established during attach, so this is a no-op.
+   */
+  async connect(): Promise<void> {
+    if (!this.initialized || !this.connection) {
+      throw new Error(
+        'DuckDBQueryEngine must be initialized before connecting',
+      );
+    }
+
+    // DuckDB connections are established during attach()
+    // This method can be used to verify connectivity if needed
+    try {
+      await this.connection.run('SELECT 1');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to verify DuckDB connection: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Close all connections and clean up resources.
+   */
+  async close(): Promise<void> {
+    if (!this.initialized) {
+      return; // Already closed or never initialized
+    }
+
+    try {
+      if (this.connection) {
+        this.connection.closeSync();
+        this.connection = null;
+      }
+
+      if (this.instance) {
+        // DuckDBInstance doesn't have an explicit close method
+        // The instance will be garbage collected
+        this.instance = null;
+      }
+
+      this.attachedDatasources.clear();
+      this.initialized = false;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to close DuckDBQueryEngine: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Execute a SQL query across attached datasources.
+   */
+  async query(query: string): Promise<DatasourceResultSet> {
+    if (!this.initialized || !this.connection) {
+      throw new Error(
+        'DuckDBQueryEngine must be initialized and connected before querying',
+      );
+    }
+
+    try {
+      const startTime = performance.now();
+      const resultReader = await this.connection.runAndReadAll(query);
+      await resultReader.readAll();
+      const rows = resultReader.getRowObjectsJS() as Array<
+        Record<string, unknown>
+      >;
+      const columnNames = resultReader.columnNames();
+      const columnTypes = resultReader.columnTypes();
+
+      // Convert BigInt values to numbers/strings for JSON serialization
+      const convertedRows = rows.map(
+        (row) => convertBigInt(row) as Record<string, unknown>,
+      );
+
+      // Convert column names to ColumnHeader format
+      const columns = columnNames.map((name, index) => {
+        const duckdbType = columnTypes[index];
+        // Convert DuckDBType to string representation
+        const originalTypeStr = duckdbType
+          ? this.duckdbTypeToString(duckdbType)
+          : null;
+        return {
+          name,
+          displayName: name,
+          originalType: originalTypeStr,
+          type: this.normalizeColumnType(originalTypeStr),
+        };
+      });
+
+      const queryDurationMs = performance.now() - startTime;
+
+      return {
+        columns,
+        rows: convertedRows,
+        stat: {
+          rowsAffected: convertedRows.length,
+          rowsRead: convertedRows.length,
+          rowsWritten: null,
+          queryDurationMs,
+        },
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Query execution failed: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Convert DuckDBType to string representation.
+   */
+  private duckdbTypeToString(type: unknown): string {
+    if (typeof type === 'string') {
+      return type;
+    }
+    if (type && typeof type === 'object') {
+      // Try to get SQL type representation
+      const typeObj = type as Record<string, unknown>;
+      if ('sqlType' in typeObj && typeof typeObj.sqlType === 'string') {
+        return typeObj.sqlType;
+      }
+      // Fallback to string representation
+      return String(type);
+    }
+    return String(type);
+  }
+
+  /**
+   * Normalize DuckDB column types to domain ColumnType.
+   */
+  private normalizeColumnType(
+    originalType: string | null | undefined,
+  ):
+    | 'string'
+    | 'number'
+    | 'integer'
+    | 'boolean'
+    | 'date'
+    | 'datetime'
+    | 'timestamp'
+    | 'time'
+    | 'json'
+    | 'jsonb'
+    | 'array'
+    | 'blob'
+    | 'binary'
+    | 'uuid'
+    | 'decimal'
+    | 'float'
+    | 'null'
+    | 'unknown'
+    | undefined {
+    if (!originalType) {
+      return undefined;
+    }
+
+    const typeLower = originalType.toLowerCase();
+
+    // Integer types
+    if (
+      typeLower.includes('int') ||
+      typeLower === 'bigint' ||
+      typeLower === 'smallint' ||
+      typeLower === 'tinyint'
+    ) {
+      return 'integer';
+    }
+
+    // Numeric types
+    if (
+      typeLower.includes('decimal') ||
+      typeLower.includes('numeric') ||
+      typeLower === 'double' ||
+      typeLower === 'real'
+    ) {
+      return 'decimal';
+    }
+
+    // Float types
+    if (
+      typeLower === 'float' ||
+      typeLower === 'float4' ||
+      typeLower === 'float8'
+    ) {
+      return 'float';
+    }
+
+    // Boolean
+    if (typeLower === 'boolean' || typeLower === 'bool') {
+      return 'boolean';
+    }
+
+    // Date/time types
+    if (typeLower === 'date') {
+      return 'date';
+    }
+    if (typeLower === 'time') {
+      return 'time';
+    }
+    if (typeLower.includes('timestamp')) {
+      return 'timestamp';
+    }
+    if (typeLower.includes('datetime')) {
+      return 'datetime';
+    }
+
+    // JSON types
+    if (typeLower === 'json' || typeLower === 'jsonb') {
+      return typeLower as 'json' | 'jsonb';
+    }
+
+    // Array types
+    if (typeLower.includes('array') || typeLower.includes('[]')) {
+      return 'array';
+    }
+
+    // Binary types
+    if (typeLower.includes('blob') || typeLower.includes('binary')) {
+      return 'binary';
+    }
+
+    // UUID
+    if (typeLower === 'uuid') {
+      return 'uuid';
+    }
+
+    // String types (default for varchar, text, char, etc.)
+    if (
+      typeLower.includes('varchar') ||
+      typeLower.includes('char') ||
+      typeLower === 'text' ||
+      typeLower === 'string'
+    ) {
+      return 'string';
+    }
+
+    // Null
+    if (typeLower === 'null') {
+      return 'null';
+    }
+
+    // Unknown
+    return 'unknown';
+  }
+
+  /**
+   * Retrieve metadata for attached datasources.
+   */
+  async metadata(_datasources?: Datasource[]): Promise<DatasourceMetadata> {
+    if (!this.initialized || !this.connection) {
+      throw new Error(
+        'DuckDBQueryEngine must be initialized before retrieving metadata',
+      );
+    }
+
+    try {
+      const allTables: Array<{
+        database: string;
+        schema: string;
+        table: string;
+        type: string;
+      }> = [];
+
+      try {
+        const tablesReader = await this.connection.runAndReadAll(`
+            SELECT table_catalog, table_schema, table_name, table_type
+            FROM information_schema.tables
+            WHERE table_type IN ('BASE TABLE', 'VIEW')
+          `);
+        await tablesReader.readAll();
+        const tables = tablesReader.getRowObjectsJS() as Array<{
+          table_catalog: string;
+          table_schema: string;
+          table_name: string;
+          table_type: string;
+        }>;
+        for (const table of tables) {
+          allTables.push({
+            database: table.table_catalog,
+            schema: table.table_schema,
+            table: table.table_name,
+            type: table.table_type,
+          });
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(`Failed to query tables : ${errorMsg}`);
+      }
+
+      // Collect column information for all tables
+      const allColumns: Array<{
+        database: string;
+        schema: string;
+        table: string;
+        column: string;
+        type: string;
+        ordinal: number;
+        nullable: boolean;
+      }> = [];
+
+      for (const { database, schema, table } of allTables) {
+        try {
+          const escapedSchema = schema.replace(/"/g, '""');
+          const escapedTable = table.replace(/"/g, '""');
+
+          const columnsReader = await this.connection.runAndReadAll(`
+            SELECT column_name, data_type, ordinal_position, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = '${escapedSchema.replace(/'/g, "''")}'
+              AND table_name = '${escapedTable.replace(/'/g, "''")}'
+            ORDER BY ordinal_position
+          `);
+          await columnsReader.readAll();
+          const columns = columnsReader.getRowObjectsJS() as Array<{
+            column_name: string;
+            data_type: string;
+            ordinal_position: number | string | bigint;
+            is_nullable: string;
+          }>;
+
+          for (const col of columns) {
+            // Convert ordinal_position to number (handles string, number, or bigint)
+            const ordinal =
+              typeof col.ordinal_position === 'number'
+                ? col.ordinal_position
+                : typeof col.ordinal_position === 'bigint'
+                  ? Number(col.ordinal_position)
+                  : parseInt(String(col.ordinal_position), 10);
+
+            allColumns.push({
+              database,
+              schema,
+              table,
+              column: col.column_name,
+              type: col.data_type,
+              ordinal,
+              nullable: col.is_nullable === 'YES',
+            });
+          }
+        } catch (error) {
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `Failed to query columns for table ${table}: ${errorMsg}`,
+          );
+          // Skip columns for this table if query fails
+          continue;
+        }
+      }
+
+      // Build DatasourceMetadata structure
+      let tableId = 1;
+      const schemaMap = new Map<string, number>();
+      const tableMap = new Map<
+        string,
+        {
+          id: number;
+          schema: string;
+          name: string;
+          database: string;
+        }
+      >();
+
+      // Build schemas
+      const uniqueSchemas = new Set(
+        allTables.map((t) => `${t.database}.${t.schema}`),
+      );
+      for (const schemaKey of uniqueSchemas) {
+        const [_database, _schema] = schemaKey.split('.');
+        if (!schemaMap.has(schemaKey)) {
+          schemaMap.set(schemaKey, schemaMap.size + 1);
+        }
+      }
+
+      // Build tables
+      for (const { database, schema, table } of allTables) {
+        const key = `${database}.${schema}.${table}`;
+        if (!tableMap.has(key)) {
+          tableMap.set(key, {
+            id: tableId++,
+            schema,
+            name: table,
+            database,
+          });
+        }
+      }
+
+      // Build columns
+      const columns = allColumns.map((col) => {
+        const tableKey = `${col.database}.${col.schema}.${col.table}`;
+        const tableInfo = tableMap.get(tableKey);
+        if (!tableInfo) {
+          throw new Error(`Table not found: ${tableKey}`);
+        }
+
+        return {
+          id: `${col.schema}.${col.table}.${col.column}`,
+          table_id: tableInfo.id,
+          schema: col.schema,
+          table: col.table,
+          name: col.column,
+          ordinal_position: col.ordinal,
+          data_type: col.type,
+          format: col.type,
+          is_identity: false,
+          identity_generation: null,
+          is_generated: false,
+          is_nullable: col.nullable,
+          is_updatable: true,
+          is_unique: false,
+          check: null,
+          default_value: null,
+          enums: [],
+          comment: null,
+        };
+      });
+
+      const tables = Array.from(tableMap.values()).map((table) => ({
+        id: table.id,
+        schema: table.schema,
+        name: table.name,
+        rls_enabled: false,
+        rls_forced: false,
+        bytes: 0,
+        size: '0',
+        live_rows_estimate: 0,
+        dead_rows_estimate: 0,
+        comment: null,
+        primary_keys: [],
+        relationships: [],
+      }));
+
+      const schemas = Array.from(schemaMap.entries()).map(([key, id]) => {
+        const [, schema] = key.split('.');
+        return {
+          id,
+          name: schema,
+          owner: 'unknown',
+        };
+      });
+
+      return DatasourceMetadataZodSchema.parse({
+        version: '0.0.1',
+        driver: 'duckdb',
+        schemas,
+        tables,
+        columns,
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to retrieve metadata: ${errorMsg}`);
+    }
+  }
+}

@@ -81,7 +81,7 @@ export function useRunQuery(
         const result = await driverInstance.query(query, datasource.config);
         return {
           rows: result.rows,
-          headers: result.columns,
+          columns: result.columns,
           stat: result.stat ?? {
             rowsAffected: 0,
             rowsRead: result.rows.length,
@@ -124,7 +124,7 @@ export function useRunQuery(
         const result = apiResult.data;
         return {
           rows: result.rows,
-          headers: result.columns,
+          columns: result.columns,
           stat: result.stat ?? {
             rowsAffected: 0,
             rowsRead: result.rows.length,

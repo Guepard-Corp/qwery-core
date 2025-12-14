@@ -612,118 +612,107 @@ export const createViewFromTable = async (
 };
 
 /**
- * List all tables/views in database using centralized manager
+ * List all tables/views in database using queryEngine
+ * @deprecated This function is not used in production code. Consider using queryEngine.metadata() instead.
  */
 export const listAllTables = async (
   conversationId: string,
   workspace: string,
+  queryEngine: import('@qwery/domain/ports').AbstractQueryEngine,
 ): Promise<string[]> => {
-  const { DuckDBInstanceManager } = await import('./duckdb-instance-manager');
-  const conn = await DuckDBInstanceManager.getConnection(
-    conversationId,
-    workspace,
+  const allTables: string[] = [];
+
+  // Get system schema filter
+  const { getAllSystemSchemas, isSystemTableName } = await import(
+    './system-schema-filter'
   );
+  const allSystemSchemas = getAllSystemSchemas();
 
-  try {
-    const allTables: string[] = [];
+  // Query all databases (main + attached) using pragma_database_list
+  const databasesQuery = 'SELECT name FROM pragma_database_list;';
 
-    // Get system schema filter
-    const { getAllSystemSchemas, isSystemTableName } = await import(
-      './system-schema-filter'
-    );
-    const allSystemSchemas = getAllSystemSchemas();
+  const dbResult = await queryEngine.query(databasesQuery);
+  const databases = dbResult.rows.map((r) => ({
+    database_name: r.name as string,
+  }));
 
-    // Query all databases (main + attached) using pragma_database_list
-    const databasesQuery = 'SELECT name FROM pragma_database_list;';
+  for (const db of databases) {
+    const dbName = db.database_name;
 
-    const dbReader = await conn.runAndReadAll(databasesQuery);
-    await dbReader.readAll();
-    const dbRows = dbReader.getRowObjectsJS() as Array<{
-      name: string;
-    }>;
-    const databases = dbRows.map((r) => ({ database_name: r.name }));
+    // Skip system databases
+    if (dbName === 'temp' || dbName.startsWith('_')) {
+      continue;
+    }
 
-    for (const db of databases) {
-      const dbName = db.database_name;
+    // Query tables and views from this database
+    // For main database, query without database prefix
+    let tablesQuery: string;
+    if (dbName === 'main') {
+      tablesQuery = `
+        SELECT table_schema, table_name, table_type
+        FROM information_schema.tables
+        WHERE table_schema = 'main'
+          AND table_type IN ('BASE TABLE', 'VIEW')
+        ORDER BY table_schema, table_name
+      `;
+    } else {
+      // For attached databases, use database prefix
+      tablesQuery = `
+        SELECT table_schema, table_name, table_type
+        FROM ${dbName}.information_schema.tables
+        WHERE table_type IN ('BASE TABLE', 'VIEW')
+        ORDER BY table_schema, table_name
+      `;
+    }
 
-      // Skip system databases
-      if (dbName === 'temp' || dbName.startsWith('_')) {
-        continue;
-      }
+    try {
+      const tablesResult = await queryEngine.query(tablesQuery);
+      const tables = tablesResult.rows as Array<{
+        table_schema: string;
+        table_name: string;
+        table_type: string;
+      }>;
 
-      // Query tables and views from this database
-      // For main database, query without database prefix
-      let tablesQuery: string;
-      if (dbName === 'main') {
-        tablesQuery = `
-          SELECT table_schema, table_name, table_type
-          FROM information_schema.tables
-          WHERE table_schema = 'main'
-            AND table_type IN ('BASE TABLE', 'VIEW')
-          ORDER BY table_schema, table_name
-        `;
-      } else {
-        // For attached databases, use database prefix
-        tablesQuery = `
-          SELECT table_schema, table_name, table_type
-          FROM ${dbName}.information_schema.tables
-          WHERE table_type IN ('BASE TABLE', 'VIEW')
-          ORDER BY table_schema, table_name
-        `;
-      }
+      for (const table of tables) {
+        const schemaName = (table.table_schema || 'main').toLowerCase();
 
-      try {
-        const tablesReader = await conn.runAndReadAll(tablesQuery);
-        await tablesReader.readAll();
-        const tables = tablesReader.getRowObjectsJS() as Array<{
-          table_schema: string;
-          table_name: string;
-          table_type: string;
-        }>;
-
-        for (const table of tables) {
-          const schemaName = (table.table_schema || 'main').toLowerCase();
-
-          // Skip system schemas (NO LOGGING - just skip silently)
-          if (allSystemSchemas.has(schemaName)) {
-            continue;
-          }
-
-          // Skip system tables (NO LOGGING - just skip silently)
-          if (isSystemTableName(table.table_name)) {
-            continue;
-          }
-
-          // Format table name
-          if (dbName === 'main') {
-            // Main database: just table name
-            allTables.push(table.table_name);
-          } else {
-            // Attached database: full path
-            allTables.push(
-              `${dbName}.${table.table_schema || 'main'}.${table.table_name}`,
-            );
-          }
+        // Skip system schemas (NO LOGGING - just skip silently)
+        if (allSystemSchemas.has(schemaName)) {
+          continue;
         }
-      } catch (error) {
-        // If query fails for this database, skip it
-        // Only log if it's unexpected (not a permission/system issue)
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (
-          !errorMsg.includes('does not exist') &&
-          !errorMsg.includes('permission')
-        ) {
-          console.warn(
-            `[ViewRegistry] Failed to query database ${dbName}: ${errorMsg}`,
+
+        // Skip system tables (NO LOGGING - just skip silently)
+        if (isSystemTableName(table.table_name)) {
+          continue;
+        }
+
+        // Format table name
+        if (dbName === 'main') {
+          // Main database: just table name
+          allTables.push(table.table_name);
+        } else {
+          // Attached database: full path
+          allTables.push(
+            `${dbName}.${table.table_schema || 'main'}.${table.table_name}`,
           );
         }
       }
+    } catch (error) {
+      // If query fails for this database, skip it
+      // Only log if it's unexpected (not a permission/system issue)
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (
+        !errorMsg.includes('does not exist') &&
+        !errorMsg.includes('permission')
+      ) {
+        console.warn(
+          `[ViewRegistry] Failed to query database ${dbName}: ${errorMsg}`,
+        );
+      }
     }
-
-    return allTables;
-  } finally {
-    DuckDBInstanceManager.returnConnection(conversationId, workspace, conn);
   }
+
+  return allTables;
 };
 
 /**

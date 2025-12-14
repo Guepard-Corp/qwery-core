@@ -35,16 +35,6 @@ describe('gsheetToDuckdb', () => {
   });
 
   afterEach(async () => {
-    // Clean up instance manager
-    const { DuckDBInstanceManager } = await import(
-      '../../src/tools/duckdb-instance-manager'
-    );
-    try {
-      await DuckDBInstanceManager.closeInstance(conversationId, testWorkspace);
-    } catch {
-      // Ignore cleanup errors
-    }
-
     // Clean up test database files
     try {
       const dbPath = join(testWorkspace, conversationId, 'database.db');
@@ -68,17 +58,15 @@ describe('gsheetToDuckdb', () => {
 
   it('should create DuckDB view from Google Sheet link', async () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
-    const { DuckDBInstanceManager } = await import(
-      '../../src/tools/duckdb-instance-manager'
-    );
     // Use local CSV file path instead of URL for testing
     const sharedLink = csvFilePath;
     const viewName = 'test_sheet';
 
-    const conn = await DuckDBInstanceManager.getConnection(
-      conversationId,
-      testWorkspace,
-    );
+    const dbPath = join(testWorkspace, conversationId, 'database.db');
+    mkdirSync(join(testWorkspace, conversationId), { recursive: true });
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    const instance = await DuckDBInstance.create(dbPath);
+    const conn = await instance.connect();
     try {
       const result = await gsheetToDuckdb({
         connection: conn,
@@ -100,27 +88,22 @@ describe('gsheetToDuckdb', () => {
       expect(rows[0]).toHaveProperty('age');
       expect(rows[0]).toHaveProperty('city');
     } finally {
-      DuckDBInstanceManager.returnConnection(
-        conversationId,
-        testWorkspace,
-        conn,
-      );
+      conn.closeSync();
+      instance.closeSync();
     }
   });
 
   it('should handle non-Google Sheets links', async () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
-    const { DuckDBInstanceManager } = await import(
-      '../../src/tools/duckdb-instance-manager'
-    );
     // Use local CSV file path
     const sharedLink = csvFilePath;
     const viewName = 'test_sheet';
 
-    const conn = await DuckDBInstanceManager.getConnection(
-      conversationId,
-      testWorkspace,
-    );
+    const dbPath = join(testWorkspace, conversationId, 'database.db');
+    mkdirSync(join(testWorkspace, conversationId), { recursive: true });
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    const instance = await DuckDBInstance.create(dbPath);
+    const conn = await instance.connect();
     try {
       const result = await gsheetToDuckdb({
         connection: conn,
@@ -130,27 +113,21 @@ describe('gsheetToDuckdb', () => {
 
       expect(result).toContain(`Successfully created view '${viewName}'`);
     } finally {
-      DuckDBInstanceManager.returnConnection(
-        conversationId,
-        testWorkspace,
-        conn,
-      );
+      conn.closeSync();
+      instance.closeSync();
     }
   });
 
   it('should create directories if they do not exist', async () => {
     const { gsheetToDuckdb } = await import('../../src/tools/gsheet-to-duckdb');
-    const { DuckDBInstanceManager } = await import(
-      '../../src/tools/duckdb-instance-manager'
-    );
     const newConversationId = 'new-conversation';
     const newDbPath = join(testWorkspace, newConversationId, 'database.db');
     const viewName = 'test_sheet';
 
-    const conn = await DuckDBInstanceManager.getConnection(
-      newConversationId,
-      testWorkspace,
-    );
+    mkdirSync(join(testWorkspace, newConversationId), { recursive: true });
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    const instance = await DuckDBInstance.create(newDbPath);
+    const conn = await instance.connect();
     try {
       await gsheetToDuckdb({
         connection: conn,
@@ -160,15 +137,8 @@ describe('gsheetToDuckdb', () => {
 
       expect(existsSync(newDbPath)).toBe(true);
     } finally {
-      DuckDBInstanceManager.returnConnection(
-        newConversationId,
-        testWorkspace,
-        conn,
-      );
-      await DuckDBInstanceManager.closeInstance(
-        newConversationId,
-        testWorkspace,
-      );
+      conn.closeSync();
+      instance.closeSync();
     }
 
     // Cleanup

@@ -9,7 +9,9 @@ import { persistState } from './utils/state-persistence';
 import {
   UsagePersistenceService,
   MessagePersistenceService,
+  DuckDBQueryEngine,
 } from '../services';
+import { createQueryEngine, AbstractQueryEngine } from '@qwery/domain/ports';
 
 export interface FactoryAgentOptions {
   conversationSlug: string;
@@ -26,6 +28,7 @@ export class FactoryAgent {
   private repositories: Repositories;
   private actorRegistry: ActorRegistry; // NEW: Actor registry
   private model: string;
+  private queryEngine: AbstractQueryEngine;
 
   constructor(opts: FactoryAgentOptions & { conversationId: string }) {
     this.id = nanoid();
@@ -35,11 +38,15 @@ export class FactoryAgent {
     this.actorRegistry = new ActorRegistry(); // NEW
     this.model = opts.model;
 
+    // Create queryEngine before state machine so it can be passed
+    this.queryEngine = createQueryEngine(DuckDBQueryEngine);
+
     this.lifecycle = createStateMachine(
       this.conversationId, // UUID (for internal tracking)
       this.conversationSlug, // Slug (for readDataAgent)
       this.model,
       this.repositories,
+      this.queryEngine, // Pass queryEngine to state machine
     );
 
     // NEW: Load persisted state (async, but we'll handle it)
