@@ -1,6 +1,9 @@
 // packages/telemetry/src/opentelemetry/telemetry-manager.ts
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { credentials } from '@grpc/grpc-js';
 import {
   ConsoleSpanExporter,
   type SpanExporter,
@@ -23,6 +26,10 @@ import {
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ClientTelemetryService } from './client.telemetry.service';
+import {
+  FilteringSpanExporter,
+  type FilteringSpanExporterOptions,
+} from './filtering-span-exporter';
 
 // Enable OpenTelemetry internal logging (optional)
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
@@ -38,8 +45,15 @@ class SafeOTLPExporter implements SpanExporter {
   private readonly ERROR_THRESHOLD = 3; // Fall back after 3 consecutive errors
 
   constructor(baseEndpoint: string) {
+    // For gRPC, remove http:// or https:// prefix if present
+    // gRPC expects format: host:port (e.g., "10.103.227.71:4317")
+    // Use plain text (non-TLS) connection
+    const grpcUrl = baseEndpoint.replace(/^https?:\/\//, '');
+    // Ensure we're using plain gRPC (not grpcs:// which would use TLS)
+    const plainGrpcUrl = grpcUrl.replace(/^grpcs?:\/\//, '');
     this.otlpExporter = new OTLPTraceExporter({
-      url: baseEndpoint,
+      url: plainGrpcUrl,
+      credentials: credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
     });
     this.consoleExporter = new ConsoleSpanExporter();
   }
@@ -118,6 +132,19 @@ class SafeOTLPExporter implements SpanExporter {
   }
 }
 
+/**
+ * Configuration options for TelemetryManager
+ */
+export interface TelemetryManagerOptions {
+  /**
+   * Whether to export app-specific telemetry (cli, web, desktop spans)
+   * General spans (agents, actors, LLM) are always exported regardless of this setting.
+   * Default: true (for backward compatibility)
+   * Can be overridden by QWERY_EXPORT_APP_TELEMETRY environment variable
+   */
+  exportAppTelemetry?: boolean;
+}
+
 export class TelemetryManager {
   private sdk: NodeSDK;
   public clientService: ClientTelemetryService;
@@ -136,8 +163,17 @@ export class TelemetryManager {
   private queryDuration!: Histogram;
   private queryCount!: Counter;
   private queryRowsReturned!: Histogram;
+  // Agent metrics (for dashboard)
+  private messageDuration!: Histogram;
+  private tokensPrompt!: Counter;
+  private tokensCompletion!: Counter;
+  private tokensTotal!: Counter;
 
-  constructor(serviceName: string = 'qwery-app', sessionId?: string) {
+  constructor(
+    serviceName: string = 'qwery-app',
+    sessionId?: string,
+    options?: TelemetryManagerOptions,
+  ) {
     this.serviceName = serviceName;
     this.sessionId = sessionId || this.generateSessionId();
     this.clientService = new ClientTelemetryService(this);
@@ -150,21 +186,49 @@ export class TelemetryManager {
 
     // Use ConsoleSpanExporter for local/CLI testing (prints spans to console)
     // OTLP exporter is optional and only used if OTEL_EXPORTER_OTLP_ENDPOINT is set
-    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    //const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    const otlpEndpoint = 'http://10.103.227.71:4317';
 
-    const traceExporter = otlpEndpoint
+    // Resolve exportAppTelemetry setting:
+    // 1. Check environment variable (QWERY_EXPORT_APP_TELEMETRY)
+    // 2. Check options parameter
+    // 3. Default to true (backward compatibility)
+    const exportAppTelemetryEnv =
+      process.env.QWERY_EXPORT_APP_TELEMETRY !== undefined
+        ? process.env.QWERY_EXPORT_APP_TELEMETRY !== 'false'
+        : undefined;
+    const exportAppTelemetry =
+      exportAppTelemetryEnv ?? options?.exportAppTelemetry ?? true;
+
+    // Create base exporter
+    const baseExporter = otlpEndpoint
       ? new SafeOTLPExporter(otlpEndpoint)
       : new ConsoleSpanExporter();
 
-    // Note: NodeSDK automatically handles metrics if metricExporter is provided
-    // For now, we'll configure metrics separately if needed
-    // Metrics are exported via the same OTLP endpoint
+    // Wrap base exporter with span filtering (general vs app-specific spans)
+    const traceExporter = new FilteringSpanExporter({
+      exporter: baseExporter,
+      exportAppTelemetry,
+    });
+
+    // Metrics exporter for gRPC
+    const metricReader = otlpEndpoint
+      ? new PeriodicExportingMetricReader({
+          exporter: new OTLPMetricExporter({
+            url: otlpEndpoint
+              .replace(/^https?:\/\//, '')
+              .replace(/^grpcs?:\/\//, ''), // Remove http:// or grpc:// prefix for plain gRPC
+            credentials: credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
+          }),
+          exportIntervalMillis: 5000, // Export every 5 seconds
+        })
+      : undefined;
+
     this.sdk = new NodeSDK({
       traceExporter,
-      resource: resource,
+      metricReader,
+      resource,
       autoDetectResources: true,
-      // Metrics will be exported via OTLP if endpoint is configured
-      // The SDK will automatically detect and use the metrics exporter
     });
 
     // Initialize metrics
@@ -233,6 +297,31 @@ export class TelemetryManager {
         description: 'Number of rows returned by queries',
       },
     );
+
+    // Agent message metrics (for dashboard)
+    this.messageDuration = this.meter.createHistogram(
+      'agent.message.duration_ms',
+      {
+        description: 'Duration of agent message processing in milliseconds',
+        unit: 'ms',
+      },
+    );
+
+    // LLM token metrics (matching dashboard queries)
+    this.tokensPrompt = this.meter.createCounter('ai.tokens.prompt', {
+      description: 'Total prompt tokens consumed',
+      unit: 'tokens',
+    });
+
+    this.tokensCompletion = this.meter.createCounter('ai.tokens.completion', {
+      description: 'Total completion tokens generated',
+      unit: 'tokens',
+    });
+
+    this.tokensTotal = this.meter.createCounter('ai.tokens.total', {
+      description: 'Total tokens (prompt + completion)',
+      unit: 'tokens',
+    });
   }
 
   getSessionId(): string {
@@ -372,8 +461,15 @@ export class TelemetryManager {
       } catch (error) {
         // Ignore errors when trying to add events to ended spans
         // This can happen when onFinish callbacks run after spans have been ended
-        if (error instanceof Error && error.message.includes('ended Span')) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('ended Span') ||
+            error.message.includes('Operation attempted on ended') ||
+            error.message.includes('Cannot execute') ||
+            error.message.includes('isSpanEnded'))
+        ) {
           // Silently ignore - span is already ended
+          // This is expected when async callbacks (like onFinish) run after span completion
           return;
         }
         // Re-throw other errors
@@ -436,5 +532,23 @@ export class TelemetryManager {
     attributes?: Record<string, string | number | boolean>,
   ): void {
     this.queryRowsReturned.record(rowCount, attributes);
+  }
+
+  // Agent metrics recording methods
+  recordMessageDuration(
+    durationMs: number,
+    attributes?: Record<string, string | number | boolean>,
+  ): void {
+    this.messageDuration.record(durationMs, attributes);
+  }
+
+  recordAgentTokenUsage(
+    promptTokens: number,
+    completionTokens: number,
+    attributes?: Record<string, string | number | boolean>,
+  ): void {
+    this.tokensPrompt.add(promptTokens, attributes);
+    this.tokensCompletion.add(completionTokens, attributes);
+    this.tokensTotal.add(promptTokens + completionTokens, attributes);
   }
 }

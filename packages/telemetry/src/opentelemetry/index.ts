@@ -1,8 +1,15 @@
 // Main exports for @qwery/telemetry/opentelemetry
 
 // Core services
-export { TelemetryManager } from './telemetry-manager';
+export {
+  TelemetryManager,
+  type TelemetryManagerOptions,
+} from './telemetry-manager';
 export { ClientTelemetryService } from './client.telemetry.service';
+export {
+  FilteringSpanExporter,
+  type FilteringSpanExporterOptions,
+} from './filtering-span-exporter';
 export {
   NullTelemetryService,
   createNullTelemetryService,

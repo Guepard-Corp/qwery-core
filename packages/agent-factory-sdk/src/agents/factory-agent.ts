@@ -325,6 +325,12 @@ export class FactoryAgent {
                 'agent.message.duration_ms': String(messageDuration),
               },
             });
+            // Record message duration metric
+            this.telemetry.recordMessageDuration(messageDuration, {
+              'agent.conversation.id': this.conversationSlug,
+              'agent.message.status': 'error',
+              'error.message': 'Response timeout',
+            });
             this.telemetry.endSpan(messageSpan, false);
           }
 
@@ -464,6 +470,12 @@ export class FactoryAgent {
                   'agent.message.duration_ms': String(messageDuration),
                 },
               });
+              // Record message duration metric
+              this.telemetry.recordMessageDuration(messageDuration, {
+                'agent.conversation.id': this.conversationSlug,
+                'agent.message.status': 'error',
+                'error.message': ctx.error,
+              });
               this.telemetry.endSpan(messageSpan, false);
             }
 
@@ -523,6 +535,11 @@ export class FactoryAgent {
                     'agent.conversation.id': this.conversationSlug,
                     'agent.message.duration_ms': String(messageDuration),
                   },
+                });
+                // Record message duration metric
+                this.telemetry.recordMessageDuration(messageDuration, {
+                  'agent.conversation.id': this.conversationSlug,
+                  'agent.message.status': 'success',
                 });
                 this.telemetry.endSpan(messageSpan, true);
               }
@@ -601,6 +618,17 @@ export class FactoryAgent {
                           'agent.conversation.status': 'success',
                         },
                       });
+                      // Record message duration metric if message span hasn't been ended yet
+                      if (messageSpan && !messageEnded.current) {
+                        const messageDuration =
+                          Date.now() - conversationStartTime;
+                        this.telemetry.recordMessageDuration(messageDuration, {
+                          'agent.conversation.id': this.conversationSlug,
+                          'agent.message.status': 'success',
+                        });
+                        messageEnded.current = true;
+                        this.telemetry.endSpan(messageSpan, true);
+                      }
                       this.telemetry.endSpan(conversationSpan, true);
                     }
                   },
@@ -622,6 +650,13 @@ export class FactoryAgent {
                         err instanceof Error ? err.message : String(err),
                       'agent.message.duration_ms': String(messageDuration),
                     },
+                  });
+                  // Record message duration metric
+                  this.telemetry.recordMessageDuration(messageDuration, {
+                    'agent.conversation.id': this.conversationSlug,
+                    'agent.message.status': 'error',
+                    'error.message':
+                      err instanceof Error ? err.message : String(err),
                   });
                   this.telemetry.endSpan(messageSpan, false);
                 }

@@ -158,13 +158,17 @@ export const createStateMachine = (
                   'agent.llm.total.tokens': totalTokens,
                 });
 
-                // Also record as metrics
-                telemetry.recordTokenUsage(promptTokens, completionTokens, {
-                  'agent.llm.model.name': 'gpt-5-mini',
-                  'agent.llm.provider.id': 'azure',
-                  'agent.actor.id': 'detectIntent',
-                  'agent.conversation.id': conversationId,
-                });
+                // Also record as metrics (using agent-specific method for dashboard)
+                telemetry.recordAgentTokenUsage(
+                  promptTokens,
+                  completionTokens,
+                  {
+                    'agent.llm.model.name': 'gpt-5-mini',
+                    'agent.llm.provider.id': 'azure',
+                    'agent.actor.id': 'detectIntent',
+                    'agent.conversation.id': conversationId,
+                  },
+                );
               }
             }
 
@@ -271,13 +275,17 @@ export const createStateMachine = (
                       'agent.llm.total.tokens': totalTokens,
                     });
 
-                    // Also record as metrics
-                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
-                      'agent.llm.model.name': 'gpt-5-mini',
-                      'agent.llm.provider.id': 'azure',
-                      'agent.actor.id': 'summarizeIntent',
-                      'agent.conversation.id': conversationId,
-                    });
+                    // Also record as metrics (using agent-specific method for dashboard)
+                    telemetry.recordAgentTokenUsage(
+                      promptTokens,
+                      completionTokens,
+                      {
+                        'agent.llm.model.name': 'gpt-5-mini',
+                        'agent.llm.provider.id': 'azure',
+                        'agent.actor.id': 'summarizeIntent',
+                        'agent.conversation.id': conversationId,
+                      },
+                    );
                   }
                 }
               } catch {
@@ -383,13 +391,17 @@ export const createStateMachine = (
                       'agent.llm.total.tokens': totalTokens,
                     });
 
-                    // Also record as metrics
-                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
-                      'agent.llm.model.name': 'gpt-5-mini',
-                      'agent.llm.provider.id': 'azure',
-                      'agent.actor.id': 'greeting',
-                      'agent.conversation.id': conversationId,
-                    });
+                    // Also record as metrics (using agent-specific method for dashboard)
+                    telemetry.recordAgentTokenUsage(
+                      promptTokens,
+                      completionTokens,
+                      {
+                        'agent.llm.model.name': 'gpt-5-mini',
+                        'agent.llm.provider.id': 'azure',
+                        'agent.actor.id': 'greeting',
+                        'agent.conversation.id': conversationId,
+                      },
+                    );
                   }
                 }
               } catch {
@@ -510,13 +522,17 @@ export const createStateMachine = (
                       'agent.llm.total.tokens': totalTokens,
                     });
 
-                    // Also record as metrics
-                    telemetry.recordTokenUsage(promptTokens, completionTokens, {
-                      'agent.llm.model.name': 'gpt-5-mini',
-                      'agent.llm.provider.id': 'azure',
-                      'agent.actor.id': 'readData',
-                      'agent.conversation.id': conversationId,
-                    });
+                    // Also record as metrics (using agent-specific method for dashboard)
+                    telemetry.recordAgentTokenUsage(
+                      promptTokens,
+                      completionTokens,
+                      {
+                        'agent.llm.model.name': 'gpt-5-mini',
+                        'agent.llm.provider.id': 'azure',
+                        'agent.actor.id': 'readData',
+                        'agent.conversation.id': conversationId,
+                      },
+                    );
                   }
                 }
               } catch {
