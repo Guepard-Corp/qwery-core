@@ -18,23 +18,11 @@ export const Default: Story = {
 };
 
 export const SimpleMode: Story = {
-  render: () => {
-    // Mock localStorage to show simple mode
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('qwery-workspace-mode', 'simple');
-    }
-    return <WorkspaceModeSwitch />;
-  },
+  render: () => <WorkspaceModeSwitch defaultMode="simple" />,
 };
 
 export const AdvancedMode: Story = {
-  render: () => {
-    // Mock localStorage to show advanced mode
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('qwery-workspace-mode', 'advanced');
-    }
-    return <WorkspaceModeSwitch />;
-  },
+  render: () => <WorkspaceModeSwitch defaultMode="advanced" />,
 };
 
 export const CustomLabels: Story = {

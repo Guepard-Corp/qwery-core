@@ -224,36 +224,38 @@ export function SidebarNavigation({
           return (
             <Container key={`collapsible-${index}`}>
               <SidebarGroup key={item.label}>
-                <If
-                  condition={groupState.collapsible}
-                  fallback={
-                    <SidebarGroupLabel className={cn({ hidden: isCollapsed })}>
-                      <SidebarLabelText
-                        label={item.label}
-                        suffix={item.labelSuffix}
-                      />
-                    </SidebarGroupLabel>
-                  }
-                >
-                  <SidebarGroupLabel
-                    className={cn({ hidden: isCollapsed })}
-                    asChild
+                <div className="flex items-center gap-2">
+                  <If
+                    condition={groupState.collapsible}
+                    fallback={
+                      <SidebarGroupLabel className={cn('flex-1', { hidden: isCollapsed })}>
+                        <SidebarLabelText
+                          label={item.label}
+                          suffix={item.labelSuffix}
+                        />
+                      </SidebarGroupLabel>
+                    }
                   >
-                    <CollapsibleTrigger className="flex items-center gap-1">
-                      <SidebarLabelText
-                        label={item.label}
-                        suffix={item.labelSuffix}
-                      />
-                      <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </CollapsibleTrigger>
-                  </SidebarGroupLabel>
-                </If>
+                    <SidebarGroupLabel
+                      className={cn('flex-1', { hidden: isCollapsed })}
+                      asChild
+                    >
+                      <CollapsibleTrigger className="flex items-center gap-1">
+                        <SidebarLabelText
+                          label={item.label}
+                          suffix={item.labelSuffix}
+                        />
+                        <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </CollapsibleTrigger>
+                    </SidebarGroupLabel>
+                  </If>
 
-                <If condition={item.renderAction && !isCollapsed}>
-                  <SidebarGroupAction title={translateKey(item.label)}>
-                    {item.renderAction}
-                  </SidebarGroupAction>
-                </If>
+                  <If condition={item.renderAction && !isCollapsed}>
+                    <div className="flex items-center justify-center shrink-0">
+                      {item.renderAction}
+                    </div>
+                  </If>
+                </div>
 
                 <SidebarGroupContent>
                   <SidebarMenu>
@@ -544,7 +546,7 @@ export function SidebarNavigation({
                               <If
                                 condition={child.renderAction && !isCollapsed}
                               >
-                                <SidebarMenuAction>
+                                <SidebarMenuAction asChild>
                                   {child.renderAction}
                                 </SidebarMenuAction>
                               </If>

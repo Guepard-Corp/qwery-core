@@ -13,7 +13,7 @@ export default function ProjectDatasourcesPage({
   const { pluginDatasources } = loaderData;
 
   return (
-    <div className="p-2 lg:p-4">
+    <div className="p-6 lg:p-10">
       <NewDatasource datasources={pluginDatasources} />
     </div>
   );

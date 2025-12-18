@@ -905,7 +905,7 @@ export const PromptInputFooter = ({
 }: PromptInputFooterProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn('justify-between gap-1', className)}
+    className={cn('flex min-w-0 justify-between gap-1', className)}
     {...props}
   />
 );
@@ -916,7 +916,7 @@ export const PromptInputTools = ({
   className,
   ...props
 }: PromptInputToolsProps) => (
-  <div className={cn('flex items-center gap-1', className)} {...props} />
+  <div className={cn('flex min-w-0 flex-1 items-center gap-1 overflow-x-auto', className)} {...props} />
 );
 
 export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton>;
@@ -1006,7 +1006,7 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label="Submit"
-      className={cn(className)}
+      className={cn('shrink-0', className)}
       size={size}
       type="submit"
       variant={variant}
@@ -1195,7 +1195,7 @@ export const PromptInputSelectTrigger = ({
 }: PromptInputSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      'text-muted-foreground border-none bg-transparent font-medium shadow-none transition-colors',
+      'text-muted-foreground border-none bg-transparent font-medium shadow-none transition-colors w-auto max-w-[160px] gap-2',
       'hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground',
       className,
     )}

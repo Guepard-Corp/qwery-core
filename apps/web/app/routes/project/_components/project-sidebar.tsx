@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@qwery/ui/alert-dialog';
 import { Loader2, Plus } from 'lucide-react';
+import { Button } from '@qwery/ui/button';
 
 export function ProjectSidebar() {
   const navigate = useNavigate();
@@ -163,8 +164,10 @@ export function ProjectSidebar() {
   }, [generateNotebookTitle, navigate, notebooks, workspace.projectId]);
 
   const notebookGroupAction = workspace.projectId ? (
-    <span
-      className="flex h-full w-full items-center justify-center"
+    <Button
+      size="icon"
+      variant="ghost"
+      className="h-6 w-6 shrink-0"
       onClick={(event) => {
         event.stopPropagation();
         if (!isCreatingNotebook && !isBulkDeleting) {
@@ -172,13 +175,14 @@ export function ProjectSidebar() {
         }
       }}
       aria-label="Add new notebook"
+      disabled={isCreatingNotebook || isBulkDeleting}
     >
       {isCreatingNotebook ? (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <Plus className="h-4 w-4 shrink-0" />
+        <Plus className="h-4 w-4" />
       )}
-    </span>
+    </Button>
   ) : undefined;
 
   const navigationConfig = createNavigationConfig(

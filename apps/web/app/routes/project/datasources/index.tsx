@@ -23,8 +23,12 @@ export default function ProjectDatasourcesPage() {
   }
 
   return (
-    <div className="p-2 lg:p-4">
-      {datasources.isLoading && <Skeleton className="h-10 w-full" />}
+    <div className="flex h-full flex-col">
+      {datasources.isLoading && (
+        <div className="p-6 lg:p-10">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
 
       {!datasources.isLoading && hasDatasources && (
         <ListDatasources datasources={datasources.data || []} />

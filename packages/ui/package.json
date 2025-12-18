@@ -153,6 +153,7 @@
     "./loading-overlay": "./src/qwery/loading-overlay.tsx",
     "./spinner": "./src/qwery/spinner.tsx",
     "./profile-avatar": "./src/qwery/profile-avatar.tsx",
+    "./bot-avatar": "./src/qwery/bot-avatar.tsx",
     "./mode-toggle": "./src/qwery/mode-toggle.tsx",
     "./oauth-provider-logo-image": "./src/qwery/oauth-provider-logo-image.tsx",
     "./organization": "./src/qwery/organization/index.ts",

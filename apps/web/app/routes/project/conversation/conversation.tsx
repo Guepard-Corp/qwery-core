@@ -3,9 +3,9 @@ import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
 import Agent from '../_components/agent';
 import { useParams } from 'react-router';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { LoaderIcon } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { AgentUIWrapperRef } from '../_components/agent-ui-wrapper';
+import { BotAvatar } from '@qwery/ui/bot-avatar';
 
 export default function ConversationPage() {
   const slug = useParams().slug;
@@ -49,20 +49,31 @@ export default function ConversationPage() {
     }
   }, [getMessages.data, getConversation.data, slug]);
 
+  const isLoading = getMessages.isLoading || getConversation.isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
+        <BotAvatar size={12} isLoading={true} />
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">Loading conversation...</h3>
+          <p className="text-muted-foreground text-sm">
+            Please wait while we load your messages
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!getMessages.data) {
+    return null;
+  }
+
   return (
-    <>
-      {(getMessages.isLoading || getConversation.isLoading) && (
-        <>
-          <LoaderIcon />
-        </>
-      )}
-      {getMessages.data && (
-        <Agent
-          ref={agentRef}
-          conversationSlug={slug as string}
-          initialMessages={getMessages.data}
-        />
-      )}
-    </>
+    <Agent
+      ref={agentRef}
+      conversationSlug={slug as string}
+      initialMessages={getMessages.data}
+    />
   );
 }
