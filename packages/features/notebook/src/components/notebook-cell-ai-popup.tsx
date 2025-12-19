@@ -494,7 +494,7 @@ export function NotebookCellAiPopup({
         />
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded transition"
+          className="text-muted-foreground hover:text-foreground absolute top-2 right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded transition"
           onClick={() => {
             onCloseAiPopup();
             setAiQuestion('');

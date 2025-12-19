@@ -52,7 +52,7 @@ export const DatabaseCard: React.FC = () => {
           </div>
 
           {/* Action Button */}
-          <button className="group/btn relative w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:shadow-lg active:scale-[0.98]">
+          <button className="group/btn relative w-full cursor-pointer overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:shadow-lg active:scale-[0.98]">
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm font-medium text-zinc-300 transition-colors group-hover/btn:text-white">
                 View Database
