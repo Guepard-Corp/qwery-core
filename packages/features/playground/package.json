@@ -39,7 +39,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
-    "@vitest/ui": "^4.0.7",
+    "@vitest/ui": "^4.0.15",
     "eslint": "^9.39.0",
     "fake-indexeddb": "^6.0.2",
     "jsdom": "^27.1.0",
