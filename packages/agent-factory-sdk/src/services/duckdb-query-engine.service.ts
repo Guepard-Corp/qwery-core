@@ -739,6 +739,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           default_value: null,
           enums: [],
           comment: null,
+          // Add database field for path resolution (from table_catalog)
+          database: col.database,
         };
       });
 

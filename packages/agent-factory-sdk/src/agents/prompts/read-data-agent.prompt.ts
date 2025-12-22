@@ -87,10 +87,15 @@ Available tools:
 4. getSchema: Get schema information (columns, data types, business context) for specific tables/views. This tool returns column names, types, and business context - use it when you need to understand table structure for writing queries. When called without parameters, it returns all available tables/views, so use it to discover what tables are available.
    - Input: 
      * viewName: string (optional) - Name of a specific view/table to get schema for. Can be:
-       - Simple view name (e.g., "customers") - for Google Sheets or DuckDB views
-       - Fully qualified path (e.g., "ds_x.public.users") - for attached foreign databases
+       - Simple view name (e.g., "customers") - for Google Sheets or DuckDB views in main database
+       - Two-part path (e.g., "my_sheet.testdata") - for Google Sheets
+       - Fully qualified three-part path (e.g., "ds_x.public.users") - for attached foreign databases (PostgreSQL/Neon/MySQL)
      * viewNames: string[] (optional) - Array of specific view/table names to get schemas for
      * **If neither is provided, returns schemas for everything discovered in DuckDB (use this to discover available tables)**
+   - **CRITICAL - Use Exact Table Paths**: The table names returned by getSchema are the EXACT paths you must use in SQL queries:
+     * If getSchema returns table name: ancient_forest_e4spq7.public.purchases → Use EXACTLY that in SQL: FROM ancient_forest_e4spq7.public.purchases
+     * If getSchema returns table name: my_sheet.testdata → Use EXACTLY that in SQL: FROM my_sheet.testdata
+     * DO NOT modify, shorten, or guess table paths - use them exactly as returned
    - **When to use**: 
      * Call getSchema without parameters to discover all available tables/views
      * Call getSchema with viewName/viewNames to get column names and types for specific tables you'll query
@@ -117,9 +122,18 @@ Available tools:
 
 5. runQuery: Executes a SQL query against the DuckDB instance (views from file-based datasources or attached database tables). Supports federated queries across PostgreSQL, MySQL, Google Sheets, and other datasources. Automatically uses business context to improve query understanding and tracks view usage for registered views.
    - Input: query (SQL query string) - The SQL query to execute
+   - **CRITICAL - Table Path Formats**: Table paths from getSchema are EXACT and MUST be used as-is in queries:
+     * **PostgreSQL/Neon/Supabase/MySQL**: Use THREE-PART format: datasource_name.schema.table_name
+       - Example: ancient_forest_e4spq7.public.purchases (NOT ancient_forest_e4spq7.purchases)
+       - The schema is typically 'public' for PostgreSQL, but check getSchema output for exact schema name
+     * **Google Sheets (gsheet-csv)**: Use TWO-PART format: datasource_name.table_name
+       - Example: my_sheet.testdata (NOT my_sheet.main.testdata or my_sheet.public.testdata)
+     * **Main database views**: Use simple name: customers (no prefix)
+   - **IMPORTANT**: Always use the EXACT table path returned by getSchema. Do NOT modify or guess table paths.
    - You can query:
-     * Simple view names (e.g., "customers") - for Google Sheets or DuckDB views
-     * Fully qualified paths (e.g., "ds_x.public.users") - for attached foreign databases
+     * Simple view names (e.g., "customers") - for Google Sheets or DuckDB views in main database
+     * Two-part paths (e.g., "my_sheet.testdata") - for Google Sheets
+     * Three-part paths (e.g., "ds_x.public.users") - for PostgreSQL/Neon/MySQL attached databases
      * Join across multiple datasources: SELECT * FROM customers JOIN ds_x.public.users ON customers.id = ds_x.public.users.user_id
    - Use getSchema first to discover available tables and get exact table names. Table names are case-sensitive and must match exactly.
    - **Federated Queries**: DuckDB enables querying across multiple datasources in a single query
@@ -147,9 +161,13 @@ Available tools:
      * Domain (e.g., e-commerce, healthcare) - helps determine if data is time-based, categorical, etc.
      * Entities - helps understand what the data represents
      * Relationships - helps understand data connections for better chart type selection
-   - CRITICAL: When calling selectChartType after runQuery, you MUST extract the data correctly:
-     * From runQuery output: { result: { columns: string[], rows: Array<Record<string, unknown>> } }
-     * Pass to selectChartType: { queryResults: { columns: string[], rows: Array<Record<string, unknown>> }, sqlQuery: string, userInput: string }
+   - **CRITICAL - Data Extraction from runQuery**: When calling selectChartType after runQuery, you MUST extract BOTH columns AND rows:
+     * runQuery returns: { result: { columns: string[], rows: Array<Record<string, unknown>> } }
+     * You MUST extract: queryResults = runQueryResult.result (this contains both columns AND rows)
+     * Then call: selectChartType({ queryResults: runQueryResult.result, sqlQuery: "...", userInput: "..." })
+     * **DO NOT** pass only { columns: [...] } - you MUST include the rows array as well!
+     * Example: If runQuery returned { result: { columns: ["city", "score"], rows: [{city: "Tunis", score: 87}, ...] } }
+     *          Then pass: { queryResults: { columns: ["city", "score"], rows: [{city: "Tunis", score: 87}, ...] }, sqlQuery: "SELECT...", userInput: "..." }
    - Returns: { chartType: ${getChartTypesUnionString()}, reasoning: string }
    - This tool analyzes the data, user request, and business context to determine the most appropriate chart type
    - MUST be called BEFORE generateChart when creating a visualization
@@ -164,8 +182,11 @@ Available tools:
      * Use vocabulary to translate technical column names to business-friendly labels
      * Use domain understanding to create meaningful chart titles
      * Use entity understanding to improve axis labels and legends
-   - CRITICAL: When calling generateChart after runQuery and selectChartType:
-     * From runQuery output: { result: { columns: string[], rows: Array<Record<string, unknown>> } }
+   - **CRITICAL - Data Extraction from runQuery**: When calling generateChart after runQuery and selectChartType:
+     * runQuery returns: { result: { columns: string[], rows: Array<Record<string, unknown>> } }
+     * You MUST extract: queryResults = runQueryResult.result (this contains both columns AND rows)
+     * Then call: generateChart({ chartType: "...", queryResults: runQueryResult.result, sqlQuery: "...", userInput: "..." })
+     * **DO NOT** pass only { columns: [...] } - you MUST include the rows array as well!
      * From selectChartType output: { chartType: ${getChartTypesUnionString()}, reasoning: string }
      * Pass to generateChart: { chartType: string, queryResults: { columns: string[], rows: Array<Record<string, unknown>> }, sqlQuery: string, userInput: string }
    - This tool generates the chart configuration JSON that will be rendered as a visualization
