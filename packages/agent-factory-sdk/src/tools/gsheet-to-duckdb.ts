@@ -310,6 +310,43 @@ export async function attachGSheetDatasource(
     );
   }
 
+  // Check if database already has tables - if so, skip tab discovery and table creation
+  try {
+    const existingTablesReader = await conn.runAndReadAll(
+      `SELECT table_name FROM information_schema.tables 
+       WHERE table_catalog = '${attachedDatabaseName.replace(/'/g, "''")}' 
+         AND table_schema = 'main' 
+         AND table_type = 'BASE TABLE'`,
+    );
+    await existingTablesReader.readAll();
+    const existingTables = existingTablesReader.getRowObjectsJS() as Array<{
+      table_name: string;
+    }>;
+
+    if (existingTables.length > 0) {
+      console.log(
+        `[GSheetAttach] Database ${attachedDatabaseName} already has ${existingTables.length} table(s), skipping tab discovery and table creation`,
+      );
+      // Return existing tables
+      const tables: GSheetAttachResult['tables'] = existingTables.map((t) => ({
+        schema: attachedDatabaseName,
+        table: t.table_name,
+        csvUrl: '', // Not available for existing tables
+        schemaDefinition: undefined,
+      }));
+      return {
+        attachedDatabaseName,
+        tables,
+      };
+    }
+  } catch (error) {
+    // If check fails, continue with normal flow
+    console.warn(
+      `[GSheetAttach] Failed to check existing tables, continuing with tab discovery:`,
+      error,
+    );
+  }
+
   // Discover tabs
   console.log(
     `[GSheetAttach] Discovering tabs for spreadsheet ${spreadsheetId}...`,
@@ -332,9 +369,50 @@ export async function attachGSheetDatasource(
 
   for (const { gid, csvUrl, name: tabName } of tabs) {
     try {
-      // Create a temporary table first to extract schema
+      // Generate semantic table name first to check if it already exists
+      let tableName: string;
       const tempTableName = `temp_tab_${gid}`;
       const escapedTempTableName = tempTableName.replace(/"/g, '""');
+
+      // Try to infer table name from tab name or generate semantic name
+      if (tabName) {
+        tableName = tabName.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+        if (/^\d/.test(tableName)) tableName = `v_${tableName}`;
+      } else {
+        // We'll generate semantic name after creating temp table
+        tableName = `tab_${gid}`;
+      }
+
+      let escapedTableNameForCheck = tableName.replace(/"/g, '""');
+
+      // Check if table already exists - if so, skip recreation
+      try {
+        const checkTableReader = await conn.runAndReadAll(
+          `SELECT table_name FROM information_schema.tables 
+           WHERE table_catalog = '${attachedDatabaseName.replace(/'/g, "''")}' 
+             AND table_schema = 'main' 
+             AND table_name = '${escapedTableNameForCheck.replace(/'/g, "''")}'`,
+        );
+        await checkTableReader.readAll();
+        const existingTables = checkTableReader.getRowObjectsJS() as Array<{
+          table_name: string;
+        }>;
+
+        if (existingTables.length > 0) {
+          console.log(
+            `[GSheetAttach] Table ${attachedDatabaseName}.${tableName} already exists, skipping recreation`,
+          );
+          tables.push({
+            schema: attachedDatabaseName,
+            table: tableName,
+            csvUrl,
+            schemaDefinition: undefined, // Skip schema extraction for existing tables
+          });
+          continue; // Skip to next tab
+        }
+      } catch {
+        // If check fails, continue with table creation
+      }
 
       // Drop temp table if it exists (from previous failed attempt)
       try {
@@ -388,29 +466,27 @@ export async function attachGSheetDatasource(
         }
       }
 
-      // Generate semantic table name
-      let tableName: string;
-      if (tabName) {
-        // Use tab name if available, sanitized and unique
-        tableName = tabName.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
-        if (/^\d/.test(tableName)) tableName = `v_${tableName}`;
+      // Generate semantic table name if not already set
+      if (!tableName || tableName === `tab_${gid}`) {
+        if (schema) {
+          tableName = generateSemanticViewName(schema, existingTableNames);
+        } else {
+          // Fallback to generic name
+          tableName = `tab_${gid}`;
+          let counter = 1;
+          while (existingTableNames.includes(tableName)) {
+            tableName = `tab_${gid}_${counter}`;
+            counter++;
+          }
+        }
+      }
 
-        let counter = 1;
-        const baseName = tableName;
-        while (existingTableNames.includes(tableName)) {
-          tableName = `${baseName}_${counter}`;
-          counter++;
-        }
-      } else if (schema) {
-        tableName = generateSemanticViewName(schema, existingTableNames);
-      } else {
-        // Fallback to generic name
-        tableName = `tab_${gid}`;
-        let counter = 1;
-        while (existingTableNames.includes(tableName)) {
-          tableName = `tab_${gid}_${counter}`;
-          counter++;
-        }
+      // Ensure uniqueness
+      let counter = 1;
+      const baseName = tableName;
+      while (existingTableNames.includes(tableName)) {
+        tableName = `${baseName}_${counter}`;
+        counter++;
       }
 
       existingTableNames.push(tableName);

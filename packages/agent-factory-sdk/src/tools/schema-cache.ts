@@ -244,10 +244,21 @@ export class SchemaCacheManager {
 
   /**
    * Get formatted table path (datasource.schema.table or datasource.table)
+   * Note: tableName might already be formatted, so check before formatting again
    */
   getTablePath(datasourceId: string, schemaName: string, tableName: string): string {
-    const provider = this.providerMap.get(datasourceId);
     const databaseName = this.databaseNameMap.get(datasourceId) || 'main';
+
+    // If tableName already contains dots, it's likely already formatted
+    // Check if it starts with the database name to confirm
+    if (tableName.includes('.')) {
+      if (tableName.startsWith(`${databaseName}.`)) {
+        // Already formatted, return as-is
+        return tableName;
+      }
+    }
+
+    const provider = this.providerMap.get(datasourceId);
 
     if (!provider) {
       // Default to three-part if provider unknown
@@ -265,12 +276,48 @@ export class SchemaCacheManager {
 
   /**
    * Get all table paths for a datasource
+   * Note: table.tableName is already formatted (e.g., "datasource.schema.table"),
+   * so we return it as-is instead of formatting again
    */
   getAllTablePaths(datasourceId: string): string[] {
     const tables = this.getTables(datasourceId);
-    return tables.map((table) =>
-      this.getTablePath(datasourceId, table.schemaName, table.tableName),
-    );
+    // table.tableName is already formatted from the transform service,
+    // so return it directly instead of reformatting
+    return tables.map((table) => table.tableName);
+  }
+
+  /**
+   * Check if a table path exists in any attached datasource
+   * @param tablePath - The table path to check (e.g., "datasource.table" or "datasource.schema.table")
+   * @returns true if the table exists in any attached datasource
+   */
+  hasTablePath(tablePath: string): boolean {
+    // Check all cached datasources
+    // table.tableName in cache is already formatted, so we can check directly
+    for (const datasourceId of this.cachedDatasources) {
+      const datasourceCache = this.cache.get(datasourceId);
+      if (datasourceCache) {
+        for (const schemaCache of datasourceCache.values()) {
+          for (const cachedTableName of schemaCache.keys()) {
+            if (cachedTableName === tablePath) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get all table paths from all attached datasources
+   */
+  getAllTablePathsFromAllDatasources(): string[] {
+    const allPaths: string[] = [];
+    for (const datasourceId of this.cachedDatasources) {
+      allPaths.push(...this.getAllTablePaths(datasourceId));
+    }
+    return allPaths;
   }
 
   /**

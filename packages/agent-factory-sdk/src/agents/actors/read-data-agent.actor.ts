@@ -10,12 +10,12 @@ import {
 import { fromPromise } from 'xstate/actors';
 import { resolveModel } from '../../services';
 import { testConnection } from '../../tools/test-connection';
-import type { SimpleSchema, SimpleTable } from '@qwery/domain/entities';
+import type { SimpleSchema, SimpleTable, Datasource } from '@qwery/domain/entities';
 import { selectChartType, generateChart } from '../tools/generate-chart';
 import { renameTable } from '../../tools/rename-table';
 import { deleteTable } from '../../tools/delete-table';
 import { loadBusinessContext } from '../../tools/utils/business-context.storage';
-import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
+import { buildReadDataAgentPrompt } from '../prompts/read-data-agent.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
 import { getConfig } from '../../tools/utils/business-context.config';
@@ -125,7 +125,14 @@ export const readDataAgent = async (
 
           // Attach all datasources
           if (loaded.length > 0) {
-            await queryEngine.attach(loaded.map((d) => d.datasource));
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            await queryEngine.attach(loaded.map((d) => d.datasource), {
+              conversationId,
+              workspace,
+            });
             await queryEngine.connect();
             console.log(
               `[ReadDataAgent] Initialized engine and attached ${loaded.length} datasource(s)`,
@@ -137,28 +144,7 @@ export const readDataAgent = async (
             );
             const schemaCache = getSchemaCache(conversationId);
             
-            // Get current datasource IDs
-            const currentDatasourceIds = new Set(
-              loaded.map((d) => d.datasource.id),
-            );
-            
-            // Get cached datasource IDs
-            const cachedDatasourceIds = new Set(schemaCache.getDatasources());
-            
-            // Find datasources that were removed (cached but not in current list)
-            const removedDatasourceIds = Array.from(cachedDatasourceIds).filter(
-              (id) => !currentDatasourceIds.has(id),
-            );
-            
-            // Invalidate cache for removed datasources
-            if (removedDatasourceIds.length > 0) {
-              console.log(
-                `[ReadDataAgent] [CACHE] Invalidating cache for ${removedDatasourceIds.length} removed datasource(s): ${removedDatasourceIds.join(', ')}`,
-              );
-              for (const datasourceId of removedDatasourceIds) {
-                schemaCache.invalidate(datasourceId);
-              }
-            }
+            // Don't invalidate cache - just filter out unattached datasources when building prompt
             
             // Find uncached datasources (new or not yet cached)
             const uncachedDatasources = loaded.filter(
@@ -254,9 +240,41 @@ export const readDataAgent = async (
     );
   }
 
+  // Build prompt with attached datasources information
+  // Only include datasources that are actually in the conversation (not invalidated from cache)
+  let attachedDatasources: Datasource[] = [];
+  if (repositories && queryEngine) {
+    try {
+      const getConversationService = new GetConversationBySlugService(
+        repositories.conversation,
+      );
+      const conversation = await getConversationService.execute(conversationId);
+      if (conversation?.datasources?.length) {
+        const loaded = await loadDatasources(
+          conversation.datasources,
+          repositories.datasource,
+        );
+        // Only include datasources that are in the conversation (filter out unattached ones)
+        attachedDatasources = loaded
+          .map((d) => d.datasource)
+          .filter((ds) => conversation.datasources.includes(ds.id));
+        console.log(
+          `[ReadDataAgent] Loaded ${attachedDatasources.length} datasource(s) for prompt (from ${conversation.datasources.length} in conversation)`,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        '[ReadDataAgent] Failed to load datasources for prompt:',
+        error,
+      );
+    }
+  }
+
+  const agentPrompt = buildReadDataAgentPrompt(attachedDatasources);
+
   const result = new Agent({
     model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
+    system: agentPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -344,28 +362,7 @@ export const readDataAgent = async (
                   repositories.datasource,
                 );
 
-                // Get current datasource IDs
-                const currentDatasourceIds = new Set(
-                  allDatasources.map((d) => d.datasource.id),
-                );
-                
-                // Get cached datasource IDs
-                const cachedDatasourceIds = new Set(schemaCache.getDatasources());
-                
-                // Find datasources that were removed (cached but not in current list)
-                const removedDatasourceIds = Array.from(cachedDatasourceIds).filter(
-                  (id) => !currentDatasourceIds.has(id),
-                );
-                
-                // Invalidate cache for removed datasources
-                if (removedDatasourceIds.length > 0) {
-                  console.log(
-                    `[ReadDataAgent] [CACHE] Invalidating cache for ${removedDatasourceIds.length} removed datasource(s): ${removedDatasourceIds.join(', ')}`,
-                  );
-                  for (const datasourceId of removedDatasourceIds) {
-                    schemaCache.invalidate(datasourceId);
-                  }
-                }
+                // Don't invalidate cache - just filter out unattached datasources when building prompt
 
                 // Check if any datasources are uncached
                 const uncachedDatasources = allDatasources.filter(
@@ -381,9 +378,14 @@ export const readDataAgent = async (
                   const syncStartTime = performance.now();
 
                   // Attach all datasources (engine handles deduplication)
-                  await queryEngine.attach(
-                    allDatasources.map((d) => d.datasource),
-                  );
+                  const workspace = getWorkspace();
+                  if (!workspace) {
+                    throw new Error('WORKSPACE environment variable is not set');
+                  }
+                  await queryEngine.attach(allDatasources.map((d) => d.datasource), {
+                    conversationId,
+                    workspace,
+                  });
 
                   // Load and cache metadata for uncached datasources
                   const cacheLoadStartTime = performance.now();
@@ -952,28 +954,12 @@ export const readDataAgent = async (
                   repositories.datasource,
                 );
 
-                // Get current datasource IDs
+                // Get current datasource IDs from conversation
                 const currentDatasourceIds = new Set(
-                  loaded.map((d) => d.datasource.id),
+                  conversation.datasources,
                 );
                 
-                // Get cached datasource IDs
-                const cachedDatasourceIds = new Set(schemaCache.getDatasources());
-                
-                // Find datasources that were removed (cached but not in current list)
-                const removedDatasourceIds = Array.from(cachedDatasourceIds).filter(
-                  (id) => !currentDatasourceIds.has(id),
-                );
-                
-                // Invalidate cache for removed datasources
-                if (removedDatasourceIds.length > 0) {
-                  console.log(
-                    `[ReadDataAgent] [CACHE] Invalidating cache for ${removedDatasourceIds.length} removed datasource(s) in runQuery: ${removedDatasourceIds.join(', ')}`,
-                  );
-                  for (const datasourceId of removedDatasourceIds) {
-                    schemaCache.invalidate(datasourceId);
-                  }
-                }
+                // Don't invalidate cache - just filter out unattached datasources when building prompt
 
                 // Check which datasources need to be cached
                 const uncachedDatasources = loaded.filter(
@@ -986,7 +972,14 @@ export const readDataAgent = async (
                     `[ReadDataAgent] [CACHE] ✗ ${uncachedDatasources.length} uncached datasource(s) in runQuery, loading cache...`,
                   );
                   // Attach all datasources (engine handles deduplication)
-                  await queryEngine.attach(loaded.map((d) => d.datasource));
+                  const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            await queryEngine.attach(loaded.map((d) => d.datasource), {
+              conversationId,
+              workspace,
+            });
 
                   // Load and cache metadata for uncached datasources
                   const metadata = await queryEngine.metadata(
@@ -1011,7 +1004,14 @@ export const readDataAgent = async (
                   console.log(
                     `[ReadDataAgent] [CACHE] ✓ All datasources cached in runQuery, skipping metadata load`,
                   );
-                  await queryEngine.attach(loaded.map((d) => d.datasource));
+                  const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            await queryEngine.attach(loaded.map((d) => d.datasource), {
+              conversationId,
+              workspace,
+            });
                 }
               }
             } catch (error) {
@@ -1026,6 +1026,47 @@ export const readDataAgent = async (
             console.log(
               `[ReadDataAgent] [PERF] runQuery syncDatasources took ${syncTime.toFixed(2)}ms`,
             );
+          }
+
+          // Validate that all table paths in the query exist in attached datasources
+          if (repositories) {
+            try {
+              const schemaCache = getSchemaCache(conversationId);
+              const { extractTablePathsFromQuery } = await import(
+                '../../tools/validate-table-paths'
+              );
+              const tablePaths = extractTablePathsFromQuery(query);
+              const allAvailablePaths = schemaCache.getAllTablePathsFromAllDatasources();
+              const missingTables: string[] = [];
+
+              for (const tablePath of tablePaths) {
+                // Check if table exists in cache
+                if (!schemaCache.hasTablePath(tablePath) && !allAvailablePaths.includes(tablePath)) {
+                  // Also check if it's a simple table name that might be in main database
+                  const isSimpleName = !tablePath.includes('.');
+                  if (!isSimpleName) {
+                    missingTables.push(tablePath);
+                  }
+                }
+              }
+
+              if (missingTables.length > 0) {
+                const availablePaths = allAvailablePaths.slice(0, 20).join(', ');
+                throw new Error(
+                  `The following tables are not available in attached datasources: ${missingTables.join(', ')}. Available tables: ${availablePaths}${allAvailablePaths.length > 20 ? '...' : ''}. Please check the attached datasources list and use only tables that exist.`,
+                );
+              }
+            } catch (error) {
+              // If validation fails with our custom error, throw it
+              if (error instanceof Error && error.message.includes('not available in attached datasources')) {
+                throw error;
+              }
+              // Otherwise, log warning but continue (might be a complex query we can't parse)
+              console.warn(
+                '[ReadDataAgent] Failed to validate table paths in query:',
+                error,
+              );
+            }
           }
 
           const queryStartTime = performance.now();
