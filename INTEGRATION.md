@@ -1,10 +1,10 @@
 # Local LLM Integration - llama.cpp Provider
 
-This document describes the integration of a local open-source LLM (llama.cpp) into Qwery's model provider system.
+This document describes the integration of a local open-source LLM (using llama.cpp) into Qwery's model provider system.
 
 ## Local LLM Used
 
-We chose Granite 4.0 Micro from IBM to its good performance in both agentic and coding tasks while also being runnable on consumer laptops that have 4GB VRAM GPUs (as shown and tested in the sent video).
+We chose Granite 4.0 Micro from IBM for its good performance in both agentic and coding tasks while also being runnable on consumer laptops that have 4GB VRAM GPUs (as shown and tested in the sent video).
 
 - **Model**: `unsloth/granite-4.0-h-micro-GGUF:Q4_K_XL`
 - **Server**: llama.cpp with OpenAI-compatible API
@@ -14,7 +14,7 @@ We chose Granite 4.0 Micro from IBM to its good performance in both agentic and 
 
 ### 1. Prerequisites
 
-- Node.js v22 (check `.nvmrc`)
+- Node.js v22
 - pnpm package manager
 - llama.cpp server
 
@@ -26,12 +26,7 @@ Download from: https://github.com/ggerganov/llama.cpp/releases
 
 #### Option B: Build from Source
 
-```bash
-git clone https://github.com/ggerganov/llama.cpp
-cd llama.cpp
-cmake -B build
-cmake --build build --config Release -j $(nproc)
-```
+Check https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md
 
 ### 3. Download the Model
 
@@ -158,14 +153,13 @@ The llama.cpp provider leverages the fact that llama.cpp exposes an OpenAI-compa
 
 1. Uses `@ai-sdk/openai` with `createOpenAI()` to create a custom provider
 2. Points the `baseURL` to the local llama.cpp server
-3. Uses `.chat()` method to force Chat Completions API (not Responses API)
+3. Uses `.chat()` method to force Chat Completions API
 4. Passes through model names and handles errors gracefully
 
 ```typescript
 const llamacpp = createOpenAI({
   baseURL: 'http://localhost:8080/v1',
   apiKey: 'llamacpp-local',
-  compatibility: 'compatible',
 });
 
 // Returns a LanguageModel compatible with AI SDK
@@ -174,6 +168,6 @@ return llamacpp.chat(modelName);
 
 ## Usage
 
-To use the llama.cpp provider in the application:
+To use the llama.cpp model in the application:
 
 Select **"Granite 4.0 Micro (Local)"** from the model dropdown in the UI (which is already the default and only option).
