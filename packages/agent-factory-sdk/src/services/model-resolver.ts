@@ -29,42 +29,12 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-function requireEnv(key: string, providerLabel: string): string {
-  const value = getEnv(key);
-  if (!value) {
-    throw new Error(
-      `[AgentFactory][${providerLabel}] Missing required environment variable '${key}'.`,
-    );
-  }
-  return value;
-}
 
 async function createProvider(
   providerId: string,
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
-    case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
-      );
-      return createAzureModelProvider({
-        resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
-        apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
-        apiVersion: getEnv('AZURE_API_VERSION'),
-        baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
-        deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
-      });
-    }
-    case 'ollama': {
-      const { createOllamaModelProvider } = await import(
-        './models/ollama-model.provider'
-      );
-      return createOllamaModelProvider({
-        baseUrl: getEnv('OLLAMA_BASE_URL'),
-        defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
-      });
-    }
     case 'browser': {
       const { createBuiltInModelProvider } = await import(
         './models/built-in-model.provider'
@@ -100,7 +70,7 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, llamacpp.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: browser, transformer-browser, transformer, webllm, llamacpp.`,
       );
   }
 }
