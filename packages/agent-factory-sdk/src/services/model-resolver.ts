@@ -65,6 +65,15 @@ async function createProvider(
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
       });
     }
+    case 'llama-cpp': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llama-cpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseUrl: getEnv('LLAMA_CPP_BASE_URL'),
+        defaultModel: getEnv('LLAMA_CPP_MODEL') ?? modelName,
+      });
+    }
     case 'browser': {
       const { createBuiltInModelProvider } = await import(
         './models/built-in-model.provider'
@@ -90,20 +99,26 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, llama-cpp, browser, transformer-browser, transformer, webllm.`,
       );
   }
 }
 
+export function getDefaultModel(): string {
+  const envDefault = getEnv('DEFAULT_MODEL');
+  if (envDefault) return envDefault;
+
+  const llamaCppModel = getEnv('LLAMA_CPP_MODEL');
+  if (llamaCppModel) return `llama-cpp/${llamaCppModel}`;
+
+  return 'llama-cpp/Phi-3-mini-4k-instruct-q4.gguf';
+}
+
 export async function resolveModel(
-  modelString: string | undefined,
+  modelString?: string | undefined,
 ): Promise<LanguageModel> {
-  if (!modelString) {
-    throw new Error(
-      '[AgentFactory] Model string is required but was undefined or empty',
-    );
-  }
-  const { providerId, modelName } = parseModelName(modelString);
+  const finalModelString = modelString || getDefaultModel();
+  const { providerId, modelName } = parseModelName(finalModelString);
   const provider = await createProvider(providerId, modelName);
   return provider.resolveModel(modelName);
 }
