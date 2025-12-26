@@ -1,7 +1,6 @@
 import type { SimpleSchema, SimpleTable } from '@qwery/domain/entities';
 import type { DatasourceMetadata } from '@qwery/domain/entities';
 import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
-import { getDatasourceDatabaseName } from './datasource-name-utils';
 import { getDatasourceType } from './datasource-loader';
 
 export interface ColumnMetadata {
@@ -22,10 +21,7 @@ export interface TableInfo {
  */
 export class SchemaCacheManager {
   // Main cache: datasourceId -> schemaName -> tableName -> columns[]
-  private cache = new Map<
-    string,
-    Map<string, Map<string, ColumnMetadata[]>>
-  >();
+  private cache = new Map<string, Map<string, Map<string, ColumnMetadata[]>>>();
 
   // Track which datasources are cached
   private cachedDatasources = new Set<string>();
@@ -66,7 +62,11 @@ export class SchemaCacheManager {
       `[SchemaCache] Schema keys: ${Array.from(schemas.keys()).join(', ')}`,
     );
     console.log(
-      `[SchemaCache] Datasource database map: ${Array.from(datasourceDatabaseMap.entries()).map(([id, name]) => `${id}=${name}`).join(', ')}`,
+      `[SchemaCache] Datasource database map: ${Array.from(
+        datasourceDatabaseMap.entries(),
+      )
+        .map(([id, name]) => `${id}=${name}`)
+        .join(', ')}`,
     );
 
     // Build nested cache structure
@@ -106,7 +106,11 @@ export class SchemaCacheManager {
         );
 
       // For DuckDB-native providers, also check if tables are in main/memory and contain datasource ID
-      if (!matchesDatabase && isDuckDBNative && (dbName === 'main' || dbName === 'memory')) {
+      if (
+        !matchesDatabase &&
+        isDuckDBNative &&
+        (dbName === 'main' || dbName === 'memory')
+      ) {
         // Check if any table name contains the datasource ID
         const hasMatchingTable = schema.tables.some((table) => {
           const tableName = table.tableName.toLowerCase();
@@ -249,7 +253,11 @@ export class SchemaCacheManager {
    * Get formatted table path (datasource.schema.table or datasource.table)
    * Note: tableName might already be formatted, so check before formatting again
    */
-  getTablePath(datasourceId: string, schemaName: string, tableName: string): string {
+  getTablePath(
+    datasourceId: string,
+    schemaName: string,
+    tableName: string,
+  ): string {
     const databaseName = this.databaseNameMap.get(datasourceId) || 'main';
 
     // If tableName already contains dots, it's likely already formatted
@@ -272,7 +280,7 @@ export class SchemaCacheManager {
     // DuckDB-native providers (gsheet-csv, json-online, parquet-online, etc.) use two-part: datasource.table
     // Foreign databases (postgresql, mysql, etc.) use three-part: datasource.schema.table
     const datasourceType = getDatasourceType(provider);
-    
+
     if (datasourceType === 'duckdb-native') {
       // Two-part format for DuckDB-native providers
       return `${databaseName}.${tableName}`;
@@ -466,4 +474,3 @@ export function clearSchemaCache(conversationId: string): void {
   }
   conversationCaches.delete(conversationId);
 }
-

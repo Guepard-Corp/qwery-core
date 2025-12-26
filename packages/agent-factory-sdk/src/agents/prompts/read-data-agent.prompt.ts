@@ -7,7 +7,9 @@ import { BASE_AGENT_PROMPT } from './base-agent.prompt';
 import type { Datasource } from '@qwery/domain/entities';
 import { getDatasourceDatabaseName } from '../../tools/datasource-name-utils';
 
-export function buildReadDataAgentPrompt(attachedDatasources?: Datasource[]): string {
+export function buildReadDataAgentPrompt(
+  attachedDatasources?: Datasource[],
+): string {
   // Build datasource information section
   let datasourceInfo = '';
   if (attachedDatasources && attachedDatasources.length > 0) {
@@ -25,7 +27,9 @@ export function buildReadDataAgentPrompt(attachedDatasources?: Datasource[]): st
         return `    ${dbName} → ${ds.id}`;
       })
       .join('\n');
-    const firstDbName = attachedDatasources[0] ? getDatasourceDatabaseName(attachedDatasources[0]) : 'datasource_name';
+    const firstDbName = attachedDatasources[0]
+      ? getDatasourceDatabaseName(attachedDatasources[0])
+      : 'datasource_name';
     datasourceInfo = `
 ATTACHED DATASOURCES (${attachedDatasources.length}):
 ${datasourceList}

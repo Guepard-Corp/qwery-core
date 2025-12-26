@@ -52,7 +52,7 @@ export function storeQueryResult(
 ): string {
   const cache = getCache(conversationId);
   const queryId = generateQueryId(query);
-  
+
   cache.set(queryId, {
     columns,
     rows,
@@ -76,7 +76,7 @@ export function getQueryResult(
 ): QueryResult | null {
   const cache = getCache(conversationId);
   const result = cache.get(queryId);
-  
+
   if (result) {
     console.log(
       `[QueryResultCache] Retrieved query result: ${queryId} (${result.rows.length} rows)`,
@@ -84,7 +84,7 @@ export function getQueryResult(
   } else {
     console.warn(`[QueryResultCache] Query result not found: ${queryId}`);
   }
-  
+
   return result || null;
 }
 
@@ -93,7 +93,9 @@ export function getQueryResult(
  */
 export function clearQueryResultCache(conversationId: string): void {
   queryResultCache.delete(conversationId);
-  console.log(`[QueryResultCache] Cleared cache for conversation: ${conversationId}`);
+  console.log(
+    `[QueryResultCache] Cleared cache for conversation: ${conversationId}`,
+  );
 }
 
 /**
@@ -117,4 +119,3 @@ export function cleanupOldResults(conversationId: string): void {
     );
   }
 }
-

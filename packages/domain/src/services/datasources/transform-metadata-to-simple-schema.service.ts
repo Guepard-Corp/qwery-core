@@ -23,7 +23,7 @@ export class TransformMetadataToSimpleSchemaService
   ): Promise<Map<string, SimpleSchema>> {
     const { metadata, datasourceDatabaseMap, datasourceProviderMap } = input;
     const schemasMap = new Map<string, SimpleSchema>();
-    
+
     // Build map: datasource database name -> provider (for path formatting)
     const databaseToProvider = new Map<string, string>();
     if (datasourceProviderMap) {
@@ -55,13 +55,16 @@ export class TransformMetadataToSimpleSchemaService
       const tableKey = `${col.schema}.${col.table}`;
       if (!tableToDatabase.has(tableKey)) {
         let databaseName = 'main';
-        
+
         // First, try to use database field from column (table_catalog from DuckDB)
         const colDatabase = (col as { database?: string }).database;
         if (colDatabase && colDatabase !== 'main' && colDatabase !== 'memory') {
           // Check if this database name matches a datasource database name
           for (const dbName of datasourceDatabaseMap.values()) {
-            if (colDatabase === dbName || colDatabase.toLowerCase() === dbName.toLowerCase()) {
+            if (
+              colDatabase === dbName ||
+              colDatabase.toLowerCase() === dbName.toLowerCase()
+            ) {
               databaseName = dbName;
               break;
             }
@@ -71,7 +74,7 @@ export class TransformMetadataToSimpleSchemaService
             databaseName = colDatabase;
           }
         }
-        
+
         // Fallback: try to match schema to datasource database name (for cases where database field isn't available)
         if (databaseName === 'main') {
           for (const dbName of datasourceDatabaseMap.values()) {
@@ -82,7 +85,7 @@ export class TransformMetadataToSimpleSchemaService
             }
           }
         }
-        
+
         tableToDatabase.set(tableKey, databaseName);
       }
     }
@@ -126,7 +129,7 @@ export class TransformMetadataToSimpleSchemaService
           // For SQLite attached databases (like gsheet-csv), DuckDB reports schema='main'
           // but we need to use two-part format: {datasource_name}.{table_name}
           const isTwoPartProvider = provider === 'gsheet-csv';
-          
+
           if (isTwoPartProvider) {
             // Two-part path: {datasource_name}.{table_name} (e.g., gsheet-csv)
             // Table names from DuckDB are just the table name (e.g., "tmp_xxx" or "test_table")

@@ -42,7 +42,10 @@ export interface AttachToConnectionOptions {
  * (since DuckDB attachments are session-scoped)
  */
 export async function attachForeignDatasourceToConnection(
-  opts: AttachToConnectionOptions & { conversationId?: string; workspace?: string },
+  opts: AttachToConnectionOptions & {
+    conversationId?: string;
+    workspace?: string;
+  },
 ): Promise<void> {
   const { conn, datasource, conversationId, workspace } = opts;
   const provider = datasource.datasource_provider;

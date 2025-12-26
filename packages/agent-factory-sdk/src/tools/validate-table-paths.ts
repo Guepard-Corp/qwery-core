@@ -4,7 +4,6 @@
  */
 export function extractTablePathsFromQuery(query: string): string[] {
   const tablePaths: string[] = [];
-  const upperQuery = query.toUpperCase();
 
   // Patterns to match table references:
   // FROM table_name
@@ -27,7 +26,11 @@ export function extractTablePathsFromQuery(query: string): string[] {
     let match;
     while ((match = pattern.exec(query)) !== null) {
       const tablePath = match[1]?.trim();
-      if (tablePath && !tablePath.startsWith('(') && !tablePaths.includes(tablePath)) {
+      if (
+        tablePath &&
+        !tablePath.startsWith('(') &&
+        !tablePaths.includes(tablePath)
+      ) {
         // Remove quotes if present
         const cleanPath = tablePath.replace(/^["']|["']$/g, '');
         tablePaths.push(cleanPath);
@@ -37,4 +40,3 @@ export function extractTablePathsFromQuery(query: string): string[] {
 
   return tablePaths;
 }
-
