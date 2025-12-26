@@ -21,3 +21,7 @@ catalog:
   'uuid': '^11.0.3'
   'date-fns': '^4.1.0'
 
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - '@sentry/cli'
+  - better-sqlite3

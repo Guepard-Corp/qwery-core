@@ -12,6 +12,7 @@ import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
+import { getWebTelemetry } from '~/lib/telemetry-instance';
 
 const agents = new Map<string, FactoryAgent>();
 const agentLastAccess = new Map<string, number>();
@@ -69,10 +70,12 @@ async function getOrCreateAgent(
         );
       }
 
+      const telemetry = await getWebTelemetry();
       agent = await FactoryAgent.create({
         conversationSlug: conversationSlug,
         model: model,
         repositories: repositories,
+        telemetry: telemetry,
       });
 
       agents.set(conversationSlug, agent);
@@ -205,7 +208,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           '[Chat API] Running intent detection for:',
           lastUserMessageText.substring(0, 100),
         );
-        const intentResult = await detectIntent(lastUserMessageText);
+        const intentResult = await detectIntent(lastUserMessageText, model);
         needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
         console.log('[Chat API] Intent detection result:', {
           intent: (intentResult as { intent?: string }).intent,

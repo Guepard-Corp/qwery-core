@@ -464,6 +464,7 @@ export class InteractiveRepl {
       if (!this.agent || !this.conversationId) {
         this.conversationId = `cli-agent-${nanoid()}`;
         const repositories = this.container.getRepositories();
+        const workspace = this.container.getWorkspace();
 
         // Create the conversation before creating the FactoryAgent
         // (FactoryAgent needs the conversation to exist when persisting messages)
@@ -473,14 +474,14 @@ export class InteractiveRepl {
         await repositories.conversation.create({
           id: conversationId,
           slug: this.conversationId,
-          title: 'CLI Conversation',
-          projectId: uuidv4(), // Use dummy project ID for CLI
-          taskId: uuidv4(), // Use dummy task ID for CLI
+          title: 'CLI Interactive Conversation',
+          projectId: workspace?.projectId ?? uuidv4(),
+          taskId: uuidv4(),
           datasources: [],
           createdAt: now,
           updatedAt: now,
-          createdBy: 'cli',
-          updatedBy: 'cli',
+          createdBy: workspace?.userId ?? 'cli',
+          updatedBy: workspace?.userId ?? 'cli',
           isPublic: false,
         });
 
@@ -488,6 +489,7 @@ export class InteractiveRepl {
           conversationSlug: this.conversationId,
           model: 'azure/gpt-5-mini', // Default model for CLI
           repositories,
+          telemetry: this.container.telemetry,
         });
       }
       const agent = this.agent;

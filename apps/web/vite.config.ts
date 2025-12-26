@@ -52,6 +52,16 @@ export default defineConfig(({ command }) => ({
       '@duckdb/node-bindings-darwin-arm64',
       '@duckdb/node-bindings-darwin-x64',
       '@duckdb/node-bindings-win32-x64',
+      // Externalize OpenTelemetry packages (Node.js only, not for browser)
+      '@opentelemetry/api',
+      '@opentelemetry/exporter-metrics-otlp-http',
+      '@opentelemetry/exporter-trace-otlp-http',
+      '@opentelemetry/resources',
+      '@opentelemetry/sdk-metrics',
+      '@opentelemetry/sdk-node',
+      '@opentelemetry/sdk-trace-base',
+      '@opentelemetry/sdk-trace-node',
+      '@opentelemetry/semantic-conventions',
     ],
   },
   plugins: [
@@ -74,6 +84,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
+    manifest: true, // Enable manifest generation for React Router
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;
@@ -84,6 +95,8 @@ export default defineConfig(({ command }) => ({
           return true;
         }
         if (id.startsWith('node:')) return true;
+        // Externalize OpenTelemetry packages (Node.js only, not for browser)
+        if (id.startsWith('@opentelemetry/')) return true;
         return false;
       },
     },
