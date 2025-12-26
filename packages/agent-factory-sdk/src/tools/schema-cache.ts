@@ -308,13 +308,6 @@ export class SchemaCacheManager {
    * @returns true if the table exists in any attached datasource
    */
   hasTablePath(tablePath: string): boolean {
-    // Normalize the input path (remove quotes, lowercase for comparison)
-    const normalizedPath = tablePath
-      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-      .replace(/"([^"]+)"/g, '$1') // Remove all double quotes
-      .replace(/'([^']+)'/g, '$1') // Remove all single quotes
-      .trim();
-
     // Check all cached datasources
     // table.tableName in cache is already formatted, so we can check directly
     for (const datasourceId of this.cachedDatasources) {
@@ -322,14 +315,7 @@ export class SchemaCacheManager {
       if (datasourceCache) {
         for (const schemaCache of datasourceCache.values()) {
           for (const cachedTableName of schemaCache.keys()) {
-            // Exact match
-            if (cachedTableName === normalizedPath) {
-              return true;
-            }
-            // Also check case-insensitive match (for safety)
-            if (
-              cachedTableName.toLowerCase() === normalizedPath.toLowerCase()
-            ) {
+            if (cachedTableName === tablePath) {
               return true;
             }
           }
