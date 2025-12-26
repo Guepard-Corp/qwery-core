@@ -1,8 +1,36 @@
 import { INTENTS_LIST } from '../types';
+import type { UIMessage } from 'ai';
 
 export const DETECT_INTENT_PROMPT = (
   inputMessage: string,
-) => `You are Qwery Intent Agent.
+  previousMessages?: UIMessage[],
+) => {
+  // Build conversation context if available
+  let conversationContext = '';
+  if (previousMessages && previousMessages.length > 0) {
+    // Get last few messages for context (last 4 messages to keep it concise)
+    const recentMessages = previousMessages.slice(-4);
+    const contextMessages = recentMessages
+      .map((msg) => {
+        const textPart = msg.parts.find((p) => p.type === 'text');
+        const text = textPart && 'text' in textPart ? textPart.text : '';
+        return `${msg.role === 'user' ? 'User' : 'Assistant'}: ${text}`;
+      })
+      .join('\n');
+    conversationContext = `
+
+CONVERSATION CONTEXT (recent messages):
+${contextMessages}
+
+**IMPORTANT**: Use this conversation history to understand follow-up questions and referential statements.
+- If the user says "based on the datasource I attached" or similar, they're referring to a previous action
+- If the user uses pronouns like "it", "that", "this", "they", infer from the conversation context
+- Follow-up questions should be classified based on the conversation context, not just the current message
+- If the user is continuing a previous data query or analysis, use intent "read-data"
+`;
+  }
+
+  return `You are Qwery Intent Agent.
 
 You are responsible for detecting the intent of the user's message and classifying it into a predefined intent and estimating the complexity of the task.
 - classify it into **one** of the predefined intents
@@ -12,6 +40,7 @@ You are responsible for detecting the intent of the user's message and classifyi
 
 If the user asks for something that does not match any supported intent,
 you MUST answer with intent "other".
+${conversationContext}
 
 Supported intents (only choose from this list, use "other" otherwise):
 ${INTENTS_LIST.filter((intent) => intent.supported)
@@ -31,6 +60,8 @@ Guidelines:
 - If the user asks about the system itself, the agent, or Qwery (e.g., "who are you?", "what is Qwery?", "what can you do?", "how does this work?", "tell me about yourself"), use "system".
 - Consider message clarity: short, specific messages = higher confidence; long, vague messages = lower confidence
 - Consider keyword matching: messages with intent-specific keywords = higher confidence
+- **Follow-up questions**: If the user's message is a follow-up (e.g., "based on the datasource I attached", "show me that data", "what about the first one"), use the conversation context to determine intent. If it's continuing a data query/analysis, use "read-data".
+- **Referential statements**: If the user uses pronouns or references previous messages (e.g., "it", "that", "this", "the datasource I attached"), infer the intent from conversation context.
 
 Chart/Graph Detection (needsChart):
 - Set needsChart to true if:
@@ -63,6 +94,9 @@ Examples:
 - "delete duplicate views" → intent: "read-data", complexity: "medium", needsChart: false
 - "remove sheet X" → intent: "read-data", complexity: "simple", needsChart: false
 - "drop views Y and Z" → intent: "read-data", complexity: "simple", needsChart: false
+- "based on the datasource that I attached" → intent: "read-data", complexity: "medium", needsSQL: true (follow-up question, continuing data query)
+- "show me that data" → intent: "read-data", complexity: "medium", needsSQL: true (referential follow-up)
+- "what about the first one" → intent: "read-data", complexity: "medium", needsSQL: true (referential follow-up)
 
 ## Output Format
 {
@@ -84,5 +118,6 @@ User message:
 ${inputMessage}
 
 Current date: ${new Date().toISOString()}
-version: 1.1.0
+version: 1.2.0
 `;
+};

@@ -12,16 +12,18 @@ export interface LoadedDatasource {
  * DuckDB-native datasources are extensions that use DuckDB internally
  * These can create views directly in the conversation's DuckDB instance
  *
- * Note: gsheet-csv is now treated as a foreign database (attached database)
- * to support multiple tabs with datasourcename.tablename format
+ * Note: gsheet-csv is treated as a foreign database (attached database)
+ * to support multiple tabs with datasourcename.tablename format and semantic naming
  */
 const DUCKDB_NATIVE_PROVIDERS = [
-  'gsheet-csv',
   'csv',
   'json-online',
   'parquet-online',
   'youtube-data-api-v3',
   'clickhouse-node', // Uses driver system, not foreign database attachment
+  'clickhouse-web', // Uses driver system, not foreign database attachment
+  'duckdb', // DuckDB file datasource
+  'duckdb-wasm', // DuckDB WASM datasource
 ] as const;
 
 /**

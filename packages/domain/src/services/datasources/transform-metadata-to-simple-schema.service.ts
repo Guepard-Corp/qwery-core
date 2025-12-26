@@ -21,8 +21,19 @@ export class TransformMetadataToSimpleSchemaService
   public async execute(
     input: TransformMetadataToSimpleSchemaInput,
   ): Promise<Map<string, SimpleSchema>> {
-    const { metadata, datasourceDatabaseMap } = input;
+    const { metadata, datasourceDatabaseMap, datasourceProviderMap } = input;
     const schemasMap = new Map<string, SimpleSchema>();
+
+    // Build map: datasource database name -> provider (for path formatting)
+    const databaseToProvider = new Map<string, string>();
+    if (datasourceProviderMap) {
+      for (const [datasourceId, provider] of datasourceProviderMap.entries()) {
+        const dbName = datasourceDatabaseMap.get(datasourceId);
+        if (dbName) {
+          databaseToProvider.set(dbName, provider);
+        }
+      }
+    }
 
     // Group columns by table_id for quick lookup
     const columnsByTableId = new Map<number, typeof metadata.columns>();
@@ -38,19 +49,43 @@ export class TransformMetadataToSimpleSchemaService
     // Columns have schema and table, and we can match them to datasources
     const tableToDatabase = new Map<string, string>(); // Map "schema.table" -> "database"
 
-    // First, try to infer database from columns (columns might have database info in their schema)
+    // First, try to infer database from columns
+    // Priority: 1) Use database field from column (table_catalog), 2) Match schema to datasource name
     for (const col of metadata.columns) {
       const tableKey = `${col.schema}.${col.table}`;
       if (!tableToDatabase.has(tableKey)) {
-        // Try to match schema to datasource database name
         let databaseName = 'main';
-        for (const dbName of datasourceDatabaseMap.values()) {
-          // If schema name matches datasource database name, it's from that datasource
-          if (col.schema === dbName) {
-            databaseName = dbName;
-            break;
+
+        // First, try to use database field from column (table_catalog from DuckDB)
+        const colDatabase = (col as { database?: string }).database;
+        if (colDatabase && colDatabase !== 'main' && colDatabase !== 'memory') {
+          // Check if this database name matches a datasource database name
+          for (const dbName of datasourceDatabaseMap.values()) {
+            if (
+              colDatabase === dbName ||
+              colDatabase.toLowerCase() === dbName.toLowerCase()
+            ) {
+              databaseName = dbName;
+              break;
+            }
+          }
+          // If not found in datasource map, use it directly (might be correct)
+          if (databaseName === 'main' && colDatabase !== 'main') {
+            databaseName = colDatabase;
           }
         }
+
+        // Fallback: try to match schema to datasource database name (for cases where database field isn't available)
+        if (databaseName === 'main') {
+          for (const dbName of datasourceDatabaseMap.values()) {
+            // If schema name matches datasource database name, it's from that datasource
+            if (col.schema === dbName) {
+              databaseName = dbName;
+              break;
+            }
+          }
+        }
+
         tableToDatabase.set(tableKey, databaseName);
       }
     }
@@ -86,9 +121,26 @@ export class TransformMetadataToSimpleSchemaService
           }));
 
         // Format table name: for attached databases, use datasourcename.schema.tablename
+        // Exception: for gsheet-csv (two-part providers), use datasourcename.tablename
         let formattedTableName = table.name;
         if (isAttachedDb) {
-          formattedTableName = `${databaseName}.${schemaName}.${table.name}`;
+          const provider = databaseToProvider.get(databaseName);
+          // Check if this is a two-part path provider (e.g., gsheet-csv)
+          // For SQLite attached databases (like gsheet-csv), DuckDB reports schema='main'
+          // but we need to use two-part format: {datasource_name}.{table_name}
+          const isTwoPartProvider = provider === 'gsheet-csv';
+
+          if (isTwoPartProvider) {
+            // Two-part path: {datasource_name}.{table_name} (e.g., gsheet-csv)
+            // Table names from DuckDB are just the table name (e.g., "tmp_xxx" or "test_table")
+            // We format them as: {datasource_name}.{table_name}
+            // Note: Table names should NOT include the datasource name suffix
+            // The table name from DuckDB metadata is already the correct base name
+            formattedTableName = `${databaseName}.${table.name}`;
+          } else {
+            // Three-part path: {datasource_name}.{schema}.{table_name} (e.g., postgresql)
+            formattedTableName = `${databaseName}.${schemaName}.${table.name}`;
+          }
         }
 
         simpleTables.push({

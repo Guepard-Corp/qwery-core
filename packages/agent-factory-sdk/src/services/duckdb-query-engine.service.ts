@@ -204,7 +204,10 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
   /**
    * Attach one or more datasources to the query engine.
    */
-  async attach(datasources: Datasource[]): Promise<void> {
+  async attach(
+    datasources: Datasource[],
+    options?: { conversationId?: string; workspace?: string },
+  ): Promise<void> {
     if (!this.initialized || !this.connection) {
       throw new Error(
         'DuckDBQueryEngine must be initialized before attaching datasources',
@@ -215,6 +218,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
       return;
     }
 
+    const { conversationId, workspace } = options || {};
+
     // Convert Datasource[] to LoadedDatasource[]
     const loaded: LoadedDatasource[] = datasources.map((ds) => ({
       datasource: ds,
@@ -223,16 +228,34 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     const { duckdbNative, foreignDatabases } = groupDatasourcesByType(loaded);
 
-    // Attach foreign databases (PostgreSQL, MySQL, etc.)
+    // Attach foreign databases (PostgreSQL, MySQL, Google Sheets, etc.)
     for (const { datasource } of foreignDatabases) {
+      // Skip if already attached (optimization)
+      if (this.attachedDatasources.has(datasource.id)) {
+        console.log(
+          `[DuckDBQueryEngine] Datasource ${datasource.id} already attached, skipping`,
+        );
+        continue;
+      }
+
       try {
         await attachForeignDatasourceToConnection({
           conn: this.connection,
           datasource,
+          conversationId,
+          workspace,
         });
         this.attachedDatasources.add(datasource.id);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        // If already attached error, mark as attached and continue
+        if (
+          errorMsg.includes('already attached') ||
+          errorMsg.includes('already exists')
+        ) {
+          this.attachedDatasources.add(datasource.id);
+          continue;
+        }
         throw new Error(
           `Failed to attach datasource ${datasource.id}: ${errorMsg}`,
         );
@@ -241,6 +264,14 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     // Create views for DuckDB-native datasources
     for (const { datasource } of duckdbNative) {
+      // Skip if already attached (optimization)
+      if (this.attachedDatasources.has(datasource.id)) {
+        console.log(
+          `[DuckDBQueryEngine] Datasource ${datasource.id} already attached, skipping`,
+        );
+        continue;
+      }
+
       try {
         await datasourceToDuckdb({
           connection: this.connection,
@@ -593,6 +624,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
             SELECT table_catalog, table_schema, table_name, table_type
             FROM information_schema.tables
             WHERE table_type IN ('BASE TABLE', 'VIEW')
+              AND table_catalog != 'temp'
+            ORDER BY table_catalog, table_schema, table_name
           `);
         await tablesReader.readAll();
         const tables = tablesReader.getRowObjectsJS() as Array<{
@@ -602,9 +635,10 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           table_type: string;
         }>;
         for (const table of tables) {
+          // Use table_catalog directly from DuckDB (should be correct for attached databases)
           allTables.push({
-            database: table.table_catalog,
-            schema: table.table_schema,
+            database: table.table_catalog || 'main',
+            schema: table.table_schema || 'main',
             table: table.table_name,
             type: table.table_type,
           });
@@ -629,16 +663,19 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         try {
           const escapedSchema = schema.replace(/"/g, '""');
           const escapedTable = table.replace(/"/g, '""');
+          const escapedDatabase = database.replace(/"/g, '""');
 
           const columnsReader = await this.connection.runAndReadAll(`
-            SELECT column_name, data_type, ordinal_position, is_nullable
+            SELECT table_catalog, column_name, data_type, ordinal_position, is_nullable
             FROM information_schema.columns
-            WHERE table_schema = '${escapedSchema.replace(/'/g, "''")}'
+            WHERE table_catalog = '${escapedDatabase.replace(/'/g, "''")}'
+              AND table_schema = '${escapedSchema.replace(/'/g, "''")}'
               AND table_name = '${escapedTable.replace(/'/g, "''")}'
             ORDER BY ordinal_position
           `);
           await columnsReader.readAll();
           const columns = columnsReader.getRowObjectsJS() as Array<{
+            table_catalog: string;
             column_name: string;
             data_type: string;
             ordinal_position: number | string | bigint;
@@ -654,8 +691,11 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
                   ? Number(col.ordinal_position)
                   : parseInt(String(col.ordinal_position), 10);
 
+            // Use table_catalog from the query result (more accurate than loop variable)
+            const colDatabase = col.table_catalog || database;
+
             allColumns.push({
-              database,
+              database: colDatabase,
               schema,
               table,
               column: col.column_name,
@@ -739,6 +779,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           default_value: null,
           enums: [],
           comment: null,
+          // Add database field for path resolution (from table_catalog)
+          database: col.database,
         };
       });
 

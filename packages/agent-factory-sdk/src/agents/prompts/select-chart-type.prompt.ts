@@ -61,7 +61,8 @@ SQL Query: ${sqlQuery}
 Query Results:
 - Columns: ${JSON.stringify(queryResults.columns)}
 - Total rows: ${queryResults.rows.length}
-- Data types: Use column names and structure to determine chart type. Actual data is not included for privacy - use runQuery output to view data.
+- Sample data (first 3 rows for structure analysis only): ${JSON.stringify(queryResults.rows.slice(0, 3), null, 2)}
+- Note: Full data is available but not included here to reduce token usage. Use the sample data to understand structure and types.
 
 **IMPORTANT**: Use the actual SQL query, user input, and query results data provided above to make your selection. Do not say "No SQL query or result data was provided" - the data is provided above.
 

@@ -30,8 +30,17 @@ export const createStateMachine = (
       detectIntentActor,
       detectIntentActorCached: createCachedActor(
         detectIntentActor,
-        (input: { inputMessage: string }) => input.inputMessage, // Cache key
-        60000, // 1 minute TTL
+        (input: { inputMessage: string; previousMessages?: unknown[] }) => {
+          // Include last message from context in cache key for follow-up questions
+          const lastContextMessage = input.previousMessages?.length
+            ? input.previousMessages[input.previousMessages.length - 1]
+            : null;
+          const contextKey = lastContextMessage
+            ? JSON.stringify(lastContextMessage).slice(0, 100)
+            : '';
+          return `${input.inputMessage}::${contextKey}`; // Cache key includes message + context
+        },
+        30000, // 30 second TTL (shorter for better context awareness)
       ),
       summarizeIntentActor,
       greetingActor,
@@ -175,6 +184,7 @@ export const createStateMachine = (
                   input: ({ context }: { context: AgentContext }) => ({
                     inputMessage: context.inputMessage,
                     model: context.model,
+                    previousMessages: context.previousMessages,
                   }),
                   onDone: [
                     {
