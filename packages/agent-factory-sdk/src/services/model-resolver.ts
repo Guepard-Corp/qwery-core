@@ -29,31 +29,32 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-function requireEnv(key: string, providerLabel: string): string {
-  const value = getEnv(key);
-  if (!value) {
-    throw new Error(
-      `[AgentFactory][${providerLabel}] Missing required environment variable '${key}'.`,
-    );
-  }
-  return value;
-}
-
 async function createProvider(
   providerId: string,
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
-    case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
+    // Azure case commented out - removed for local LLM integration
+    // case 'azure': {
+    //   const { createAzureModelProvider } = await import(
+    //     './models/azure-model.provider'
+    //   );
+    //   return createAzureModelProvider({
+    //     resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
+    //     apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
+    //     apiVersion: getEnv('AZURE_API_VERSION'),
+    //     baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
+    //     deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
+    //   });
+    // }
+    
+    case 'local-llm': {
+      const { createLocalLLMProvider } = await import(
+        './models/local-llm-provider'
       );
-      return createAzureModelProvider({
-        resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
-        apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
-        apiVersion: getEnv('AZURE_API_VERSION'),
-        baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
-        deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
+      return createLocalLLMProvider({
+        baseUrl: getEnv('LOCAL_LLM_BASE_URL'),
+        defaultModel: getEnv('LOCAL_LLM_MODEL') ?? modelName,
       });
     }
     case 'ollama': {
@@ -90,7 +91,7 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: local-llm, ollama, browser, transformer-browser, transformer, webllm.`,
       );
   }
 }

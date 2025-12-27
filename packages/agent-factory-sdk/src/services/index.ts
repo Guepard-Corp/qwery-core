@@ -1,5 +1,5 @@
 export * from './model-resolver';
-export * from './models/azure-model.provider';
+//export * from './models/azure-model.provider';
 export * from './models/ollama-model.provider';
 export * from './webllm-model.provider';
 export * from './default-transport';
@@ -9,3 +9,4 @@ export * from './transport-factory';
 export * from './usage-persistence.service';
 export * from './generate-conversation-title.service';
 export * from './duckdb-query-engine.service';
+export * from './models/local-llm-provider';

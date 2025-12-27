@@ -117,7 +117,7 @@ async function getOrCreateConversation(
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'local-llm/tinyllama-1.1b-chat',//'azure/gpt-5-mini',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -274,7 +274,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'azure/gpt-5-mini',
+    model = 'local-llm/tinyllama-1.1b-chat',// 'azure/gpt-5-mini',
     notebookCellType,
   } = body;
 

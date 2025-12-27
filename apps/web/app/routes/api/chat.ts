@@ -46,7 +46,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'local-llm/tinyllama-1.1b-chat',//'azure/gpt-5-mini',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +104,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || 'local-llm/tinyllama-1.1b-chat';//'azure/gpt-5-mini';
   const datasources: string[] | undefined = body.datasources;
 
   try {

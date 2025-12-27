@@ -175,3 +175,6 @@ test-business-context/
 packages/agent-factory-sdk/test-business-context/.vscode/
 .vscode/
 .vercel
+
+#venv
+venv/

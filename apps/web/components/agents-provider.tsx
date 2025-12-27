@@ -188,7 +188,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model: options.model || 'local-llm/tinyllama-1.1b-chat',// 'azure/gpt-5-mini',
         },
       );
 
