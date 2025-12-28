@@ -65,6 +65,15 @@ async function createProvider(
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
       });
     }
+    case 'llamacpp': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseURL: getEnv('LLAMACPP_BASE_URL'),
+        defaultModel: modelName,
+      });
+    }
     case 'browser': {
       const { createBuiltInModelProvider } = await import(
         './models/built-in-model.provider'
@@ -90,7 +99,7 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, llamacpp, browser, transformer-browser, transformer, webllm.`,
       );
   }
 }

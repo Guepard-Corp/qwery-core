@@ -33,4 +33,5 @@ EXPOSE 8080
 # Default command (directly run the built server)
 WORKDIR /app/llama.cpp
 ENV LD_LIBRARY_PATH=/app/llama.cpp/build/bin
-CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/mistral-7b-instruct-v0.2.Q2_K.gguf", "--host", "0.0.0.0", "--port", "8080", "-c", "2048"]
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/mistral-7b-instruct-v0.2.Q2_K.gguf", "--host", "0.0.0.0", "--port", "8080", "-c", "8192", "-b", "512", "--threads", "8", "--no-mmap"]
+

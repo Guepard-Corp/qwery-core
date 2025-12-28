@@ -5,6 +5,15 @@ import { INTENTS_LIST, IntentSchema } from '../types';
 import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
 import { resolveModel } from '../../services/model-resolver';
 
+const DEFAULT_AZURE_MODEL = 'azure/gpt-5-mini';
+const DEFAULT_LLAMACPP_MODEL = 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+
+function getIntentModel(): string {
+  const hasAzureCreds =
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : DEFAULT_LLAMACPP_MODEL;
+}
+
 export const detectIntent = async (text: string) => {
   const maxAttempts = 2;
 
@@ -12,16 +21,16 @@ export const detectIntent = async (text: string) => {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      // Add timeout to detect hanging calls
+      // Add timeout to detect hanging calls (increased for CPU inference)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
-          () => reject(new Error('generateObject timeout after 30 seconds')),
-          30000,
+          () => reject(new Error('generateObject timeout after 90 seconds')),
+          90000,
         );
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel(getIntentModel()),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text),
       });

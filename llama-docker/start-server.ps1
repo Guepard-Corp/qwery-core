@@ -36,4 +36,4 @@ Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
 Write-Host ""
 
 # Start the server
-& $exe -m $modelPath --host 0.0.0.0 --port 8080 -c 2048 --n-gpu-layers 0
+& $exe -m $modelPath --host 0.0.0.0 --port 8080 -c 8192 -b 512 --threads 8 --no-mmap --n-gpu-layers 0
