@@ -53,32 +53,33 @@ The CLI requires environment variables for the AI agent to work. Create a `.env`
 
 ```bash
 # Query Agent Configuration
-VITE_AGENT_PROVIDER=azure
-AGENT_PROVIDER=azure
+VITE_AGENT_PROVIDER=local-llm
+AGENT_PROVIDER=local-llm
 
-# Azure OpenAI Configuration
-AZURE_API_KEY=your-azure-api-key
-AZURE_RESOURCE_NAME=your-azure-resource-name
-AZURE_OPENAI_DEPLOYMENT=gpt-5-mini
+# Local LLM Configuration
+LOCAL_LLM_BASE_URL=http://localhost:8000/v1
+LOCAL_LLM_MODEL=your-model-name
+LOCAL_LLM_API_KEY=not-needed  # Optional, most local servers don't require an API key
 
 # Workspace Directory (for Google Sheets support)
 VITE_WORKING_DIR=workspace
 WORKING_DIR=workspace
 ```
 
-See `.env.example` for a complete template.
+See `.env.example` for a complete template. For details on setting up a local LLM server, see [INTEGRATION.md](../../INTEGRATION.md).
 
 ## Testing the CLI
 
 You no longer need ad-hoc helper scripts—everything can be exercised directly from the built CLI.
 
-1. **Export the required environment variables (or place them in `.env`):**
+1. **Start your local LLM server** (see [INTEGRATION.md](../../INTEGRATION.md) for instructions)
+
+2. **Export the required environment variables (or place them in `.env`):**
    ```bash
-   export AZURE_API_KEY="<your-azure-api-key>"
-   export AZURE_RESOURCE_NAME="guepard-agent-rs"
-   export AZURE_OPENAI_DEPLOYMENT="gpt-5-mini"
-   export VITE_AGENT_PROVIDER=azure
-   export AGENT_PROVIDER=azure
+   export LOCAL_LLM_BASE_URL="http://localhost:8000/v1"
+   export LOCAL_LLM_MODEL="your-model-name"
+   export VITE_AGENT_PROVIDER=local-llm
+   export AGENT_PROVIDER=local-llm
    export VITE_WORKING_DIR=workspace
    export WORKING_DIR=workspace
    ```

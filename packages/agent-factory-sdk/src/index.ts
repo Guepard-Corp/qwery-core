@@ -20,6 +20,10 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
+    name: 'Local LLM',
+    value: 'local-llm/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
+  },
+  {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },

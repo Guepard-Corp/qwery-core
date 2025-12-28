@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { resolveModel } from '../../services';
+import { getDefaultModel } from '../../services/get-default-model';
 import {
   ChartTypeSelectionSchema,
   ChartConfigSchema,
@@ -44,28 +45,28 @@ export async function selectChartType(
     // Format business context for prompt
     const formattedContext = businessContext
       ? {
-          domain: businessContext.domain.domain,
-          entities: Array.from(businessContext.entities.values()).map((e) => ({
-            name: e.name,
-            columns: e.columns,
-          })),
-          relationships: businessContext.relationships.map((r) => ({
-            from: r.fromView,
-            to: r.toView,
-            join: `${r.fromColumn} = ${r.toColumn}`,
-          })),
-          vocabulary: Array.from(businessContext.vocabulary.entries()).map(
-            ([_term, entry]) => ({
-              businessTerm: entry.businessTerm,
-              technicalTerms: entry.technicalTerms,
-              synonyms: entry.synonyms,
-            }),
-          ),
-        }
+        domain: businessContext.domain.domain,
+        entities: Array.from(businessContext.entities.values()).map((e) => ({
+          name: e.name,
+          columns: e.columns,
+        })),
+        relationships: businessContext.relationships.map((r) => ({
+          from: r.fromView,
+          to: r.toView,
+          join: `${r.fromColumn} = ${r.toColumn}`,
+        })),
+        vocabulary: Array.from(businessContext.vocabulary.entries()).map(
+          ([_term, entry]) => ({
+            businessTerm: entry.businessTerm,
+            technicalTerms: entry.technicalTerms,
+            synonyms: entry.synonyms,
+          }),
+        ),
+      }
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -119,7 +120,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,
@@ -134,8 +135,7 @@ export async function generateChartConfig(
   } catch (error) {
     console.error('[generateChartConfig] ERROR:', error);
     throw new Error(
-      `Failed to generate chart configuration: ${
-        error instanceof Error ? error.message : String(error)
+      `Failed to generate chart configuration: ${error instanceof Error ? error.message : String(error)
       }`,
     );
   }
