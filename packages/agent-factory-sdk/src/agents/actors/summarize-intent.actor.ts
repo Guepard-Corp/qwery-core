@@ -6,7 +6,7 @@ import { resolveModel } from '../../services/model-resolver';
 
 export const summarizeIntent = async (text: string, intent: Intent) => {
   const result = streamText({
-    model: await resolveModel('azure/gpt-5-mini'),
+    model: await resolveModel('lmstudio/llama-3.2-3b-instruct'),
     prompt: SUMMARIZE_INTENT_PROMPT(text, intent),
   });
 
