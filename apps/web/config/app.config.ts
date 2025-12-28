@@ -90,8 +90,8 @@ const appConfig = AppConfigSchema.parse({
   url: import.meta.env.VITE_SITE_URL,
   locale: import.meta.env.VITE_DEFAULT_LOCALE,
   theme: import.meta.env.VITE_DEFAULT_THEME_MODE,
-  themeColor: import.meta.env.VITE_THEME_COLOR,
-  themeColorDark: import.meta.env.VITE_THEME_COLOR_DARK,
+  themeColor: import.meta.env.VITE_THEME_COLOR || '#ffffff',
+  themeColorDark: import.meta.env.VITE_THEME_COLOR_DARK || '#0a0a0a',
   production,
 });
 

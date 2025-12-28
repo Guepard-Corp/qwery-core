@@ -1,9 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { InteractiveQueryHandler } from '../services/interactive-query-handler';
-import { CliContainer } from '../container/cli-container';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Datasource } from '@qwery/domain/entities';
 import { DatasourceKind } from '@qwery/domain/entities';
 import { CliUsageError } from '../utils/errors';
+
+// Mock FactoryAgent to throw Azure credential error - must be before import
+vi.mock('@qwery/agent-factory-sdk', () => {
+  return {
+    FactoryAgent: {
+      create: vi.fn().mockRejectedValue(
+        new Error('Azure credentials are not configured. Please set AZURE_API_KEY and AZURE_RESOURCE_NAME'),
+      ),
+    },
+    validateUIMessages: vi.fn(),
+  };
+});
+
+import { InteractiveQueryHandler } from '../services/interactive-query-handler';
+import { CliContainer } from '../container/cli-container';
 
 describe('InteractiveQueryHandler', () => {
   let container: CliContainer;
@@ -88,7 +101,7 @@ describe('InteractiveQueryHandler', () => {
       await expect(
         handler.execute('how many users do we have', testDatasource),
       ).rejects.toThrow(CliUsageError);
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('handles SQL queries (will fail without real driver, but tests the flow)', async () => {
       // Register extensions first

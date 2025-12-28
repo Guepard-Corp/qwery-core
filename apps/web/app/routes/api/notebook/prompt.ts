@@ -117,7 +117,7 @@ async function getOrCreateConversation(
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'lmstudio/llama-3.2-3b-instruct',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -274,7 +274,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'azure/gpt-5-mini',
+    model = 'lmstudio/llama-3.2-3b-instruct',
     notebookCellType,
   } = body;
 

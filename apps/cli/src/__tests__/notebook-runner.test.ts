@@ -1,8 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { NotebookRunner } from '../services/notebook-runner';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Datasource } from '@qwery/domain/entities';
 import { DatasourceKind } from '@qwery/domain/entities';
 import { CliUsageError } from '../utils/errors';
+
+// Mock FactoryAgent to throw Azure credential error - must be before import
+vi.mock('@qwery/agent-factory-sdk', () => {
+  return {
+    FactoryAgent: {
+      create: vi.fn().mockRejectedValue(
+        new Error('Azure credentials are not configured. Please set AZURE_API_KEY and AZURE_RESOURCE_NAME'),
+      ),
+    },
+    validateUIMessages: vi.fn(),
+  };
+});
+
+import { NotebookRunner } from '../services/notebook-runner';
 
 describe('NotebookRunner', () => {
   let runner: NotebookRunner;

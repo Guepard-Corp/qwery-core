@@ -65,6 +65,15 @@ async function createProvider(
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
       });
     }
+    case 'lmstudio': {
+      const { createLMStudioModelProvider } = await import(
+        './models/lmstudio-model.provider'
+      );
+      return createLMStudioModelProvider({
+        baseURL: getEnv('LMSTUDIO_BASE_URL') ?? 'http://127.0.0.1:1234/v1',
+        defaultModel: getEnv('LMSTUDIO_MODEL') ?? modelName,
+      });
+    }
     case 'browser': {
       const { createBuiltInModelProvider } = await import(
         './models/built-in-model.provider'
@@ -90,10 +99,11 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, lmstudio, browser, transformer-browser, transformer, webllm.`,
       );
   }
 }
+
 
 export async function resolveModel(
   modelString: string | undefined,
