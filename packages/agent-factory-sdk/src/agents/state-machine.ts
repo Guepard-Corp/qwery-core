@@ -46,7 +46,7 @@ export const createStateMachine = (
 
       isOther: ({ event }) => event.output?.intent === 'other',
 
-      isReadData: ({ event }) => event.output?.intent === 'read-data',
+      isReadData: ({ event }) => event.output?.intent === 'read_data',
 
       isSystem: ({ event }) => event.output?.intent === 'system',
 
@@ -281,7 +281,7 @@ export const createStateMachine = (
                   ],
                 },
                 after: {
-                  30000: {
+                  60000: {
                     target: 'retrying',
                     guard: 'shouldRetry',
                     actions: assign({

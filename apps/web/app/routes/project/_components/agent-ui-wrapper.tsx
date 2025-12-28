@@ -111,7 +111,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value || 'local-llm/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();
@@ -130,62 +130,56 @@ export const AgentUIWrapper = forwardRef<
     notifyLoadingStateChange,
   } = useNotebookSidebar();
 
-  // Track agent processing state for notebook loading sync
+  
   const { isProcessing } = useAgentStatus();
 
-  // Load current conversation to get existing datasources
+ 
   const { data: conversation, isLoading: isConversationLoading } =
     useGetConversationBySlug(repositories.conversation, conversationSlug);
 
-  // Get cell datasource from notebook context (if opened from a cell)
+ 
   const cellDatasource = getCellDatasource();
 
-  // Derive selected datasources from conversation
+ 
   const conversationDatasources = useMemo(
     () => conversation?.datasources || [],
     [conversation?.datasources],
   );
 
-  // Track pending user changes (cleared after successful mutation)
+  
   const [pendingDatasources, setPendingDatasources] = useState<string[] | null>(
     null,
   );
 
-  // Track notebook context state for paste functionality
+
   const [notebookContextState, setNotebookContextState] = useState<
     | {
-        cellId: number;
-        notebookCellType: 'query' | 'prompt';
-        datasourceId: string;
-      }
+      cellId: number;
+      notebookCellType: 'query' | 'prompt';
+      datasourceId: string;
+    }
     | undefined
   >(undefined);
 
-  // Track if we've already initialized datasource from cell to prevent overwriting user selections
+ 
   const initializedCellDatasourceRef = useRef<string | null>(null);
 
-  // Mutation to update conversation datasources
+  
   const updateConversation = useUpdateConversation(repositories.conversation);
 
-  // Update conversation when cell datasource is provided (initial setup)
-  // This runs once when cellDatasource is first set, before any messages are sent
-  // CRITICAL: Only runs once per cellDatasource value to avoid overwriting user selections
+ 
   useEffect(() => {
-    // Only initialize if:
-    // 1. We have a cell datasource
-    // 2. We haven't already initialized for this cell datasource
-    // 3. Conversation is loaded
+  
     if (
       cellDatasource &&
       conversation?.id &&
       initializedCellDatasourceRef.current !== cellDatasource &&
       !conversationDatasources.includes(cellDatasource)
     ) {
-      // Mark as initialized to prevent re-running when conversationDatasources changes
+      
       initializedCellDatasourceRef.current = cellDatasource;
 
-      // Update conversation to include cell datasource immediately
-      // This ensures the datasource is set before the message is sent
+     
       updateConversation.mutate(
         {
           id: conversation.id,
@@ -194,14 +188,13 @@ export const AgentUIWrapper = forwardRef<
         },
         {
           onSuccess: () => {
-            // Set pending datasources to ensure UI reflects the change immediately
+            
             setPendingDatasources([cellDatasource]);
           },
         },
       );
     } else if (cellDatasource && !conversation?.id) {
-      // If conversation not loaded yet, set pending datasources for immediate UI update
-      // Use requestAnimationFrame to defer state update outside of effect
+      
       requestAnimationFrame(() => {
         setPendingDatasources([cellDatasource]);
       });
@@ -214,36 +207,33 @@ export const AgentUIWrapper = forwardRef<
   }, [
     cellDatasource,
     conversation?.id,
-    // CRITICAL: Only check conversationDatasources for the initial condition check
-    // The ref prevents re-running when conversationDatasources changes due to user selection
+ 
     conversationDatasources,
     updateConversation,
     workspace.username,
     workspace.userId,
   ]);
 
-  // Priority for display: cellDatasource > pending datasources > conversation datasources
-  // This ensures the notebook cell's datasource is shown in the UI immediately
-  // cellDatasource is cleared when user manually changes selection or after first message
+ 
   const selectedDatasources = useMemo(() => {
-    // If cellDatasource is set, show it in the UI (user can still change it)
+    
     if (cellDatasource) {
       return [cellDatasource];
     }
-    // Otherwise use pending datasources or conversation datasources
+   
     return pendingDatasources !== null
       ? pendingDatasources
       : conversationDatasources;
   }, [cellDatasource, pendingDatasources, conversationDatasources]);
 
-  // Fetch datasources for the current project
+ 
   const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
     workspace.projectId || '',
     { enabled: !!workspace.projectId },
   );
 
-  // Fetch extension metadata for datasource icons
+  
   const { data: pluginMetadata = [] } = useQuery({
     queryKey: ['all-plugin-metadata'],
     queryFn: () => getAllExtensionMetadata(),
@@ -260,7 +250,7 @@ export const AgentUIWrapper = forwardRef<
     return map;
   }, [pluginMetadata]);
 
-  // Convert datasources to DatasourceItem format
+
   const datasourceItems = useMemo<DatasourceItem[]>(() => {
     if (!datasources.data) return [];
     return datasources.data.map((ds) => ({
@@ -278,8 +268,7 @@ export const AgentUIWrapper = forwardRef<
     [conversationSlug, repositories],
   );
 
-  // Handle sendMessage and model from QweryAgentUI
-  // eslint-disable react-hooks/preserve-manual-memoization -- React Compiler warning about dependency inference
+  
   const handleSendMessageReady = useCallback(
     (sendMessageFn: SendMessageFn, model: string) => {
       internalSendMessageRef.current = sendMessageFn;
@@ -295,12 +284,10 @@ export const AgentUIWrapper = forwardRef<
         setMessagesRef.current = sendMessageWithSetMessages.setMessages;
       }
 
-      // Create wrapper that uses cellDatasource for initial message, then selectedDatasources
-      // This function is stable and doesn't need to be recreated on every datasource change
+     
       sendMessageRef.current = async (text: string) => {
         if (internalSendMessageRef.current) {
-          // CRITICAL: ALWAYS check getCellDatasource() directly, not selectedDatasources
-          // selectedDatasources might be stale or not updated yet
+         
           const currentCellDs = getCellDatasource();
           // Get notebookCellType BEFORE clearing it
           const currentNotebookCellType = getNotebookCellType();
@@ -401,9 +388,7 @@ export const AgentUIWrapper = forwardRef<
               },
             );
 
-            // Capture notebook context in state when sending message
-            // This ensures context is available when tool output arrives
-            // Always set context if we have notebook indicators (for paste button visibility)
+            
             if (currentCellId !== undefined && currentCellDs) {
               setNotebookContextState({
                 cellId: currentCellId,
@@ -420,14 +405,7 @@ export const AgentUIWrapper = forwardRef<
             });
           }
 
-          // Don't clear context immediately - keep it for paste functionality
-          // The context will be used when tool output arrives to show paste button
-          // Only clear after tool output is received or after a delay
-          // Note: We keep cellId, notebookCellType, and datasourceId for paste functionality
-          // They will be cleared when the conversation ends or user navigates away
-
-          // Send message with metadata - useChat should preserve metadata if passed in message object
-          // We'll also update the message after it's created as a fallback
+       
           await internalSendMessageRef.current(
             {
               text,
@@ -437,21 +415,21 @@ export const AgentUIWrapper = forwardRef<
             },
             {
               body: {
-                model: currentModelRef.current, // Use the current model from chat interface
-                datasources: datasourcesToUse, // This MUST be the correct datasource(s)
+                model: currentModelRef.current, 
+                datasources: datasourcesToUse, 
               },
             },
           );
 
-          // Fallback: Update message metadata immediately after sending (in case useChat doesn't preserve it)
+        
           if (
             setMessagesRef.current &&
             Object.keys(messageMetadata).length > 0
           ) {
-            // Use requestAnimationFrame to ensure message is added to array first
+         
             requestAnimationFrame(() => {
               setMessagesRef.current?.((prev: UIMessage[]) => {
-                // Find the last user message and ensure it has our metadata
+              
                 const lastUserMessageIndex = prev.findLastIndex(
                   (msg: UIMessage) => msg.role === 'user',
                 );
@@ -515,15 +493,13 @@ export const AgentUIWrapper = forwardRef<
   // Handle datasource selection change and save to conversation
   const handleDatasourceSelectionChange = useCallback(
     (datasourceIds: string[]) => {
-      // Clear cell datasource when user manually changes selection
-      // This allows user to override the notebook cell's datasource
+      
       clearCellDatasource();
 
       // Set pending datasources for immediate UI update
       setPendingDatasources(datasourceIds);
 
-      // Save to conversation if conversation is loaded
-      // CRITICAL: Update conversation synchronously to ensure agent uses new datasources
+    
       if (conversation?.id) {
         // Check if datasources actually changed
         const currentSorted = [...(conversationDatasources || [])].sort();
@@ -562,8 +538,7 @@ export const AgentUIWrapper = forwardRef<
     ],
   );
 
-  // Determine if we're loading - check if messages or conversation are loading
-  // initialMessages being undefined means messages haven't loaded yet
+ 
   const isLoading =
     isMessagesLoading ||
     isConversationLoading ||
@@ -587,9 +562,7 @@ export const AgentUIWrapper = forwardRef<
         setNotebookContextState(newContext);
       });
     } else {
-      // Don't clear immediately - keep it for a bit in case tool output arrives
-      // Only clear if all values are gone (user navigated away)
-      // Use a timeout to keep context for a reasonable time (30 seconds)
+   
       if (cellId === undefined && !datasourceId) {
         const timeoutId = setTimeout(() => {
           setNotebookContextState(undefined);

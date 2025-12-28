@@ -171,7 +171,7 @@ export class FactoryAgent {
             ),
           );
         }
-      }, 60000);
+      }, 180000); // 3 minutes for local LLMs which can be slow and run multiple steps
 
       let userInputSent = false;
 

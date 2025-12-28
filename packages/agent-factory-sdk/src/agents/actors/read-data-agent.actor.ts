@@ -16,6 +16,7 @@ import { renameTable } from '../../tools/rename-table';
 import { deleteTable } from '../../tools/delete-table';
 import { loadBusinessContext } from '../../tools/utils/business-context.storage';
 import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
+import { COMPACT_READ_DATA_AGENT_PROMPT } from '../prompts/compact-read-data-agent.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
 import { getConfig } from '../../tools/utils/business-context.config';
@@ -174,9 +175,12 @@ export const readDataAgent = async (
     );
   }
 
+  const isLocalLLM = model.startsWith('local-llm/');
+  const systemPrompt = isLocalLLM ? COMPACT_READ_DATA_AGENT_PROMPT : READ_DATA_AGENT_PROMPT;
+
   const result = new Agent({
     model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
+    system: systemPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -197,8 +201,9 @@ export const readDataAgent = async (
         },
       }),
       getSchema: tool({
-        description:
-          'Get schema information (columns, data types, business context) for specific tables/views. Returns column names, types, and business context for the specified tables. If viewName is provided, returns schema for that specific view/table. If viewNames (array) is provided, returns schemas for only those specific tables/views. If neither is provided, returns schemas for everything discovered in DuckDB. This updates the business context automatically.',
+        description: isLocalLLM
+          ? 'Get table schemas and business context. Pass viewName or viewNames for specific tables, or nothing for everything.'
+          : 'Get schema information (columns, data types, business context) for specific tables/views. Returns column names, types, and business context for the specified tables. If viewName is provided, returns schema for that specific view/table. If viewNames (array) is provided, returns schemas for only those specific tables/views. If neither is provided, returns schemas for everything discovered in DuckDB. This updates the business context automatically.',
         inputSchema: z.object({
           viewName: z.string().optional(),
           viewNames: z.array(z.string()).optional(),
@@ -213,10 +218,9 @@ export const readDataAgent = async (
               : undefined;
 
           console.log(
-            `[ReadDataAgent] getSchema called${
-              requestedViews
-                ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
-                : ' (all views)'
+            `[ReadDataAgent] getSchema called${requestedViews
+              ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
+              : ' (all views)'
             }`,
           );
 
@@ -659,8 +663,9 @@ export const readDataAgent = async (
         },
       }),
       runQuery: tool({
-        description:
-          'Run a SQL query against the DuckDB instance (views from file-based datasources or attached database tables). Query views by name (e.g., "customers") or attached tables by datasource path (e.g., "datasourcename.tablename" or "datasourcename.schema.tablename"). DuckDB enables federated queries across PostgreSQL, MySQL, Google Sheets, and other datasources.',
+        description: isLocalLLM
+          ? 'Execute SQL query against DuckDB views or attached tables. Use getSchema first to find table names.'
+          : 'Run a SQL query against the DuckDB instance (views from file-based datasources or attached database tables). Query views by name (e.g., "customers") or attached tables by datasource path (e.g., "datasourcename.tablename" or "datasourcename.schema.tablename"). DuckDB enables federated queries across PostgreSQL, MySQL, Google Sheets, and other datasources.',
         inputSchema: z.object({
           query: z.string(),
         }),
@@ -814,8 +819,9 @@ export const readDataAgent = async (
         },
       }),
       selectChartType: tool({
-        description:
-          'Analyzes query results to determine the best chart type (bar, line, or pie) based on the data structure and user intent. Use this before generating a chart to select the most appropriate visualization type.',
+        description: isLocalLLM
+          ? 'Select best chart type (bar, line, pie) for data.'
+          : 'Analyzes query results to determine the best chart type (bar, line, or pie) based on the data structure and user intent. Use this before generating a chart to select the most appropriate visualization type.',
         inputSchema: z.object({
           queryResults: z.object({
             rows: z.array(z.record(z.unknown())),
@@ -850,8 +856,9 @@ export const readDataAgent = async (
         },
       }),
       generateChart: tool({
-        description:
-          'Generates a chart configuration JSON for visualization. Takes query results and creates a chart (bar, line, or pie) with proper data transformation, colors, and labels. Use this after selecting a chart type or when the user requests a specific chart type.',
+        description: isLocalLLM
+          ? 'Generate chart configuration JSON for bar, line, or pie charts.'
+          : 'Generates a chart configuration JSON for visualization. Takes query results and creates a chart (bar, line, or pie) with proper data transformation, colors, and labels. Use this after selecting a chart type or when the user requests a specific chart type.',
         inputSchema: z.object({
           chartType: z.enum(['bar', 'line', 'pie']).optional(),
           queryResults: z.object({
@@ -912,7 +919,7 @@ export const readDataAgent = async (
 
   return result.stream({
     messages: convertToModelMessages(await validateUIMessages({ messages })),
-    providerOptions: {
+    providerOptions: isLocalLLM ? {} : {
       openai: {
         reasoningSummary: 'auto', // 'auto' for condensed or 'detailed' for comprehensive
         reasoningEffort: 'medium',

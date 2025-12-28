@@ -7,6 +7,7 @@ import {
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
@@ -46,7 +47,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = getDefaultModel(),
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,20 +105,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || getDefaultModel();
+  console.log('[Chat API] Using model:', model);
   const datasources: string[] | undefined = body.datasources;
 
   try {
-    // Check if this is the first user message and title needs to be generated
+    
     const conversation =
       await repositories.conversation.findBySlug(conversationSlug);
 
-    // CRITICAL: Update conversation datasources if provided in request body
-    // The agent uses conversation datasources, so we must update them before creating the agent
+    
     if (datasources && datasources.length > 0 && conversation) {
       const currentDatasources = conversation.datasources || [];
-      // Check if datasources are different by comparing IDs (not just count)
-      // Sort both arrays to ensure consistent comparison regardless of order
+    
       const currentSorted = [...currentDatasources].sort();
       const newSorted = [...datasources].sort();
       const datasourcesChanged =
@@ -129,18 +129,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
           `[Chat API] Updating conversation datasources from [${currentDatasources.join(', ')}] to [${datasources.join(', ')}]`,
         );
 
-        // CRITICAL: Invalidate cached agent BEFORE updating conversation
-        // This ensures the agent cache is cleared before we update the conversation
-        // so the new agent will read the updated datasources
+
         const cachedAgent = agents.get(conversationSlug);
         if (cachedAgent) {
           try {
-            // Stop the old agent
+        
             cachedAgent.stop();
           } catch (error) {
             console.warn(`Error stopping agent ${conversationSlug}:`, error);
           }
-          // Remove from cache to force recreation with new datasources
+          
           agents.delete(conversationSlug);
           agentLastAccess.delete(conversationSlug);
           agentCreationLocks.delete(conversationSlug);
@@ -149,21 +147,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
           );
         }
 
-        // CRITICAL: Update conversation AFTER invalidating agent cache
-        // This ensures the new agent will read the updated datasources
+      
         await repositories.conversation.update({
           ...conversation,
-          datasources: datasources, // REPLACE with the provided datasources
+          datasources: datasources, 
           updatedBy: conversation.createdBy || 'system',
           updatedAt: new Date(),
         });
 
-        // Refetch conversation to get updated datasources
-        // This ensures the conversation object has the latest datasources before agent creation
+     
         const updatedConversation =
           await repositories.conversation.findBySlug(conversationSlug);
         if (updatedConversation) {
-          // Update the conversation reference for the rest of the function
+          
           Object.assign(conversation, updatedConversation);
           console.log(
             `[Chat API] Conversation datasources updated to: [${updatedConversation.datasources?.join(', ') || 'none'}]`,
@@ -176,19 +172,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
     }
 
-    // CRITICAL: Compute shouldGenerateTitle AFTER all conversation updates
-    // This ensures we use the latest conversation state after datasource updates
+    
     const shouldGenerateTitle =
       conversation &&
       conversation.title === 'New Conversation' &&
       (() => {
-        // This will be checked after streaming completes
+        
         return true;
       })();
 
     const agent = await getOrCreateAgent(conversationSlug, model);
 
-    // Get the last user message for intent detection
+    
     const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
     const lastUserMessageText =
       lastUserMessage?.parts
@@ -197,7 +192,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         .join(' ')
         .trim() || '';
 
-    // Always run intent detection for both inline and chat modes
+    
     let needSQL = false;
     if (lastUserMessageText) {
       try {
@@ -214,21 +209,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
         });
       } catch (error) {
         console.warn('[Chat API] Intent detection failed:', error);
-        // Default to false if detection fails
+       
         needSQL = false;
       }
     }
 
-    // Process messages to extract suggestion guidance and apply it internally
-    // Also add datasources, promptSource, and needSQL to the last user message metadata
+ 
     const processedMessages = messages.map((message, index) => {
-      // Add metadata for the last user message
+      
       const isLastUserMessage =
         message.role === 'user' && index === messages.length - 1;
 
       if (isLastUserMessage) {
-        // Detect if message is coming from notebook (inline mode)
-        // Check if metadata has promptSource: 'inline' or notebookCellType
+       
         const messageMetadata = (message.metadata || {}) as Record<
           string,
           unknown
@@ -249,9 +242,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
           isNotebookSource,
         });
 
-        // Build metadata - preserve notebookCellType if present, remove conflicting 'source' field
+        
         const cleanMetadata: Record<string, unknown> = { ...messageMetadata };
-        delete cleanMetadata.source; // Remove conflicting source field
+        delete cleanMetadata.source; 
 
         message = {
           ...message,
@@ -273,7 +266,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           const guidanceEndMarker = '__QWERY_SUGGESTION_GUIDANCE_END__';
 
           if (text.includes(guidanceMarker)) {
-            // Extract guidance and clean message
+            
             const startIndex = text.indexOf(guidanceMarker);
             const endIndex = text.indexOf(guidanceEndMarker);
 
@@ -283,7 +276,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
                 .substring(endIndex + guidanceEndMarker.length)
                 .trim();
 
-              // Apply suggestion guidance internally by prepending it to the user message
+              
               const suggestionGuidance = `[SUGGESTION WORKFLOW GUIDANCE]
 - This is a suggested next step from a previous response - execute it directly and efficiently
 - Use the provided context (previous question/answer) to understand the full conversation flow
@@ -317,14 +310,14 @@ User request: ${cleanText}`;
       return new Response(null, { status: 204 });
     }
 
-    // Extract user message for title generation
+   
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => (part as { text: string }).text)
-          .join(' ')
-          .trim() || ''
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
       : '';
 
     const stream = new ReadableStream({
@@ -338,9 +331,9 @@ User request: ${cleanText}`;
             if (done) {
               controller.close();
 
-              // After stream completes, generate title if needed
+              
               if (shouldGenerateTitle && userMessageText) {
-                // Wait a bit for messages to be saved to database
+                
                 setTimeout(async () => {
                   try {
                     const existingMessages =
@@ -354,7 +347,7 @@ User request: ${cleanText}`;
                       (msg) => msg.role === MessageRole.ASSISTANT,
                     );
 
-                    // Only generate if this is still the first exchange
+                    
                     if (
                       userMessages.length === 1 &&
                       assistantMessages.length === 1 &&
@@ -363,7 +356,7 @@ User request: ${cleanText}`;
                       const assistantMessage = assistantMessages[0];
                       if (!assistantMessage) return;
 
-                      // Extract text from message content (which contains UIMessage structure with parts)
+                     
                       let assistantText = '';
                       if (
                         typeof assistantMessage.content === 'object' &&
@@ -404,7 +397,7 @@ User request: ${cleanText}`;
                       error,
                     );
                   }
-                }, 1000); // Wait 1 second for messages to be saved
+                }, 1000); 
               }
 
               break;
@@ -429,6 +422,8 @@ User request: ${cleanText}`;
       },
     });
   } catch (error) {
+    console.error('[Chat API] ERROR:', error);
+    console.error('[Chat API] Error stack:', error instanceof Error ? error.stack : 'No stack');
     return handleDomainException(error);
   }
 }
