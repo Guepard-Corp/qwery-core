@@ -111,7 +111,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ?? 'local-llm/tinyllama-1.1b-chat',// 'azure/gpt-5-mini',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();

@@ -105,7 +105,7 @@ importers:
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
       '@ai-sdk/openai':
-        specifier: ^2.0.68
+        specifier: ^2.0.71
         version: 2.0.71(zod@3.25.76)
       '@ai-sdk/provider':
         specifier: ^2.0.0
@@ -622,9 +622,12 @@ importers:
       '@ai-sdk/amazon-bedrock':
         specifier: ^3.0.56
         version: 3.0.61(zod@3.25.76)
-      '@ai-sdk/azure':
-        specifier: ^2.0.73
-        version: 2.0.73(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^2.0.71
+        version: 2.0.71(zod@3.25.76)
+      '@ai-sdk/provider':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@aws-sdk/client-s3':
         specifier: ^3.936.0
         version: 3.948.0

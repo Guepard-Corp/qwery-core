@@ -21,7 +21,7 @@ export const detectIntent = async (text: string) => {
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel('local-llm/tinyllama-1.1b-chat'),//'azure/gpt-5-mini'),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text),
       });

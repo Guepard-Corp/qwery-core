@@ -36,7 +36,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel('local-llm/tinyllama-1.1b-chat'),//('azure/gpt-5-mini'),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 
