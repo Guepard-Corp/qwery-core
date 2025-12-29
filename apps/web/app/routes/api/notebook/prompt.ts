@@ -11,6 +11,7 @@ import {
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
 import { v4 as uuidv4 } from 'uuid';
+import { ACTIVE_LLM } from '~/default-model'
 
 const agents = new Map<string, FactoryAgent>();
 const agentLastAccess = new Map<string, number>();
@@ -117,7 +118,7 @@ async function getOrCreateConversation(
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = ACTIVE_LLM,
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -274,7 +275,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'azure/gpt-5-mini',
+    model = ACTIVE_LLM,
     notebookCellType,
   } = body;
 

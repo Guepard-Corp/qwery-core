@@ -1,166 +1,119 @@
-![Guepard](/resources/guepard-cover.png)
+# Local LLM Integration (vLLM)
 
-<div align="center">
-    <h1>The Boring Qwery Platform - Connect and query anything</h1>
-    <br />  
-    <p align="center">
-    <a href="https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6">
-        <img src="https://img.shields.io/badge/Watch-YouTube-%23ffcb51?logo=youtube&logoColor=black" alt="Watch on YouTube" />
-    </a>
-    <a href="https://discord.gg/nCXAsUd3hm">
-        <img src="https://img.shields.io/badge/Join-Community-%23ffcb51?logo=discord&logoColor=black" alt="Join our Community" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/build_and_test.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/ci.yml?branch=main" alt="Build">
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/blob/main/LICENCE" target="_blank">
-        <img src="https://img.shields.io/badge/license-ELv2-blue.svg" alt="License" />
-    </a>
-    <a href="https://nodejs.org/" target="_blank">
-        <img src="https://img.shields.io/badge/node-%3E%3D22.x-brightgreen" alt="Node Version" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/pulls" target="_blank">
-        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
-    </a>
-    </p>
-</div>
+## Local LLM Used
 
-## Important Notice
+- Inference engine: vLLM
+- Model: Qwen2.5-Coder-7B-Instruct
+- Quantization: Q4_K_M (GGUF)
+- Runtime: CUDA + PyTorch
+- Hardware tested on: RTX 3080 (10 GB VRAM)
 
-🚧 This project is under active development and not yet suitable for production use. Expect breaking changes, incomplete features, and evolving APIs.
+> vLLM was chosen due to existing CUDA and PyTorch setup, its suitability for concurrent request handling, and as a learning alternative to llama.cpp, which was previously used.
 
-# Qwery Platform - The Vision
+## Model Details
 
-Qwery is the most capable platform for querying and visualizing data without requiring any prior technical knowledge in data engineering. Using natural language in any supported language, Qwery seamlessly integrates with hundreds of datasources, automatically generates optimized queries, and delivers outcomes across multiple targets including result sets, dashboards, data apps, reports, and APIs.
+- Model file:
+  qwen2.5-coder-7b-instruct-q4_k_m.gguf
+- Tokenizer:
+  Qwen/Qwen2.5-Coder-7B-Instruct
+- Context length:
+  16k tokens (32k caused VRAM exhaustion on the target GPU)
 
-### Getting Started
+> Although GGUF is more commonly associated with llama.cpp, vLLM supports loading it with explicit tokenizer configuration.
 
-1. **Choose your environment**: Download the desktop application or connect to the [Qwery Cloud Platform](https://app.qwery.run)
-2. **Connect your data**: Link to your databases, APIs, or other datasources
-3. **Start querying**: Use natural language to query your datasources instantly
-4. **Work with AI agents**: Press `CMD/CTRL + L` to collaborate with intelligent agents that assist with your data workflows
+## Instructions to Run the Local LLM
 
-## 🌟 Features
-
-- **Natural Language Querying**: Ask questions in plain language, get SQL automatically
-- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB, DuckDB, ClickHouse, SQL Server, and more
-- **AI-Powered Agents**: Intelligent assistants that help with data workflows (CMD/CTRL + L)
-- **Visual Data Apps**: Build dashboards and data applications without code
-- **Desktop & Cloud**: Run locally or use our cloud platform
-- **Template Library**: Pre-built notebooks, queries, and dashboards
-- **Extensible**: Plugin system for custom datasources and integrations
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js >= 22.x
-- pnpm >= 10.x
-
-### Installation
+### Start the vLLM Server
 
 ```bash
-# Clone the repository
-git clone https://github.com/Guepard-Corp/qwery-core.git
-cd qwery-core
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
+vllm serve \
+  ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/snapshots/13fb94bfda8c8cf22497dc57b78f391a9acb426a/qwen2.5-coder-7b-instruct-q4_k_m.gguf \
+  --tokenizer Qwen/Qwen2.5-Coder-7B-Instruct \
+  --max-model-len 16384 \
+  --gpu-memory-utilization 0.75 \
+  --max-num-seqs 4 \
+  --served-model-name qwen2.5-coder-7b-instruct \
+  --dtype auto \
+  --api-key test-abc123
 ```
 
-The web app will be available at `http://localhost:3000`
+Key flags:
+- max-model-len is limited to 16k due to VRAM constraints
+- max-num-seqs controls concurrent requests
+- served-model-name is the identifier used by the OpenAI compatible API
+- api-key is required to match the OpenAI API schema but is not used for authentication in local mode
 
-### Desktop Application
+### Verify the Server
+
+List available models:
 
 ```bash
-# Build and run desktop app
-pnpm desktop:dev
+curl -X GET http://127.0.0.1:8000/v1/models
+ \
+  -H "Authorization: Bearer test-abc123" | jq
 ```
 
-## 🛠️ Development
-
-### Monorepo Structure
-
-This is a Turborepo monorepo with the following structure:
-
-- `apps/web` - Main React Router SaaS application
-- `apps/cli` - Command-line interface
-- `apps/desktop` - Desktop application (Electron)
-- `apps/e2e` - Playwright end-to-end tests
-- `packages/features/*` - Feature packages
-- `packages/` - Shared packages and utilities
-- `tooling/` - Build tools and development scripts
-
-### Development Commands
+Request a completion:
 
 ```bash
-# Start all apps in development mode
-pnpm dev
-
-# Start specific app
-pnpm --filter web dev        # Web app (port 3000)
-pnpm --filter desktop dev    # Desktop app
-
-# Code Quality
-pnpm format:fix              # Auto-fix formatting
-pnpm lint:fix                # Auto-fix linting issues
-pnpm typecheck               # Type checking
-pnpm check                   # Run all quality checks (format, lint, typecheck, build, test)
-
-# Build
-pnpm build                   # Build all packages
-
-# Testing
-pnpm test                    # Run all tests
+curl -X POST http://127.0.0.1:8000/v1/completions
+ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer test-abc123" \
+  -d '{
+    "model": "qwen2.5-coder-7b-instruct",
+    "prompt": "Write a function in Python that sums a list of numbers.",
+    "max_tokens": 100
+  }' | jq
 ```
 
-### Code Quality Standards
+>jq is optional and used only for pretty printing responses.
 
-- **TypeScript**: Strict type checking, avoid `any` types
-- **Linting**: ESLint with strict rules
-- **Formatting**: Prettier with consistent style
-- **Testing**: Vitest for unit tests, Playwright for E2E
+## How the Provider Works
 
-Always run `pnpm check` before committing to ensure all quality checks pass.
+- The application uses an OpenAI compatible HTTP interface.
+- vLLM exposes `/v1/completions` and `/v1/models`, matching the OpenAI API contract.
+- The active model name is centralized in a shared config to avoid hardcoded strings across services and agents.
+- The provider points to a local base URL instead of Azure OpenAI endpoints.
 
-## 📚 Documentation
 
-- [Contributing Guide](CONTRIBUTING.md)
-- [Pull Request Guide](docs/contribution/pull-request-guide.md)
-- [Desktop App Documentation](docs/desktop.md)
-- [RFCs](docs/rfcs/)
+## Environment Variables Added
+Defined under `cli/.env`:
 
-## 🤝 Contributing
+```env
+VLLM_MODEL=vllm/qwen2.5-coder-7b-instruct
+VLLM_BASE_URL=http://localhost:8000/v1
+VLLM_API_KEY=test-abc123
+```
 
-We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
+## List of Modified Files
 
-### Before Submitting
+- `apps/web/config/app.config.ts`
+  Added fallback defaults for `VITE_THEME_COLOR` and `VITE_THEME_COLOR_DARK` to prevent startup crashes when Vite does not load them from `.env`.
 
-1. Run `pnpm check` to ensure all quality checks pass
-2. Make sure your code follows our [TypeScript guidelines](AGENTS.md#typescript)
-3. Write tests for new features
-4. Update documentation as needed
+- `agent-factory-sdk/src/agents/config/active-model.ts`
+  Introduced `ACTIVE_LLM` as a single source of truth for the active model name.
 
-### Resources
+- Multiple files under:
+  - actors
+  - services
+  - apps/web
 
-- Review [good first issues](https://github.com/Guepard-Corp/qwery-core/issues?q=is%3Aopen+is%3Aissue+label%3A%22good%20first%20issue%22)
-- Read our [Code of Conduct](CODE_OF_CONDUCT.md)
-- Check [AGENTS.md](AGENTS.md) for development guidelines
-- Join our [Discord community](https://discord.gg/nCXAsUd3hm)
+  Refactored to reference `ACTIVE_LLM` instead of hardcoding model identifiers.
 
-## 💬 Join Qwery Community
+Refer to the Git diff for the complete list.
 
-- **Discord**: [Join our Discord](https://discord.gg/nCXAsUd3hm) for discussions and support
-- **GitHub Issues**: Report bugs and request features
-- **YouTube**: [Watch demos and tutorials](https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6)
+## Build and Runtime Confirmation
 
-## 📄 License
+- All builds pass successfully.
+- The application runs end to end using the local vLLM backend.
+- A working demo and build confirmation are shown in the videos shared via email.
 
-This project uses the Elastic License 2.0 (ELv2). See the [LICENSE](LICENCE) file for details.
-
-## 🙏 Thank You
-
-We're grateful to the open source community. See our [Thank You](THANK-YOU.md) page for acknowledgments.
+## Assumptions and Notes
+- The original assessment instructions suggested removing all cloud based LLM dependencies and secrets and fully replacing them with a local open source model. Instead of deleting existing Azure OpenAI configuration and code paths, a local vLLM based provider was added as a first class integration and set as the default active model. This approach preserves backward compatibility, avoids breaking existing functionality, and demonstrates that the application can run entirely on a local LLM with no reliance on cloud execution. All runtime requests are routed to the local vLLM server, and cloud credentials are not required for the application to build or operate.
+- The repository is heavily biased toward Azure and `gpt-5-mini`. Other providers (ollama,built in browser...) are assumed non functional without refactoring.
+- Significant code duplication exists, for example repeated `getOrCreateAgent` logic in:
+  - apps/web/app/routes/api/notebook/prompt
+  - apps/web/app/routes/api/chat
+- Evaluation is assumed to focus on LLM integration and provider wiring rather than model quality, embeddings, or UI.
+- No embedding model or external data sources are configured.

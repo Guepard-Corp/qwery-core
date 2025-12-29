@@ -9,7 +9,8 @@
       "~/config/*": ["./config/*"],
       "~/components/*": ["./components/*"],
       "~/lib/*": ["./lib/*"],
-      "~/types/*": ["./.react-router/types/*"]
+      "~/types/*": ["./.react-router/types/*"],
+      "~/default-model":["../../packages/agent-factory-sdk/src/config/active-model"],
     },
     "noEmit": true,
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",

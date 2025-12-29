@@ -9,6 +9,7 @@ import { SELECT_CHART_TYPE_PROMPT } from '../prompts/select-chart-type.prompt';
 import { GENERATE_CHART_CONFIG_PROMPT } from '../prompts/generate-chart-config.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { getSupportedChartTypes } from '../config/supported-charts';
+import { ACTIVE_LLM } from '../../config/active-model'
 
 export interface QueryResults {
   rows: Array<Record<string, unknown>>;
@@ -65,7 +66,7 @@ export async function selectChartType(
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(ACTIVE_LLM),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -119,7 +120,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(ACTIVE_LLM),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,
