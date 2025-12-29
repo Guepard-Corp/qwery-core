@@ -485,6 +485,7 @@ export const createStateMachine = (
               id: 'SYSTEM_INFO',
               input: ({ context }: { context: AgentContext }) => ({
                 inputMessage: context.inputMessage,
+                model: context.model,
               }),
               onDone: {
                 target: 'streaming',

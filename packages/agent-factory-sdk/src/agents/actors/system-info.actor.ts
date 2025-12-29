@@ -3,9 +3,12 @@ import { fromPromise } from 'xstate/actors';
 import { SYSTEM_INFO_PROMPT } from '../prompts/system-info.prompt';
 import { resolveModel } from '../../services';
 
-export const systemInfo = async (text: string) => {
+export const systemInfo = async (
+  text: string,
+  model: string = 'llamacpp/llama-model',
+) => {
   const result = streamText({
-    model: await resolveModel('azure/gpt-5-mini'),
+    model: await resolveModel(model),
     prompt: SYSTEM_INFO_PROMPT(text),
   });
 
@@ -18,9 +21,10 @@ export const systemInfoActor = fromPromise(
   }: {
     input: {
       inputMessage: string;
+      model: string;
     };
   }) => {
-    const result = systemInfo(input.inputMessage);
+    const result = systemInfo(input.inputMessage, input.model);
     return result;
   },
 );
