@@ -43,6 +43,7 @@ export function createLlamaCppModelProvider(
       const finalModel =
         modelName ||
         options.defaultModel ||
+        process.env.LLAMACPP_MODEL_NAME ||
         'mistral-7b-instruct-v0.2.Q2_K.gguf';
 
       // ✅ this will call /v1/chat/completions (NOT /responses)

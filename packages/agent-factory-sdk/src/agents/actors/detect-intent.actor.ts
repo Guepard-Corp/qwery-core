@@ -6,12 +6,14 @@ import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
 import { resolveModel } from '../../services/model-resolver';
 
 const DEFAULT_AZURE_MODEL = 'azure/gpt-5-mini';
-const DEFAULT_LLAMACPP_MODEL = 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
 
 function getIntentModel(): string {
   const hasAzureCreds =
     !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
-  return hasAzureCreds ? DEFAULT_AZURE_MODEL : DEFAULT_LLAMACPP_MODEL;
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
 }
 
 export const detectIntent = async (text: string) => {
