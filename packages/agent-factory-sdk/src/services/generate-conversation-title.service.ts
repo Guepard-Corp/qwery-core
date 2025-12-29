@@ -41,8 +41,8 @@ export async function generateConversationTitle(
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
-        () => reject(new Error('Title generation timeout after 10 seconds')),
-        10000,
+        () => reject(new Error('Title generation timeout after 50 seconds')),
+        50000,
       );
     });
 
