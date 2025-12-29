@@ -10,6 +10,10 @@ import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
 import { getExtension } from '@qwery/extensions-loader';
 import { apiPost } from '~/lib/repositories/api-client';
 
+import {
+  getDefaultModel,
+} from '@qwery/agent-factory-sdk';
+
 interface NotebookPromptResponse {
   sqlQuery: string | null;
   hasSql: boolean;
@@ -188,7 +192,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model: options.model || getDefaultModel(),
         },
       );
 

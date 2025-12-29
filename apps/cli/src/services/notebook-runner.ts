@@ -6,6 +6,7 @@ import {
   type FactoryAgentOptions,
   validateUIMessages,
   type UIMessage,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import {
   ConversationRepository,
@@ -101,7 +102,7 @@ export class NotebookRunner {
 
         agent = await FactoryAgent.create({
           conversationSlug,
-          model: 'azure/gpt-5-mini',
+          model: getDefaultModel(),
           repositories: repositories as FactoryAgentOptions['repositories'],
         });
         agents.set(options.datasource.id, agent);
