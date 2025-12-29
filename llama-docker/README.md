@@ -1,227 +1,253 @@
 # Llama.cpp Docker Server with Mistral 7B
 
-This Docker setup runs llama.cpp server with the Mistral 7B Instruct model for inference via API (Postman compatible). Everything (code + model) is baked into the image at build time.
+A self-contained Docker setup for running llama.cpp server with Mistral 7B Instruct model. Optimized for handling large context queries from Qwery.
 
-## Prerequisites
+## 🚀 Quick Start
+
+### Prerequisites
 
 - Docker
 - Docker Compose
 - At least 4GB free disk space
 
-## Setup Instructions
-
-### 1. Download the Model
-
-First, create the models directory and download the Mistral 7B Instruct model:
+### Build and Run
 
 ```bash
-# Create models directory
-mkdir models
-
-# Download the model (Q2_K quantized version - ~2.5GB)
-curl -L -o models/mistral-7b-instruct-v0.2.Q2_K.gguf \
-  https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q2_K.gguf
-```
-
-**Alternative download methods:**
-
-**Using wget:**
-```bash
-wget -O models/mistral-7b-instruct-v0.2.Q2_K.gguf \
-  https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q2_K.gguf
-```
-
-**Or download manually:**
-- Visit: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF
-- Download `mistral-7b-instruct-v0.2.Q2_K.gguf`
-- Place it in the `models/` folder
-
-### 2. Build and Run the Docker Container
-
-```bash
-# Build the Docker image
+# Build the Docker image (downloads model during build)
 docker-compose build
 
 # Start the server
 docker-compose up -d
-```
 
-### 3. Verify the Server is Running
-
-```bash
-# Check container logs
+# Check logs
 docker-compose logs -f
-
-# Or check if the server is responding
-curl http://localhost:8080/health
-```
-
-## Using with Postman
-
-### Health Check
-
-**Request:**
-```
-GET http://localhost:8080/health
-```
-
-### Generate Text (Completion)
-
-**Request:**
-```
-POST http://localhost:8080/completion
-Content-Type: application/json
-
-{
-  "prompt": "What is the capital of France?",
-  "n_predict": 128,
-  "temperature": 0.7,
-  "top_k": 40,
-  - ~3GB free disk space for the model inside the image
-}
-```
-
-  ## Build and Run (model auto-downloaded during build)
-
-  ```bash
-  # Build the Docker image (downloads model + builds llama.cpp via CMake)
-```
-POST http://localhost:8080/v1/chat/completions
-  ```
-  # Start the server
-
-  ```
-Import this JSON into Postman:
-
-```json
-{
-  "info": {
-    "name": "Llama.cpp Server",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8080/health",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["health"]
-        }
-      }
-    },
-    {
-      "name": "Text Completion",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"prompt\": \"What is the capital of France?\",\n  \"n_predict\": 128,\n  \"temperature\": 0.7\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8080/completion",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["completion"]
-        }
-      }
-    },
-    {
-      "name": "Chat Completion",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"What is the capital of France?\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 128\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8080/v1/chat/completions",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8080",
-          "path": ["v1", "chat", "completions"]
-        }
-      }
-    }
-  ]
-}
-```
-
-## Docker Commands
-
-```bash
-# Start the server
-docker-compose up -d
 
 # Stop the server
 docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Restart the server
-docker-compose restart
-
-# Rebuild after changes
-docker-compose up -d --build
 ```
 
-## Parameters Explanation
+The server will be available at **http://localhost:8080**
 
-- `n_predict` / `max_tokens`: Maximum number of tokens to generate
-- `temperature`: Randomness (0.0 = deterministic, 1.0 = very random)
-- `top_k`: Limits vocabulary to top K tokens
-- `top_p`: Nucleus sampling threshold
-- `stream`: Enable streaming responses
-- `-c 2048`: Context size (tokens)
+## 📦 What's Inside
 
-## Troubleshooting
+- **llama.cpp server** - Built from source using CMake
+- **Mistral 7B Instruct model** - Q2_K quantization (~2.5GB)
+- **Ubuntu 22.04** base image
+- **All dependencies** included (no external downloads needed after build)
 
-**Server not starting:**
-- Check if the model file exists in `./models/` directory
-- Verify the model filename matches exactly
-- Check Docker logs: `docker-compose logs`
+## ⚙️ Server Configuration
 
-**Out of memory:**
-- The Q2_K model is the smallest quantization
-- Reduce context size with `-c 1024` or `-c 512`
-- Close other applications
+The server is configured with optimized parameters for handling large context queries:
 
-**Slow inference:**
-- This is CPU-only inference (no GPU)
-- Q2_K is the fastest quantization but lower quality
-- For faster inference, consider GPU-enabled setup
+```bash
+llama-server \
+  -m /app/models/mistral-7b-instruct-v0.2.Q2_K.gguf \
+  --host 0.0.0.0 \
+  --port 8080 \
+  -c 8192 \
+  -b 512 \
+  --threads 8 \
+  --no-mmap
+```
 
-## Model Quantization Options
+### Parameter Explanation
 
-If you want better quality, download a different quantization:
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| `-m` | model path | Specifies the GGUF model file to load |
+| `--host` | `0.0.0.0` | Listen on all network interfaces (allows external connections) |
+| `--port` | `8080` | HTTP server port |
+| `-c` | `8192` | **Context window size** - Extended to 8192 tokens for large query contexts (default is 512) |
+| `-b` | `512` | Batch size for prompt processing |
+| `--threads` | `8` | Number of CPU threads to use for inference |
+| `--no-mmap` | - | Disable memory mapping (better for Docker containers) |
 
-- **Q2_K**: Smallest, fastest, lowest quality (~2.5GB)
-- **Q4_K_M**: Balanced quality and size (~4.1GB)
-- **Q5_K_M**: Higher quality (~4.8GB)
-- **Q8_0**: Very high quality (~7.2GB)
+### Why `-c 8192`?
 
-Replace the filename in `docker-compose.yml` and download accordingly.
+The context window (`-c 8192`) is set to **8192 tokens** (vs default 512) because:
 
-## License
+- **Qwery sends large context queries** - Database schemas, table definitions, sample data, and SQL queries can be large
+- **Better SQL generation** - More context allows the model to understand complex database relationships
+- **Multi-table queries** - Handles joins across multiple tables with full schema information
+- **Conversation history** - Maintains longer conversations with the user
+
+> **Note:** Larger context uses more RAM (~1-2GB per 1K tokens). Adjust `-c` value based on your system's resources.
+
+## 🧪 Testing the Server
+
+### Health Check
+
+```bash
+curl http://localhost:8080/health
+```
+
+### Simple Completion
+
+```bash
+curl -X POST http://localhost:8080/completion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain SQL JOIN operations:",
+    "n_predict": 200,
+    "temperature": 0.7
+  }'
+```
+
+### Chat Completion (OpenAI-compatible)
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a SQL expert assistant."
+      },
+      {
+        "role": "user",
+        "content": "Write a SQL query to get all users with orders in the last 30 days"
+      }
+    ],
+    "max_tokens": 300,
+    "temperature": 0.5
+  }'
+```
+
+## 📚 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Check server health |
+| `/completion` | POST | Text completion |
+| `/v1/chat/completions` | POST | OpenAI-compatible chat API |
+| `/props` | GET | Model properties and info |
+| `/tokenize` | POST | Tokenize input text |
+| `/detokenize` | POST | Convert tokens back to text |
+
+## 🔧 Customization
+
+### Change Port
+
+Edit `docker-compose.yml`:
+
+```yaml
+ports:
+  - "8081:8080"  # Host port : Container port
+```
+
+### Adjust Context Size
+
+Edit `Dockerfile` and change the `-c` parameter:
+
+```dockerfile
+CMD ["/app/llama.cpp/build/bin/llama-server", ... "-c", "4096", ...]
+```
+
+Then rebuild:
+
+```bash
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+### Use Different Model
+
+1. Update the download URL in `Dockerfile`:
+```dockerfile
+RUN curl -L -o /app/models/your-model.gguf \
+    https://huggingface.co/path/to/your-model.gguf
+```
+
+2. Update the model path in CMD:
+```dockerfile
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/your-model.gguf", ...]
+```
+
+## 🐛 Troubleshooting
+
+### Build Fails
+
+```bash
+# Clean rebuild
+docker-compose down
+docker-compose build --no-cache
+```
+
+### Port Already in Use
+
+```bash
+# Check what's using port 8080
+netstat -ano | findstr :8080
+
+# Or change port in docker-compose.yml
+```
+
+### Server is Slow
+
+- **First request** takes 10-20 seconds (model loads into memory)
+- **Subsequent requests** are faster (3-5 seconds for CPU inference)
+- Consider using GPU-enabled build for faster inference
+
+### Out of Memory
+
+If the server crashes due to memory:
+
+1. Reduce context size: `-c 4096` or `-c 2048`
+2. Use smaller model quantization (Q2_K is already small)
+3. Reduce batch size: `-b 256`
+
+## 📊 Performance Notes
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| **Model Size** | ~2.5GB | Q2_K quantization (smallest) |
+| **RAM Usage** | 4-6GB | Depends on context size |
+| **Build Time** | 5-10 min | Downloads model + compiles llama.cpp |
+| **First Response** | 10-20s | Model loading time |
+| **Inference Speed** | 3-5s | CPU-only, varies by query |
+| **Context Limit** | 8192 tokens | Configurable via `-c` parameter |
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  Docker Container (llama-cpp-server)    │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │  llama.cpp Server (port 8080)   │   │
+│  └─────────────────────────────────┘   │
+│               ↓                         │
+│  ┌─────────────────────────────────┐   │
+│  │  Mistral 7B Q2_K Model          │   │
+│  │  (embedded in container)         │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+└─────────────────────────────────────────┘
+           ↓ HTTP API
+    http://localhost:8080
+```
+
+## 📝 Files Overview
+
+- **`Dockerfile`** - Builds llama.cpp and downloads model
+- **`docker-compose.yml`** - Orchestrates the container
+- **`REVIEWER-GUIDE.md`** - Quick start guide for reviewers
+- **`.gitignore`** - Excludes build artifacts and models
+
+## 🔒 Security Notes
+
+- Server binds to `0.0.0.0` (all interfaces) - Use firewall rules in production
+- No authentication by default - Add reverse proxy (nginx) with auth if needed
+- Model runs in isolated Docker container
+
+## 📄 License
 
 This setup uses:
-- llama.cpp (MIT License)
-- Mistral 7B (Apache 2.0 License)
+- **llama.cpp** - MIT License
+- **Mistral 7B** - Apache 2.0 License
+
+---
+
+**Built for Qwery** - SQL query assistant with AI-powered schema understanding
