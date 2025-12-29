@@ -1,3 +1,5 @@
+import { azure } from '@ai-sdk/azure';
+
 // Export all from subdirectories
 export * from './domain';
 export * from './ports';
@@ -18,17 +20,26 @@ export {
 } from 'ai';
 export { createAzure } from '@ai-sdk/azure';
 
+export const getDefaultModel = () => {
+  const hasAzureKey =
+    !!(process.env.AZURE_API_KEY && process.env.AZURE_RESOURCE_NAME && process.env.AZURE_OPENAI_DEPLOYMENT);
+
+  return hasAzureKey
+    ? 'azure/gpt-5-mini'
+    : 'ollama/'+(process.env.OLLAMA_MODEL || 'llama3.2');
+};
+
 const baseModels = [
   {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },
   {
-    name: 'DeepSeek R1 (8B)',
-    value: 'ollama/deepseek-r1:8b',
+    name: 'Llama 3.2 (Ollama)',
+    value: 'ollama/'+(process.env.OLLAMA_MODEL || 'llama3.2'),
   },
   {
-    name: 'Llama 3.1 (8B)',
+    name: 'Llama 3.1 (WebLLM)',
     value: 'webllm/Llama-3.1-8B-Instruct-q4f32_1-MLC',
   },
   {
@@ -42,3 +53,4 @@ const baseModels = [
 ];
 
 export const SUPPORTED_MODELS = baseModels;
+

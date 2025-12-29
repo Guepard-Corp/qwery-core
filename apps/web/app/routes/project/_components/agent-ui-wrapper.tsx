@@ -14,6 +14,7 @@ import {
   SUPPORTED_MODELS,
   transportFactory,
   type UIMessage,
+  getDefaultModel
 } from '@qwery/agent-factory-sdk';
 import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
 import { convertMessages } from '~/lib/utils/messages-converter';
@@ -111,7 +112,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ?? getDefaultModel(),
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();

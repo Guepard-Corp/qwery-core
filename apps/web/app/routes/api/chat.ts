@@ -7,6 +7,7 @@ import {
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
@@ -46,7 +47,10 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+<<<<<<< Updated upstream
+=======
+  model: string = getDefaultModel(),
+>>>>>>> Stashed changes
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +108,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
+<<<<<<< Updated upstream
   const model: string = body.model || 'azure/gpt-5-mini';
+=======
+  const model: string = body.model || getDefaultModel();
+>>>>>>> Stashed changes
   const datasources: string[] | undefined = body.datasources;
 
   try {

@@ -45,7 +45,9 @@ export class UsagePersistenceService {
   /**
    * Persists LanguageModelUsage to the database
    * @param usage - LanguageModelUsage from AI SDK
-   * @param model - Model identifier (e.g., 'azure/gpt-5-mini')
+<<<<<<< Updated upstream=======
+   * @param model - Model identifier (e.g., getDefaultModel())
+>>>>>>> Stashed changes
    * @param userId - User identifier (default: 'system')
    */
   async persistUsage(
