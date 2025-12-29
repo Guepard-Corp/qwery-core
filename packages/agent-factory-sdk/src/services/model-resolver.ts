@@ -29,21 +29,16 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-function requireEnv(key: string, providerLabel: string): string {
-  const value = getEnv(key);
-  if (!value) {
-    throw new Error(
-      `[AgentFactory][${providerLabel}] Missing required environment variable '${key}'.`,
-    );
-  }
-  return value;
-}
+
 
 async function createProvider(
   providerId: string,
   modelName: string,
 ): Promise<ModelProvider> {
+  console.log(`[ModelResolver] Creating provider: ${providerId}/${modelName}`);
   switch (providerId) {
+    // Azure provider removed for local-only compliance
+    /*
     case 'azure': {
       const { createAzureModelProvider } = await import(
         './models/azure-model.provider'
@@ -56,6 +51,7 @@ async function createProvider(
         deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
       });
     }
+    */
     case 'ollama': {
       const { createOllamaModelProvider } = await import(
         './models/ollama-model.provider'
@@ -88,9 +84,24 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'llamacpp': {
+      console.log('[ModelResolver] Setting up llamacpp provider');
+      const baseURL = getEnv('LLAMACPP_BASE_URL') ?? 'http://localhost:8000';
+      const defaultModel = getEnv('LLAMACPP_MODEL') ?? modelName;
+      console.log(
+        `[ModelResolver] LlamaCpp config - baseURL: ${baseURL}, defaultModel: ${defaultModel}`,
+      );
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseURL,
+        defaultModel,
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, llamacpp.`,
       );
   }
 }
