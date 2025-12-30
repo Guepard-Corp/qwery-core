@@ -36,7 +36,11 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
+<<<<<<< HEAD
       model: await resolveModel('azure/gpt-5-mini'),
+=======
+      model: await resolveModel(process.env.AGENT_MODEL || 'azure/gpt-5-mini'),
+>>>>>>> 56a7544 (Initial commit)
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 

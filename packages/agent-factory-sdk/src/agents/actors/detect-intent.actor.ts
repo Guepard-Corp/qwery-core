@@ -15,14 +15,25 @@ export const detectIntent = async (text: string) => {
       // Add timeout to detect hanging calls
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
+<<<<<<< HEAD
           () => reject(new Error('generateObject timeout after 30 seconds')),
           30000,
+=======
+          () => reject(new Error('generateObject timeout after 600 seconds')),
+          600000,
+>>>>>>> 56a7544 (Initial commit)
         );
       });
 
       const generatePromise = generateObject({
+<<<<<<< HEAD
         model: await resolveModel('azure/gpt-5-mini'),
         schema: IntentSchema,
+=======
+        model: await resolveModel(process.env.AGENT_MODEL || 'openai/TheBloke/Mistral-7B-Instruct-v0.2-GGUF:Q4_K_M'),
+        schema: IntentSchema,
+        mode: 'json',
+>>>>>>> 56a7544 (Initial commit)
         prompt: DETECT_INTENT_PROMPT(text),
       });
 

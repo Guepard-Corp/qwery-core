@@ -21,6 +21,10 @@
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^3.0.56",
     "@ai-sdk/azure": "^2.0.73",
+<<<<<<< HEAD
+=======
+    "@ai-sdk/openai": "^2.0.71",
+>>>>>>> 56a7544 (Initial commit)
     "@aws-sdk/client-s3": "^3.936.0",
     "@aws-sdk/credential-providers": "^3.936.0",
     "@built-in-ai/core": "^2.0.1",

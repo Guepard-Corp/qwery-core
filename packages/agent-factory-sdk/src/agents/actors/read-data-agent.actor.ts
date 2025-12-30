@@ -15,7 +15,16 @@ import { selectChartType, generateChart } from '../tools/generate-chart';
 import { renameTable } from '../../tools/rename-table';
 import { deleteTable } from '../../tools/delete-table';
 import { loadBusinessContext } from '../../tools/utils/business-context.storage';
+<<<<<<< HEAD
 import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
+=======
+import { READ_DATA_AGENT_PROMPT as FULL_PROMPT } from '../prompts/read-data-agent.prompt';
+import { READ_DATA_AGENT_PROMPT as LOCAL_PROMPT } from '../prompts/read-data-agent.local.prompt';
+
+// Remove top-level process access that crashes browser
+// const isLocalModel = (process.env.AGENT_MODEL || '').includes('Mistral') || (process.env.AGENT_MODEL || '').includes('Llama');
+// const READ_DATA_AGENT_PROMPT = isLocalModel ? LOCAL_PROMPT : FULL_PROMPT;
+>>>>>>> 56a7544 (Initial commit)
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
 import { getConfig } from '../../tools/utils/business-context.config';
@@ -174,9 +183,19 @@ export const readDataAgent = async (
     );
   }
 
+<<<<<<< HEAD
   const result = new Agent({
     model: await resolveModel(model),
     system: READ_DATA_AGENT_PROMPT,
+=======
+  // Dynamically select prompt based on model to avoid top-level process access
+  const isLocalModel = (process.env.AGENT_MODEL || '').includes('Mistral') || (process.env.AGENT_MODEL || '').includes('Llama');
+  const SYSTEM_PROMPT = isLocalModel ? LOCAL_PROMPT : FULL_PROMPT;
+
+  const result = new Agent({
+    model: await resolveModel(model),
+    system: SYSTEM_PROMPT,
+>>>>>>> 56a7544 (Initial commit)
     tools: {
       testConnection: tool({
         description:
@@ -213,10 +232,16 @@ export const readDataAgent = async (
               : undefined;
 
           console.log(
+<<<<<<< HEAD
             `[ReadDataAgent] getSchema called${
               requestedViews
                 ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
                 : ' (all views)'
+=======
+            `[ReadDataAgent] getSchema called${requestedViews
+              ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
+              : ' (all views)'
+>>>>>>> 56a7544 (Initial commit)
             }`,
           );
 
