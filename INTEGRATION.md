@@ -65,7 +65,7 @@ You should receive a JSON response with the model's output.
 
 - **`.env`**  
   Added `LLAMACPP_BASE_URL` environment variable configuration.
-  and `LLAMACPP_MODEL_NAME`
+  and `LLAMACPP_MODEL_NAME` 
 - **Multiple actor files:**
   - `packages/agent-factory-sdk/src/agents/actors/detect-intent.actor.ts`
   - `packages/agent-factory-sdk/src/agents/actors/system-info.actor.ts`
@@ -73,8 +73,11 @@ You should receive a JSON response with the model's output.
   - `packages/agent-factory-sdk/src/services/generate-conversation-title.service.ts`
   - `packages/agent-factory-sdk/src/services/generate-sheet-name.service.ts`
   - `packages/agent-factory-sdk/src/agents/tools/generate-chart.ts`
+
   
-  Updated to check for Azure credentials and fallback to LlamaCpp when Azure is not configured.
+  **Note:** These modifications add fallback logic to use LlamaCpp when Azure 
+  credentials are not configured. This ensures the application can function 
+  without cloud dependencies while maintaining backward compatibility.
 
 ## Environment Variables
 
@@ -94,9 +97,15 @@ LLAMACPP_MODEL_NAME=mistral-7b-instruct-v0.2.Q2_K.gguf
 
 ## Build Instructions
 
+### Install dependencies
+```bash
+pnpm install
+```
+
 ### Build Web Application
 ```bash
-pnpm build --filter "!desktop" --filter "!cli"
+cd apps/web
+pnpm build 
 ```
 
 ### Build Extensions
@@ -106,10 +115,18 @@ pnpm extensions:build
 
 Both builds should pass successfully with no errors.
 
-## Model Capabilities & Limitations
+### Run Development Server
+```bash
+cd apps/web
+pnpm dev
+```
 
-### Important Note
-For this integration, **Mistral 7B v0.2 was chosen as a lightweight model to demonstrate the technical integration**. This model supports basic chat conversations but has limitations with advanced features like tool calling and structured output (generateObject).
+
+
+## Model Capabilities & Architectural Considerations
+
+### Demonstration Model Choice
+For this integration, **Mistral 7B v0.2 was chosen as a lightweight model to demonstrate the technical integration and provider architecture**. This model supports basic chat conversations, which is sufficient to validate the integration pattern.
 
 ### Supported Features
 ✅ Basic chat and conversations  
@@ -119,11 +136,11 @@ For this integration, **Mistral 7B v0.2 was chosen as a lightweight model to dem
 ✅ System information responses  
 
 ### Limited Features
-❌ **Tool calling** (data source queries, SQL execution)  
-❌ **Structured output generation** (`generateObject`) - affects intent detection  
-❌ **Chart generation** (requires tools)  
-❌ **Complex data operations** (any feature requiring tools)  
-❌ **Multi-turn conversations with tools**  
+⚠️ **Tool calling** requires models with system message support (not available in Mistral 7B v0.2)  
+⚠️ **Structured output generation** (`generateObject`) - affects intent detection  
+⚠️ **Chart generation** (requires tools)  
+⚠️ **Complex data operations** (any feature requiring tools)  
+⚠️ **Multi-turn conversations with tools**  
 
 ### Root Cause
 Mistral 7B v0.2's chat template only accepts `user` and `assistant` roles. When the AI SDK uses:
@@ -139,7 +156,7 @@ This means:
 - ❌ Chart generation fails → Can't generate visualizations
 - ✅ Basic chat works → Simple user/assistant text exchanges only
 
-### Architecture Flexibility
+### Architecture Flexibility as a solution
 The integration is **model-agnostic**. To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+), simply replace the `.gguf` file in the Docker setup. The provider architecture remains unchanged.
 
 **Recommended Models for Full Feature Support:**
@@ -202,18 +219,22 @@ function getModel(): string {
    docker-compose up -d
    ```
 
-2. **Run Development Server**
+2. **Build and Run Development Server**
    ```bash
+   cd apps/web
+   pnpm build
+   cd ../..
+   pnpm extensions:build
    pnpm --filter web dev
    ```
 
 3. **Create New Project**
    - Open Qwery in your browser
-   - Create a new project or dashboard
+   - Create a new project and conversation
 
 4. **Select LlamaCpp Model**
    - Open model dropdown
-   - Select "Mistral 7B Instruct (Local)" or similar
+   - Select "Mistral 7B Instruct (Local)" chosen by default 
 
 5. **Test with Simple Queries**
    - Start with basic queries: "Hello", "Who are you?", "What can you do?"
@@ -245,7 +266,7 @@ The integration was built with the following assumptions:
 ✅ **Clean architecture integration** - Follows existing patterns  
 ✅ **Docker setup included** - Ready-to-use container configuration  
 ✅ **Environment variables documented** - Clear setup instructions  
-
+✅ **Provider architecture validated** - Successfully tested with real model
 ## Troubleshooting
 
 ### Common Issues
