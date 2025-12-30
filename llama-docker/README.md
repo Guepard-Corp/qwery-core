@@ -153,16 +153,39 @@ docker-compose up -d
 
 ### Use Different Model
 
+**The architecture is model-agnostic** - simply replace the model in the Dockerfile to use more capable models.
+
+**Current Model (Mistral 7B v0.2)** has limitations:
+- ❌ No tool calling support (required for data queries)
+- ❌ No system message support
+- ✅ Basic chat only
+
+**Recommended for full Qwery features:**
+- Llama 3.1 8B Instruct or larger
+- Qwen 2.5 7B Instruct or larger
+- Mistral v0.3 7B Instruct or larger
+
+**To change the model:**
+
 1. Update the download URL in `Dockerfile`:
 ```dockerfile
-RUN curl -L -o /app/models/your-model.gguf \
-    https://huggingface.co/path/to/your-model.gguf
+# Example: Switching to Llama 3.1 8B Q4_K_M
+RUN curl -L -o /app/models/llama-3.1-8b-instruct.Q4_K_M.gguf \
+    https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
 ```
 
-2. Update the model path in CMD:
+2. Update the model path in `CMD`:
 ```dockerfile
-CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/your-model.gguf", ...]
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/llama-3.1-8b-instruct.Q4_K_M.gguf", ...]
 ```
+
+3. Rebuild:
+```bash
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+> Find GGUF models at [Hugging Face](https://huggingface.co/models?library=gguf). Use Q4_K_M or Q5_K_M quantization for best balance.
 
 ## 🐛 Troubleshooting
 
