@@ -119,11 +119,25 @@ For this integration, **Mistral 7B v0.2 was chosen as a lightweight model to dem
 ✅ System information responses  
 
 ### Limited Features
-❌ Tool calling (data source queries)  
-❌ Structured output generation (`generateObject`)  
-❌ Chart generation  
-❌ Complex data operations  
-❌ Multi-turn conversations with tools  
+❌ **Tool calling** (data source queries, SQL execution)  
+❌ **Structured output generation** (`generateObject`) - affects intent detection  
+❌ **Chart generation** (requires tools)  
+❌ **Complex data operations** (any feature requiring tools)  
+❌ **Multi-turn conversations with tools**  
+
+### Root Cause
+Mistral 7B v0.2's chat template only accepts `user` and `assistant` roles. When the AI SDK uses:
+- `generateObject()` → internally adds `system`/`tool` roles for structured output
+- `streamText()` with `tools` parameter → adds `tool` role messages
+- System prompts → adds `system` role messages
+
+The llama.cpp server rejects these with: **"Only user and assistant roles are supported!"**
+
+This means:
+- ❌ Intent detection fails → Can't route requests properly
+- ❌ Data queries fail → Can't execute SQL or access databases
+- ❌ Chart generation fails → Can't generate visualizations
+- ✅ Basic chat works → Simple user/assistant text exchanges only
 
 ### Architecture Flexibility
 The integration is **model-agnostic**. To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+), simply replace the `.gguf` file in the Docker setup. The provider architecture remains unchanged.
