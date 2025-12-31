@@ -86,6 +86,7 @@
     ]
   },
   "devDependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.1",
     "@manypkg/cli": "^0.25.1",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",

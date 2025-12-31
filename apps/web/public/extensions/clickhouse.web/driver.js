@@ -8441,7 +8441,8 @@ var NotebookEntity = class extends Entity {
         {
           cellId: 1,
           cellType: "query",
-          query: "",
+          query: "\n".repeat(9),
+          // 10 lines total (9 newlines + 1 empty line)
           datasources: [],
           isActive: true,
           runMode: "default"
