@@ -52,7 +52,8 @@
           "id": "clickhouse.web",
           "name": "ClickHouse (Browser)",
           "description": "Browser runtime ClickHouse driver",
-          "runtime": "browser"
+          "runtime": "browser",
+          "entry": "driver.js"
         }
       ]
     },
@@ -102,7 +103,8 @@
           "id": "duckdb-wasm.default",
           "name": "DuckDB WASM (Browser)",
           "description": "Browser runtime DuckDB WASM driver",
-          "runtime": "browser"
+          "runtime": "browser",
+          "entry": "driver.js"
         }
       ]
     },
@@ -239,7 +241,8 @@
           "id": "pglite.default",
           "name": "PGlite (Browser)",
           "description": "Browser runtime PGlite driver",
-          "runtime": "browser"
+          "runtime": "browser",
+          "entry": "driver.js"
         }
       ]
     },

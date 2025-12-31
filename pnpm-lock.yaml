@@ -61,11 +61,10 @@ overrides:
 importers:
 
   .:
-    dependencies:
+    devDependencies:
       '@ai-sdk/openai-compatible':
         specifier: ^2.0.1
         version: 2.0.1(zod@3.25.76)
-    devDependencies:
       '@manypkg/cli':
         specifier: ^0.25.1
         version: 0.25.1
