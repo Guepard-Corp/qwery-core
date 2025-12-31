@@ -1,166 +1,116 @@
-![Guepard](/resources/guepard-cover.png)
+# Local LLM Integration
 
-<div align="center">
-    <h1>The Boring Qwery Platform - Connect and query anything</h1>
-    <br />  
-    <p align="center">
-    <a href="https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6">
-        <img src="https://img.shields.io/badge/Watch-YouTube-%23ffcb51?logo=youtube&logoColor=black" alt="Watch on YouTube" />
-    </a>
-    <a href="https://discord.gg/nCXAsUd3hm">
-        <img src="https://img.shields.io/badge/Join-Community-%23ffcb51?logo=discord&logoColor=black" alt="Join our Community" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/build_and_test.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/ci.yml?branch=main" alt="Build">
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/blob/main/LICENCE" target="_blank">
-        <img src="https://img.shields.io/badge/license-ELv2-blue.svg" alt="License" />
-    </a>
-    <a href="https://nodejs.org/" target="_blank">
-        <img src="https://img.shields.io/badge/node-%3E%3D22.x-brightgreen" alt="Node Version" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/pulls" target="_blank">
-        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
-    </a>
-    </p>
-</div>
+Run Qwery entirely offline with local LLM support using llama.cpp.
 
-## Important Notice
+## Quick Start
 
-🚧 This project is under active development and not yet suitable for production use. Expect breaking changes, incomplete features, and evolving APIs.
-
-# Qwery Platform - The Vision
-
-Qwery is the most capable platform for querying and visualizing data without requiring any prior technical knowledge in data engineering. Using natural language in any supported language, Qwery seamlessly integrates with hundreds of datasources, automatically generates optimized queries, and delivers outcomes across multiple targets including result sets, dashboards, data apps, reports, and APIs.
-
-### Getting Started
-
-1. **Choose your environment**: Download the desktop application or connect to the [Qwery Cloud Platform](https://app.qwery.run)
-2. **Connect your data**: Link to your databases, APIs, or other datasources
-3. **Start querying**: Use natural language to query your datasources instantly
-4. **Work with AI agents**: Press `CMD/CTRL + L` to collaborate with intelligent agents that assist with your data workflows
-
-## 🌟 Features
-
-- **Natural Language Querying**: Ask questions in plain language, get SQL automatically
-- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB, DuckDB, ClickHouse, SQL Server, and more
-- **AI-Powered Agents**: Intelligent assistants that help with data workflows (CMD/CTRL + L)
-- **Visual Data Apps**: Build dashboards and data applications without code
-- **Desktop & Cloud**: Run locally or use our cloud platform
-- **Template Library**: Pre-built notebooks, queries, and dashboards
-- **Extensible**: Plugin system for custom datasources and integrations
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js >= 22.x
-- pnpm >= 10.x
-
-### Installation
+### 1. Start the Local LLM Server
 
 ```bash
-# Clone the repository
-git clone https://github.com/Guepard-Corp/qwery-core.git
-cd qwery-core
+cd llama-docker
+docker-compose build --no-cache
+docker-compose up -d
+```
 
-# Install dependencies
+Verify it's running:
+```bash
+docker ps
+docker logs -f [container-name]
+```
+
+### 2. Configure Environment Variables
+
+Add to your `.env` file:
+```env
+LLAMACPP_BASE_URL=http://127.0.0.1:8080
+LLAMACPP_MODEL_NAME=mistral-7b-instruct-v0.2.Q2_K.gguf
+```
+
+### 3. Run Qwery
+
+```bash
 pnpm install
-
-# Start development server
-pnpm dev
+cd apps/web
+pnpm build
+cd ../..
+pnpm extensions:build
+pnpm --filter web dev
 ```
 
-The web app will be available at `http://localhost:3000`
+The LlamaCpp model will be automatically selected if Azure credentials are not configured.
 
-### Desktop Application
+## Model Information
 
+**Current Model:** Mistral 7B Instruct v0.2 (Q2_K quantized)
+
+- **Purpose:** Lightweight demonstration model for technical validation
+- **Size:** ~2.5GB (Q2_K quantization)
+- **Capabilities:** Basic chat, greetings, simple Q&A
+- **Limitations:** No tool calling, no structured outputs (model limitation, not integration)
+
+### Upgrading the Model
+
+To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+):
+
+1. Download your preferred `.gguf` model file
+2. Replace the model in `llama-docker/Dockerfile` or mount it via volume
+3. Update `LLAMACPP_MODEL_NAME` in `.env`
+4. Restart the Docker container
+
+**Recommended for full features:** Llama 3.1 8B Instruct or larger (supports tool calling and system messages)
+
+## How the Provider Works
+
+### Architecture
+
+```
+User Query → Model Resolver → LlamaCpp Provider → llama.cpp Server → Model Response
+```
+
+1. **Provider Implementation:** Uses Vercel AI SDK's OpenAI adapter with custom `baseURL`
+2. **API Compatibility:** llama.cpp exposes OpenAI-compatible `/v1/chat/completions` endpoint
+3. **Local Execution:** All inference happens locally on port 8080
+4. **No Cloud Calls:** Zero external dependencies when using LlamaCpp
+
+### Code Integration
+
+The provider is integrated into Qwery's existing model resolution system:
+
+```typescript
+// Automatic fallback to LlamaCpp when Azure credentials are missing
+function getModel(): string {
+  const hasAzureCreds = 
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  return hasAzureCreds 
+    ? 'azure-openai/gpt-4' 
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+}
+```
+
+**Key Files:**
+- `packages/agent-factory-sdk/src/services/models/llamacpp-model.provider.ts` - Provider implementation
+- `packages/agent-factory-sdk/src/services/model-resolver.ts` - Model routing logic
+- `llama-docker/` - Docker configuration for llama.cpp server
+
+## Troubleshooting
+
+**Container not starting?**
 ```bash
-# Build and run desktop app
-pnpm desktop:dev
+docker logs [container-name]
 ```
 
-## 🛠️ Development
+**Connection refused?**
+- Verify Docker container is running: `docker ps`
+- Check port 8080 is available: `netstat -an | findstr :8080` (Windows)
 
-### Monorepo Structure
-
-This is a Turborepo monorepo with the following structure:
-
-- `apps/web` - Main React Router SaaS application
-- `apps/cli` - Command-line interface
-- `apps/desktop` - Desktop application (Electron)
-- `apps/e2e` - Playwright end-to-end tests
-- `packages/features/*` - Feature packages
-- `packages/` - Shared packages and utilities
-- `tooling/` - Build tools and development scripts
-
-### Development Commands
-
+**Model not responding?**
+- Test endpoint directly:
 ```bash
-# Start all apps in development mode
-pnpm dev
-
-# Start specific app
-pnpm --filter web dev        # Web app (port 3000)
-pnpm --filter desktop dev    # Desktop app
-
-# Code Quality
-pnpm format:fix              # Auto-fix formatting
-pnpm lint:fix                # Auto-fix linting issues
-pnpm typecheck               # Type checking
-pnpm check                   # Run all quality checks (format, lint, typecheck, build, test)
-
-# Build
-pnpm build                   # Build all packages
-
-# Testing
-pnpm test                    # Run all tests
+curl http://127.0.0.1:8080/v1/chat/completions ^
+  -H "Content-Type: application/json" ^
+  -d "{\"model\":\"mistral-7b-instruct-v0.2.Q2_K.gguf\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}"
 ```
 
-### Code Quality Standards
+## Learn More
 
-- **TypeScript**: Strict type checking, avoid `any` types
-- **Linting**: ESLint with strict rules
-- **Formatting**: Prettier with consistent style
-- **Testing**: Vitest for unit tests, Playwright for E2E
-
-Always run `pnpm check` before committing to ensure all quality checks pass.
-
-## 📚 Documentation
-
-- [Contributing Guide](CONTRIBUTING.md)
-- [Pull Request Guide](docs/contribution/pull-request-guide.md)
-- [Desktop App Documentation](docs/desktop.md)
-- [RFCs](docs/rfcs/)
-
-## 🤝 Contributing
-
-We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
-
-### Before Submitting
-
-1. Run `pnpm check` to ensure all quality checks pass
-2. Make sure your code follows our [TypeScript guidelines](AGENTS.md#typescript)
-3. Write tests for new features
-4. Update documentation as needed
-
-### Resources
-
-- Review [good first issues](https://github.com/Guepard-Corp/qwery-core/issues?q=is%3Aopen+is%3Aissue+label%3A%22good%20first%20issue%22)
-- Read our [Code of Conduct](CODE_OF_CONDUCT.md)
-- Check [AGENTS.md](AGENTS.md) for development guidelines
-- Join our [Discord community](https://discord.gg/nCXAsUd3hm)
-
-## 💬 Join Qwery Community
-
-- **Discord**: [Join our Discord](https://discord.gg/nCXAsUd3hm) for discussions and support
-- **GitHub Issues**: Report bugs and request features
-- **YouTube**: [Watch demos and tutorials](https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6)
-
-## 📄 License
-
-This project uses the Elastic License 2.0 (ELv2). See the [LICENSE](LICENCE) file for details.
-
-## 🙏 Thank You
-
-We're grateful to the open source community. See our [Thank You](THANK-YOU.md) page for acknowledgments.
+For detailed integration documentation, see [INTEGRATION.md](INTEGRATION.md).

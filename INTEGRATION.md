@@ -27,6 +27,7 @@ The integration is **model-agnostic**. To use a more capable model (Llama 3.1+, 
 1. Navigate to the Docker folder and start the container:
 ```bash
 cd llama-docker
+docker-compose build --no-cache
 docker-compose up -d
 ```
 
