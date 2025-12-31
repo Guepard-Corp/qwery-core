@@ -20,6 +20,10 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
+    name: 'Llama 3.1 8B (Local - llama.cpp)',
+    value: 'llamacpp/meta-llama-3.1-8b-instruct',
+  },
+  {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },
@@ -28,7 +32,7 @@ const baseModels = [
     value: 'ollama/deepseek-r1:8b',
   },
   {
-    name: 'Llama 3.1 (8B)',
+    name: 'Llama 3.1 (8B) - WebLLM',
     value: 'webllm/Llama-3.1-8B-Instruct-q4f32_1-MLC',
   },
   {

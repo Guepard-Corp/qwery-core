@@ -88,22 +88,41 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'llamacpp': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseUrl: getEnv('LLAMACPP_BASE_URL') ?? "http://127.0.0.1:8080/v1",
+        defaultModel: getEnv('LLAMACPP_MODEL') ?? modelName,
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, llamacpp.`,
       );
   }
+}
+
+export function getDefaultModelString(): string {
+  const provider = getEnv('VITE_AGENT_PROVIDER') ?? 'azure';
+  const modelMap: Record<string, string> = {
+    azure: 'azure/gpt-5-mini',
+    ollama: 'ollama/mistral',
+    browser: 'browser/built-in',
+    transformer: 'transformer/Xenova/distilbert-base-uncased',
+    webllm: 'webllm/Llama-2-7b-chat-hf-q4f32_1',
+    llamacpp: 'llamacpp/meta-llama-3.1-8b-instruct',
+  };
+
+  return modelMap[provider] ?? modelMap['azure']!;
 }
 
 export async function resolveModel(
   modelString: string | undefined,
 ): Promise<LanguageModel> {
-  if (!modelString) {
-    throw new Error(
-      '[AgentFactory] Model string is required but was undefined or empty',
-    );
-  }
-  const { providerId, modelName } = parseModelName(modelString);
+  const finalModelString = modelString ?? getDefaultModelString();
+  const { providerId, modelName } = parseModelName(finalModelString);
   const provider = await createProvider(providerId, modelName);
   return provider.resolveModel(modelName);
 }

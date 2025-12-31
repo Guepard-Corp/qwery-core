@@ -56,50 +56,94 @@ export class BrowserChatTransport implements ChatTransport<UIMessage> {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let streamActive = true;
+    const streamStartTime = Date.now();
+    const streamTimeout = 90000; // 90 second timeout for total stream
 
     return new ReadableStream<UIMessageChunk>({
       async start(controller) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              controller.close();
-              break;
+        const streamReadingLoop = async () => {
+          try {
+            while (streamActive) {
+              const elapsed = Date.now() - streamStartTime;
+              if (elapsed > streamTimeout) {
+                console.warn(
+                  `Stream reading timeout after ${elapsed}ms, closing stream`,
+                );
+                streamActive = false;
+                controller.close();
+                break;
+              }
+
+              try {
+                const { done, value } = await reader.read();
+                if (done) {
+                  streamActive = false;
+                  controller.close();
+                  break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Parse SSE format (data: {...}\n\n or data: {...}\n)
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                  if (!line.trim() || line.startsWith(':')) {
+                    continue; // Skip empty lines and comments
+                  }
+
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim(); // Remove 'data: ' prefix
+
+                    if (data === '[DONE]') {
+                      continue;
+                    }
+
+                    try {
+                      const parsed = JSON.parse(data) as UIMessageChunk;
+                      controller.enqueue(parsed);
+                    } catch (parseError) {
+                      // Skip invalid JSON
+                      console.warn('Failed to parse SSE data:', data, parseError);
+                    }
+                  }
+                }
+              } catch (readError) {
+                // Handle read errors specifically
+                console.error('Error reading from response stream:', readError);
+                streamActive = false;
+                throw readError;
+              }
             }
-
-            buffer += decoder.decode(value, { stream: true });
-
-            // Parse SSE format (data: {...}\n\n or data: {...}\n)
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-            for (const line of lines) {
-              if (!line.trim() || line.startsWith(':')) {
-                continue; // Skip empty lines and comments
-              }
-
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6).trim(); // Remove 'data: ' prefix
-
-                if (data === '[DONE]') {
-                  continue;
-                }
-
-                try {
-                  const parsed = JSON.parse(data) as UIMessageChunk;
-                  controller.enqueue(parsed);
-                } catch (parseError) {
-                  // Skip invalid JSON
-                  console.warn('Failed to parse SSE data:', data, parseError);
-                }
-              }
+          } catch (error) {
+            console.error('Error in ReadableStream start:', error);
+            streamActive = false;
+            try {
+              controller.error(error);
+            } catch (errorErr) {
+              console.error('Error calling controller.error:', errorErr);
+            }
+          } finally {
+            try {
+              reader.releaseLock();
+            } catch (releaseLockError) {
+              console.error('Error releasing reader lock:', releaseLockError);
             }
           }
-        } catch (error) {
-          controller.error(error);
-        } finally {
-          reader.releaseLock();
-        }
+        };
+
+        // Start the reading loop without awaiting (to return the stream immediately)
+        streamReadingLoop().catch((err) => {
+          console.error('Unhandled error in stream reading loop:', err);
+          streamActive = false;
+          try {
+            controller.error(err);
+          } catch (errorErr) {
+            console.error('Error in final error handler:', errorErr);
+          }
+        });
       },
     });
   }

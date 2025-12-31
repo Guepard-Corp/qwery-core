@@ -161,13 +161,16 @@ export class FactoryAgent {
       let requestStarted = false;
       let lastState: string | undefined;
       let stateChangeCount = 0;
+      const respondStartTime = Date.now();
+      let lastStateChangeTime = Date.now();
 
       const timeout = setTimeout(() => {
         if (!resolved) {
+          const duration = Date.now() - respondStartTime;
           subscription.unsubscribe();
           reject(
             new Error(
-              `FactoryAgent response timeout: state machine did not produce streamResult within 60 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
+              `FactoryAgent response timeout (after ${duration}ms): state machine did not produce streamResult within 60 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
             ),
           );
         }
@@ -178,8 +181,9 @@ export class FactoryAgent {
       const sendUserInput = () => {
         if (!userInputSent) {
           userInputSent = true;
+          const timeSinceStart = Date.now() - respondStartTime;
           console.log(
-            `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
+            `[FactoryAgent ${this.id}] Sending USER_INPUT event (after ${timeSinceStart}ms) with message: "${currentInputMessage}"`,
           );
           this.factoryActor.send({
             type: 'USER_INPUT',
@@ -193,6 +197,11 @@ export class FactoryAgent {
       };
 
       const subscription = this.factoryActor.subscribe((state) => {
+        const currentTime = Date.now();
+        const timeSinceStart = currentTime - respondStartTime;
+        const timeSinceLastChange = currentTime - lastStateChangeTime;
+        lastStateChangeTime = currentTime;
+
         const ctx = state.context;
         const currentState =
           typeof state.value === 'string'
@@ -201,14 +210,22 @@ export class FactoryAgent {
         lastState = currentState;
         stateChangeCount++;
 
-        // Debug logging for state transitions
+        // Debug logging for state transitions with timing info
         if (
           stateChangeCount <= 5 ||
           currentState.includes('detectIntent') ||
-          currentState.includes('greeting')
+          currentState.includes('greeting') ||
+          currentState.includes('error')
         ) {
           console.log(
-            `[FactoryAgent ${this.id}] State: ${currentState}, Changes: ${stateChangeCount}, HasError: ${!!ctx.error}, HasStreamResult: ${!!ctx.streamResult}`,
+            `[FactoryAgent ${this.id}] State: ${currentState}, Changes: ${stateChangeCount}, TimeSinceStart: ${timeSinceStart}ms, TimeSinceLastChange: ${timeSinceLastChange}ms, HasError: ${!!ctx.error}, HasStreamResult: ${!!ctx.streamResult}`,
+          );
+        }
+
+        // Warn if stuck in a state for too long (>15s)
+        if (timeSinceLastChange > 15000 && currentState.includes('detectIntent')) {
+          console.warn(
+            `[FactoryAgent ${this.id}] SLOW: State '${currentState}' has not changed for ${timeSinceLastChange}ms`,
           );
         }
 
@@ -220,15 +237,16 @@ export class FactoryAgent {
 
         // Check for errors in context
         if (ctx.error) {
+          const duration = Date.now() - respondStartTime;
           console.error(
-            `[FactoryAgent ${this.id}] Error in context:`,
+            `[FactoryAgent ${this.id}] ERROR in context (after ${duration}ms):`,
             ctx.error,
           );
           if (!resolved) {
             resolved = true;
             clearTimeout(timeout);
             subscription.unsubscribe();
-            reject(new Error(`State machine error: ${ctx.error}`));
+            reject(new Error(`State machine error (${duration}ms): ${ctx.error}`));
           }
           return;
         }
@@ -240,19 +258,21 @@ export class FactoryAgent {
           stateChangeCount > 2 &&
           ctx.error
         ) {
+          const duration = Date.now() - respondStartTime;
           if (!resolved) {
             resolved = true;
             clearTimeout(timeout);
             subscription.unsubscribe();
-            reject(new Error(`State machine error: ${ctx.error}`));
+            reject(new Error(`State machine error (${duration}ms): ${ctx.error}`));
           }
           return;
         }
 
         // Check if we're stuck in detectIntent for too long
         if (currentState.includes('detectIntent') && stateChangeCount > 10) {
+          const duration = Date.now() - respondStartTime;
           console.warn(
-            `[FactoryAgent ${this.id}] Appears stuck in detectIntent after ${stateChangeCount} state changes`,
+            `[FactoryAgent ${this.id}] Appears stuck in detectIntent after ${stateChangeCount} state changes (${duration}ms)`,
           );
           return;
         }
@@ -267,10 +287,13 @@ export class FactoryAgent {
           // Verify this result is for the current request by checking inputMessage matches
           const resultInputMessage = ctx.inputMessage;
           if (resultInputMessage === currentInputMessage) {
+            const duration = Date.now() - respondStartTime;
             if (!resolved) {
               resolved = true;
               clearTimeout(timeout);
+              console.log(`[FactoryAgent ${this.id}] Stream result received (after ${duration}ms), generating response`);
               try {
+                console.log('[FactoryAgent] About to call toUIMessageStreamResponse');
                 const response = ctx.streamResult.toUIMessageStreamResponse({
                   // Generate server-side UUIDs for message persistence
                   // This ensures consistent IDs across sessions and prevents UUID format errors
@@ -282,6 +305,7 @@ export class FactoryAgent {
                     messages: UIMessage[];
                     finishReason?: FinishReason;
                   }) => {
+                    console.log('[FactoryAgent] onFinish called with finishReason:', finishReason);
                     if (finishReason === 'stop') {
                       this.factoryActor.send({
                         type: 'FINISH_STREAM',
@@ -332,9 +356,15 @@ export class FactoryAgent {
                     }
                   },
                 });
+                console.log('[FactoryAgent] toUIMessageStreamResponse returned successfully, response status:', response.status);
                 subscription.unsubscribe();
                 resolve(response);
               } catch (err) {
+                console.error('[FactoryAgent] ERROR in toUIMessageStreamResponse or onFinish:', {
+                  message: err instanceof Error ? err.message : String(err),
+                  error: err,
+                  stack: err instanceof Error ? err.stack : undefined,
+                });
                 subscription.unsubscribe();
                 reject(err);
               }

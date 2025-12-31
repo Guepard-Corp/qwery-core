@@ -99,10 +99,12 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
    * Initialize the DuckDB query engine with the provided configuration.
    * Creates an in-memory transient instance, loads required extensions based on
    * workingDir URI protocol, and applies configuration.
+   * If already initialized, skips initialization (idempotent).
    */
   async initialize(config: QueryEngineConfig): Promise<void> {
     if (this.initialized) {
-      throw new Error('DuckDBQueryEngine is already initialized');
+      console.log('[DuckDBQueryEngine] Already initialized, skipping');
+      return; // Already initialized, skip
     }
 
     const { workingDir, config: engineConfig } = config;
@@ -203,6 +205,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
   /**
    * Attach one or more datasources to the query engine.
+   * Uses parallel attachment with per-datasource timeout (10 seconds).
+   * Continues with successful attachments even if some fail.
    */
   async attach(datasources: Datasource[]): Promise<void> {
     if (!this.initialized || !this.connection) {
@@ -223,36 +227,110 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     const { duckdbNative, foreignDatabases } = groupDatasourcesByType(loaded);
 
-    // Attach foreign databases (PostgreSQL, MySQL, etc.)
-    for (const { datasource } of foreignDatabases) {
-      try {
-        await attachForeignDatasourceToConnection({
-          conn: this.connection,
-          datasource,
-        });
-        this.attachedDatasources.add(datasource.id);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(
-          `Failed to attach datasource ${datasource.id}: ${errorMsg}`,
-        );
-      }
-    }
+    // Attach foreign databases in PARALLEL with timeout
+    const foreignAttachPromises = foreignDatabases.map(
+      async ({ datasource }) => {
+        const attachStartTime = performance.now();
+        try {
+          // Add timeout: 10 seconds per datasource
+          const attachWithTimeout = Promise.race([
+            attachForeignDatasourceToConnection({
+              conn: this.connection!,
+              datasource,
+            }),
+            new Promise<never>((_, reject) => {
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `Attachment timeout after 10 seconds for datasource ${datasource.id}`,
+                    ),
+                  ),
+                10000,
+              );
+            }),
+          ]);
 
-    // Create views for DuckDB-native datasources
-    for (const { datasource } of duckdbNative) {
-      try {
-        await datasourceToDuckdb({
-          connection: this.connection,
-          datasource,
-        });
-        this.attachedDatasources.add(datasource.id);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(
-          `Failed to create view for datasource ${datasource.id}: ${errorMsg}`,
-        );
-      }
+          await attachWithTimeout;
+          this.attachedDatasources.add(datasource.id);
+          const attachTime = performance.now() - attachStartTime;
+          console.log(
+            `[DuckDBQueryEngine] Attached ${datasource.id} in ${attachTime.toFixed(2)}ms`,
+          );
+          return { success: true, id: datasource.id };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          const attachTime = performance.now() - attachStartTime;
+          console.warn(
+            `[DuckDBQueryEngine] Failed to attach ${datasource.id} after ${attachTime.toFixed(2)}ms: ${errorMsg}`,
+          );
+          return { success: false, id: datasource.id, error: errorMsg };
+        }
+      },
+    );
+
+    // Create views for DuckDB-native datasources in PARALLEL with timeout
+    const nativeAttachPromises = duckdbNative.map(
+      async ({ datasource }) => {
+        const attachStartTime = performance.now();
+        try {
+          // Add timeout: 10 seconds per datasource
+          const attachWithTimeout = Promise.race([
+            datasourceToDuckdb({
+              connection: this.connection!,
+              datasource,
+            }),
+            new Promise<never>((_, reject) => {
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `View creation timeout after 10 seconds for datasource ${datasource.id}`,
+                    ),
+                  ),
+                10000,
+              );
+            }),
+          ]);
+
+          await attachWithTimeout;
+          this.attachedDatasources.add(datasource.id);
+          const attachTime = performance.now() - attachStartTime;
+          console.log(
+            `[DuckDBQueryEngine] Created view for ${datasource.id} in ${attachTime.toFixed(2)}ms`,
+          );
+          return { success: true, id: datasource.id };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          const attachTime = performance.now() - attachStartTime;
+          console.warn(
+            `[DuckDBQueryEngine] Failed to create view for ${datasource.id} after ${attachTime.toFixed(2)}ms: ${errorMsg}`,
+          );
+          return { success: false, id: datasource.id, error: errorMsg };
+        }
+      },
+    );
+
+    // Wait for all attachments (both types) to complete in parallel
+    const allResults = await Promise.all([
+      ...foreignAttachPromises,
+      ...nativeAttachPromises,
+    ]);
+
+    // Check for failures
+    const failures = allResults.filter((r) => !r.success);
+    if (failures.length > 0) {
+      const failureCount = failures.length;
+      const successCount = allResults.length - failureCount;
+      console.warn(
+        `[DuckDBQueryEngine] Datasource attachment: ${successCount} succeeded, ${failureCount} failed`,
+      );
+      console.warn(
+        `[DuckDBQueryEngine] Failed datasources:`,
+        failures.map((f) => ({ id: f.id, error: f.error })),
+      );
+      // Continue with successfully attached datasources
+      // Don't throw - allow partial attachments
     }
   }
 
@@ -301,9 +379,9 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         // Find all views associated with this datasource ID
         // The view names start with {datasource.id}_
         const viewsReader = await this.connection.runAndReadAll(`
-          SELECT table_name 
-          FROM information_schema.views 
-          WHERE table_schema = 'main' 
+          SELECT table_name
+          FROM information_schema.views
+          WHERE table_schema = 'main'
             AND table_name LIKE '${datasource.id}_%'
         `);
         await viewsReader.readAll();
