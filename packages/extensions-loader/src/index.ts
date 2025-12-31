@@ -23,56 +23,59 @@ const loadedDrivers = new Set<string>();
 /**
  * Manual map of driver IDs to their import functions.
  * Add new node drivers here when creating new extensions.
+ *
+ * ⚠️ All extensions are temporarily disabled because their packages do not yet exist.
+ * Uncomment and implement the corresponding package (e.g. packages/extension-xxx) to enable.
  */
 const driverImports = new Map<string, DriverImportFn>([
   // ClickHouse Node
-  [
-    'clickhouse.node',
-    () => import('@qwery/extension-clickhouse-node') as Promise<DriverModule>,
-  ],
+  // [
+  //   'clickhouse.node',
+  //   () => import('@qwery/extension-clickhouse-node') as Promise<DriverModule>,
+  // ],
 
   // DuckDB Node
-  [
-    'duckdb.default',
-    () => import('@qwery/extension-duckdb') as Promise<DriverModule>,
-  ],
+  // [
+  //   'duckdb.default',
+  //   () => import('@qwery/extension-duckdb') as Promise<DriverModule>,
+  // ],
 
   // Google Sheets CSV
-  [
-    'gsheet-csv.duckdb',
-    () => import('@qwery/extension-gsheet-csv') as Promise<DriverModule>,
-  ],
+  // [
+  //   'gsheet-csv.duckdb',
+  //   () => import('@qwery/extension-gsheet-csv') as Promise<DriverModule>,
+  // ],
 
   // JSON Online
-  [
-    'json-online.duckdb',
-    () => import('@qwery/extension-json-online') as Promise<DriverModule>,
-  ],
+  // [
+  //   'json-online.duckdb',
+  //   () => import('@qwery/extension-json-online') as Promise<DriverModule>,
+  // ],
 
   // MySQL
-  [
-    'mysql.default',
-    () => import('@qwery/extension-mysql') as Promise<DriverModule>,
-  ],
+  // [
+  //   'mysql.default',
+  //   () => import('@qwery/extension-mysql') as Promise<DriverModule>,
+  // ],
 
   // Parquet Online
-  [
-    'parquet-online.duckdb',
-    () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
-  ],
+  // [
+  //   'parquet-online.duckdb',
+  //   () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
+  // ],
 
   // PostgreSQL (used by postgresql, postgresql-supabase, postgresql-neon)
-  [
-    'postgresql.default',
-    () => import('@qwery/extension-postgresql') as Promise<DriverModule>,
-  ],
+  // [
+  //   'postgresql.default',
+  //   () => import('@qwery/extension-postgresql') as Promise<DriverModule>,
+  // ],
 
   // YouTube Data API v3
-  [
-    'youtube-data-api-v3.default',
-    () =>
-      import('@qwery/extension-youtube-data-api-v3') as Promise<DriverModule>,
-  ],
+  // [
+  //   'youtube-data-api-v3.default',
+  //   () =>
+  //     import('@qwery/extension-youtube-data-api-v3') as Promise<DriverModule>,
+  // ],
 ]);
 
 /**
