@@ -53,3 +53,26 @@ services:
     ports:
       - "27017:27017"
 
+  llama-server:
+    build:
+      context: ./Local-AI-Server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./apps/web/.env
+    environment:
+      MODEL_PATH: /models/${LLAMACPP_MODEL:-tinyllama}-1.1b-chat-v1.0-q4_k_m.gguf # specify the model file
+      LLAMA_THREADS: ${LLAMA_THREADS:-4}
+      PORT: 4040
+    ports:
+      - "4040:4040"
+    volumes:
+      - ./Local-AI-Server/models/tinyllama-1.1b-chat-v1.0-q4_k_m.gguf:/models/tinyllama-1.1b-chat-v1.0-q4_k_m.gguf:ro
+      # Mount additional models as needed
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4040/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
