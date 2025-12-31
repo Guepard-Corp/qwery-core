@@ -31,22 +31,14 @@ We started the local AI server using the command:
 *   **`-m`**: The path to your model file. If the file is not in the same folder as `llama-server`, you must provide the full path (e.g., `C:\Users\Name\Downloads\mistral.gguf`).
 *   **`-c 16384`**: This increases the "memory" (context size) of the model to 16k tokens. This is required because sending the database schema takes up a lot of space.
 
-## 4. Code Integration Changes
-To connect the application to our new local server, we made the following changes:
+## 4. Code Changes (How we made it work)
 
-### 1. `packages/agent-factory-sdk/src/services/models/openai-model.provider.ts`
-This file contains the core logic for adapting `llama-server` to the OpenAI SDK interface. Key changes include:
-*   **Local Endpoint Detection**: Checks if `baseUrl` contains `127.0.0.1` or `localhost`.
-*   **Message Normalization**:
-    *   Converts `tool` role messages to `user` role (prefixed with `[Tool Output]`) to satisfy strict template requirements of some local models.
-    *   Merges adjacent messages of the same role.
-    *   Handles `system` prompts by prepending them to the first user message.
-*   **Client-Side Tool Parsing**:
-    *   Forces `stream: false` to allow the client to intercept the full response.
-    *   Parses a custom tool call pattern (`<<<TOOL_CALL>>>...<<<END_TOOL_CALL>>>`) from the raw text.
-    *   Constructs a valid OpenAI `tool_calls` object from the parsed JSON.
-*   **Stream Simulation**:
-    *   Re-implements a streaming response using `ReadableStream` to satisfy the AI SDK's expectation of a stream, even though the actual request was non-streaming.
+To make the app talk to our local server, we had to edit a couple of files:
 
-### 2. `packages/agent-factory-sdk/src/index.ts`
-*   Added **Mistral 7B (Local)** to the list of `baseModels` with the identifier `openai/TheBloke/Mistral-7B-Instruct-v0.2-GGUF:Q4_K_M`.
+### 1. Making the App Understand the Local Model (`openai-model.provider.ts`)
+We modified `packages/agent-factory-sdk/src/services/models/openai-model.provider.ts` to act as a "translator".
+*   **Finding the Server**: We told the code to look for `localhost` (our computer) instead of the internet.
+*   **Fixing Messages**: The local model gets confused by some complex message formats. We simplified things by combining messages and formatting tool outputs so the model can read them easily.
+*   **Handling Tools**: We taught the app to spot when the model wants to use a tool (like searching a database) by looking for special text tags (`<<<TOOL_CALL>>>`) in the response.
+### 2. Adding the Option to the Menu (`index.ts`)
+*   We edited `packages/agent-factory-sdk/src/index.ts` to add **Mistral 7B (Local)** to the list of available models. Now, we can physically select it in the app's dropdown menu!
