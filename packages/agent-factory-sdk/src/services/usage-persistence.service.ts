@@ -43,7 +43,8 @@ export class UsagePersistenceService {
   ) {}
 
   /**
-   * Persists LanguageModelUsage to the database
+   * Persists LanguageModelUsage to the database with idempotency
+   * Silently ignores duplicate usage records (same ID already exists)
    * @param usage - LanguageModelUsage from AI SDK
    * @param model - Model identifier (e.g., 'azure/gpt-5-mini')
    * @param userId - User identifier (default: 'system')
@@ -61,9 +62,26 @@ export class UsagePersistenceService {
 
     const input = mapLanguageModelUsageToCreateUsageInput(usage, model, userId);
 
-    await useCase.execute({
-      input: input as CreateUsageInput,
-      conversationSlug: this.conversationSlug,
-    });
+    try {
+      await useCase.execute({
+        input: input as CreateUsageInput,
+        conversationSlug: this.conversationSlug,
+      });
+    } catch (error) {
+      // Handle idempotency: if usage already exists, silently ignore
+      // This can happen if the same usage record is created twice due to timing
+      if (
+        error instanceof Error &&
+        error.message.includes('already exists')
+      ) {
+        // Usage record already exists - this is idempotent, so log as debug and continue
+        console.debug(
+          `[UsagePersistenceService] Usage record already exists (idempotent): ${error.message}`,
+        );
+        return;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 }

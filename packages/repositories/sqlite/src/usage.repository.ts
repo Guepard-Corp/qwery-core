@@ -9,6 +9,7 @@ import { createDatabase, initializeSchema } from './db';
 export class UsageRepository extends IUsageRepository {
   private db: Database.Database;
   private initPromise: Promise<void> | null = null;
+  private lastTimestampId = 0; // Track last ID to prevent collisions
 
   constructor(private dbPath?: string) {
     super();
@@ -155,7 +156,15 @@ export class UsageRepository extends IUsageRepository {
       const microseconds = Math.floor(hrtime[1] / 1000);
       // Combine: base timestamp in milliseconds * 1,000,000 + microseconds
       // This gives us microsecond-level precision (1,000,000 unique values per millisecond)
-      return baseTime * 1_000_000 + microseconds;
+      let newId = baseTime * 1_000_000 + microseconds;
+
+      // Prevent collisions: if we generated the same ID twice, increment it
+      if (newId <= this.lastTimestampId) {
+        newId = this.lastTimestampId + 1;
+      }
+
+      this.lastTimestampId = newId;
+      return newId;
     };
 
     const entityWithId = {
@@ -216,8 +225,8 @@ export class UsageRepository extends IUsageRepository {
 
     const serialized = this.serialize(entity);
     const stmt = this.db.prepare(`
-      UPDATE usage 
-      SET 
+      UPDATE usage
+      SET
         conversation_id = ?, project_id = ?, organization_id = ?, user_id = ?, model = ?,
         input_tokens = ?, output_tokens = ?, total_tokens = ?, reasoning_tokens = ?,
         cached_input_tokens = ?, context_size = ?, credits_cap = ?, credits_used = ?,

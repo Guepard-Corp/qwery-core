@@ -86,12 +86,16 @@
     ]
   },
   "devDependencies": {
+    "@ai-sdk/openai": "^2.0.71",
+    "@ai-sdk/openai-compatible": "^2.0.1",
     "@manypkg/cli": "^0.25.1",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",
     "@types/node": "catalog:",
+    "ai": "^5.0.93",
     "cross-env": "^10.1.0",
     "esbuild": "^0.27.1",
+    "openai": "^6.15.0",
     "playwright": "^1.56.1",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",

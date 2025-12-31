@@ -103,9 +103,21 @@ export async function attachForeignDatasourceToConnection(
     attachQuery = `ATTACH '${connectionString.replace(/'/g, "''")}' AS "${attachedDatabaseName}" (TYPE ${mapping.duckdbType})`;
   }
 
-  // Attach the foreign database
+  // Attach the foreign database with timeout to prevent indefinite hangs
+  const ATTACH_TIMEOUT_MS = 10000; // 10 second timeout per datasource
   try {
-    await conn.run(attachQuery);
+    const attachPromise = conn.run(attachQuery);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Attach timeout after ${ATTACH_TIMEOUT_MS / 1000}s for datasource "${attachedDatabaseName}" (${mapping.duckdbType}). Connection to ${datasource.name} may be unavailable or slow.`,
+          ),
+        );
+      }, ATTACH_TIMEOUT_MS);
+    });
+
+    await Promise.race([attachPromise, timeoutPromise]);
     console.log(
       `[ReadDataAgent] Attached ${attachedDatabaseName} (${mapping.duckdbType})`,
     );
@@ -299,7 +311,7 @@ export async function attachForeignDatasource(
 
     if (tableFilters.length > 0) {
       const columnsQuery = `
-        SELECT 
+        SELECT
           table_schema,
           table_name,
           column_name,

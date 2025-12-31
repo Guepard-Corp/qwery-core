@@ -34,6 +34,19 @@ import { PROMPT_SOURCE } from '../../domain';
 // This prevents side effects when the module is imported in browser/SSR contexts
 let WORKSPACE_CACHE: string | undefined;
 
+function normalizeWorkspacePath(path: string): string {
+  // Normalize file:// URIs to real paths
+  if (path.startsWith('file://')) {
+    let normalized = path.slice(7); // Remove 'file://'
+    // Handle absolute Windows paths like file://C:/path
+    if (normalized[0] === '/' && normalized[2] === ':') {
+      normalized = normalized.slice(1); // Remove leading slash from /C:/path
+    }
+    return normalized;
+  }
+  return path;
+}
+
 function resolveWorkspaceDir(): string | undefined {
   const globalProcess =
     typeof globalThis !== 'undefined'
@@ -44,12 +57,13 @@ function resolveWorkspaceDir(): string | undefined {
     globalProcess?.env?.VITE_WORKING_DIR ??
     globalProcess?.env?.WORKING_DIR;
   if (envValue) {
-    return envValue;
+    return normalizeWorkspacePath(envValue);
   }
 
   try {
-    return (import.meta as { env?: Record<string, string> })?.env
+    const viteDir = (import.meta as { env?: Record<string, string> })?.env
       ?.VITE_WORKING_DIR;
+    return viteDir ? normalizeWorkspacePath(viteDir) : undefined;
   } catch {
     return undefined;
   }
@@ -60,6 +74,80 @@ function getWorkspace(): string | undefined {
     WORKSPACE_CACHE = resolveWorkspaceDir();
   }
   return WORKSPACE_CACHE;
+}
+
+// Cache for conversation datasources and their attachment state
+const attachmentCache = new Map<
+  string,
+  {
+    datasources: Awaited<ReturnType<typeof loadDatasources>>;
+    attached: boolean;
+  }
+>();
+
+// Lazy-load and cache datasources for a conversation
+async function ensureDatasourcesAttached(
+  conversationId: string,
+  queryEngine: AbstractQueryEngine,
+  repositories: Repositories,
+): Promise<Awaited<ReturnType<typeof loadDatasources>>> {
+  const cached = attachmentCache.get(conversationId);
+  if (cached?.attached) {
+    console.log(
+      '[ReadDataAgent] Using cached and already-attached datasources',
+    );
+    return cached.datasources;
+  }
+
+  const getConvService = new GetConversationBySlugService(
+    repositories.conversation,
+  );
+  const conversation = await getConvService.execute(conversationId);
+
+  if (!conversation?.datasources?.length) {
+    return [];
+  }
+
+  // Load datasources
+  const loaded = await loadDatasources(
+    conversation.datasources,
+    repositories.datasource,
+  );
+
+  if (loaded.length === 0) {
+    return [];
+  }
+
+  // Initialize engine if not already done
+  try {
+    await queryEngine.initialize({
+      workingDir: 'file://',
+      config: {},
+    });
+  } catch {
+    console.log('[ReadDataAgent] Engine already initialized');
+  }
+
+  // Attach datasources
+  const attachStartTime = performance.now();
+  try {
+    await queryEngine.attach(loaded.map((d) => d.datasource));
+    await queryEngine.connect();
+    const attachTime = performance.now() - attachStartTime;
+    console.log(
+      `[ReadDataAgent] Attached ${loaded.length} datasource(s) in ${attachTime.toFixed(2)}ms`,
+    );
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[ReadDataAgent] Failed to attach datasources:', errorMsg);
+    throw new Error(
+      `Failed to attach datasources: ${errorMsg}. Please check datasource configuration.`,
+    );
+  }
+
+  // Cache for future use
+  attachmentCache.set(conversationId, { datasources: loaded, attached: true });
+  return loaded;
 }
 
 export const readDataAgent = async (
@@ -87,86 +175,9 @@ export const readDataAgent = async (
     intentNeedsChart: intent?.needsChart,
     messageCount: messages.length,
   });
-  // Initialize engine and attach datasources if repositories are provided
+
+  // OPTIMIZATION: Skip eager datasource attachment - load on-demand in getSchema tool
   const agentInitStartTime = performance.now();
-  if (repositories && queryEngine) {
-    try {
-      // Get conversation to find datasources
-      // Note: conversationId is actually a slug in this context
-      const getConvStartTime = performance.now();
-      const getConversationService = new GetConversationBySlugService(
-        repositories.conversation,
-      );
-      const conversation = await getConversationService.execute(conversationId);
-      const getConvTime = performance.now() - getConvStartTime;
-      console.log(
-        `[ReadDataAgent] [PERF] Agent init getConversation took ${getConvTime.toFixed(2)}ms`,
-      );
-
-      if (conversation?.datasources && conversation.datasources.length > 0) {
-        // Initialize engine (in-memory, no workingDir needed but required by schema)
-        const initStartTime = performance.now();
-        try {
-          await queryEngine.initialize({
-            workingDir: 'file://', // Not used for in-memory, but required by schema
-            config: {},
-          });
-
-          // Load datasources
-          const loaded = await loadDatasources(
-            conversation.datasources,
-            repositories.datasource,
-          );
-
-          // Attach all datasources
-          if (loaded.length > 0) {
-            await queryEngine.attach(loaded.map((d) => d.datasource));
-            await queryEngine.connect();
-            console.log(
-              `[ReadDataAgent] Initialized engine and attached ${loaded.length} datasource(s)`,
-            );
-          }
-        } catch (_initError) {
-          const errorMsg =
-            _initError instanceof Error
-              ? _initError.message
-              : String(_initError);
-          console.warn(
-            `[ReadDataAgent] Failed to initialize engine or attach datasources:`,
-            errorMsg,
-          );
-          // Continue - engine might already be initialized or datasources might fail individually
-        }
-        const initTime = performance.now() - initStartTime;
-        console.log(
-          `[ReadDataAgent] [PERF] Engine initialization and datasource attachment took ${initTime.toFixed(2)}ms (${conversation.datasources.length} datasources)`,
-        );
-      } else {
-        // Initialize engine even if no datasources (for queries without datasources)
-        try {
-          await queryEngine.initialize({
-            workingDir: 'file://',
-            config: {},
-          });
-          await queryEngine.connect();
-        } catch {
-          // Engine might already be initialized, ignore error
-          console.log(
-            `[ReadDataAgent] Engine already initialized or initialization skipped`,
-          );
-        }
-        console.log(
-          `[ReadDataAgent] No datasources found in conversation ${conversationId}, engine initialized`,
-        );
-      }
-    } catch (error) {
-      // Log but don't fail - datasources might not be available yet
-      console.warn(
-        `[ReadDataAgent] Failed to initialize engine or datasources:`,
-        error,
-      );
-    }
-  }
   const agentInitTime = performance.now() - agentInitStartTime;
   if (agentInitTime > 50) {
     console.log(
@@ -213,7 +224,7 @@ export const readDataAgent = async (
               : undefined;
 
           console.log(
-            `[ReadDataAgent] getSchema called${
+            `[ReadDataAgent] 🔧 TOOL INVOKED: getSchema${
               requestedViews
                 ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
                 : ' (all views)'
@@ -236,47 +247,34 @@ export const readDataAgent = async (
             `[ReadDataAgent] Workspace: ${workspace}, ConversationId: ${conversationId}, dbPath: ${dbPath}`,
           );
 
-          // Sync datasources before querying schema
+          // OPTIMIZATION: Lazy-load and attach datasources only when needed
           const syncStartTime = performance.now();
           let syncTime = 0;
           let allDatasources: Array<{
             datasource: import('@qwery/domain/entities').Datasource;
           }> = [];
+
           if (repositories) {
             try {
-              const getConvStartTime = performance.now();
-              const getConversationService = new GetConversationBySlugService(
-                repositories.conversation,
+              allDatasources = await ensureDatasourcesAttached(
+                conversationId,
+                queryEngine,
+                repositories,
               );
-              const conversation =
-                await getConversationService.execute(conversationId);
-              const getConvTime = performance.now() - getConvStartTime;
-              console.log(
-                `[ReadDataAgent] [PERF] getConversation took ${getConvTime.toFixed(2)}ms`,
-              );
-              if (conversation?.datasources?.length) {
-                // Load all datasources
-                allDatasources = await loadDatasources(
-                  conversation.datasources,
-                  repositories.datasource,
-                );
-
-                // Attach all datasources (engine handles deduplication)
-                await queryEngine.attach(
-                  allDatasources.map((d) => d.datasource),
-                );
-              }
             } catch (error) {
               console.warn(
-                '[ReadDataAgent] Failed to sync datasources:',
+                '[ReadDataAgent] Failed to ensure datasources attached:',
                 error,
               );
             }
           }
+
           syncTime = performance.now() - syncStartTime;
-          console.log(
-            `[ReadDataAgent] [PERF] syncDatasources took ${syncTime.toFixed(2)}ms`,
-          );
+          if (syncTime > 100) {
+            console.log(
+              `[ReadDataAgent] [PERF] ensureDatasourcesAttached took ${syncTime.toFixed(2)}ms`,
+            );
+          }
 
           // Get metadata from query engine
           const schemaDiscoveryStartTime = performance.now();
@@ -638,6 +636,13 @@ export const readDataAgent = async (
           );
 
           // Return schema and data insights (hide technical jargon)
+          console.log('[ReadDataAgent] [getSchema RESULT] Returning actual table data:', {
+            totalTables: allTableNames.length,
+            tables: allTableNames,
+            domain: fastContext.domain.domain,
+            timestamp: new Date().toISOString(),
+          });
+
           return {
             schema: schema,
             allTables: allTableNames, // Add this - list of all table/view names
@@ -665,6 +670,8 @@ export const readDataAgent = async (
           query: z.string(),
         }),
         execute: async ({ query }) => {
+          console.log('[ReadDataAgent] 🔧 TOOL INVOKED: runQuery');
+
           // Use promptSource, needSQL, and needChart from context (passed to readDataAgent function)
           // needSQL comes from intent.needsSQL, needChart from intent.needsChart
 
@@ -719,7 +726,7 @@ export const readDataAgent = async (
             throw new Error('Query engine not available');
           }
 
-          // Sync datasources before querying if repositories available
+          // Load datasources for reference (DO NOT re-attach - already attached during agent init)
           const syncStartTime = performance.now();
           if (repositories) {
             try {
@@ -729,20 +736,20 @@ export const readDataAgent = async (
               const conversation =
                 await getConversationService.execute(conversationId);
               if (conversation?.datasources?.length) {
-                // Load all datasources
+                // NOTE: We load datasources for reference/logging, but DO NOT re-attach
+                // Datasources are already attached during agent init
+                // Re-attachment would add 2-4 seconds of unnecessary delay per query
                 const loaded = await loadDatasources(
                   conversation.datasources,
                   repositories.datasource,
                 );
-
-                // Get currently attached datasources (we'll need to track this or reattach all)
-                // For now, just reattach all datasources (simple approach)
-                // In the future, we could track attached datasources and only attach/detach changed ones
-                await queryEngine.attach(loaded.map((d) => d.datasource));
+                console.log(
+                  `[ReadDataAgent] runQuery has ${loaded.length} datasource(s) available (already attached)`,
+                );
               }
             } catch (error) {
               console.warn(
-                '[ReadDataAgent] Failed to sync datasources before query:',
+                '[ReadDataAgent] Failed to load datasources for runQuery:',
                 error,
               );
             }
@@ -750,7 +757,7 @@ export const readDataAgent = async (
           const syncTime = performance.now() - syncStartTime;
           if (syncTime > 10) {
             console.log(
-              `[ReadDataAgent] [PERF] runQuery syncDatasources took ${syncTime.toFixed(2)}ms`,
+              `[ReadDataAgent] [PERF] runQuery datasource loading took ${syncTime.toFixed(2)}ms`,
             );
           }
 

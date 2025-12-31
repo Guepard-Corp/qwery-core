@@ -136,6 +136,43 @@ export const createStateMachine = (
                 );
                 return source;
               },
+              intent: ({ event }) => {
+                const lastUserMessage = event.messages
+                  .filter((m: UIMessage) => m.role === 'user')
+                  .pop();
+                const metadata = lastUserMessage?.metadata as {
+                  needSQL?: boolean;
+                  needsChart?: boolean;
+                };
+                // If metadata contains intent information from API route, use it directly
+                // This avoids re-running intent detection with potentially different results
+                if (
+                  metadata?.needSQL !== undefined ||
+                  metadata?.needsChart !== undefined
+                ) {
+                  const intent = {
+                    intent: 'other', // Will be determined by detectIntent
+                    complexity: 'simple' as const,
+                    needsSQL: metadata?.needSQL ?? false,
+                    needsChart: metadata?.needsChart ?? false,
+                  };
+                  console.log(
+                    '[StateMachine] Pre-populated intent from message metadata:',
+                    {
+                      needsSQL: intent.needsSQL,
+                      needsChart: intent.needsChart,
+                    },
+                  );
+                  return intent;
+                }
+                // Default intent if no metadata
+                return {
+                  intent: 'other',
+                  complexity: 'simple',
+                  needsChart: false,
+                  needsSQL: false,
+                };
+              },
             }),
           },
           STOP: 'stopped',
@@ -221,8 +258,21 @@ export const createStateMachine = (
                       guard: 'isReadData',
                       target: '#factory-agent.running.readData',
                       actions: assign({
-                        intent: ({ event }) => {
-                          const intent = event.output;
+                        intent: ({ event, context }) => {
+                          const detectedIntent = event.output;
+                          // Preserve needsSQL and needsChart from metadata if they were set by API route
+                          // This ensures intent detection from API route takes precedence
+                          const intent = {
+                            ...detectedIntent,
+                            needsSQL:
+                              context.intent?.needsSQL !== undefined
+                                ? context.intent.needsSQL
+                                : detectedIntent.needsSQL,
+                            needsChart:
+                              context.intent?.needsChart !== undefined
+                                ? context.intent.needsChart
+                                : detectedIntent.needsChart,
+                          };
                           console.log(
                             '[StateMachine] Set intent from detection (readData):',
                             {
@@ -281,7 +331,7 @@ export const createStateMachine = (
                   ],
                 },
                 after: {
-                  30000: {
+                  100000: {
                     target: 'retrying',
                     guard: 'shouldRetry',
                     actions: assign({
