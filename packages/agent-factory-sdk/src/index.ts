@@ -19,7 +19,10 @@ export {
 
 
 const baseModels = [
-
+  {
+    name: 'Ministral 3B (LM Studio)',
+    value: 'lmstudio/ministralai/ministral-3-3b',
+  },
   {
     name: 'DeepSeek R1 (8B)',
     value: 'ollama/deepseek-r1:8b',

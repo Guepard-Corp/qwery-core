@@ -13,13 +13,16 @@ function parseModelName(modelString: string): {
       `[AgentFactory] Invalid model: modelString must be a non-empty string, got '${modelString}'`,
     );
   }
-  const parts = modelString.split('/');
-  if (parts.length !== 2) {
+  const firstSlashIndex = modelString.indexOf('/');
+  if (firstSlashIndex === -1 || firstSlashIndex === modelString.length - 1) {
     throw new Error(
       `[AgentFactory] Invalid model format: expected 'provider/model', got '${modelString}'`,
     );
   }
-  return { providerId: parts[0]!, modelName: parts[1]! };
+  return {
+    providerId: modelString.substring(0, firstSlashIndex),
+    modelName: modelString.substring(firstSlashIndex + 1),
+  };
 }
 
 function getEnv(key: string): string | undefined {
@@ -27,16 +30,6 @@ function getEnv(key: string): string | undefined {
     return process.env[key];
   }
   return undefined;
-}
-
-function requireEnv(key: string, providerLabel: string): string {
-  const value = getEnv(key);
-  if (!value) {
-    throw new Error(
-      `[AgentFactory][${providerLabel}] Missing required environment variable '${key}'.`,
-    );
-  }
-  return value;
 }
 
 async function createProvider(
@@ -91,6 +84,14 @@ async function createProvider(
         `[AgentFactory] Unsupported provider '${providerId}'. Available providers: ollama, browser, transformer-browser, transformer, webllm, lmstudio.`,
       );
   }
+}
+
+export function getDefaultModel(): string {
+  return (
+    getEnv('VITE_DEFAULT_LLM_MODEL') ??
+    getEnv('DEFAULT_LLM_MODEL') ??
+    'lmstudio/ministralai/ministral-3-3b'
+  );
 }
 
 export async function resolveModel(
