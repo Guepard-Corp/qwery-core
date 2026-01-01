@@ -50,6 +50,40 @@ Qwery is the most capable platform for querying and visualizing data without req
 - **Template Library**: Pre-built notebooks, queries, and dashboards
 - **Extensible**: Plugin system for custom datasources and integrations
 
+## 🤖 AI Model & Provider System
+
+### Default Model
+
+**Ministral 3B** via LM Studio (`lmstudio/ministralai/ministral-3-3b`)
+
+This lightweight yet powerful model was chosen for its optimal balance of performance and efficiency in local inference scenarios.
+
+### How the Provider System Works
+
+The platform uses a **plugin-based architecture** that supports multiple LLM providers through a unified interface:
+
+```
+"lmstudio/ministral-3-3b" → Parse provider & model → Load provider → Return AI SDK model
+```
+
+**Supported Providers:**
+
+- **LM Studio** (`lmstudio/*`) - Local inference server with OpenAI-compatible API
+- **Ollama** (`ollama/*`) - Local inference engine (e.g., `ollama/deepseek-r1:8b`)
+- **WebLLM** (`webllm/*`) - Browser-based inference via MLC AI
+- **Transformer.js** (`transformer/*`) - Browser-based transformers
+- **Browser Built-in AI** (`browser/built-in`) - Native browser LLM
+
+**Configuration:**
+
+Set your preferred model via environment variables:
+
+```bash
+DEFAULT_LLM_MODEL=lmstudio/ministralai/ministral-3-3b
+LMSTUDIO_BASE_URL=http://127.0.0.1:1234/v1
+LMSTUDIO_API_KEY=lm-studio
+```
+
 ## 🚀 Quick Start
 
 ### Prerequisites
