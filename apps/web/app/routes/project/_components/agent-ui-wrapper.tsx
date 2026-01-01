@@ -111,7 +111,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ?? 'lmstudio/ministralai/ministral-3-3b',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();

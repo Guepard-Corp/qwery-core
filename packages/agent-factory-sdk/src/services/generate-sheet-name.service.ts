@@ -1,5 +1,5 @@
 import { generateText } from 'ai';
-import { resolveModel } from './model-resolver';
+import { resolveModel, getDefaultModel } from './model-resolver';
 import type { SimpleSchema } from '@qwery/domain/entities';
 
 const GENERATE_SHEET_NAME_PROMPT = (
@@ -45,7 +45,7 @@ export async function generateSheetName(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 
