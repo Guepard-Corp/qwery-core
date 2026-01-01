@@ -20,8 +20,8 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
-    name: 'GPT-5 Mini',
-    value: 'azure/gpt-5-mini',
+    name: 'Llama 2 7B (Local)',
+    value: 'llamacpp/llama-2-7b-chat', 
   },
   {
     name: 'DeepSeek R1 (8B)',

@@ -101,7 +101,7 @@ export class NotebookRunner {
 
         agent = await FactoryAgent.create({
           conversationSlug,
-          model: 'azure/gpt-5-mini',
+          model: 'llamacpp/llama-2-7b-chat',
           repositories: repositories as FactoryAgentOptions['repositories'],
         });
         agents.set(options.datasource.id, agent);

@@ -1,88 +1,186 @@
-import { INTENTS_LIST } from '../types';
+import { z } from 'zod';
+import { fromPromise } from 'xstate/actors';
+import { INTENTS_LIST, IntentSchema } from '../types';
 
-export const DETECT_INTENT_PROMPT = (
-  inputMessage: string,
-) => `You are Qwery Intent Agent.
+// Simplified prompt that works better with smaller models like Llama 2 7B
+const createSimplePrompt = (text: string) => {
+  return `Classify this user message into one category:
 
-You are responsible for detecting the intent of the user's message and classifying it into a predefined intent and estimating the complexity of the task.
-- classify it into **one** of the predefined intents
-- estimate the **complexity** of the task
-- determine if a chart/graph visualization is needed (**needsChart**)
-- determine if SQL generation is needed (**needsSQL**) - only set this when the user explicitly asks for a query or data retrieval that requires SQL
+User message: "${text}"
 
-If the user asks for something that does not match any supported intent,
-you MUST answer with intent "other".
+Categories:
+- greeting: hi, hello, hey
+- goodbye: bye, see you
+- system: questions about Qwery or the assistant
+- read-data: asking for data, queries, or analysis
+- other: everything else
 
-Supported intents (only choose from this list, use "other" otherwise):
-${INTENTS_LIST.filter((intent) => intent.supported)
-  .map((intent) => `- ${intent.name}: ${intent.description}`)
-  .join('\n')}
+Does it need a chart? (yes/no)
+Does it need SQL? (yes/no)
 
-Complexity levels:
-- simple: short, straightforward requests that can be answered or executed directly
-- medium: multi-step tasks, or tasks that require some reasoning or validation
-- complex: large, open-ended, or multi-phase tasks (projects, workflows, long analyses)
+Response format (JSON only):
+{"intent":"category","complexity":"simple","needsChart":false,"needsSQL":false}
 
-Guidelines:
-- Be conservative: when in doubt between two intents, prefer "other".
-- If the user is just saying hello or goodbye, use "greeting" or "goodbye".
-- If the user is asking to query or explore data, prefer "read-data".
-- If the user asks to delete, remove, or drop sheets/views, use "read-data" (data management operations).
-- If the user asks about the system itself, the agent, or Qwery (e.g., "who are you?", "what is Qwery?", "what can you do?", "how does this work?", "tell me about yourself"), use "system".
-- Consider message clarity: short, specific messages = higher confidence; long, vague messages = lower confidence
-- Consider keyword matching: messages with intent-specific keywords = higher confidence
+JSON:`;
+};
 
-Chart/Graph Detection (needsChart):
-- Set needsChart to true if:
-  - User explicitly mentions visualization keywords: "graph", "chart", "visualize", "show", "plot", "display", "visualization"
-  - User asks for comparisons, trends, or analysis that would benefit from visual representation
-  - Query intent suggests aggregations, time series, or comparative analysis
-- Set needsChart to false if:
-  - User just wants raw data or simple queries
-  - No visualization keywords or visual analysis intent detected
+export const detectIntent = async (text: string) => {
+  const maxAttempts = 2;
+  let lastError: unknown;
 
-SQL Generation Detection (needsSQL):
-- Set needsSQL to true if:
-  - User asks to query, retrieve, or analyze data (intent is "read-data")
-  - User explicitly asks for SQL or a query
-  - User wants to see data from tables/views
-  - User asks questions that require data retrieval (e.g., "show me X", "find Y", "list Z")
-- Set needsSQL to false if:
-  - User is just greeting, asking about the system, or having a conversation
-  - User wants to manage views/sheets (create, delete, rename) without querying
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const llamacppUrl = process.env.LLAMACPP_BASE_URL || 'http://localhost:8080';
+      
+      const promptText = createSimplePrompt(text);
+      
+      console.log('[detectIntent] Prompt length:', promptText.length, 'chars');
+      
+      // Call llama.cpp directly
+      const response = await fetch(`${llamacppUrl}/completion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptText,
+          n_predict: 100,
+          temperature: 0.1,
+          stop: ['\n', 'User:', 'user:', 'Human:'],
+        }),
+      });
 
-Examples:
-- "who are you?" → intent: "system", complexity: "simple", needsChart: false
-- "what is Qwery?" → intent: "system", complexity: "simple", needsChart: false
-- "what can you do?" → intent: "system", complexity: "simple", needsChart: false
-- "hi" → intent: "greeting", complexity: "simple", needsChart: false
-- "show me sales data" → intent: "read-data", complexity: "medium", needsChart: false
-- "show me a chart of sales by month" → intent: "read-data", complexity: "medium", needsChart: true
-- "visualize the trends" → intent: "read-data", complexity: "medium", needsChart: true
-- "compare sales by region" → intent: "read-data", complexity: "medium", needsChart: true
-- "delete duplicate views" → intent: "read-data", complexity: "medium", needsChart: false
-- "remove sheet X" → intent: "read-data", complexity: "simple", needsChart: false
-- "drop views Y and Z" → intent: "read-data", complexity: "simple", needsChart: false
+      if (!response.ok) {
+        throw new Error(`LlamaCPP returned status ${response.status}`);
+      }
 
-## Output Format
-{
-"intent": "string",
-"complexity": "string",
-"needsChart": boolean,
-"needsSQL": boolean
-}
+      const data = await response.json();
+      let content = data.content.trim();
+      
+      console.log('[detectIntent] Raw response:', content);
+      
+      // Try multiple strategies to extract JSON
+      let parsed: any = null;
+      
+      // Strategy 1: Direct parse
+      try {
+        parsed = JSON.parse(content);
+        console.log('[detectIntent] Direct parse successful');
+      } catch (e) {
+        // Strategy 2: Find JSON object in response
+        const jsonMatch = content.match(/\{[^}]*"intent"[^}]*\}/);
+        if (jsonMatch) {
+          console.log('[detectIntent] Extracted JSON:', jsonMatch[0]);
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          // Strategy 3: Build JSON from keywords
+          console.log('[detectIntent] Falling back to keyword detection');
+          
+          const lowerText = text.toLowerCase();
+          const lowerContent = content.toLowerCase();
+          
+          let intent = 'other';
+          if (lowerText.match(/^(hi|hello|hey|good morning|good afternoon)/)) {
+            intent = 'greeting';
+          } else if (lowerText.match(/^(bye|goodbye|see you|later)/)) {
+            intent = 'goodbye';
+          } else if (lowerText.match(/(who are you|what is qwery|what can you do|help)/)) {
+            intent = 'system';
+          } else if (lowerText.match(/(show|query|select|data|table|find|get|list)/)) {
+            intent = 'read-data';
+          }
+          
+          const needsChart = lowerText.includes('chart') || 
+                           lowerText.includes('graph') || 
+                           lowerText.includes('visualize') ||
+                           lowerText.includes('plot');
+          
+          const needsSQL = intent === 'read-data' || 
+                          lowerText.includes('query') || 
+                          lowerText.includes('select');
+          
+          parsed = {
+            intent,
+            complexity: 'simple',
+            needsChart,
+            needsSQL,
+          };
+        }
+      }
+      
+      if (parsed) {
+        console.log('[detectIntent] Parsed object:', parsed);
+        
+        // Ensure all required fields exist
+        const intentObject = {
+          intent: parsed.intent || 'other',
+          complexity: parsed.complexity || 'simple',
+          needsChart: parsed.needsChart === true || parsed.needsChart === 'true',
+          needsSQL: parsed.needsSQL === true || parsed.needsSQL === 'true',
+        };
+        
+        // Validate against schema
+        const validated = IntentSchema.parse(intentObject);
+        
+        const matchedIntent = INTENTS_LIST.find(
+          (intent) => intent.name === validated.intent,
+        );
 
-Respond ONLY with a strict JSON object using this schema:
-{
-  "intent": "one of the supported intent names or other",
-  "complexity": "simple" | "medium" | "complex",
-  "needsChart": boolean,
-  "needsSQL": boolean
-}
+        if (!matchedIntent || matchedIntent.supported === false) {
+          return {
+            intent: 'other' as const,
+            complexity: validated.complexity,
+            needsChart: validated.needsChart ?? false,
+            needsSQL: validated.needsSQL ?? false,
+          };
+        }
 
-User message:
-${inputMessage}
+        return validated;
+      }
 
-Current date: ${new Date().toISOString()}
-version: 1.1.0
-`;
+      throw new Error('Could not parse JSON from response');
+    } catch (error) {
+      lastError = error;
+      if (error instanceof Error) {
+        console.error('[detectIntent] Error:', error.message);
+      }
+
+      if (attempt === maxAttempts) {
+        break;
+      }
+
+      console.log(`[detectIntent] Attempt ${attempt} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  console.error(
+    '[detectIntent] All attempts failed, falling back to other intent:',
+    lastError instanceof Error ? lastError.message : String(lastError),
+  );
+
+  // Fallback response
+  return {
+    intent: 'other' as const,
+    complexity: 'simple' as const,
+    needsChart: false,
+    needsSQL: false,
+  };
+};
+
+export const detectIntentActor = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      inputMessage: string;
+      model: string;
+    };
+  }): Promise<z.infer<typeof IntentSchema>> => {
+    try {
+      const intent = await detectIntent(input.inputMessage);
+      return intent;
+    } catch (error) {
+      console.error('[detectIntentActor] ERROR:', error);
+      throw error;
+    }
+  },
+);

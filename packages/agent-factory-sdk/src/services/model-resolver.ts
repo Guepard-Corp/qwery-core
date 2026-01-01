@@ -44,18 +44,7 @@ async function createProvider(
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
-    case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
-      );
-      return createAzureModelProvider({
-        resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
-        apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
-        apiVersion: getEnv('AZURE_API_VERSION'),
-        baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
-        deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
-      });
-    }
+    
     case 'ollama': {
       const { createOllamaModelProvider } = await import(
         './models/ollama-model.provider'
@@ -86,6 +75,15 @@ async function createProvider(
       );
       return createWebLLMModelProvider({
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
+      });
+    }
+    case 'llamacpp': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseUrl: getEnv('LLAMACPP_BASE_URL') || 'http://localhost:8080',
+        defaultModel: getEnv('LLAMACPP_MODEL') ?? modelName,
       });
     }
     default:
