@@ -176,7 +176,6 @@ export const readDataAgent = async (
 
   const result = new Agent({
     model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
     tools: {
       testConnection: tool({
         description:
@@ -668,6 +667,8 @@ export const readDataAgent = async (
           // Use promptSource, needSQL, and needChart from context (passed to readDataAgent function)
           // needSQL comes from intent.needsSQL, needChart from intent.needsChart
 
+          console.log(`[readDataAgent] runQuery tool called with query: ${query.substring(0, 100)}...`);
+
           // TEMPORARY OVERRIDE: When needChart is true AND inline mode, execute query for chart generation
           // but still return SQL for pasting to notebook
           const isChartRequestInInlineMode =
@@ -771,8 +772,10 @@ export const readDataAgent = async (
               chartExecutionOverride: true, // Flag to show visual indicator in UI
             };
           }
-
+          console.log(
+            `[ReadDataAgent] returning runQuery result with ${result.rows.length} rows and ${result.columns.length} columns`, );
           return {
+
             result: result,
           };
         },
@@ -867,6 +870,7 @@ export const readDataAgent = async (
           sqlQuery = '',
           userInput = '',
         }) => {
+          console.log('[readDataAgent] generateChart tool called - THIS SHOULD NOT HAPPEN unless user explicitly asked for chart');
           const startTime = performance.now();
           const workspace = getWorkspace();
           if (!workspace) {
@@ -910,8 +914,25 @@ export const readDataAgent = async (
     stopWhen: stepCountIs(20),
   });
 
+  console.log("proceeding...");
+  let uiMessages = await validateUIMessages({ messages });
+
+  // Handle system prompt for LlamaCPP - prepend to first user message before conversion
+  const firstUserIndex = uiMessages.findIndex(m => m.role === 'user');
+  if (firstUserIndex !== -1 && uiMessages[firstUserIndex]) {
+    const message = uiMessages[firstUserIndex];
+    if ('content' in message && typeof message.content === 'string') {
+      (message as any).content = READ_DATA_AGENT_PROMPT + '\n\n' + message.content;
+    }
+  }
+
+  let processedMessages = convertToModelMessages(uiMessages);
+
+  console.log('[readDataAgent] Processed messages before system handling:', processedMessages.map(m => ({ role: m.role, contentPreview: 'content' in m && typeof m.content === 'string' ? m.content.substring(0, 100) : 'non-string' })));
+
+  console.log('[readDataAgent] About to call result.stream() with processed messages');
   return result.stream({
-    messages: convertToModelMessages(await validateUIMessages({ messages })),
+    messages: processedMessages,
     providerOptions: {
       openai: {
         reasoningSummary: 'auto', // 'auto' for condensed or 'detailed' for comprehensive

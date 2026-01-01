@@ -281,7 +281,7 @@ export const createStateMachine = (
                   ],
                 },
                 after: {
-                  30000: {
+                  60000: {
                     target: 'retrying',
                     guard: 'shouldRetry',
                     actions: assign({
@@ -485,6 +485,7 @@ export const createStateMachine = (
               id: 'SYSTEM_INFO',
               input: ({ context }: { context: AgentContext }) => ({
                 inputMessage: context.inputMessage,
+                model: context.model,
               }),
               onDone: {
                 target: 'streaming',
