@@ -44,18 +44,6 @@ async function createProvider(
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
-    case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
-      );
-      return createAzureModelProvider({
-        resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
-        apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
-        apiVersion: getEnv('AZURE_API_VERSION'),
-        baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
-        deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
-      });
-    }
     case 'ollama': {
       const { createOllamaModelProvider } = await import(
         './models/ollama-model.provider'
@@ -63,6 +51,44 @@ async function createProvider(
       return createOllamaModelProvider({
         baseUrl: getEnv('OLLAMA_BASE_URL'),
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
+      });
+    }
+    case 'llamacpp': {
+      console.log('🦙 [AgentFactory] llama.cpp provider selected');
+
+      const baseUrl = getEnv('LLAMACPP_BASE_URL');
+      const envModel = getEnv('LLAMACPP_MODEL');
+      const finalModel = envModel ?? modelName;
+
+      console.log('🦙 [AgentFactory] LLAMACPP_BASE_URL:', baseUrl);
+      console.log('🦙 [AgentFactory] LLAMACPP_MODEL (env):', envModel);
+      console.log('🦙 [AgentFactory] Final model used:', finalModel);
+
+      if (!baseUrl) {
+        console.error('❌ [AgentFactory] LLAMACPP_BASE_URL is missing or empty');
+      }
+
+      if (!finalModel) {
+        console.error('❌ [AgentFactory] No model name resolved for llama.cpp');
+      }
+
+      const timeout = parseInt(getEnv('LLAMACPP_TIMEOUT') || '10000');
+      const maxRetries = parseInt(getEnv('LLAMACPP_MAX_RETRIES') || '3');
+
+      console.log('🦙 [AgentFactory] LLAMACPP_TIMEOUT:', timeout);
+      console.log('🦙 [AgentFactory] LLAMACPP_MAX_RETRIES:', maxRetries);
+
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+
+      console.log('🦙 [AgentFactory] llama.cpp provider module loaded');
+
+      return createLlamaCppModelProvider({
+        baseUrl,
+        defaultModel: finalModel,
+        timeout,
+        maxRetries,
       });
     }
     case 'browser': {
@@ -90,7 +116,7 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: ollama, llamacpp, browser, transformer-browser, transformer, webllm.`,
       );
   }
 }
@@ -106,4 +132,9 @@ export async function resolveModel(
   const { providerId, modelName } = parseModelName(modelString);
   const provider = await createProvider(providerId, modelName);
   return provider.resolveModel(modelName);
+}
+
+
+export function getDefaultModel(): string {
+  return getEnv('DEFAULT_MODEL') || 'llamacpp/mistral';
 }

@@ -21,6 +21,7 @@ export interface GenerateChartInput {
   userInput: string;
   chartType?: ChartType; // Optional: if provided, skip selection step
   businessContext?: BusinessContext | null; // Optional business context for better chart generation
+  model?: string; // Optional model to use for chart generation
 }
 
 /**
@@ -31,6 +32,7 @@ export async function selectChartType(
   sqlQuery: string,
   userInput: string,
   businessContext?: BusinessContext | null,
+  model: string = 'llamacpp/mistral-7b-instruct',
 ): Promise<{ chartType: ChartType; reasoning: string }> {
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -65,7 +67,7 @@ export async function selectChartType(
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -97,6 +99,7 @@ export async function generateChartConfig(
   queryResults: QueryResults,
   sqlQuery: string,
   businessContext?: BusinessContext | null,
+  model: string = 'llamacpp/mistral-7b-instruct',
 ): Promise<{
   chartType: ChartType;
   data: Array<Record<string, unknown>>;
@@ -119,7 +122,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,
@@ -165,6 +168,7 @@ export async function generateChart(input: GenerateChartInput): Promise<{
     input.sqlQuery,
     input.userInput,
     input.businessContext,
+    input.model,
   );
   const chartType = input.chartType || selection.chartType;
 
@@ -174,6 +178,7 @@ export async function generateChart(input: GenerateChartInput): Promise<{
     input.queryResults,
     input.sqlQuery,
     input.businessContext,
+    input.model,
   );
 
   return chartConfig;

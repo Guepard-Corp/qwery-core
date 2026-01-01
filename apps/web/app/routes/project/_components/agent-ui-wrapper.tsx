@@ -111,7 +111,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ?? 'llamacpp/mistral-7b-instruct',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();
@@ -271,12 +271,17 @@ export const AgentUIWrapper = forwardRef<
     }));
   }, [datasources.data]);
 
-  const transport = useMemo(
-    () => (model: string) => {
+const transport = useMemo(
+  () => (model: string) => {
+    // Force llamacpp for local models; remove Azure logic
+    if (model.startsWith('llamacpp/')) {
       return transportFactory(conversationSlug, model, repositories);
-    },
-    [conversationSlug, repositories],
-  );
+    }
+    // Default to llamacpp if no provider specified
+    return transportFactory(conversationSlug, `llamacpp/${model}`, repositories);
+  },
+  [conversationSlug, repositories],
+);
 
   // Handle sendMessage and model from QweryAgentUI
   // eslint-disable react-hooks/preserve-manual-memoization -- React Compiler warning about dependency inference

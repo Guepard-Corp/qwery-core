@@ -171,7 +171,7 @@ export class FactoryAgent {
             ),
           );
         }
-      }, 60000);
+      }, 120000);
 
       let userInputSent = false;
 
