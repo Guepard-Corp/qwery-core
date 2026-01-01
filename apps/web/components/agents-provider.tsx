@@ -188,7 +188,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model: options.model || 'llamacpp/llama-2-7b-chat',
         },
       );
 

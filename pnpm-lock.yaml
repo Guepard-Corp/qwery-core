@@ -105,7 +105,7 @@ importers:
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
       '@ai-sdk/openai':
-        specifier: ^2.0.68
+        specifier: ^2.0.71
         version: 2.0.71(zod@3.25.76)
       '@ai-sdk/provider':
         specifier: ^2.0.0
@@ -625,6 +625,9 @@ importers:
       '@ai-sdk/azure':
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^2.0.71
+        version: 2.0.71(zod@3.25.76)
       '@aws-sdk/client-s3':
         specifier: ^3.936.0
         version: 3.948.0
@@ -674,8 +677,8 @@ importers:
         specifier: 'catalog:'
         version: 11.1.0
       xstate:
-        specifier: ^5.24.0
-        version: 5.24.0
+        specifier: ^5.25.0
+        version: 5.25.0
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -11756,8 +11759,8 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
-  xstate@5.24.0:
-    resolution: {integrity: sha512-h/213ThFfZbOefUWrLc9ZvYggEVBr0jrD2dNxErxNMLQfZRN19v+80TaXFho17hs8Q2E1mULtm/6nv12um0C4A==}
+  xstate@5.25.0:
+    resolution: {integrity: sha512-yyWzfhVRoTHNLjLoMmdwZGagAYfmnzpm9gPjlX2MhJZsDojXGqRxODDOi4BsgGRKD46NZRAdcLp6CKOyvQS0Bw==}
 
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
@@ -23578,7 +23581,7 @@ snapshots:
 
   xmlchars@2.2.0: {}
 
-  xstate@5.24.0: {}
+  xstate@5.25.0: {}
 
   xtend@4.0.2: {}
 

@@ -21,6 +21,7 @@
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^3.0.56",
     "@ai-sdk/azure": "^2.0.73",
+    "@ai-sdk/openai": "^2.0.71",
     "@aws-sdk/client-s3": "^3.936.0",
     "@aws-sdk/credential-providers": "^3.936.0",
     "@built-in-ai/core": "^2.0.1",
@@ -37,7 +38,7 @@
     "nanoid": "^5.1.6",
     "npm": "^11.6.4",
     "uuid": "catalog:",
-    "xstate": "^5.24.0",
+    "xstate": "^5.25.0",
     "zod": "catalog:"
   },
   "devDependencies": {
