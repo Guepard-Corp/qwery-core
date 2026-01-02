@@ -33,6 +33,7 @@ Generate the new sheet name:`;
 
 export async function generateSheetName(
   currentName: string,
+  model: string,
   schema: SimpleSchema,
 ): Promise<string> {
   try {
@@ -45,7 +46,7 @@ export async function generateSheetName(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 
