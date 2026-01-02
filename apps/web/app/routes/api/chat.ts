@@ -7,6 +7,7 @@ import {
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
+  SUPPORTED_MODELS,
 } from '@qwery/agent-factory-sdk';
 import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
@@ -46,12 +47,26 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = SUPPORTED_MODELS[0]?.value || 'llama-cpp/qwen2.5-7b-instruct',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
+  
+  // Check if agent exists AND is not stopped
   if (agent) {
-    agentLastAccess.set(conversationSlug, Date.now());
-    return agent;
+    // Verify agent is still active (not stopped)
+    const snapshot = (agent as any).factoryActor?.getSnapshot?.();
+    const isStopped = snapshot?.value === 'stopped' || snapshot?.status === 'done';
+    
+    if (isStopped) {
+      console.log(`[Chat API] Found stopped agent for ${conversationSlug}, recreating...`);
+      agents.delete(conversationSlug);
+      agentLastAccess.delete(conversationSlug);
+      agentCreationLocks.delete(conversationSlug);
+      agent = undefined; // Force recreation
+    } else {
+      agentLastAccess.set(conversationSlug, Date.now());
+      return agent;
+    }
   }
 
   const existingLock = agentCreationLocks.get(conversationSlug);
@@ -104,7 +119,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || SUPPORTED_MODELS[0]?.value || 'llama-cpp/qwen2.5-7b-instruct';
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -321,10 +336,10 @@ User request: ${cleanText}`;
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => (part as { text: string }).text)
-          .join(' ')
-          .trim() || ''
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
       : '';
 
     const stream = new ReadableStream({

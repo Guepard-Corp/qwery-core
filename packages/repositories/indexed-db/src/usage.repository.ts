@@ -101,7 +101,7 @@ export class UsageRepository extends IUsageRepository {
           }
         } else {
           // Default: sort by id DESC (newest first for time series data)
-          results.sort((a, b) => (b.id as number) - (a.id as number));
+          results.sort((a, b) => b.id.localeCompare(a.id));
         }
 
         if (options?.offset) {
@@ -177,7 +177,7 @@ export class UsageRepository extends IUsageRepository {
           (item) => this.deserialize(item),
         );
         // Sort by id DESC (newest first for time series data)
-        results.sort((a, b) => (b.id as number) - (a.id as number));
+        results.sort((a, b) => b.id.localeCompare(a.id));
         resolve(results);
       };
     });
@@ -256,7 +256,7 @@ export class UsageRepository extends IUsageRepository {
 
       const entityWithId = {
         ...entity,
-        id: entity.id || Date.now(),
+        id: entity.id || crypto.randomUUID(),
       };
 
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');

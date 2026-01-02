@@ -48,6 +48,7 @@ export class UsageOutput {
 }
 
 export type CreateUsageInput = {
+  id: string;
   conversationId: string;
   projectId: string;
   organizationId: string;

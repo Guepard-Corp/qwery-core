@@ -110,72 +110,23 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     // Store workingDir for reference
     this.workingDir = workingDir;
 
-    // Create in-memory transient DuckDB instance
+    // Create in-memory transient DuckDB instance with custom_user_agent set at creation time
     const { DuckDBInstance } = await import('@duckdb/node-api');
-    this.instance = await DuckDBInstance.create(':memory:');
+    this.instance = await DuckDBInstance.create(':memory:', {
+      access_mode: 'READ_WRITE',
+      custom_user_agent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    });
 
     // Create initial connection
     this.connection = await this.instance.connect();
 
-    // Load required extension based on workingDir URI protocol
-    const requiredExtension = this.getRequiredExtension(workingDir);
-    if (requiredExtension) {
-      // Check if extension is already installed
-      let isInstalled = false;
-      try {
-        const checkReader = await this.connection.runAndReadAll(
-          `SELECT extension_name FROM duckdb_extensions() WHERE extension_name = '${requiredExtension}'`,
-        );
-        await checkReader.readAll();
-        const extensions = checkReader.getRowObjectsJS() as Array<{
-          extension_name: string;
-        }>;
-        isInstalled = extensions.length > 0;
-      } catch {
-        // If check fails, assume not installed
-        isInstalled = false;
-      }
-
-      // Install if not already installed
-      if (!isInstalled) {
-        try {
-          await this.connection.run(`INSTALL ${requiredExtension}`);
-          // Verify installation succeeded by checking again
-          const verifyReader = await this.connection.runAndReadAll(
-            `SELECT extension_name FROM duckdb_extensions() WHERE extension_name = '${requiredExtension}'`,
-          );
-          await verifyReader.readAll();
-          const verified = verifyReader.getRowObjectsJS() as Array<{
-            extension_name: string;
-          }>;
-          if (verified.length === 0) {
-            throw new Error(
-              `Extension ${requiredExtension} installation completed but extension not found`,
-            );
-          }
-        } catch (installError) {
-          const errorMsg =
-            installError instanceof Error
-              ? installError.message
-              : String(installError);
-          throw new Error(
-            `Failed to install extension ${requiredExtension}: ${errorMsg}. ` +
-              `Please ensure the extension is available and network connectivity is working.`,
-          );
-        }
-      }
-
-      // Load the extension (required for each connection)
-      try {
-        await this.connection.run(`LOAD ${requiredExtension}`);
-      } catch (loadError) {
-        const errorMsg =
-          loadError instanceof Error ? loadError.message : String(loadError);
-        throw new Error(
-          `Failed to load extension ${requiredExtension}: ${errorMsg}. ` +
-            `Extension may not be installed correctly.`,
-        );
-      }
+    // Install and configure httpfs BEFORE any queries
+    try {
+      await this.connection.run('INSTALL httpfs');
+      await this.connection.run('LOAD httpfs');
+    } catch (error) {
+      console.warn('Failed to configure httpfs:', error);
     }
 
     // Apply engine-specific configuration
@@ -201,6 +152,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     this.initialized = true;
   }
 
+  private loadingDatasources: Map<string, Promise<void>> = new Map();
+
   /**
    * Attach one or more datasources to the query engine.
    */
@@ -215,6 +168,47 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
       return;
     }
 
+    // Filter out datasources that are already attached or currently loading
+    const startAttachment = async (ds: Datasource, type: string) => {
+      // If already attached, skip
+      if (this.attachedDatasources.has(ds.id)) {
+        return;
+      }
+
+      // If currently loading, wait for it
+      if (this.loadingDatasources.has(ds.id)) {
+        return this.loadingDatasources.get(ds.id);
+      }
+
+      // Otherwise, start loading
+      const loadPromise = (async () => {
+        try {
+          if (type === 'duckdb-native') {
+            await datasourceToDuckdb({
+              connection: this.connection!,
+              datasource: ds,
+            });
+          } else {
+            await attachForeignDatasourceToConnection({
+              conn: this.connection!,
+              datasource: ds,
+            });
+          }
+          this.attachedDatasources.add(ds.id);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `Failed to attach datasource ${ds.id}: ${errorMsg}`,
+          );
+        } finally {
+          this.loadingDatasources.delete(ds.id);
+        }
+      })();
+
+      this.loadingDatasources.set(ds.id, loadPromise);
+      return loadPromise;
+    };
+
     // Convert Datasource[] to LoadedDatasource[]
     const loaded: LoadedDatasource[] = datasources.map((ds) => ({
       datasource: ds,
@@ -223,37 +217,20 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     const { duckdbNative, foreignDatabases } = groupDatasourcesByType(loaded);
 
-    // Attach foreign databases (PostgreSQL, MySQL, etc.)
+    // Process all attachments concurrently but safely
+    const promises: Promise<void>[] = [];
+
     for (const { datasource } of foreignDatabases) {
-      try {
-        await attachForeignDatasourceToConnection({
-          conn: this.connection,
-          datasource,
-        });
-        this.attachedDatasources.add(datasource.id);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(
-          `Failed to attach datasource ${datasource.id}: ${errorMsg}`,
-        );
-      }
+      const p = startAttachment(datasource, 'foreign');
+      if (p) promises.push(p);
     }
 
-    // Create views for DuckDB-native datasources
     for (const { datasource } of duckdbNative) {
-      try {
-        await datasourceToDuckdb({
-          connection: this.connection,
-          datasource,
-        });
-        this.attachedDatasources.add(datasource.id);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(
-          `Failed to create view for datasource ${datasource.id}: ${errorMsg}`,
-        );
-      }
+      const p = startAttachment(datasource, 'duckdb-native');
+      if (p) promises.push(p);
     }
+
+    await Promise.all(promises);
   }
 
   /**

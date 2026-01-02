@@ -11,6 +11,13 @@ type DriverActionRequest = {
   sql?: string;
 };
 
+export async function loader() {
+  return Response.json(
+    { error: 'GET method not supported. Use POST for driver commands.' },
+    { status: 405 }
+  );
+}
+
 export async function action({ request }: { request: Request }) {
   const logger = await getLogger();
   if (request.method !== 'POST') {

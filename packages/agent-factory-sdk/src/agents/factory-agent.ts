@@ -282,11 +282,17 @@ export class FactoryAgent {
                     messages: UIMessage[];
                     finishReason?: FinishReason;
                   }) => {
-                    if (finishReason === 'stop') {
-                      this.factoryActor.send({
-                        type: 'FINISH_STREAM',
-                      });
+                    // Always send FINISH_STREAM regardless of finish reason
+                    // This prevents the state machine from getting stuck in streaming state
+                    console.log(
+                      `[FactoryAgent ${this.id}] Stream finished with reason: ${finishReason}`,
+                    );
+                    this.factoryActor.send({
+                      type: 'FINISH_STREAM',
+                    });
 
+                    // Only persist usage on successful completion
+                    if (finishReason === 'stop') {
                       // Get totalUsage from streamResult (it's a Promise)
                       const totalUsage = await ctx.streamResult.totalUsage;
 
@@ -303,6 +309,10 @@ export class FactoryAgent {
                         .catch((error) => {
                           console.error('Failed to persist usage:', error);
                         });
+                    } else if (finishReason) {
+                      console.warn(
+                        `[FactoryAgent ${this.id}] Stream finished with non-stop reason: ${finishReason}`,
+                      );
                     }
 
                     const messagePersistenceService =

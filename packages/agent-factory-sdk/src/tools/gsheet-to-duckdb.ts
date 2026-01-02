@@ -114,6 +114,8 @@ export const gsheetToDuckdb = async (
   const escapedUrl = csvLink.replace(/'/g, "''");
   const escapedViewName = opts.viewName.replace(/"/g, '""');
 
+  // User-Agent is already set during database initialization
+
   // Create or replace view directly from the CSV URL
   await conn.run(`
     CREATE OR REPLACE VIEW "${escapedViewName}" AS
@@ -196,8 +198,11 @@ async function discoverTabs(
     }
   }
 
-  // 3. Always ensure gid=0 is tried
-  addTab(0, getCsvUrlForTab(spreadsheetId, 0));
+  // 3. If no tabs discovered yet, add a fallback using no-gid export (first sheet)
+  if (tabs.length === 0) {
+    const noGidUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+    addTab(-1, noGidUrl, 'Sheet1');
+  }
 
   // 4. Validate accessibility for tabs that were found but not verified
   const validatedTabs: GSheetTab[] = [];
@@ -215,6 +220,28 @@ async function discoverTabs(
       console.warn(
         `[GSheetAttach] Tab gid=${tab.gid} (${tab.name || 'unnamed'}) is not accessible:`,
         errorMsg,
+      );
+    }
+  }
+
+  // 5. If no tabs validated, try the default export without gid (first sheet)
+  // This handles sheets where gid discovery failed or sheet is not fully published
+  if (validatedTabs.length === 0) {
+    try {
+      const noGidUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+      const testReader = await conn.runAndReadAll(
+        `SELECT * FROM read_csv_auto('${noGidUrl.replace(/'/g, "''")}') LIMIT 1`,
+      );
+      await testReader.readAll();
+      // If successful, add this as the default tab (gid=-1 as marker for "no specific gid")
+      validatedTabs.push({ gid: -1, csvUrl: noGidUrl, name: 'Sheet1' });
+      console.log(
+        `[GSheetAttach] Successfully accessed sheet using default export (no gid)`,
+      );
+    } catch (error) {
+      console.warn(
+        `[GSheetAttach] Failed to access sheet using default export:`,
+        error,
       );
     }
   }
@@ -256,6 +283,8 @@ export async function attachGSheetDatasource(
     );
   }
 
+  // User-Agent is already set during database initialization
+
   // Extract spreadsheet ID
   const spreadsheetId = extractSpreadsheetId(sharedLink);
   if (!spreadsheetId) {
@@ -285,11 +314,23 @@ export async function attachGSheetDatasource(
 
     if (existingDbs.length === 0) {
       // Construct persistent database file path
-      const { join } = await import('node:path');
-      const { mkdir } = await import('node:fs/promises');
-      const conversationDir = join(workspace, conversationId);
-      await mkdir(conversationDir, { recursive: true });
-      const dbFilePath = join(conversationDir, `${attachedDatabaseName}.db`);
+      let conversationDir: string;
+      let dbFilePath: string;
+      
+      // Handle both Node.js file paths and browser URI paths
+      if (workspace.startsWith('file://') || workspace.startsWith('file:')) {
+        // Browser/OPFS path - use forward slashes, don't create directories
+        const basePath = workspace.replace(/\\/g, '/');
+        conversationDir = `${basePath}/${conversationId}`;
+        dbFilePath = `${conversationDir}/${attachedDatabaseName}.db`;
+      } else {
+        // Node.js file path - use path.join and create directories
+        const { join } = await import('node:path');
+        const { mkdir } = await import('node:fs/promises');
+        conversationDir = join(workspace, conversationId);
+        await mkdir(conversationDir, { recursive: true });
+        dbFilePath = join(conversationDir, `${attachedDatabaseName}.db`);
+      }
 
       // Escape single quotes in file path for SQL injection protection
       const escapedPath = dbFilePath.replace(/'/g, "''");

@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Usage } from '@qwery/domain/entities';
 import { IUsageRepository } from '@qwery/domain/repositories';
+import { v4 as uuidv4 } from 'uuid';
 
 import { createDatabase, initializeSchema } from './db';
 
@@ -51,7 +52,7 @@ export class UsageRepository extends IUsageRepository {
 
   private deserialize(row: Record<string, unknown>): Usage {
     return {
-      id: row.id as number,
+      id: row.id as string,
       conversationId: row.conversation_id as string,
       projectId: row.project_id as string,
       organizationId: row.organization_id as string,
@@ -106,7 +107,7 @@ export class UsageRepository extends IUsageRepository {
   async findById(id: string): Promise<Usage | null> {
     await this.init();
     const stmt = this.db.prepare('SELECT * FROM usage WHERE id = ?');
-    const row = stmt.get(Number(id)) as Record<string, unknown> | undefined;
+    const row = stmt.get(id) as Record<string, unknown> | undefined;
     return row ? this.deserialize(row) : null;
   }
 
@@ -145,25 +146,43 @@ export class UsageRepository extends IUsageRepository {
   async create(entity: Usage): Promise<Usage> {
     await this.init();
 
-    // Generate a high-resolution timestamp ID using clock ticks to avoid collisions
-    // Uses process.hrtime for nanosecond precision combined with Date.now()
-    const generateTimestampId = (): number => {
-      const baseTime = Date.now();
-      // Get high-resolution time since process start (nanoseconds)
-      const hrtime = process.hrtime();
-      // Convert nanoseconds to microseconds (0-999,999 range)
-      const microseconds = Math.floor(hrtime[1] / 1000);
-      // Combine: base timestamp in milliseconds * 1,000,000 + microseconds
-      // This gives us microsecond-level precision (1,000,000 unique values per millisecond)
-      return baseTime * 1_000_000 + microseconds;
-    };
-
     const entityWithId = {
       ...entity,
-      id: entity.id && entity.id > 0 ? entity.id : generateTimestampId(),
+      id: entity.id || uuidv4(),
     };
 
     const serialized = this.serialize(entityWithId);
+    
+    // Debug logging to identify datatype mismatch - log ALL values and their types
+    const allValues = [
+      serialized.id,
+      serialized.conversation_id,
+      serialized.project_id,
+      serialized.organization_id,
+      serialized.user_id,
+      serialized.model,
+      serialized.input_tokens,
+      serialized.output_tokens,
+      serialized.total_tokens,
+      serialized.reasoning_tokens,
+      serialized.cached_input_tokens,
+      serialized.context_size,
+      serialized.credits_cap,
+      serialized.credits_used,
+      serialized.cpu,
+      serialized.memory,
+      serialized.network,
+      serialized.gpu,
+      serialized.storage,
+    ];
+    
+    console.log('[UsageRepository] Full serialized data:', {
+      values: allValues,
+      types: allValues.map((v) => typeof v),
+      nulls: allValues.map((v, i) => v === null ? i : null).filter(x => x !== null),
+      undefineds: allValues.map((v, i) => v === undefined ? i : null).filter(x => x !== null),
+    });
+    
     const stmt = this.db.prepare(`
       INSERT INTO usage (
         id, conversation_id, project_id, organization_id, user_id, model,
@@ -175,27 +194,7 @@ export class UsageRepository extends IUsageRepository {
     `);
 
     try {
-      stmt.run(
-        serialized.id,
-        serialized.conversation_id,
-        serialized.project_id,
-        serialized.organization_id,
-        serialized.user_id,
-        serialized.model,
-        serialized.input_tokens,
-        serialized.output_tokens,
-        serialized.total_tokens,
-        serialized.reasoning_tokens,
-        serialized.cached_input_tokens,
-        serialized.context_size,
-        serialized.credits_cap,
-        serialized.credits_used,
-        serialized.cpu,
-        serialized.memory,
-        serialized.network,
-        serialized.gpu,
-        serialized.storage,
-      );
+      stmt.run(...allValues);
       return entityWithId;
     } catch (error) {
       if (
@@ -257,7 +256,7 @@ export class UsageRepository extends IUsageRepository {
   async delete(id: string): Promise<boolean> {
     await this.init();
     const stmt = this.db.prepare('DELETE FROM usage WHERE id = ?');
-    const result = stmt.run(Number(id));
+    const result = stmt.run(id);
     return result.changes > 0;
   }
 

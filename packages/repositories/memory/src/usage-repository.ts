@@ -4,7 +4,7 @@ import type { Usage } from '@qwery/domain/entities';
 import { IUsageRepository } from '@qwery/domain/repositories';
 
 export class UsageRepository extends IUsageRepository {
-  private usages = new Map<number, Usage>();
+  private usages = new Map<string, Usage>();
 
   async findAll(options?: RepositoryFindOptions): Promise<Usage[]> {
     const allUsages = Array.from(this.usages.values());
@@ -15,13 +15,13 @@ export class UsageRepository extends IUsageRepository {
       // Simple ordering - in a real implementation, you'd parse the order string
       allUsages.sort((a, b) => {
         if (options.order?.includes('DESC')) {
-          return b.id - a.id;
+          return b.id.localeCompare(a.id);
         }
-        return a.id - b.id;
+        return a.id.localeCompare(b.id);
       });
     } else {
       // Default to time series order (newest first)
-      allUsages.sort((a, b) => b.id - a.id);
+      allUsages.sort((a, b) => b.id.localeCompare(a.id));
     }
 
     if (limit) {
@@ -31,7 +31,7 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async findById(id: string): Promise<Nullable<Usage>> {
-    return this.usages.get(Number(id)) ?? null;
+    return this.usages.get(id) ?? null;
   }
 
   async findBySlug(_slug: string): Promise<Nullable<Usage>> {
@@ -43,7 +43,7 @@ export class UsageRepository extends IUsageRepository {
     const usages = Array.from(this.usages.values());
     return usages
       .filter((usage) => usage.conversationId === conversationId)
-      .sort((a, b) => b.id - a.id);
+      .sort((a, b) => b.id.localeCompare(a.id));
   }
 
   async findByConversationSlug(_conversationSlug: string): Promise<Usage[]> {
@@ -58,7 +58,7 @@ export class UsageRepository extends IUsageRepository {
     // Generate ID if not provided
     const entityWithId = {
       ...entity,
-      id: entity.id ?? Date.now(),
+      id: entity.id ?? crypto.randomUUID(),
     };
     this.usages.set(entityWithId.id, entityWithId);
     return entityWithId;
@@ -73,6 +73,6 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    return this.usages.delete(Number(id));
+    return this.usages.delete(id);
   }
 }

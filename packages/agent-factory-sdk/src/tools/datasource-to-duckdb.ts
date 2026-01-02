@@ -179,6 +179,7 @@ export async function datasourceToDuckdb(
 
     // Rename view to semantic name
     if (finalViewName !== tempViewName) {
+      await conn.run(`DROP VIEW IF EXISTS "${escapedFinalViewName}"`);
       await conn.run(
         `ALTER VIEW "${escapedTempViewName}" RENAME TO "${escapedFinalViewName}"`,
       );
@@ -334,6 +335,7 @@ export async function datasourceToDuckdb(
 
     // Rename view to semantic name
     if (finalViewName !== tempViewNameWithTable) {
+      await conn.run(`DROP VIEW IF EXISTS "${escapedFinalViewName}"`);
       await conn.run(
         `ALTER VIEW "${escapedTempViewNameWithTable}" RENAME TO "${escapedFinalViewName}"`,
       );

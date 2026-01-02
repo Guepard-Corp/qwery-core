@@ -2,8 +2,15 @@
   "extends": "@qwery/tsconfig/base.json",
   "compilerOptions": {
     "skipLibCheck": true,
+    "moduleResolution": "bundler",
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
-  "include": ["*.ts", "*.tsx", "src"],
-  "exclude": ["node_modules"]
+  "include": [
+    "*.ts",
+    "*.tsx",
+    "src"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

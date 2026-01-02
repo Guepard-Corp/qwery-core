@@ -15,8 +15,12 @@ const ConfigSchema = z.object({
 
 type DriverConfig = z.infer<typeof ConfigSchema>;
 
-const convertToCsvLink = (spreadsheetId: string, gid: number = 0): string => {
-  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+const convertToCsvLink = (spreadsheetId: string, gid?: number): string => {
+  // If gid is provided and valid, use it; otherwise, use no-gid export (first sheet)
+  if (gid !== undefined && gid >= 0) {
+    return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+  }
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
 };
 
 async function fetchSpreadsheetMetadata(
@@ -57,8 +61,33 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
 
   const createDuckDbInstance = async () => {
     const { DuckDBInstance } = await import('@duckdb/node-api');
-    const instance = await DuckDBInstance.create(':memory:');
+    const instance = await DuckDBInstance.create(':memory:', {
+      access_mode: 'READ_WRITE',
+      custom_user_agent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    });
+
+    // Install httpfs extension (only needs to be done once)
+    const conn = await instance.connect();
+    try {
+      await conn.run('INSTALL httpfs');
+      await conn.run('LOAD httpfs');
+    } catch (error) {
+      context.logger?.warn?.('Failed to install httpfs:', error);
+    } finally {
+      conn.closeSync();
+    }
+
     return instance;
+  };
+
+  // Helper to ensure httpfs is loaded (custom_user_agent is set at instance creation time)
+  const configureConnectionForHttp = async (conn: Awaited<ReturnType<Awaited<ReturnType<typeof createDuckDbInstance>>['connect']>>) => {
+    try {
+      await conn.run('LOAD httpfs');
+    } catch (error) {
+      context.logger?.warn?.('Failed to load httpfs:', error);
+    }
   };
 
   const getInstance = async (config: DriverConfig) => {
@@ -73,13 +102,16 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       const spreadsheetId = match[1]!;
 
       const discoveredTabs = await fetchSpreadsheetMetadata(spreadsheetId);
-      // Always ensure at least gid 0 if nothing discovered
+      // If no tabs discovered, use no-gid export (first sheet) instead of assuming gid=0
       if (discoveredTabs.length === 0) {
-        discoveredTabs.push({ gid: 0, name: 'sheet' });
+        discoveredTabs.push({ gid: -1, name: 'Sheet1' });
       }
 
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
+
+      // Configure HTTP settings for this connection
+      await configureConnectionForHttp(conn);
 
       try {
         for (const tab of discoveredTabs) {
@@ -107,6 +139,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       const { instance, tabs } = await getInstance(parsed);
       const conn = await instance.connect();
 
+      // Configure HTTP settings for this connection
+      await configureConnectionForHttp(conn);
+
       try {
         const firstTab = tabs[0]!;
         const resultReader = await conn.runAndReadAll(
@@ -127,6 +162,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       const parsed = ConfigSchema.parse(config);
       const { instance, tabs: discoveredTabs } = await getInstance(parsed);
       const conn = await instance.connect();
+
+      // Configure HTTP settings for this connection
+      await configureConnectionForHttp(conn);
 
       try {
         const tables = [];
@@ -227,6 +265,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       const parsed = ConfigSchema.parse(config);
       const { instance } = await getInstance(parsed);
       const conn = await instance.connect();
+
+      // Configure HTTP settings for this connection
+      await configureConnectionForHttp(conn);
 
       const startTime = performance.now();
 

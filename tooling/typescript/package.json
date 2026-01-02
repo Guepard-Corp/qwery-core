@@ -5,6 +5,9 @@
   "files": [
     "base.json"
   ],
+  "exports": {
+    "./base.json": "./base.json"
+  },
   "devDependencies": {
     "vite": "catalog:"
   }

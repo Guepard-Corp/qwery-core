@@ -4,10 +4,7 @@ import { Exclude, Expose, plainToClass } from 'class-transformer';
 import { CreateUsageInput } from '../../usecases';
 
 export const UsageSchema = z.object({
-  id: z
-    .number()
-    .describe('The unique identifier for the action')
-    .default(Date.now()),
+  id: z.string().uuid().describe('The unique identifier for the action'),
   conversationId: z
     .string()
     .describe('The unique identifier for the conversation'),
@@ -56,9 +53,9 @@ export const UsageSchema = z.object({
 export type Usage = z.infer<typeof UsageSchema>;
 
 @Exclude()
-export class UsageEntity extends Entity<number, typeof UsageSchema> {
+export class UsageEntity extends Entity<string, typeof UsageSchema> {
   @Expose()
-  declare public id: number;
+  declare public id: string;
   @Expose()
   public conversationId!: string;
   @Expose()
