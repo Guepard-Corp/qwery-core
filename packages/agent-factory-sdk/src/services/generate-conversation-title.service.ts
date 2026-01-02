@@ -36,7 +36,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('ollama/mistral'),
+      model: await resolveModel('llamacpp/mistral'),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 

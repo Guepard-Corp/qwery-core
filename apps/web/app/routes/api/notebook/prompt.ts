@@ -274,7 +274,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'ollama/mistral',
+    model = 'llamacpp/mistral',
     notebookCellType,
   } = body;
 

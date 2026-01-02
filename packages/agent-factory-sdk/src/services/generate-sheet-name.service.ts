@@ -45,7 +45,7 @@ export async function generateSheetName(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('ollama/mistral'),
+      model: await resolveModel('llamacpp/mistral'),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 

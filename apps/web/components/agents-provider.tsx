@@ -188,7 +188,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'ollama/mistral',
+          model: options.model || 'llamacpp/mistral',
         },
       );
 
