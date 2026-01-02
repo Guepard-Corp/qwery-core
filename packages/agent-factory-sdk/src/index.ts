@@ -39,6 +39,10 @@ const baseModels = [
     name: 'Built-in Browser',
     value: 'browser/built-in',
   },
+  {
+    name: 'LlamaCpp (Local)',
+    value: 'llamacpp/llama-3.1-8b-instruct',
+  },
 ];
 
 export const SUPPORTED_MODELS = baseModels;
