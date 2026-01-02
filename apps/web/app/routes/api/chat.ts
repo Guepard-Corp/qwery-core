@@ -311,7 +311,11 @@ User request: ${cleanText}`;
     });
 
     const streamResponse = await agent.respond({
-      messages: await validateUIMessages({ messages: processedMessages }),
+      messages: await validateUIMessages({
+        messages: processedMessages.filter(
+          (msg) => msg.parts && msg.parts.length > 0,
+        ),
+      }),
     });
 
     if (!streamResponse.body) {

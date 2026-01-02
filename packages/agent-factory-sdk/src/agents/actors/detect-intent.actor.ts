@@ -20,10 +20,18 @@ export const detectIntent = async (text: string) => {
         );
       });
 
+      const modelId = getDefaultModel();
+      const isLocal = modelId.includes('llamacpp');
+      const basePrompt = DETECT_INTENT_PROMPT(isLocal);
+      const finalPrompt = isLocal
+        ? `${basePrompt}\n\nCRITICAL: Respond ONLY with the strict JSON object. No conversational filler. No preamble like "Here is the JSON".`
+        : basePrompt;
+
       const generatePromise = generateObject({
-        model: await resolveModel(getDefaultModel()),
+        model: await resolveModel(modelId),
         schema: IntentSchema,
-        prompt: DETECT_INTENT_PROMPT(text),
+        system: finalPrompt,
+        prompt: text,
       });
 
       const result = await Promise.race([generatePromise, timeoutPromise]);

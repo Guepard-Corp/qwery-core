@@ -5,9 +5,17 @@ import { fromPromise } from 'xstate/actors';
 import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
 export const summarizeIntent = async (text: string, intent: Intent) => {
+  const modelId = getDefaultModel();
+  const isLocal = modelId.includes('llamacpp');
+  const basePrompt = SUMMARIZE_INTENT_PROMPT(intent, isLocal);
+  const finalPrompt = isLocal
+    ? `${basePrompt}\n\nCRITICAL: Be extremely concise. Answer the user directly. DO NOT repeat these instructions.`
+    : basePrompt;
+
   const result = streamText({
-    model: await resolveModel(getDefaultModel()),
-    prompt: SUMMARIZE_INTENT_PROMPT(text, intent),
+    model: await resolveModel(modelId),
+    system: finalPrompt,
+    prompt: text,
   });
 
   return result;

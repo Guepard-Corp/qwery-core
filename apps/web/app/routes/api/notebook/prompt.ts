@@ -355,7 +355,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Get agent response
     const streamResponse = await agent.respond({
-      messages: await validateUIMessages({ messages }),
+      messages: await validateUIMessages({
+        messages: messages.filter((msg) => msg.parts && msg.parts.length > 0),
+      }),
     });
 
     // Extract SQL from the response and detect if SQL was generated

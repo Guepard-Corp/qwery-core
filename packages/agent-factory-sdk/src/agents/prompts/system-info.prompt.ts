@@ -1,7 +1,12 @@
-import { BASE_AGENT_PROMPT } from './base-agent.prompt';
+import { BASE_AGENT_PROMPT, BASE_AGENT_LITE_PROMPT } from './base-agent.prompt';
 
-export const SYSTEM_INFO_PROMPT = (userInput: string) => `
-You are Qwery System Information Agent.
+export const SYSTEM_INFO_PROMPT = (isLite = false) => {
+    if (isLite) {
+        return `You are a Qwery Assistant. ${BASE_AGENT_LITE_PROMPT} Qwery is a data platform helping users analyze data through chat. Answer concisely about Qwery.`;
+    }
+
+    return `
+You are a Qwery System Information Agent.
 
 ${BASE_AGENT_PROMPT}
 
@@ -20,9 +25,7 @@ Answer the user's question about the system, what it does, and how it works. Be 
 ## Output style
 - Be helpful and informative
 
-## User input
-${userInput}
-
 Current date: ${new Date().toISOString()}
 version: 1.1.0
 `;
+};

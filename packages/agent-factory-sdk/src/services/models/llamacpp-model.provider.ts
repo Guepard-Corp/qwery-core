@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { LanguageModel } from 'ai';
+import { LanguageModel, wrapLanguageModel } from 'ai';
 
 type ModelProvider = {
     resolveModel: (modelName: string) => LanguageModel;
@@ -18,7 +18,7 @@ export type LlamaCppModelProviderOptions = {
  * 2. Start the server: `llama-server -m <model.gguf> --port 8080`
  * 3. Set environment variables:
  *    - LLAMACPP_BASE_URL (default: http://localhost:8080/v1)
- *    - LLAMACPP_MODEL (optional, llama.cpp uses loaded model by default)
+ *    - LLAMACPP_MODEL (optional)
  */
 export function createLlamaCppModelProvider({
     baseUrl,
@@ -32,10 +32,32 @@ export function createLlamaCppModelProvider({
 
     return {
         resolveModel: (modelName) => {
-            // llama.cpp server typically serves a single model,
-            // so the model name can be anything - it uses the loaded model
             const finalModel = modelName || defaultModel || 'default';
-            return provider.chat(finalModel) as unknown as LanguageModel;
+            const model = provider.chat(finalModel);
+
+            // Wrap the model to inject stop sequences and handle local model quirks
+            // explicitly use .chat() to ensure it targets /v1/chat/completions
+            // instead of the newer /v1/responses endpoint which llama.cpp doesn't support.
+            return wrapLanguageModel({
+                model: model as any,
+                middleware: {
+                    transformParams: async ({ params }) => {
+                        return {
+                            ...params,
+                            // Inject common stop sequences for small local models to prevent role leaking
+                            stopSequences: [
+                                ...(params.stopSequences || []),
+                                '[User]',
+                                '[Assistant]',
+                                '<|user|>',
+                                '<|assistant|>',
+                                '### Instruction:',
+                                '### Response:',
+                            ],
+                        };
+                    },
+                },
+            }) as unknown as LanguageModel;
         },
     };
 }
