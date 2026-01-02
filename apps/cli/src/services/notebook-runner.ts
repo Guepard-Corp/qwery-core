@@ -101,7 +101,7 @@ export class NotebookRunner {
 
         agent = await FactoryAgent.create({
           conversationSlug,
-          model: 'azure/gpt-5-mini',
+          model: 'openai/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
           repositories: repositories as FactoryAgentOptions['repositories'],
         });
         agents.set(options.datasource.id, agent);

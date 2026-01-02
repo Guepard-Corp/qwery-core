@@ -19,6 +19,7 @@ export interface GenerateChartInput {
   queryResults: QueryResults;
   sqlQuery: string;
   userInput: string;
+  model: string;
   chartType?: ChartType; // Optional: if provided, skip selection step
   businessContext?: BusinessContext | null; // Optional business context for better chart generation
 }
@@ -30,11 +31,13 @@ export async function selectChartType(
   queryResults: QueryResults,
   sqlQuery: string,
   userInput: string,
+  model: string,
   businessContext?: BusinessContext | null,
 ): Promise<{ chartType: ChartType; reasoning: string }> {
   try {
+    let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
+      timeoutId = setTimeout(
         () =>
           reject(new Error('Chart type selection timeout after 30 seconds')),
         30000,
@@ -65,7 +68,7 @@ export async function selectChartType(
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -75,7 +78,17 @@ export async function selectChartType(
       ),
     });
 
-    const result = await Promise.race([generatePromise, timeoutPromise]);
+    const result = await Promise.race([
+      generatePromise.catch((err) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        throw err;
+      }),
+      timeoutPromise.catch((err) => {
+        throw err;
+      }),
+    ]);
+    
+    if (timeoutId) clearTimeout(timeoutId);
     return result.object;
   } catch (error) {
     console.error('[selectChartType] ERROR:', error);
@@ -96,6 +109,7 @@ export async function generateChartConfig(
   chartType: ChartType,
   queryResults: QueryResults,
   sqlQuery: string,
+  model: string,
   businessContext?: BusinessContext | null,
 ): Promise<{
   chartType: ChartType;
@@ -110,8 +124,9 @@ export async function generateChartConfig(
   };
 }> {
   try {
+    let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
+      timeoutId = setTimeout(
         () =>
           reject(new Error('Chart config generation timeout after 30 seconds')),
         30000,
@@ -119,7 +134,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,
@@ -129,7 +144,17 @@ export async function generateChartConfig(
       ),
     });
 
-    const result = await Promise.race([generatePromise, timeoutPromise]);
+    const result = await Promise.race([
+      generatePromise.catch((err) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        throw err;
+      }),
+      timeoutPromise.catch((err) => {
+        throw err;
+      }),
+    ]);
+    
+    if (timeoutId) clearTimeout(timeoutId);
     return result.object;
   } catch (error) {
     console.error('[generateChartConfig] ERROR:', error);
@@ -164,6 +189,7 @@ export async function generateChart(input: GenerateChartInput): Promise<{
     input.queryResults,
     input.sqlQuery,
     input.userInput,
+    input.model,
     input.businessContext,
   );
   const chartType = input.chartType || selection.chartType;
@@ -173,6 +199,7 @@ export async function generateChart(input: GenerateChartInput): Promise<{
     chartType,
     input.queryResults,
     input.sqlQuery,
+    input.model,
     input.businessContext,
   );
 
