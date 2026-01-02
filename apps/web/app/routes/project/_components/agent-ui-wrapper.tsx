@@ -111,7 +111,8 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ??
+      'local/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();

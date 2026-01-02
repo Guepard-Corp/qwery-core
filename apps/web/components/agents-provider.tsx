@@ -188,7 +188,9 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model:
+            options.model ||
+            'local/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
         },
       );
 

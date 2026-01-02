@@ -363,7 +363,7 @@ export class InteractiveRepl {
       const streamResult = await readDataAgent(
         conversation.id,
         messages,
-        'azure/gpt-5-mini',
+        'local/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
         queryEngine,
         repositories,
       );
@@ -486,7 +486,7 @@ export class InteractiveRepl {
 
         this.agent = await FactoryAgent.create({
           conversationSlug: this.conversationId,
-          model: 'azure/gpt-5-mini', // Default model for CLI
+          model: 'openai/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
           repositories,
         });
       }
