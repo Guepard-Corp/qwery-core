@@ -112,17 +112,17 @@ export class InteractiveRepl {
         if (args.length === 0) {
           console.log(
             '\n' +
-              colored('⚠️  Usage:', colors.yellow) +
-              ' ' +
-              colored('/use <datasource-id>', colors.brand) +
-              '\n' +
-              colored('Example:', colors.dim) +
-              ' ' +
-              colored(
-                '/use d7d411d0-8fbf-46a8-859d-7aca6abfad14',
-                colors.white,
-              ) +
-              '\n',
+            colored('⚠️  Usage:', colors.yellow) +
+            ' ' +
+            colored('/use <datasource-id>', colors.brand) +
+            '\n' +
+            colored('Example:', colors.dim) +
+            ' ' +
+            colored(
+              '/use d7d411d0-8fbf-46a8-859d-7aca6abfad14',
+              colors.white,
+            ) +
+            '\n',
           );
         } else {
           const datasourceId = args[0];
@@ -134,16 +134,16 @@ export class InteractiveRepl {
       default:
         console.log(
           '\n' +
-            colored('❌ Unknown command:', colors.red) +
-            ' ' +
-            colored(`/${cmd}`, colors.white) +
-            '\n' +
-            colored('Type', colors.dim) +
-            ' ' +
-            colored('/help', colors.brand) +
-            ' ' +
-            colored('for available commands.', colors.dim) +
-            '\n',
+          colored('❌ Unknown command:', colors.red) +
+          ' ' +
+          colored(`/${cmd}`, colors.white) +
+          '\n' +
+          colored('Type', colors.dim) +
+          ' ' +
+          colored('/help', colors.brand) +
+          ' ' +
+          colored('for available commands.', colors.dim) +
+          '\n',
         );
     }
 
@@ -195,14 +195,14 @@ export class InteractiveRepl {
       if (!datasource) {
         console.log(
           '\n' +
-            colored('⚠️  No datasource selected.', colors.yellow) +
-            '\n' +
-            colored('Use', colors.dim) +
-            ' ' +
-            colored('/use <datasource-id>', colors.brand) +
-            ' ' +
-            colored('to select a datasource first.', colors.dim) +
-            '\n',
+          colored('⚠️  No datasource selected.', colors.yellow) +
+          '\n' +
+          colored('Use', colors.dim) +
+          ' ' +
+          colored('/use <datasource-id>', colors.brand) +
+          ' ' +
+          colored('to select a datasource first.', colors.dim) +
+          '\n',
         );
         return;
       }
@@ -210,10 +210,10 @@ export class InteractiveRepl {
       // Show query
       console.log(
         '\n' +
-          colored('📝 Query:', colors.brand) +
-          ' ' +
-          colored(query, colors.white) +
-          '\n',
+        colored('📝 Query:', colors.brand) +
+        ' ' +
+        colored(query, colors.white) +
+        '\n',
       );
 
       try {
@@ -223,10 +223,10 @@ export class InteractiveRepl {
         const message = error instanceof Error ? error.message : String(error);
         console.log(
           '\n' +
-            colored('❌ Error:', colors.red) +
-            ' ' +
-            colored(message, colors.white) +
-            '\n',
+          colored('❌ Error:', colors.red) +
+          ' ' +
+          colored(message, colors.white) +
+          '\n',
         );
       }
     } finally {
@@ -363,7 +363,7 @@ export class InteractiveRepl {
       const streamResult = await readDataAgent(
         conversation.id,
         messages,
-        'azure/gpt-5-mini',
+        process.env.VITE_AI_MODEL || 'azure/gpt-5-mini',
         queryEngine,
         repositories,
       );
@@ -386,7 +386,7 @@ export class InteractiveRepl {
               for (const toolCall of toolCalls) {
                 console.log(
                   '\n' +
-                    colored(`🔧 [Tool: ${toolCall.toolName}]`, colors.brand),
+                  colored(`🔧 [Tool: ${toolCall.toolName}]`, colors.brand),
                 );
                 // Tool call args are in the toolCall object but type-safe access varies
                 const args = 'args' in toolCall ? toolCall.args : undefined;
@@ -410,10 +410,10 @@ export class InteractiveRepl {
               for (const toolResult of toolResults) {
                 console.log(
                   '\n' +
-                    colored(
-                      `✅ [Tool Result: ${toolResult.toolName}]`,
-                      colors.green,
-                    ),
+                  colored(
+                    `✅ [Tool Result: ${toolResult.toolName}]`,
+                    colors.green,
+                  ),
                 );
               }
             }
@@ -437,9 +437,9 @@ export class InteractiveRepl {
       } catch (error) {
         console.error(
           '\n' +
-            colored('❌ Error reading stream:', colors.red) +
-            ' ' +
-            (error instanceof Error ? error.message : String(error)),
+          colored('❌ Error reading stream:', colors.red) +
+          ' ' +
+          (error instanceof Error ? error.message : String(error)),
         );
         throw error;
       }
@@ -449,10 +449,10 @@ export class InteractiveRepl {
       const message = error instanceof Error ? error.message : String(error);
       console.log(
         '\n' +
-          colored('❌ Error:', colors.red) +
-          ' ' +
-          colored(message, colors.white) +
-          '\n',
+        colored('❌ Error:', colors.red) +
+        ' ' +
+        colored(message, colors.white) +
+        '\n',
       );
       throw error;
     }
@@ -486,7 +486,7 @@ export class InteractiveRepl {
 
         this.agent = await FactoryAgent.create({
           conversationSlug: this.conversationId,
-          model: 'azure/gpt-5-mini', // Default model for CLI
+          model: process.env.VITE_AI_MODEL || 'azure/gpt-5-mini', // Default model for CLI
           repositories,
         });
       }
@@ -619,11 +619,11 @@ export class InteractiveRepl {
       } catch (streamError) {
         console.error(
           '\n' +
-            colored('⚠️  Error while streaming:', colors.yellow) +
-            ' ' +
-            (streamError instanceof Error
-              ? streamError.message
-              : String(streamError)),
+          colored('⚠️  Error while streaming:', colors.yellow) +
+          ' ' +
+          (streamError instanceof Error
+            ? streamError.message
+            : String(streamError)),
         );
       } finally {
         reader.releaseLock();
@@ -636,18 +636,18 @@ export class InteractiveRepl {
       } else {
         console.log(
           '\n' +
-            colored('⚠️  Warning: Response stream was empty', colors.yellow) +
-            '\n',
+          colored('⚠️  Warning: Response stream was empty', colors.yellow) +
+          '\n',
         );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.log(
         '\n' +
-          colored('❌ Error:', colors.red) +
-          ' ' +
-          colored(message, colors.white) +
-          '\n',
+        colored('❌ Error:', colors.red) +
+        ' ' +
+        colored(message, colors.white) +
+        '\n',
       );
     } finally {
       // Re-enable input after processing is complete
@@ -687,10 +687,10 @@ export class InteractiveRepl {
       const message = error instanceof Error ? error.message : String(error);
       console.log(
         '\n' +
-          colored('❌ Error:', colors.red) +
-          ' ' +
-          colored(message, colors.white) +
-          '\n',
+        colored('❌ Error:', colors.red) +
+        ' ' +
+        colored(message, colors.white) +
+        '\n',
       );
     }
 
@@ -746,22 +746,22 @@ ${colored('Query Tips:', colors.white)}
   private showWelcome(): void {
     console.log(
       '\n' +
-        colored('Welcome to Qwery CLI Interactive Mode!', colors.brand) +
-        '\n',
+      colored('Welcome to Qwery CLI Interactive Mode!', colors.brand) +
+      '\n',
     );
     console.log(
       colored('Type', colors.dim) +
-        ' ' +
-        colored('/help', colors.brand) +
-        ' ' +
-        colored('to see available commands.', colors.dim),
+      ' ' +
+      colored('/help', colors.brand) +
+      ' ' +
+      colored('to see available commands.', colors.dim),
     );
     console.log(
       colored('Type', colors.dim) +
-        ' ' +
-        colored('/use <datasource-id>', colors.brand) +
-        ' ' +
-        colored('to select a datasource.', colors.dim),
+      ' ' +
+      colored('/use <datasource-id>', colors.brand) +
+      ' ' +
+      colored('to select a datasource.', colors.dim),
     );
     console.log(
       colored(
@@ -771,12 +771,12 @@ ${colored('Query Tips:', colors.white)}
     );
     console.log(
       colored('Tip:', colors.dim) +
-        ' ' +
-        colored(
-          'Run one query at a time and wait for ✓ Response complete.',
-          colors.dim,
-        ) +
-        '\n',
+      ' ' +
+      colored(
+        'Run one query at a time and wait for ✓ Response complete.',
+        colors.dim,
+      ) +
+      '\n',
     );
   }
 }
