@@ -8,6 +8,9 @@ export * from './agents';
 export * from './agents/tools/types';
 export * from './agents/tools/inferred-types';
 
+// Export auto-schema discovery utilities
+export * from './tools/auto-schema-discovery';
+
 // Reexport AI SDK
 export type { UIMessage } from 'ai';
 export {
@@ -22,6 +25,10 @@ const baseModels = [
   {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
+  },
+  {
+    name: 'Llama.cpp Local (Qwen 2.5 7B)',
+    value: 'llama-cpp/qwen2.5-7b-instruct',
   },
   {
     name: 'DeepSeek R1 (8B)',
