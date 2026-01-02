@@ -20,6 +20,10 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
+    name: 'Qwen 2.5 1.5B (Local)',
+    value: 'local/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
+  },
+  {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },
