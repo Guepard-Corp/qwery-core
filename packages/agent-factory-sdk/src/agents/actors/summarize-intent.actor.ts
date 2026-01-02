@@ -2,11 +2,11 @@ import { streamText } from 'ai';
 import { Intent } from '../types';
 import { SUMMARIZE_INTENT_PROMPT } from '../prompts/summarize-intent.prompt';
 import { fromPromise } from 'xstate/actors';
-import { resolveModel } from '../../services/model-resolver';
+import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
 export const summarizeIntent = async (text: string, intent: Intent) => {
   const result = streamText({
-    model: await resolveModel('azure/gpt-5-mini'),
+    model: await resolveModel(getDefaultModel()),
     prompt: SUMMARIZE_INTENT_PROMPT(text, intent),
   });
 

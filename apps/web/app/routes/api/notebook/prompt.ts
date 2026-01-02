@@ -7,6 +7,7 @@ import {
   PROMPT_SOURCE,
   NOTEBOOK_CELL_TYPE,
   type NotebookCellType,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
@@ -117,7 +118,7 @@ async function getOrCreateConversation(
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = getDefaultModel(),
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -274,7 +275,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'azure/gpt-5-mini',
+    model = getDefaultModel(),
     notebookCellType,
   } = body;
 

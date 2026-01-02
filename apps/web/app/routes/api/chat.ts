@@ -7,6 +7,7 @@ import {
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
@@ -46,7 +47,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = getDefaultModel(),
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +105,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || getDefaultModel();
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -321,10 +322,10 @@ User request: ${cleanText}`;
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => (part as { text: string }).text)
-          .join(' ')
-          .trim() || ''
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
       : '';
 
     const stream = new ReadableStream({
