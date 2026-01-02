@@ -188,7 +188,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model: options.model || import.meta.env.VITE_AI_MODEL || 'azure/gpt-5-mini',
         },
       );
 
