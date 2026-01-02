@@ -1,4 +1,4 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenAI } from '@ai-sdk/openai';
 import { LanguageModel } from 'ai';
 
 type ModelProvider = {
@@ -24,9 +24,10 @@ export function createLlamaCppModelProvider({
     baseUrl,
     defaultModel,
 }: LlamaCppModelProviderOptions = {}): ModelProvider {
-    const provider = createOpenAICompatible({
+    const provider = createOpenAI({
         name: 'llamacpp',
         baseURL: baseUrl || 'http://localhost:8080/v1',
+        apiKey: 'unused', // llama.cpp doesn't require an API key
     });
 
     return {
@@ -34,7 +35,7 @@ export function createLlamaCppModelProvider({
             // llama.cpp server typically serves a single model,
             // so the model name can be anything - it uses the loaded model
             const finalModel = modelName || defaultModel || 'default';
-            return provider.chatModel(finalModel) as unknown as LanguageModel;
+            return provider.chat(finalModel) as unknown as LanguageModel;
         },
     };
 }

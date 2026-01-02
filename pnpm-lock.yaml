@@ -625,6 +625,9 @@ importers:
       '@ai-sdk/azure':
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^2.0.71
+        version: 2.0.71(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: ^2.0.2
         version: 2.0.2(zod@3.25.76)
@@ -11925,7 +11928,7 @@ snapshots:
   '@ai-sdk/provider-utils@3.0.17(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@standard-schema/spec': 1.0.0
+      '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.0.6
       zod: 3.25.76
 

@@ -430,6 +430,7 @@ User request: ${cleanText}`;
       },
     });
   } catch (error) {
+    console.error('[Chat API] Uncaught error:', error);
     return handleDomainException(error);
   }
 }
