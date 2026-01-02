@@ -1,34 +1,35 @@
 'use client';
 
 import {
-  useMemo,
-  useImperativeHandle,
-  forwardRef,
-  useRef,
-  useState,
-  useCallback,
-  useEffect,
-} from 'react';
-import QweryAgentUI from '@qwery/ui/agent-ui';
-import {
+  NOTEBOOK_CELL_TYPE,
+  PROMPT_SOURCE,
   SUPPORTED_MODELS,
   transportFactory,
   type UIMessage,
 } from '@qwery/agent-factory-sdk';
 import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
-import { convertMessages } from '~/lib/utils/messages-converter';
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
-import { QweryContextProps } from 'node_modules/@qwery/ui/src/qwery/ai/context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAllExtensionMetadata } from '@qwery/extensions-loader';
-import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
+import QweryAgentUI from '@qwery/ui/agent-ui';
 import type { DatasourceItem } from '@qwery/ui/ai';
-import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
-import { useUpdateConversation } from '~/lib/mutations/use-conversation';
-import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
-import { PROMPT_SOURCE, NOTEBOOK_CELL_TYPE } from '@qwery/agent-factory-sdk';
 import { useAgentStatus } from '@qwery/ui/ai';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QweryContextProps } from 'node_modules/@qwery/ui/src/qwery/ai/context';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { useUpdateConversation } from '~/lib/mutations/use-conversation';
+import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
+import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
+import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
+import { convertMessages } from '~/lib/utils/messages-converter';
 
 type SendMessageFn = (
   message: { text: string },
@@ -111,7 +112,7 @@ export const AgentUIWrapper = forwardRef<
     | null
   >(null);
   const currentModelRef = useRef<string>(
-    SUPPORTED_MODELS[0]?.value ?? 'azure/gpt-5-mini',
+    SUPPORTED_MODELS[0]?.value ?? 'local/Phi-3-mini-4k-instruct-q4.gguf',
   );
   const queryClient = useQueryClient();
   const { repositories, workspace } = useWorkspace();

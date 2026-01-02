@@ -1,9 +1,9 @@
 import { generateObject } from 'ai';
-import { z } from 'zod';
 import { fromPromise } from 'xstate/actors';
-import { INTENTS_LIST, IntentSchema } from '../types';
-import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
+import { z } from 'zod';
 import { resolveModel } from '../../services/model-resolver';
+import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
+import { INTENTS_LIST, IntentSchema } from '../types';
 
 export const detectIntent = async (text: string) => {
   const maxAttempts = 2;
@@ -16,12 +16,12 @@ export const detectIntent = async (text: string) => {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error('generateObject timeout after 30 seconds')),
-          30000,
+          160000,
         );
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel('local/Phi-3-mini-4k-instruct-q4.gguf'),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text),
       });
