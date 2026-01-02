@@ -88,9 +88,26 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'llama_cpp': {
+      console.log('🟢 Creating llama_cpp provider');
+      console.log('🟢 baseUrl:', requireEnv('LLAMA_CPP_BASE_URL', 'Llama.cpp'));
+      console.log('🟢 modelName:', modelName);
+      
+      const { createLlamaCppModelProvider } = await import(
+        './models/llama-cpp.provider'
+      );
+      
+      const provider = createLlamaCppModelProvider({
+        baseUrl: requireEnv('LLAMA_CPP_BASE_URL', 'Llama.cpp'),
+        defaultModel: modelName,
+      });
+      
+      console.log('🟢 llama_cpp provider created successfully');
+      return provider;
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, llama-cpp.`,
       );
   }
 }
@@ -104,6 +121,11 @@ export async function resolveModel(
     );
   }
   const { providerId, modelName } = parseModelName(modelString);
+  console.log('🔵 Parsed:', { providerId, modelName });
   const provider = await createProvider(providerId, modelName);
-  return provider.resolveModel(modelName);
+  console.log('🔵 Provider created:', provider);
+  const model = provider.resolveModel(modelName);
+  console.log('🔵 Model resolved:', model);
+  return model;
+  
 }

@@ -46,7 +46,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'llama_cpp/tinyllama',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,9 +104,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = 'llama_cpp/tinyllama';  // ← Change this line
+  console.log('[Chat API] ===== MODEL BEING USED:', model, '=====');
   const datasources: string[] | undefined = body.datasources;
-
+  console.log('[Chat API] ===== MODEL BEING USED:', model, '=====');
+  
   try {
     // Check if this is the first user message and title needs to be generated
     const conversation =
@@ -199,7 +201,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     // Always run intent detection for both inline and chat modes
     let needSQL = false;
-    if (lastUserMessageText) {
+    const isLocalLlama =
+      model.includes('llama') || model.includes('llama_cpp');
+
+    if (isLocalLlama) {
+      console.log(
+        '[Chat API] Skipping intent detection for local llama.cpp model:',
+        model,
+      );
+      needSQL = false;
+    } else if (lastUserMessageText) {
       try {
         console.log(
           '[Chat API] Running intent detection for:',
@@ -214,11 +225,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
         });
       } catch (error) {
         console.warn('[Chat API] Intent detection failed:', error);
-        // Default to false if detection fails
         needSQL = false;
       }
     }
-
     // Process messages to extract suggestion guidance and apply it internally
     // Also add datasources, promptSource, and needSQL to the last user message metadata
     const processedMessages = messages.map((message, index) => {
