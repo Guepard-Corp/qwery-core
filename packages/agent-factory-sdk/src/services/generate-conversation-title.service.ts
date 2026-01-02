@@ -25,6 +25,7 @@ Generate only the title, nothing else:`;
 
 export async function generateConversationTitle(
   userMessage: string,
+  model: string,
   agentResponse?: string,
 ): Promise<string> {
   try {
@@ -36,7 +37,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(model),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 
