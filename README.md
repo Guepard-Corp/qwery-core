@@ -221,6 +221,62 @@ cd apps/web
 pnpm dev
 ```
 
+**Build Errors in `apps/web`?**
+
+If you encounter this error when running `pnpm build` in `apps/web`:
+
+```
+ERROR  run failed: command  exited (1)
+ELIFECYCLE  Command failed with exit code 1.
+```
+
+**Solution:**
+
+Try running `pnpm build` from the root repository first, as some packages may not have built successfully (even if you've done it before):
+
+```bash
+# From root directory
+pnpm build
+```
+
+Then rebuild in `apps/web`:
+```bash
+cd apps/web
+pnpm build
+```
+
+**Root Build Shows Failures?**
+
+If running `pnpm build` at the root shows failures like this it's normal but the problem is the number of successful tasks:
+
+```
+Tasks:    3 successful, 13 total
+Cached:    3 cached, 13 total
+  Time:    4.364s
+Failed:    desktop#build
+
+ERROR  run failed: command  exited (1)
+ELIFECYCLE  Command failed with exit code 1.
+```
+
+This means packages didn't build successfully (tasks < 6 successful). The `apps/web` build will not pass in this state.
+
+**Solution:**
+
+Rebuild from the root until you get more than 6 successful tasks:
+
+```bash
+# From root directory
+pnpm build
+```
+
+Once you see sufficient successful tasks (e.g., 6+ successful), then rebuild `apps/web`:
+
+```bash
+cd apps/web
+pnpm build
+```
+
 **Container not starting?**
 ```bash
 docker logs [container-name]
