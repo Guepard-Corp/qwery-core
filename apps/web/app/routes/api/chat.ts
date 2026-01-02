@@ -44,9 +44,26 @@ if (typeof setInterval !== 'undefined') {
 
 const repositories = await createRepositories();
 
+function sanitizeMessages(messages: UIMessage[]): UIMessage[] {
+  return messages
+    // remove any message that has no parts array or empty parts
+    .filter((m) => Array.isArray(m.parts) && m.parts.length > 0)
+    // remove empty/whitespace-only text parts
+    .map((m) => ({
+      ...m,
+      parts: m.parts.filter((p) => {
+        if (p.type !== 'text') return true;
+        if (!('text' in p)) return false;
+        return Boolean(p.text?.trim());
+      }),
+    }))
+    // after cleaning parts, drop messages that became empty
+    .filter((m) => m.parts.length > 0);
+}
+
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'openai/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +121,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || 'openai/Qwen/Qwen2.5-1.5B-Instruct-GGUF:q4_k_m';
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -205,7 +222,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           '[Chat API] Running intent detection for:',
           lastUserMessageText.substring(0, 100),
         );
-        const intentResult = await detectIntent(lastUserMessageText);
+        const intentResult = await detectIntent(lastUserMessageText, model);
         needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
         console.log('[Chat API] Intent detection result:', {
           intent: (intentResult as { intent?: string }).intent,
@@ -222,77 +239,61 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // Process messages to extract suggestion guidance and apply it internally
     // Also add datasources, promptSource, and needSQL to the last user message metadata
     const processedMessages = messages.map((message, index) => {
-      // Add metadata for the last user message
-      const isLastUserMessage =
-        message.role === 'user' && index === messages.length - 1;
-
+      const isLastUserMessage = message.role === 'user' && index === messages.length - 1;
+    
       if (isLastUserMessage) {
-        // Detect if message is coming from notebook (inline mode)
-        // Check if metadata has promptSource: 'inline' or notebookCellType
-        const messageMetadata = (message.metadata || {}) as Record<
-          string,
-          unknown
-        >;
+        const messageMetadata = (message.metadata || {}) as Record<string, unknown>;
+    
         const isNotebookSource =
           messageMetadata.promptSource === PROMPT_SOURCE.INLINE ||
           messageMetadata.notebookCellType !== undefined;
+    
         const promptSource: PromptSource = isNotebookSource
           ? PROMPT_SOURCE.INLINE
           : PROMPT_SOURCE.CHAT;
-        const notebookCellType = messageMetadata.notebookCellType as
-          | NotebookCellType
-          | undefined;
-
-        console.log('[Chat API] Detected prompt source:', {
-          promptSource,
-          notebookCellType,
-          isNotebookSource,
-        });
-
-        // Build metadata - preserve notebookCellType if present, remove conflicting 'source' field
+    
+        const notebookCellType = messageMetadata.notebookCellType as NotebookCellType | undefined;
+    
         const cleanMetadata: Record<string, unknown> = { ...messageMetadata };
-        delete cleanMetadata.source; // Remove conflicting source field
-
+        delete cleanMetadata.source;
+    
         message = {
           ...message,
           metadata: {
             ...cleanMetadata,
             promptSource,
             needSQL,
+            model, // ✅ IMPORTANT: helps system flows that expect a model string
             ...(notebookCellType ? { notebookCellType } : {}),
             ...(datasources && datasources.length > 0 ? { datasources } : {}),
           },
         };
       }
-
+    
+      // suggestion guidance logic unchanged...
       if (message.role === 'user') {
         const textPart = message.parts.find((p) => p.type === 'text');
         if (textPart && 'text' in textPart) {
           const text = textPart.text;
           const guidanceMarker = '__QWERY_SUGGESTION_GUIDANCE__';
           const guidanceEndMarker = '__QWERY_SUGGESTION_GUIDANCE_END__';
-
+    
           if (text.includes(guidanceMarker)) {
-            // Extract guidance and clean message
             const startIndex = text.indexOf(guidanceMarker);
             const endIndex = text.indexOf(guidanceEndMarker);
-
+    
             if (startIndex !== -1 && endIndex !== -1) {
-              // Extract the message text (everything after the guidance marker)
-              const cleanText = text
-                .substring(endIndex + guidanceEndMarker.length)
-                .trim();
-
-              // Apply suggestion guidance internally by prepending it to the user message
+              const cleanText = text.substring(endIndex + guidanceEndMarker.length).trim();
+    
               const suggestionGuidance = `[SUGGESTION WORKFLOW GUIDANCE]
-- This is a suggested next step from a previous response - execute it directly and efficiently
-- Use the provided context (previous question/answer) to understand the full conversation flow
-- Be action-oriented: proceed immediately with the requested operation without asking for confirmation
-- Keep your response concise and focused on delivering the requested result
-- If the suggestion involves a query or analysis, execute it and present the findings clearly
-
-User request: ${cleanText}`;
-
+    - This is a suggested next step from a previous response - execute it directly and efficiently
+    - Use the provided context (previous question/answer) to understand the full conversation flow
+    - Be action-oriented: proceed immediately with the requested operation without asking for confirmation
+    - Keep your response concise and focused on delivering the requested result
+    - If the suggestion involves a query or analysis, execute it and present the findings clearly
+    
+    User request: ${cleanText}`;
+    
               return {
                 ...message,
                 parts: message.parts.map((part) => {
@@ -306,16 +307,20 @@ User request: ${cleanText}`;
           }
         }
       }
+    
       return message;
     });
-
+    
+    // ✅ sanitize BEFORE validateUIMessages
+    const sanitizedMessages = sanitizeMessages(processedMessages);
+    
     const streamResponse = await agent.respond({
-      messages: await validateUIMessages({ messages: processedMessages }),
+      messages: await validateUIMessages({ messages: sanitizedMessages }),
     });
-
+    
     if (!streamResponse.body) {
       return new Response(null, { status: 204 });
-    }
+    }    
 
     // Extract user message for title generation
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
