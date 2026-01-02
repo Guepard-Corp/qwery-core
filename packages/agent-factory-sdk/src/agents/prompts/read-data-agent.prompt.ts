@@ -1,13 +1,12 @@
 import {
   getChartsInfoForPrompt,
-  getChartTypesUnionString,
   getSupportedChartTypes,
 } from '../config/supported-charts';
 import { BASE_AGENT_PROMPT, BASE_AGENT_LITE_PROMPT } from './base-agent.prompt';
 
 export const READ_DATA_AGENT_PROMPT = (isLite = false) => {
   if (isLite) {
-    return `You are a Qwery Data Agent. ${BASE_AGENT_LITE_PROMPT} You help users with data engineering. Use tools for actions. If asked for charts: runQuery -> selectChartType -> generateChart. If data question: getSchema -> runQuery. ${getChartsInfoForPrompt()} ${getSupportedChartTypes().join(', ')}.`;
+    return `You are a Qwery Data Agent. ${BASE_AGENT_LITE_PROMPT} Use tools for data actions. Workflow for charts: runQuery -> selectChartType -> generateChart. For data: getSchema -> runQuery. Charts: ${getSupportedChartTypes().join(', ')}.`;
   }
 
   return `
@@ -27,17 +26,17 @@ CRITICAL - TOOL USAGE RULE:
 ${getChartsInfoForPrompt()}
 
 Available tools:
-1. testConnection: Tests the connection to the database to check if the database is accessible
-2. renameTable: Renames a table / view to give it a more meaningful name
-3. deleteTable: Deletes one or more tables / views from the database.
-4. getSchema: Get schema information (columns, data types, business context) for specific tables / views.
-5. runQuery: Executes a SQL query against the DuckDB instance.
-6. selectChartType: Selects the best chart type for visualizing query results.
-7. generateChart: Generates chart configuration JSON for the selected chart type.
+1. testConnection: Tests the connection to the database
+2. renameTable: Renames a table
+3. deleteTable: Deletes tables
+4. getSchema: Get schema info
+5. runQuery: Executes SQL query
+6. selectChartType: Selects chart type
+7. generateChart: Generates chart JSON
 
 Workflow for Chart Generation:
 1. User requests a chart
-2. Call getSchema to see tables
+2. Call getSchema
 3. Call runQuery
 4. Call selectChartType
 5. Call generateChart
