@@ -844,6 +844,7 @@ export const readDataAgent = async (
             queryResults,
             sqlQuery,
             userInput,
+            model,
             businessContext,
           );
           return result;
@@ -896,6 +897,7 @@ export const readDataAgent = async (
             queryResults,
             sqlQuery,
             userInput,
+            model,
             businessContext,
           });
           const generateTime = performance.now() - generateStartTime;
