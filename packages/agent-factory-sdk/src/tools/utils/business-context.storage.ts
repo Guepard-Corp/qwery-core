@@ -12,14 +12,23 @@ const BUSINESS_CONTEXT_FILE = 'business-context.json';
  * Returns the protocol (without colon) or 'file' for local paths.
  */
 function detectProtocol(pathOrUri: string): string {
+  // Treat Windows absolute paths as local files: C:\... or C:/...
+  if (/^[a-zA-Z]:[\\/]/.test(pathOrUri)) return 'file';
+
+  // Treat UNC paths (\\server\share\...) as local files too
+  if (pathOrUri.startsWith('\\\\')) return 'file';
+
+  // Treat relative paths as local files
+  if (!pathOrUri.includes('://')) return 'file';
+
   try {
     const url = new URL(pathOrUri);
     return url.protocol.replace(':', '');
   } catch {
-    // Not a valid URI, assume it's a local file path
     return 'file';
   }
 }
+
 
 /**
  * Joins a URI path with a filename, handling both URI and local path formats.

@@ -5,7 +5,7 @@ import { resolveModel } from '../../services';
 
 export const systemInfo = async (text: string) => {
   const result = streamText({
-    model: await resolveModel('azure/gpt-5-mini'),
+    model: await resolveModel('llamacpp/qwen2.5-7b-instruct'),
     prompt: SYSTEM_INFO_PROMPT(text),
   });
 

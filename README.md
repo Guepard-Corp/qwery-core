@@ -49,6 +49,7 @@ Qwery is the most capable platform for querying and visualizing data without req
 - **Desktop & Cloud**: Run locally or use our cloud platform
 - **Template Library**: Pre-built notebooks, queries, and dashboards
 - **Extensible**: Plugin system for custom datasources and integrations
+- **Local LLM Support (Offline)**: Run Qwery fully offline using a local open-source LLM via llama.cpp (no cloud dependencies)
 
 ## 🚀 Quick Start
 
@@ -56,6 +57,7 @@ Qwery is the most capable platform for querying and visualizing data without req
 
 - Node.js >= 22.x
 - pnpm >= 10.x
+
 
 ### Installation
 
@@ -72,6 +74,30 @@ pnpm dev
 ```
 
 The web app will be available at `http://localhost:3000`
+
+## 🧠 Local LLM (Offline) – Optional Setup
+
+Qwery supports running a fully local, open-source Large Language Model using **llama.cpp**, replacing any cloud-based LLM.
+
+This allows:
+- Offline usage
+- No external API keys
+- CPU-only inference (no GPU required)
+
+### Supported Setup
+
+- Runtime: llama.cpp (HTTP server)
+- API: OpenAI-compatible **Chat Completions**
+- Model example: Qwen2.5-7B-Instruct (GGUF)
+
+### Environment Variables
+
+To enable a local LLM, define:
+
+```env
+LLAMACPP_BASE_URL=http://127.0.0.1:8081/v1
+LLAMACPP_MODEL=qwen2.5-7b-instruct
+
 
 ### Desktop Application
 

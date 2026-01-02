@@ -90,6 +90,7 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",
     "@types/node": "catalog:",
+    "ai": "^5.0.93",
     "cross-env": "^10.1.0",
     "esbuild": "^0.27.1",
     "playwright": "^1.56.1",
