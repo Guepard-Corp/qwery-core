@@ -26,28 +26,14 @@ type SupportedModel = {
   description?: string;
 };
 
-// Get LlamaCpp model from environment or use default
-const getLlamaCppModel = (): SupportedModel => {
-  const modelName = process.env.LLAMACPP_MODEL_NAME || 'mistral-7b-instruct-v0.2.Q2_K.gguf';
-  const modelValue = `llamacpp/${modelName}`;
-  
-  // Extract a display name from the model filename
-  const displayName = modelName
-    .replace(/\.gguf$/i, '') // Remove .gguf extension
-    .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
-    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize words
-  
-  return {
-    id: modelValue,
-    name: `${displayName} (Local)`,
-    value: modelValue,
-    provider: 'llamacpp',
-    description: `Local ${displayName} model running via llama.cpp`,
-  };
-};
-
 const baseModels: SupportedModel[] = [
-  getLlamaCppModel(),
+  {
+    id: 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf',
+    name: 'Mistral 7B Instruct (Local)',
+    value: 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf',
+    provider: 'llamacpp',
+    description: 'Local Mistral 7B model running via llama.cpp',
+  },
   {
     id: 'azure/gpt-5-mini',
     name: 'GPT-5 Mini',
