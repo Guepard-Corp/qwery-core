@@ -9,6 +9,7 @@ import { SELECT_CHART_TYPE_PROMPT } from '../prompts/select-chart-type.prompt';
 import { GENERATE_CHART_CONFIG_PROMPT } from '../prompts/generate-chart-config.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { getSupportedChartTypes } from '../config/supported-charts';
+import { getBackgroundModel } from '../../utils/get-background-model';
 
 export interface QueryResults {
   rows: Array<Record<string, unknown>>;
@@ -33,39 +34,40 @@ export async function selectChartType(
   businessContext?: BusinessContext | null,
 ): Promise<{ chartType: ChartType; reasoning: string }> {
   try {
+    // Increase timeout to 120 seconds (2 minutes) for slower local models
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
         () =>
-          reject(new Error('Chart type selection timeout after 30 seconds')),
-        30000,
+          reject(new Error('Chart type selection timeout after 120 seconds')),
+        120000,
       );
     });
 
     // Format business context for prompt
     const formattedContext = businessContext
       ? {
-          domain: businessContext.domain.domain,
-          entities: Array.from(businessContext.entities.values()).map((e) => ({
-            name: e.name,
-            columns: e.columns,
-          })),
-          relationships: businessContext.relationships.map((r) => ({
-            from: r.fromView,
-            to: r.toView,
-            join: `${r.fromColumn} = ${r.toColumn}`,
-          })),
-          vocabulary: Array.from(businessContext.vocabulary.entries()).map(
-            ([_term, entry]) => ({
-              businessTerm: entry.businessTerm,
-              technicalTerms: entry.technicalTerms,
-              synonyms: entry.synonyms,
-            }),
-          ),
-        }
+        domain: businessContext.domain.domain,
+        entities: Array.from(businessContext.entities.values()).map((e) => ({
+          name: e.name,
+          columns: e.columns,
+        })),
+        relationships: businessContext.relationships.map((r) => ({
+          from: r.fromView,
+          to: r.toView,
+          join: `${r.fromColumn} = ${r.toColumn}`,
+        })),
+        vocabulary: Array.from(businessContext.vocabulary.entries()).map(
+          ([_term, entry]) => ({
+            businessTerm: entry.businessTerm,
+            technicalTerms: entry.technicalTerms,
+            synonyms: entry.synonyms,
+          }),
+        ),
+      }
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getBackgroundModel()),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -110,16 +112,17 @@ export async function generateChartConfig(
   };
 }> {
   try {
+    // Increase timeout to 180 seconds (3 minutes) for slower local models
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
         () =>
-          reject(new Error('Chart config generation timeout after 30 seconds')),
-        30000,
+          reject(new Error('Chart config generation timeout after 180 seconds')),
+        180000,
       );
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getBackgroundModel()),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,
@@ -130,12 +133,45 @@ export async function generateChartConfig(
     });
 
     const result = await Promise.race([generatePromise, timeoutPromise]);
-    return result.object;
+    
+    // CRITICAL: Sanitize data to ensure it's flat key-value pairs
+    // LLMs sometimes return nested objects which break chart rendering
+    const sanitizedData = result.object.data.map((row) => {
+      const sanitized: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(row)) {
+        // If value is an object (not null, not array), extract its first value
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const objValues = Object.values(value);
+          sanitized[key] = objValues.length > 0 ? objValues[0] : value;
+        } else {
+          sanitized[key] = value;
+        }
+      }
+      return sanitized;
+    });
+    
+    console.log('[generateChartConfig] Original data sample:', JSON.stringify(result.object.data.slice(0, 2)));
+    console.log('[generateChartConfig] Sanitized data sample:', JSON.stringify(sanitizedData.slice(0, 2)));
+    
+    // Validate data is not empty
+    if (sanitizedData.length === 0) {
+      throw new Error('Chart data is empty after sanitization. The LLM did not generate any valid data points.');
+    }
+    
+    // Validate each data point has at least 2 keys (for x/y or name/value)
+    const firstRow = sanitizedData[0];
+    if (!firstRow || Object.keys(firstRow).length < 2) {
+      throw new Error(`Invalid chart data structure. Each data point must have at least 2 keys. Got: ${JSON.stringify(firstRow)}`);
+    }
+    
+    return {
+      ...result.object,
+      data: sanitizedData,
+    };
   } catch (error) {
     console.error('[generateChartConfig] ERROR:', error);
     throw new Error(
-      `Failed to generate chart configuration: ${
-        error instanceof Error ? error.message : String(error)
+      `Failed to generate chart configuration: ${error instanceof Error ? error.message : String(error)
       }`,
     );
   }
