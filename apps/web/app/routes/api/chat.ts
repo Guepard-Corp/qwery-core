@@ -1,15 +1,15 @@
-import type { ActionFunctionArgs } from 'react-router';
 import {
-  type UIMessage,
-  FactoryAgent,
-  validateUIMessages,
   detectIntent,
+  FactoryAgent,
+  generateConversationTitle,
   PROMPT_SOURCE,
-  type PromptSource,
+  validateUIMessages,
   type NotebookCellType,
+  type PromptSource,
+  type UIMessage,
 } from '@qwery/agent-factory-sdk';
-import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
+import type { ActionFunctionArgs } from 'react-router';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
 
@@ -46,7 +46,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'local/Phi-3-mini-4k-instruct-q4.gguf',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +104,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || 'local/Phi-3-mini-4k-instruct-q4.gguf';
   const datasources: string[] | undefined = body.datasources;
 
   try {

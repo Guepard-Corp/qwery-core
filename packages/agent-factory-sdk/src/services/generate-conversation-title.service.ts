@@ -36,7 +36,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel('local/Phi-3-mini-4k-instruct-q4.gguf'),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 
