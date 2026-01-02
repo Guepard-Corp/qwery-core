@@ -516,6 +516,18 @@ export const createStateMachine = (
                 target: '#factory-agent.idle',
               },
             },
+            // Add timeout to prevent getting stuck in streaming state
+            after: {
+              180000: {
+                // 3 minutes timeout
+                target: '#factory-agent.idle',
+                actions: assign({
+                  error: () => 'Streaming timeout after 3 minutes - returning to idle',
+                  streamResult: undefined,
+                  model: ({ context }) => context.model,
+                }),
+              },
+            },
           },
         },
       },
