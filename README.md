@@ -21,6 +21,12 @@ docker logs -f [container-name]
 
 ### 2. Configure Environment Variables
 
+Copy the example environment file in `apps/cli`:
+```bash
+cd apps/cli
+cp .env.example .env
+```
+
 Copy the example environment file in `apps/web`:
 ```bash
 cd apps/web
