@@ -16,12 +16,11 @@ export {
   generateText,
   validateUIMessages,
 } from 'ai';
-export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
-    name: 'GPT-5 Mini',
-    value: 'azure/gpt-5-mini',
+    name: 'Mistral 7B (Local)',
+    value: 'ollama/mistral',
   },
   {
     name: 'DeepSeek R1 (8B)',

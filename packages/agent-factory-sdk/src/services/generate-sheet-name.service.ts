@@ -45,7 +45,7 @@ export async function generateSheetName(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel('ollama/mistral'),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 
