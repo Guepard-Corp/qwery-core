@@ -1,6 +1,8 @@
 import type { Datasource } from '@qwery/domain/entities';
 import type { CliContainer } from '../container/cli-container';
 import type { RunCellResult } from './notebook-runner';
+import { CliUsageError } from '../utils/errors';
+
 
 export class InteractiveQueryHandler {
   constructor(private readonly container: CliContainer) {}
@@ -10,6 +12,11 @@ export class InteractiveQueryHandler {
     datasource: Datasource,
   ): Promise<RunCellResult> {
     const mode = this.detectMode(query);
+    if (mode === 'natural') {
+  throw new CliUsageError('Natural language mode is not yet implemented');
+}
+
+    
     const runner = this.container.getNotebookRunner();
 
     return await runner.runCell({

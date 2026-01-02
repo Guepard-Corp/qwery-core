@@ -205,10 +205,11 @@ export const buildBusinessContext = async (
   };
 
   // Save in background (don't await - this is the only I/O and it's async)
-  saveBusinessContext(opts.conversationDir, fastContext).catch((err) => {
-    console.warn(`[BuildBusinessContext] Failed to save fast context:`, err);
-  });
-
+try {
+  await saveBusinessContext(opts.conversationDir, fastContext);
+} catch (err) {
+  console.warn(`[BuildBusinessContext] Failed to save fast context:`, err);
+}
   const elapsed = Date.now() - startTime;
   if (elapsed > 100) {
     console.warn(

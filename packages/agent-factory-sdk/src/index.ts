@@ -20,8 +20,8 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
-    name: 'GPT-5 Mini',
-    value: 'azure/gpt-5-mini',
+    name: 'Local Qwen 2.5 (llama.cpp)',
+    value: 'llamacpp/qwen2.5-7b-instruct',
   },
   {
     name: 'DeepSeek R1 (8B)',
