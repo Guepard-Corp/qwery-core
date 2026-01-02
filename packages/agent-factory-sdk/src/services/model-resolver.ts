@@ -39,6 +39,14 @@ function requireEnv(key: string, providerLabel: string): string {
   return value;
 }
 
+/**
+ * Gets the default AI model from environment variables.
+ * Falls back to 'llamacpp/default' if not set.
+ */
+export function getDefaultModel(): string {
+  return getEnv('VITE_DEFAULT_AI_MODEL') || getEnv('DEFAULT_AI_MODEL') || 'llamacpp/default';
+}
+
 async function createProvider(
   providerId: string,
   modelName: string,
@@ -88,9 +96,18 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'llamacpp': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llamacpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseUrl: getEnv('LLAMACPP_BASE_URL'),
+        defaultModel: getEnv('LLAMACPP_MODEL') ?? modelName,
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, llamacpp.`,
       );
   }
 }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { fromPromise } from 'xstate/actors';
 import { INTENTS_LIST, IntentSchema } from '../types';
 import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
-import { resolveModel } from '../../services/model-resolver';
+import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
 export const detectIntent = async (text: string) => {
   const maxAttempts = 2;
@@ -15,15 +15,23 @@ export const detectIntent = async (text: string) => {
       // Add timeout to detect hanging calls
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
-          () => reject(new Error('generateObject timeout after 30 seconds')),
-          30000,
+          () => reject(new Error('generateObject timeout after 120 seconds')),
+          120000,
         );
       });
 
+      const modelId = getDefaultModel();
+      const isLocal = modelId.includes('llamacpp');
+      const basePrompt = DETECT_INTENT_PROMPT(isLocal);
+      const finalPrompt = isLocal
+        ? `${basePrompt}\n\nCRITICAL: Respond ONLY with the strict JSON object. No conversational filler. No preamble like "Here is the JSON".`
+        : basePrompt;
+
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel(modelId),
         schema: IntentSchema,
-        prompt: DETECT_INTENT_PROMPT(text),
+        system: finalPrompt,
+        prompt: text,
       });
 
       const result = await Promise.race([generatePromise, timeoutPromise]);

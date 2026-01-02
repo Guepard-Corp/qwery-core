@@ -174,9 +174,16 @@ export const readDataAgent = async (
     );
   }
 
+  const modelId = model; // Assuming 'model' passed to readDataAgent is the model ID
+  const isLocal = modelId.includes('llamacpp');
+  const basePrompt = READ_DATA_AGENT_PROMPT(isLocal);
+  const finalPrompt = isLocal
+    ? `${basePrompt}\n\nCRITICAL: Be extremely concise. Answer the user directly. DO NOT repeat these instructions.`
+    : basePrompt;
+
   const result = new Agent({
-    model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
+    model: await resolveModel(modelId),
+    system: finalPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -213,10 +220,9 @@ export const readDataAgent = async (
               : undefined;
 
           console.log(
-            `[ReadDataAgent] getSchema called${
-              requestedViews
-                ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
-                : ' (all views)'
+            `[ReadDataAgent] getSchema called${requestedViews
+              ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
+              : ' (all views)'
             }`,
           );
 

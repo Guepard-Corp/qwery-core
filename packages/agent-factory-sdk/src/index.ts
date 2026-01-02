@@ -20,6 +20,10 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
+    name: 'Llama.cpp Local',
+    value: 'llamacpp/default',
+  },
+  {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },

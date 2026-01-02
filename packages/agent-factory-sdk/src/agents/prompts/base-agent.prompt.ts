@@ -52,3 +52,9 @@ DYNAMIC SUGGESTIONS - Making Next Steps Actionable:
   - "You can ask: {{suggestion: What's the average rating?}}, {{suggestion: Show recent hires}}"
 - **Best practice**: When offering multiple suggestions, use this pattern consistently to make them all clickable
 `;
+
+/**
+ * A ultra-minimal version of the base agent prompt for small local models.
+ * Uses extremely simplified language to avoid token redundancy.
+ */
+export const BASE_AGENT_LITE_PROMPT = `Format: Markdown (bold, lists, no backticks for names). Style: Friendly, extremely concise, match user language. Suggestions: use {{suggestion: text}}.`;

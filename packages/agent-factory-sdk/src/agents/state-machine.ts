@@ -257,6 +257,23 @@ export const createStateMachine = (
                         model: ({ context }) => context.model,
                       }),
                     },
+                    {
+                      target: '#factory-agent.running.summarizeIntent',
+                      actions: assign({
+                        intent: ({ event }) => {
+                          const intent = event.output;
+                          console.log(
+                            '[StateMachine] Set intent from detection (catch-all):',
+                            {
+                              intent: intent?.intent,
+                            }
+                          );
+                          return intent;
+                        },
+                        retryCount: () => 0,
+                        model: ({ context }) => context.model,
+                      }),
+                    },
                   ],
                   onError: [
                     {
@@ -475,9 +492,15 @@ export const createStateMachine = (
                 },
               },
             },
-            onDone: {
-              target: 'streaming',
-            },
+            onDone: [
+              {
+                guard: ({ context }) => !!context.error,
+                target: '#factory-agent.idle',
+              },
+              {
+                target: 'streaming',
+              },
+            ],
           },
           systemInfo: {
             invoke: {
