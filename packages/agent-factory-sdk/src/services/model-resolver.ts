@@ -88,6 +88,15 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'local-llama': {
+      const { createLlamaCppModelProvider } = await import(
+        './models/llama.cpp-model.provider'
+      );
+      return createLlamaCppModelProvider({
+        baseUrl: requireEnv('LOCAL_LLAMA_BASE_URL', 'Local Llama'),
+        defaultModel: getEnv('LOCAL_LLAMA_MODEL') ?? modelName,
+      });
+    }
     default:
       throw new Error(
         `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,

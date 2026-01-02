@@ -19,5 +19,6 @@ export function handleDomainException(error: unknown): Response {
   }
   const errorMessage =
     error instanceof Error ? error.message : 'Internal server error';
+  console.error('[Error Handler] Caught error:', error);
   return Response.json({ error: errorMessage }, { status: 500 });
 }

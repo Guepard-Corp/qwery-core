@@ -4,6 +4,7 @@ import {
   type UIMessageChunk,
   validateUIMessages,
 } from 'ai';
+import { sanitizeMessages } from '../agents/utils/message-utils';
 import { FactoryAgent } from '../agents/factory-agent';
 import { Repositories } from '@qwery/domain/repositories';
 
@@ -45,7 +46,7 @@ export class BrowserChatTransport implements ChatTransport<UIMessage> {
     // Get response from agent (model resolution happens inside the state machine)
     const agent = await this.getAgent();
     const response = await agent.respond({
-      messages: await validateUIMessages({ messages }),
+      messages: await validateUIMessages({ messages: sanitizeMessages(messages) }),
     });
 
     if (!response.body) {

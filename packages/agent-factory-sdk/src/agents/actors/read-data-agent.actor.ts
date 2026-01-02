@@ -18,6 +18,7 @@ import { loadBusinessContext } from '../../tools/utils/business-context.storage'
 import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
+import { sanitizeMessages } from '../utils/message-utils';
 import { getConfig } from '../../tools/utils/business-context.config';
 import { buildBusinessContext } from '../../tools/build-business-context';
 import { enhanceBusinessContextInBackground } from './enhance-business-context.actor';
@@ -213,10 +214,9 @@ export const readDataAgent = async (
               : undefined;
 
           console.log(
-            `[ReadDataAgent] getSchema called${
-              requestedViews
-                ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
-                : ' (all views)'
+            `[ReadDataAgent] getSchema called${requestedViews
+              ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
+              : ' (all views)'
             }`,
           );
 
@@ -844,6 +844,7 @@ export const readDataAgent = async (
             queryResults,
             sqlQuery,
             userInput,
+            model,
             businessContext,
           );
           return result;
@@ -897,6 +898,7 @@ export const readDataAgent = async (
             sqlQuery,
             userInput,
             businessContext,
+            model,
           });
           const generateTime = performance.now() - generateStartTime;
           const totalTime = performance.now() - startTime;
@@ -911,7 +913,9 @@ export const readDataAgent = async (
   });
 
   return result.stream({
-    messages: convertToModelMessages(await validateUIMessages({ messages })),
+    messages: convertToModelMessages(
+      await validateUIMessages({ messages: sanitizeMessages(messages) }),
+    ),
     providerOptions: {
       openai: {
         reasoningSummary: 'auto', // 'auto' for condensed or 'detailed' for comprehensive

@@ -3,6 +3,7 @@ export * from './domain';
 export * from './ports';
 export * from './services';
 export * from './agents';
+export { sanitizeMessages } from './agents/utils/message-utils';
 
 // Export tool types
 export * from './agents/tools/types';
@@ -19,6 +20,10 @@ export {
 export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
+  {
+    name: 'Local Llama 3 (8B)',
+    value: 'local-llama/llama-3-8b-instruct',
+  },
   {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',

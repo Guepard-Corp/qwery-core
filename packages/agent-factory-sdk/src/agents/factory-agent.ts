@@ -12,6 +12,7 @@ import {
   DuckDBQueryEngine,
 } from '../services';
 import { createQueryEngine, AbstractQueryEngine } from '@qwery/domain/ports';
+import { sanitizeMessages } from './utils/message-utils';
 
 export interface FactoryAgentOptions {
   conversationSlug: string;
@@ -35,32 +36,40 @@ export class FactoryAgent {
     this.conversationSlug = opts.conversationSlug;
     this.conversationId = opts.conversationId;
     this.repositories = opts.repositories;
-    this.actorRegistry = new ActorRegistry(); // NEW
     this.model = opts.model;
+    console.log(`[FactoryAgent ${this.id}] Initializing with model: ${this.model}`);
+    this.actorRegistry = new ActorRegistry();
+    console.log(`[FactoryAgent ${this.id}] ActorRegistry created.`);
 
     // Create queryEngine before state machine so it can be passed
-    this.queryEngine = createQueryEngine(DuckDBQueryEngine);
+    try {
+      this.queryEngine = createQueryEngine(DuckDBQueryEngine);
+      console.log(`[FactoryAgent ${this.id}] QueryEngine created.`);
+    } catch (e) {
+      console.error(`[FactoryAgent ${this.id}] Failed to create QueryEngine:`, e);
+      throw e;
+    }
 
     this.lifecycle = createStateMachine(
-      this.conversationId, // UUID (for internal tracking)
-      this.conversationSlug, // Slug (for readDataAgent)
+      this.conversationId,
+      this.conversationSlug,
       this.model,
       this.repositories,
-      this.queryEngine, // Pass queryEngine to state machine
+      this.queryEngine,
     );
+    console.log(`[FactoryAgent ${this.id}] State machine created.`);
 
-    // NEW: Load persisted state (async, but we'll handle it)
-    // For now, we'll start without persisted state and load it asynchronously
     this.factoryActor = createActor(
       this.lifecycle as ReturnType<typeof createStateMachine>,
     );
+    console.log(`[FactoryAgent ${this.id}] Factory actor created.`);
 
-    // NEW: Register main factory actor
+    // Register main factory actor
     this.actorRegistry.register('factory', this.factoryActor);
 
     // NEW: Persist state on changes
     this.factoryActor.subscribe((state) => {
-      console.log('###Factory state:', state.value);
+      console.log(`###Factory [${this.id}] state:`, state.value);
       if (state.status === 'active') {
         persistState(
           this.conversationSlug,
@@ -73,6 +82,7 @@ export class FactoryAgent {
     });
 
     this.factoryActor.start();
+    console.log(`[FactoryAgent ${this.id}] Initialized and started.`);
   }
 
   static async create(opts: FactoryAgentOptions): Promise<FactoryAgent> {
@@ -105,11 +115,14 @@ export class FactoryAgent {
 
     // Wait for the agent to be in idle state before processing messages
     const currentState = this.factoryActor.getSnapshot().value;
-    if (currentState !== 'idle') {
+    console.log(`[FactoryAgent ${this.id}] Current state: ${currentState}`);
+    if (currentState !== 'idle' && String(currentState) !== 'idle') {
+      console.log(`[FactoryAgent ${this.id}] Waiting for idle state...`);
       // Wait for the state machine to reach idle
       await new Promise<void>((resolve) => {
         const subscription = this.factoryActor.subscribe((state) => {
-          if (state.value === 'idle') {
+          if (state.value === 'idle' || String(state.value) === 'idle') {
+            console.log(`[FactoryAgent ${this.id}] Finally reached idle state!`);
             subscription.unsubscribe();
             resolve();
           }
@@ -117,8 +130,11 @@ export class FactoryAgent {
       });
     }
 
+    // Sanitize messages: filter out empty parts which cause validation errors in AI SDK v5
+    const sanitizedMessages = sanitizeMessages(opts.messages);
+
     // Get the current input message to track which request this is for
-    const lastMessage = opts.messages[opts.messages.length - 1];
+    const lastMessage = sanitizedMessages[sanitizedMessages.length - 1];
 
     // Persist latest user message (non-blocking, errors collected but don't block response)
     const messagePersistenceService = new MessagePersistenceService(
@@ -161,17 +177,18 @@ export class FactoryAgent {
       let requestStarted = false;
       let lastState: string | undefined;
       let stateChangeCount = 0;
+      let subscription: any;
 
       const timeout = setTimeout(() => {
         if (!resolved) {
-          subscription.unsubscribe();
+          if (subscription) subscription.unsubscribe();
           reject(
             new Error(
-              `FactoryAgent response timeout: state machine did not produce streamResult within 60 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
+              `FactoryAgent response timeout: state machine did not produce streamResult within 30 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
             ),
           );
         }
-      }, 60000);
+      }, 30000);
 
       let userInputSent = false;
 
@@ -183,7 +200,7 @@ export class FactoryAgent {
           );
           this.factoryActor.send({
             type: 'USER_INPUT',
-            messages: opts.messages,
+            messages: sanitizedMessages,
           });
           console.log(
             `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
@@ -192,7 +209,7 @@ export class FactoryAgent {
         }
       };
 
-      const subscription = this.factoryActor.subscribe((state) => {
+      subscription = this.factoryActor.subscribe((state) => {
         const ctx = state.context;
         const currentState =
           typeof state.value === 'string'
@@ -201,16 +218,10 @@ export class FactoryAgent {
         lastState = currentState;
         stateChangeCount++;
 
-        // Debug logging for state transitions
-        if (
-          stateChangeCount <= 5 ||
-          currentState.includes('detectIntent') ||
-          currentState.includes('greeting')
-        ) {
-          console.log(
-            `[FactoryAgent ${this.id}] State: ${currentState}, Changes: ${stateChangeCount}, HasError: ${!!ctx.error}, HasStreamResult: ${!!ctx.streamResult}`,
-          );
-        }
+        // Detailed debug logging for EVERY state transition
+        console.log(
+          `[FactoryAgent ${this.id}] State: ${currentState}, Changes: ${stateChangeCount}, HasResult: ${!!ctx.streamResult}, Error: ${ctx.error || 'none'}`
+        );
 
         // Wait for idle state before sending USER_INPUT
         if (currentState === 'idle' && !userInputSent) {
@@ -282,11 +293,16 @@ export class FactoryAgent {
                     messages: UIMessage[];
                     finishReason?: FinishReason;
                   }) => {
-                    if (finishReason === 'stop') {
-                      this.factoryActor.send({
-                        type: 'FINISH_STREAM',
-                      });
+                    console.log(`[FactoryAgent ${this.id}] Stream finished with reason: ${finishReason}`);
 
+                    // CRITICAL: Always signal completion to the state machine
+                    // If we don't do this, the agent stays in 'streaming' state
+                    // and subsequent requests wait until they time out (30s)
+                    this.factoryActor.send({
+                      type: 'FINISH_STREAM',
+                    });
+
+                    if (finishReason === 'stop') {
                       // Get totalUsage from streamResult (it's a Promise)
                       const totalUsage = await ctx.streamResult.totalUsage;
 
@@ -332,6 +348,7 @@ export class FactoryAgent {
                     }
                   },
                 });
+                console.log(`[FactoryAgent ${this.id}] Resolving respond promise with Response object`);
                 subscription.unsubscribe();
                 resolve(response);
               } catch (err) {
@@ -344,29 +361,13 @@ export class FactoryAgent {
         }
       });
 
-      // Wait for state machine to be in idle before sending USER_INPUT
-      const currentState = this.factoryActor.getSnapshot().value;
-      const isIdle =
-        currentState === 'idle' || String(currentState).includes('idle');
-
-      if (!isIdle) {
-        setTimeout(() => {
-          console.log(
-            `Sending USER_INPUT event. Current state: ${this.factoryActor.getSnapshot().value}`,
-          );
-          this.factoryActor.send({
-            type: 'USER_INPUT',
-            messages: opts.messages,
-          });
-        }, 100);
+      // Rely on the subscription above to send USER_INPUT when the machine transitions to idle
+      // or if it's already idle.
+      const startState = this.factoryActor.getSnapshot().value;
+      if (startState === 'idle' || String(startState).includes('idle')) {
+        sendUserInput();
       } else {
-        this.factoryActor.send({
-          type: 'USER_INPUT',
-          messages: opts.messages,
-        });
-        console.log(
-          `USER_INPUT sent. New state: ${this.factoryActor.getSnapshot().value}`,
-        );
+        console.log(`[FactoryAgent ${this.id}] Waiting for idle state to send USER_INPUT. Current: ${startState}`);
       }
     });
   }
@@ -376,7 +377,10 @@ export class FactoryAgent {
    * This should be called on page refresh/unmount to cancel ongoing processing.
    */
   stop(): void {
-    const currentState = this.factoryActor.getSnapshot().value;
+    const snapshot = this.factoryActor.getSnapshot();
+    if (!snapshot) return;
+
+    const currentState = snapshot.value;
 
     if (currentState !== 'idle' && currentState !== 'stopped') {
       this.factoryActor.send({ type: 'STOP' });

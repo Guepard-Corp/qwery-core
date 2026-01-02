@@ -7,8 +7,9 @@ import {
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
+  generateConversationTitle,
+  sanitizeMessages,
 } from '@qwery/agent-factory-sdk';
-import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
@@ -46,7 +47,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = process.env.VITE_AI_MODEL || 'azure/gpt-5-mini',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -103,9 +104,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const body = await request.json();
+  console.log('[Chat API] Request body:', JSON.stringify(body, null, 2));
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || process.env.VITE_AI_MODEL || 'azure/gpt-5-mini';
   const datasources: string[] | undefined = body.datasources;
+
+  console.log(`[Chat API] Processing request for conversation ${conversationSlug} with model ${model}`);
 
   try {
     // Check if this is the first user message and title needs to be generated
@@ -205,9 +209,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
           '[Chat API] Running intent detection for:',
           lastUserMessageText.substring(0, 100),
         );
-        const intentResult = await detectIntent(lastUserMessageText);
+        const intentResult = await detectIntent(lastUserMessageText, model);
         needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
-        console.log('[Chat API] Intent detection result:', {
+        console.log(`[Chat API] Intent detection for "${lastUserMessageText.substring(0, 30)}..." returned:`, {
           intent: (intentResult as { intent?: string }).intent,
           needSQL,
           needsChart: (intentResult as { needsChart?: boolean }).needsChart,
@@ -265,10 +269,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
         };
       }
 
-      if (message.role === 'user') {
+      if (message.role === 'user' && message.parts) {
         const textPart = message.parts.find((p) => p.type === 'text');
         if (textPart && 'text' in textPart) {
-          const text = textPart.text;
+          const text = (textPart as any).text || '';
           const guidanceMarker = '__QWERY_SUGGESTION_GUIDANCE__';
           const guidanceEndMarker = '__QWERY_SUGGESTION_GUIDANCE_END__';
 
@@ -309,9 +313,19 @@ User request: ${cleanText}`;
       return message;
     });
 
-    const streamResponse = await agent.respond({
-      messages: await validateUIMessages({ messages: processedMessages }),
+    console.log(`[Chat API] Sanitizing messages for conversation ${conversationSlug}`);
+    const sanitizedMessages = sanitizeMessages(processedMessages);
+
+    console.log(`[Chat API] Validating messages for conversation ${conversationSlug}`);
+    const validatedMessages = await validateUIMessages({
+      messages: sanitizedMessages,
     });
+    console.log(`[Chat API] Messages validated, calling agent.respond`);
+
+    const streamResponse = await agent.respond({
+      messages: validatedMessages,
+    });
+    console.log(`[Chat API] agent.respond returned with status ${streamResponse.status}`);
 
     if (!streamResponse.body) {
       return new Response(null, { status: 204 });
@@ -321,10 +335,10 @@ User request: ${cleanText}`;
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => (part as { text: string }).text)
-          .join(' ')
-          .trim() || ''
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
       : '';
 
     const stream = new ReadableStream({
@@ -336,6 +350,8 @@ User request: ${cleanText}`;
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
+              // Send the standard SSE [DONE] message to signal completion
+              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
               controller.close();
 
               // After stream completes, generate title if needed
@@ -383,6 +399,7 @@ User request: ${cleanText}`;
                       if (assistantText) {
                         const generatedTitle = await generateConversationTitle(
                           userMessageText,
+                          model,
                           assistantText,
                         );
                         if (
@@ -429,6 +446,7 @@ User request: ${cleanText}`;
       },
     });
   } catch (error) {
+    console.error('[Chat API] Action failed:', error);
     return handleDomainException(error);
   }
 }
