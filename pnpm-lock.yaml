@@ -625,6 +625,9 @@ importers:
       '@ai-sdk/azure':
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^2.0.68
+        version: 2.0.71(zod@3.25.76)
       '@aws-sdk/client-s3':
         specifier: ^3.936.0
         version: 3.948.0

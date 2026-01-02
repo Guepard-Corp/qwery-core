@@ -20,6 +20,10 @@ export { createAzure } from '@ai-sdk/azure';
 
 const baseModels = [
   {
+    name: 'llama.cpp (Local)',
+    value: 'local/default',
+  },
+  {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
   },
@@ -42,3 +46,15 @@ const baseModels = [
 ];
 
 export const SUPPORTED_MODELS = baseModels;
+
+/**
+ * Get the default model from environment variable or fallback to local provider.
+ * Set VITE_DEFAULT_MODEL in .env to override (e.g., 'local/default', 'ollama/llama3', 'azure/gpt-5-mini')
+ */
+export function getDefaultModel(): string {
+  if (typeof process !== 'undefined' && process.env?.VITE_DEFAULT_MODEL) {
+    return process.env.VITE_DEFAULT_MODEL;
+  }
+  // Fallback to local model for fully local development
+  return 'local/default';
+}
