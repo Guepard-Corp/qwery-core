@@ -1,0 +1,10 @@
+# Model files
+models/*.gguf
+models/*.bin
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

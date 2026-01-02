@@ -1,6 +1,17 @@
 import { generateText } from 'ai';
 import { resolveModel } from './model-resolver';
 
+const DEFAULT_AZURE_MODEL = 'azure/gpt-5-mini';
+
+function getTitleModel(): string {
+  const hasAzureCreds =
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
+}
+
 const GENERATE_TITLE_PROMPT = (userMessage: string, agentResponse?: string) => {
   const basePrompt = `Based on the following conversation exchange, generate a concise, descriptive title for this conversation. The title should be:
 - Maximum 60 characters
@@ -30,13 +41,13 @@ export async function generateConversationTitle(
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
-        () => reject(new Error('Title generation timeout after 10 seconds')),
-        10000,
+        () => reject(new Error('Title generation timeout after 50 seconds')),
+        50000,
       );
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getTitleModel()),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 

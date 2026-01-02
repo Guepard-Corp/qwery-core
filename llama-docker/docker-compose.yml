@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  llama-server:
+    build: .
+    container_name: llama-cpp-server
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

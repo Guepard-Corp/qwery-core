@@ -1,166 +1,303 @@
-![Guepard](/resources/guepard-cover.png)
+# Local LLM Integration
 
-<div align="center">
-    <h1>The Boring Qwery Platform - Connect and query anything</h1>
-    <br />  
-    <p align="center">
-    <a href="https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6">
-        <img src="https://img.shields.io/badge/Watch-YouTube-%23ffcb51?logo=youtube&logoColor=black" alt="Watch on YouTube" />
-    </a>
-    <a href="https://discord.gg/nCXAsUd3hm">
-        <img src="https://img.shields.io/badge/Join-Community-%23ffcb51?logo=discord&logoColor=black" alt="Join our Community" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/build_and_test.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/ci.yml?branch=main" alt="Build">
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/blob/main/LICENCE" target="_blank">
-        <img src="https://img.shields.io/badge/license-ELv2-blue.svg" alt="License" />
-    </a>
-    <a href="https://nodejs.org/" target="_blank">
-        <img src="https://img.shields.io/badge/node-%3E%3D22.x-brightgreen" alt="Node Version" />
-    </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/pulls" target="_blank">
-        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
-    </a>
-    </p>
-</div>
+Run Qwery entirely offline with local LLM support using llama.cpp.
 
-## Important Notice
+## Quick Start
 
-🚧 This project is under active development and not yet suitable for production use. Expect breaking changes, incomplete features, and evolving APIs.
+### 1. Start the Local LLM Server
 
-# Qwery Platform - The Vision
-
-Qwery is the most capable platform for querying and visualizing data without requiring any prior technical knowledge in data engineering. Using natural language in any supported language, Qwery seamlessly integrates with hundreds of datasources, automatically generates optimized queries, and delivers outcomes across multiple targets including result sets, dashboards, data apps, reports, and APIs.
-
-### Getting Started
-
-1. **Choose your environment**: Download the desktop application or connect to the [Qwery Cloud Platform](https://app.qwery.run)
-2. **Connect your data**: Link to your databases, APIs, or other datasources
-3. **Start querying**: Use natural language to query your datasources instantly
-4. **Work with AI agents**: Press `CMD/CTRL + L` to collaborate with intelligent agents that assist with your data workflows
-
-## 🌟 Features
-
-- **Natural Language Querying**: Ask questions in plain language, get SQL automatically
-- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB, DuckDB, ClickHouse, SQL Server, and more
-- **AI-Powered Agents**: Intelligent assistants that help with data workflows (CMD/CTRL + L)
-- **Visual Data Apps**: Build dashboards and data applications without code
-- **Desktop & Cloud**: Run locally or use our cloud platform
-- **Template Library**: Pre-built notebooks, queries, and dashboards
-- **Extensible**: Plugin system for custom datasources and integrations
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js >= 22.x
-- pnpm >= 10.x
-
-### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Guepard-Corp/qwery-core.git
-cd qwery-core
+cd llama-docker
+docker-compose build --no-cache
+docker-compose up -d
+```
 
-# Install dependencies
+Verify it's running:
+```bash
+docker ps
+docker logs -f [container-name]
+```
+
+### 2. Configure Environment Variables
+
+Copy the example environment file in `apps/cli`:
+```bash
+cd apps/cli
+cp .env.example .env
+```
+
+Copy the example environment file in `apps/web`:
+```bash
+cd apps/web
+cp .env.example .env
+```
+
+If you changed the model loaded in the Dockerfile, update this variable in your `.env`:
+```env
+LLAMACPP_MODEL_NAME=your-model-name.gguf
+```
+
+### 3. Run Qwery
+
+1. Install dependencies:
+```bash
 pnpm install
+```
 
-# Start development server
+2. Build core packages (should be built from the root; may show errors for desktop and cli packages at the end, which can be ignored):
+```bash
+pnpm build
+```
+
+3. Build the web application:
+```bash
+cd apps/web
+pnpm build
+cd ../..
+```
+
+4. Build extensions:
+```bash
+pnpm extensions:build
+```
+
+5. Start the development server:
+```bash
+pnpm --filter web dev
+```
+or 
+```bash
+cd apps/web
 pnpm dev
 ```
 
-The web app will be available at `http://localhost:3000`
+The LlamaCpp model will be automatically selected if Azure credentials are not configured.
 
-### Desktop Application
+## Model Information
 
-```bash
-# Build and run desktop app
-pnpm desktop:dev
+**Current Model:** Mistral 7B Instruct v0.2 (Q2_K quantized)
+
+- **Purpose:** Lightweight demonstration model for technical validation
+- **Size:** ~2.5GB (Q2_K quantization)
+- **Capabilities:** Basic chat, greetings, simple Q&A
+- **Limitations:** No tool calling, no structured outputs (model limitation, not integration)
+
+### Upgrading the Model
+
+To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+):
+
+1. Open `llama-docker/Dockerfile` and update these two sections with your preferred model (keep in mind resource constraints):
+
+**Download section** - Change the model URL and filename:
+```dockerfile
+RUN echo "Downloading Mistral 7B model..." && \
+    curl -L -o /app/models/...gguf \
+    https://huggingface.co/TheBloke/...gguf && \
+    echo "Model downloaded successfully!"
 ```
 
-## 🛠️ Development
+**CMD section** - Update the model path:
+```dockerfile
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/...", "--host", "0.0.0.0", "--port", "8080", "-c", "8192", "-b", "512", "--threads", "8", "--no-mmap"]
+```
 
-### Monorepo Structure
+2. Update `LLAMACPP_MODEL_NAME` in your `apps/web/.env` file to match the new model filename
 
-This is a Turborepo monorepo with the following structure:
-
-- `apps/web` - Main React Router SaaS application
-- `apps/cli` - Command-line interface
-- `apps/desktop` - Desktop application (Electron)
-- `apps/e2e` - Playwright end-to-end tests
-- `packages/features/*` - Feature packages
-- `packages/` - Shared packages and utilities
-- `tooling/` - Build tools and development scripts
-
-### Development Commands
-
+3. Rebuild and restart the Docker container:
 ```bash
-# Start all apps in development mode
+cd llama-docker
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+**Recommended for full features:** Llama 3.1 8B Instruct or larger (supports tool calling and system messages)
+
+## How the Provider Works
+
+### Architecture
+
+```
+User Query → Model Resolver → LlamaCpp Provider → llama.cpp Server → Model Response
+```
+
+1. **Provider Implementation:** Uses Vercel AI SDK's OpenAI adapter with custom `baseURL`
+2. **API Compatibility:** llama.cpp exposes OpenAI-compatible `/v1/chat/completions` endpoint
+3. **Local Execution:** All inference happens locally on port 8080
+4. **No Cloud Calls:** Zero external dependencies when using LlamaCpp
+
+### Code Integration
+
+The provider is integrated into Qwery's existing model resolution system:
+
+```typescript
+// Automatic fallback to LlamaCpp when Azure credentials are missing
+function getModel(): string {
+  const hasAzureCreds =
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
+}
+```
+
+**Key Files:**
+- `packages/agent-factory-sdk/src/services/models/llamacpp-model.provider.ts` - Provider implementation
+- `packages/agent-factory-sdk/src/services/model-resolver.ts` - Model routing logic
+- `llama-docker/` - Docker configuration for llama.cpp server
+
+## Troubleshooting
+
+**React Router Version Conflict Error?**
+
+If all builds pass successfully but when you run:
+```bash
+cd apps/web
 pnpm dev
-
-# Start specific app
-pnpm --filter web dev        # Web app (port 3000)
-pnpm --filter desktop dev    # Desktop app
-
-# Code Quality
-pnpm format:fix              # Auto-fix formatting
-pnpm lint:fix                # Auto-fix linting issues
-pnpm typecheck               # Type checking
-pnpm check                   # Run all quality checks (format, lint, typecheck, build, test)
-
-# Build
-pnpm build                   # Build all packages
-
-# Testing
-pnpm test                    # Run all tests
 ```
 
-### Code Quality Standards
+You encounter errors like:
+```
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRoutesImpl"
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRouteId"
+X [ERROR] No matching export in "react-router" for import "AbortedDeferredError"
+X [ERROR] No matching export in "react-router" for import "defer"
+X [ERROR] No matching export in "react-router" for import "json"
+```
 
-- **TypeScript**: Strict type checking, avoid `any` types
-- **Linting**: ESLint with strict rules
-- **Formatting**: Prettier with consistent style
-- **Testing**: Vitest for unit tests, Playwright for E2E
+**Solution:**
 
-Always run `pnpm check` before committing to ensure all quality checks pass.
+1. Update `package.json` in the root repository:
 
-## 📚 Documentation
+```json
+"pnpm": {
+  "overrides": {
+    "react-is": "19.0.0",
+    "react-router": "7.9.5",
+    "react-router-dom": "npm:empty-npm-package@1.0.0",
+    "@react-router/dev": "7.9.5",
+    "@react-router/node": "7.9.5",
+    "@react-router/serve": "7.9.5",
+    "@react-router/express": "7.9.5",
+    "@react-router/fs-routes": "7.9.5"
+  },
+```
 
-- [Contributing Guide](CONTRIBUTING.md)
-- [Pull Request Guide](docs/contribution/pull-request-guide.md)
-- [Desktop App Documentation](docs/desktop.md)
-- [RFCs](docs/rfcs/)
+2. Update `apps/web/vite.config.ts` to add resolve alias:
 
-## 🤝 Contributing
+```typescript
+export default defineConfig(({ command }) => ({
+  resolve: {
+    alias: {
+      'react-router-dom': 'react-router',
+    },
+  },
+  ssr: {
+    noExternal:
+      command === 'build'
+        ? true
+        : ['posthog-js', '@posthog/react', 'streamdown'],
+    external: [
+      'better-sqlite3',
+      '@duckdb/node-api',
+      '@duckdb/node-bindings-linux-arm64',
+      '@duckdb/node-bindings-linux-x64',
+      '@duckdb/node-bindings-darwin-arm64',
+      '@duckdb/node-bindings-darwin-x64',
+      '@duckdb/node-bindings-win32-x64',
+    ],
+  },
+```
 
-We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
+3. Reinstall dependencies:
+```bash
+pnpm install
+```
+5. Rebuild
+4. Try running the dev server again:
+```bash
+cd apps/web
+pnpm dev
+```
 
-### Before Submitting
+**Build Errors in `apps/web`?**
 
-1. Run `pnpm check` to ensure all quality checks pass
-2. Make sure your code follows our [TypeScript guidelines](AGENTS.md#typescript)
-3. Write tests for new features
-4. Update documentation as needed
+If you encounter this error when running `pnpm build` in `apps/web`:
 
-### Resources
+```
+ERROR  run failed: command  exited (1)
+ELIFECYCLE  Command failed with exit code 1.
+```
 
-- Review [good first issues](https://github.com/Guepard-Corp/qwery-core/issues?q=is%3Aopen+is%3Aissue+label%3A%22good%20first%20issue%22)
-- Read our [Code of Conduct](CODE_OF_CONDUCT.md)
-- Check [AGENTS.md](AGENTS.md) for development guidelines
-- Join our [Discord community](https://discord.gg/nCXAsUd3hm)
+**Solution:**
 
-## 💬 Join Qwery Community
+Try running `pnpm build` from the root repository first, as some packages may not have built successfully (even if you've done it before):
 
-- **Discord**: [Join our Discord](https://discord.gg/nCXAsUd3hm) for discussions and support
-- **GitHub Issues**: Report bugs and request features
-- **YouTube**: [Watch demos and tutorials](https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6)
+```bash
+# From root directory
+pnpm build
+```
 
-## 📄 License
+Then rebuild in `apps/web`:
+```bash
+cd apps/web
+pnpm build
+```
 
-This project uses the Elastic License 2.0 (ELv2). See the [LICENSE](LICENCE) file for details.
+**Root Build Shows Failures?**
 
-## 🙏 Thank You
+If running `pnpm build` at the root shows failures like this it's normal but the problem is the number of successful tasks:
 
-We're grateful to the open source community. See our [Thank You](THANK-YOU.md) page for acknowledgments.
+```
+Tasks:    3 successful, 13 total
+Cached:    3 cached, 13 total
+  Time:    4.364s
+Failed:    desktop#build
+
+ERROR  run failed: command  exited (1)
+ELIFECYCLE  Command failed with exit code 1.
+```
+
+This means packages didn't build successfully (tasks < 6 successful). The `apps/web` build will not pass in this state.
+
+**Solution:**
+
+Rebuild from the root until you get more than 6 successful tasks:
+
+```bash
+# From root directory
+pnpm build
+```
+
+Once you see sufficient successful tasks (e.g., 6+ successful), then rebuild `apps/web`:
+
+```bash
+cd apps/web
+pnpm build
+```
+
+**Container not starting?**
+```bash
+docker logs [container-name]
+```
+
+
+**Connection refused?**
+- Verify Docker container is running: `docker ps`
+- Check port 8080 is available: `netstat -an | findstr :8080` (Windows)
+
+**Model not responding?**
+- Test endpoint directly:
+```bash
+curl http://127.0.0.1:8080/v1/chat/completions ^
+  -H "Content-Type: application/json" ^
+  -d "{\"model\":\"mistral-7b-instruct-v0.2.Q2_K.gguf\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}"
+```
+
+## Learn More
+
+For detailed integration documentation, see [INTEGRATION.md](INTEGRATION.md).
+
+For more information about the dockerization of the server and model, check the [llama-docker/README.md](llama-docker/README.md) file.
+

@@ -10,6 +10,17 @@ import { GENERATE_CHART_CONFIG_PROMPT } from '../prompts/generate-chart-config.p
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { getSupportedChartTypes } from '../config/supported-charts';
 
+const DEFAULT_AZURE_MODEL = 'azure/gpt-5-mini';
+
+function getChartModel(): string {
+  const hasAzureCreds =
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
+}
+
 export interface QueryResults {
   rows: Array<Record<string, unknown>>;
   columns: string[];
@@ -65,7 +76,7 @@ export async function selectChartType(
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getChartModel()),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -119,7 +130,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getChartModel()),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,

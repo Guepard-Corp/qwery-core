@@ -2,6 +2,17 @@ import { generateText } from 'ai';
 import { resolveModel } from './model-resolver';
 import type { SimpleSchema } from '@qwery/domain/entities';
 
+const DEFAULT_AZURE_MODEL = 'azure/gpt-5-mini';
+
+function getSheetModel(): string {
+  const hasAzureCreds =
+    !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
+    : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
+}
+
 const GENERATE_SHEET_NAME_PROMPT = (
   currentName: string,
   schema: SimpleSchema,
@@ -45,7 +56,7 @@ export async function generateSheetName(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getSheetModel()),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 
