@@ -119,8 +119,16 @@ export const createStateMachine = (
             actions: assign({
               previousMessages: ({ event }) => event.messages,
               model: ({ context }) => context.model,
-              inputMessage: ({ event }) =>
-                event.messages[event.messages.length - 1]?.parts[0]?.text ?? '',
+              inputMessage: ({ event }) => {
+                const lastMessage = event.messages[event.messages.length - 1];
+                const text = lastMessage?.parts
+                  ?.filter((part: any) => part.type === 'text')
+                  .map((part: any) => part.text)
+                  .join(' ')
+                  .trim() || '';
+                console.log(`[StateMachine] Extracted inputMessage: "${text.substring(0, 50)}..."`);
+                return text;
+              },
               streamResult: () => undefined, // Clear previous result when starting new request
               error: () => undefined,
               promptSource: ({ event }) => {
@@ -149,8 +157,15 @@ export const createStateMachine = (
             actions: assign({
               previousMessages: ({ event }) => event.messages,
               model: ({ context }) => context.model,
-              inputMessage: ({ event }) =>
-                event.messages[event.messages.length - 1]?.parts[0]?.text ?? '',
+              inputMessage: ({ event }) => {
+                const lastMessage = event.messages[event.messages.length - 1];
+                const text = lastMessage?.parts
+                  ?.filter((part: any) => part.type === 'text')
+                  .map((part: any) => part.text)
+                  .join(' ')
+                  .trim() || '';
+                return text;
+              },
               streamResult: undefined,
               promptSource: ({ event }) => {
                 const lastUserMessage = event.messages
@@ -281,13 +296,13 @@ export const createStateMachine = (
                   ],
                 },
                 after: {
-                  30000: {
+                  60000: {
                     target: 'retrying',
                     guard: 'shouldRetry',
                     actions: assign({
                       retryCount: ({ context }) =>
                         (context.retryCount || 0) + 1,
-                      error: () => 'Intent detection timeout',
+                      error: () => 'Intent detection timeout after 60 seconds',
                       model: ({ context }) => context.model,
                     }),
                   },
@@ -441,10 +456,10 @@ export const createStateMachine = (
                       ],
                     },
                     after: {
-                      120000: {
+                      60000: {
                         target: 'failed',
                         actions: assign({
-                          error: () => 'ReadData timeout after 120 seconds',
+                          error: () => 'ReadData timeout after 60 seconds',
                           model: ({ context }) => context.model,
                         }),
                       },
@@ -485,6 +500,7 @@ export const createStateMachine = (
               id: 'SYSTEM_INFO',
               input: ({ context }: { context: AgentContext }) => ({
                 inputMessage: context.inputMessage,
+                model: context.model,
               }),
               onDone: {
                 target: 'streaming',
