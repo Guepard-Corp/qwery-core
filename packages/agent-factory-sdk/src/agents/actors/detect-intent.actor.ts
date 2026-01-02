@@ -26,8 +26,8 @@ export const detectIntent = async (text: string) => {
       // Add timeout to detect hanging calls (increased for CPU inference)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
-          () => reject(new Error('generateObject timeout after 90 seconds')),
-          90000,
+          () => reject(new Error('generateObject timeout after 150 seconds')),
+          150000,
         );
       });
 

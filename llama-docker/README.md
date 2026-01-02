@@ -208,8 +208,8 @@ netstat -ano | findstr :8080
 
 ### Server is Slow
 
-- **First request** takes 10-20 seconds (model loads into memory)
-- **Subsequent requests** are faster (3-5 seconds for CPU inference)
+- **First request** takes 60-70 seconds (model loads into memory)
+- **Subsequent requests** are faster (10-20 seconds for CPU inference)
 - Consider using GPU-enabled build for faster inference
 
 ### Out of Memory

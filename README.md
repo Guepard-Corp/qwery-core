@@ -6,6 +6,7 @@ Run Qwery entirely offline with local LLM support using llama.cpp.
 
 ### 1. Start the Local LLM Server
 
+
 ```bash
 cd llama-docker
 docker-compose build --no-cache
@@ -20,21 +21,49 @@ docker logs -f [container-name]
 
 ### 2. Configure Environment Variables
 
-Add to your `.env` file:
+Copy the example environment file in `apps/web`:
+```bash
+cd apps/web
+cp .env.example .env
+```
+
+If you changed the model loaded in the Dockerfile, update this variable in your `.env`:
 ```env
-LLAMACPP_BASE_URL=http://127.0.0.1:8080
-LLAMACPP_MODEL_NAME=mistral-7b-instruct-v0.2.Q2_K.gguf
+LLAMACPP_MODEL_NAME=your-model-name.gguf
 ```
 
 ### 3. Run Qwery
 
+1. Install dependencies:
 ```bash
 pnpm install
+```
+
+2. Build core packages (should be built from the root; may show errors for desktop and cli packages at the end, which can be ignored):
+```bash
+pnpm build
+```
+
+3. Build the web application:
+```bash
 cd apps/web
 pnpm build
 cd ../..
+```
+
+4. Build extensions:
+```bash
 pnpm extensions:build
+```
+
+5. Start the development server:
+```bash
 pnpm --filter web dev
+```
+or 
+```bash
+cd apps/web
+pnpm dev
 ```
 
 The LlamaCpp model will be automatically selected if Azure credentials are not configured.
@@ -52,10 +81,29 @@ The LlamaCpp model will be automatically selected if Azure credentials are not c
 
 To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+):
 
-1. Download your preferred `.gguf` model file
-2. Replace the model in `llama-docker/Dockerfile` or mount it via volume
-3. Update `LLAMACPP_MODEL_NAME` in `.env`
-4. Restart the Docker container
+1. Open `llama-docker/Dockerfile` and update these two sections with your preferred model (keep in mind resource constraints):
+
+**Download section** - Change the model URL and filename:
+```dockerfile
+RUN echo "Downloading Mistral 7B model..." && \
+    curl -L -o /app/models/...gguf \
+    https://huggingface.co/TheBloke/...gguf && \
+    echo "Model downloaded successfully!"
+```
+
+**CMD section** - Update the model path:
+```dockerfile
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/...", "--host", "0.0.0.0", "--port", "8080", "-c", "8192", "-b", "512", "--threads", "8", "--no-mmap"]
+```
+
+2. Update `LLAMACPP_MODEL_NAME` in your `apps/web/.env` file to match the new model filename
+
+3. Rebuild and restart the Docker container:
+```bash
+cd llama-docker
+docker-compose build --no-cache
+docker-compose up -d
+```
 
 **Recommended for full features:** Llama 3.1 8B Instruct or larger (supports tool calling and system messages)
 
@@ -79,11 +127,12 @@ The provider is integrated into Qwery's existing model resolution system:
 ```typescript
 // Automatic fallback to LlamaCpp when Azure credentials are missing
 function getModel(): string {
-  const hasAzureCreds = 
+  const hasAzureCreds =
     !!process.env.AZURE_API_KEY && !!process.env.AZURE_RESOURCE_NAME;
-  return hasAzureCreds 
-    ? 'azure-openai/gpt-4' 
+  const llamacppModel = process.env.LLAMACPP_MODEL_NAME 
+    ? `llamacpp/${process.env.LLAMACPP_MODEL_NAME}`
     : 'llamacpp/mistral-7b-instruct-v0.2.Q2_K.gguf';
+  return hasAzureCreds ? DEFAULT_AZURE_MODEL : llamacppModel;
 }
 ```
 
@@ -114,3 +163,6 @@ curl http://127.0.0.1:8080/v1/chat/completions ^
 ## Learn More
 
 For detailed integration documentation, see [INTEGRATION.md](INTEGRATION.md).
+
+For more information about the dockerization of the server and model, check the [llama-docker/README.md](llama-docker/README.md) file.
+
