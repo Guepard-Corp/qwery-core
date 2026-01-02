@@ -143,10 +143,83 @@ function getModel(): string {
 
 ## Troubleshooting
 
+**React Router Version Conflict Error?**
+
+If all builds pass successfully but when you run:
+```bash
+cd apps/web
+pnpm dev
+```
+
+You encounter errors like:
+```
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRoutesImpl"
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRouteId"
+X [ERROR] No matching export in "react-router" for import "AbortedDeferredError"
+X [ERROR] No matching export in "react-router" for import "defer"
+X [ERROR] No matching export in "react-router" for import "json"
+```
+
+**Solution:**
+
+1. Update `package.json` in the root repository:
+
+```json
+"pnpm": {
+  "overrides": {
+    "react-is": "19.0.0",
+    "react-router": "7.9.5",
+    "react-router-dom": "npm:empty-npm-package@1.0.0",
+    "@react-router/dev": "7.9.5",
+    "@react-router/node": "7.9.5",
+    "@react-router/serve": "7.9.5",
+    "@react-router/express": "7.9.5",
+    "@react-router/fs-routes": "7.9.5"
+  },
+```
+
+2. Update `apps/web/vite.config.ts` to add resolve alias:
+
+```typescript
+export default defineConfig(({ command }) => ({
+  resolve: {
+    alias: {
+      'react-router-dom': 'react-router',
+    },
+  },
+  ssr: {
+    noExternal:
+      command === 'build'
+        ? true
+        : ['posthog-js', '@posthog/react', 'streamdown'],
+    external: [
+      'better-sqlite3',
+      '@duckdb/node-api',
+      '@duckdb/node-bindings-linux-arm64',
+      '@duckdb/node-bindings-linux-x64',
+      '@duckdb/node-bindings-darwin-arm64',
+      '@duckdb/node-bindings-darwin-x64',
+      '@duckdb/node-bindings-win32-x64',
+    ],
+  },
+```
+
+3. Reinstall dependencies:
+```bash
+pnpm install
+```
+5. Rebuild
+4. Try running the dev server again:
+```bash
+cd apps/web
+pnpm dev
+```
+
 **Container not starting?**
 ```bash
 docker logs [container-name]
 ```
+
 
 **Connection refused?**
 - Verify Docker container is running: `docker ps`

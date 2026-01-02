@@ -1,3 +1,4 @@
+itegration.md:
 # LlamaCpp Local LLM Integration
 
 ## Overview
@@ -48,6 +49,64 @@ curl http://127.0.0.1:8080/v1/chat/completions \
 
 You should receive a JSON response with the model's output.
 
+## Environment Variables
+
+Copy the example environment file in `apps/cli`:
+```bash
+cd apps/cli
+cp .env.example .env
+```
+
+Copy the example environment file in `apps/web`:
+```bash
+cd apps/web
+cp .env.example .env
+```
+
+If you changed the model loaded in the Dockerfile, update this variable in your `.env`:
+```env
+LLAMACPP_MODEL_NAME=your-model-name.gguf
+```
+
+
+## Build and Run Instructions
+
+1. Install dependencies:
+```bash
+pnpm install
+```
+
+2. Build core packages (should be built from the root; may show errors for desktop and cli packages at the end, which can be ignored):
+```bash
+pnpm build
+```
+
+3. Build the web application:
+```bash
+cd apps/web
+pnpm build
+cd ../..
+```
+
+4. Build extensions:
+```bash
+pnpm extensions:build
+```
+
+5. Start the development server:
+```bash
+pnpm --filter web dev
+```
+or 
+```bash
+cd apps/web
+pnpm dev
+```
+
+The LlamaCpp model will be automatically selected if Azure credentials are not configured.
+
+
+
 ## Files Modified/Created
 
 ### New Files
@@ -55,7 +114,7 @@ You should receive a JSON response with the model's output.
   Provider implementation for LlamaCpp integration. Configures the OpenAI-compatible client to point to the local llama.cpp endpoint.
 
 - **`llama-docker/`**  
-  Docker configuration for running llama.cpp server locally with the Mistral 7B model.
+  Docker configuration for running llama.cpp server locally with the Mistral 7B model with readme file explaining the setup.
 
 ### Modified Files
 - **`packages/agent-factory-sdk/src/services/model-resolver.ts`**  
@@ -64,7 +123,7 @@ You should receive a JSON response with the model's output.
 - **`packages/agent-factory-sdk/src/index.ts`**  
   Exported the new LlamaCpp provider for use across the application.
 
-- **`.env`**  
+- **`apps/web/.env.example`**  
   Added `LLAMACPP_BASE_URL` environment variable configuration.
   and `LLAMACPP_MODEL_NAME` 
 - **Multiple actor files:**
@@ -79,49 +138,6 @@ You should receive a JSON response with the model's output.
   **Note:** These modifications add fallback logic to use LlamaCpp when Azure 
   credentials are not configured. This ensures the application can function 
   without cloud dependencies while maintaining backward compatibility.
-
-## Environment Variables
-
-Add the following to your `.env` file:
-
-```env
-LLAMACPP_BASE_URL=http://127.0.0.1:8080
-LLAMACPP_MODEL_NAME=mistral-7b-instruct-v0.2.Q2_K.gguf
-```
-
-**Optional:** If Azure credentials are not set, the system automatically falls back to LlamaCpp:
-```env
-# Leave these unset to use LlamaCpp by default
-# AZURE_API_KEY=
-# AZURE_RESOURCE_NAME=
-```
-
-## Build Instructions
-
-### Install dependencies
-```bash
-pnpm install
-```
-
-### Build Web Application
-```bash
-cd apps/web
-pnpm build 
-```
-
-### Build Extensions
-```bash
-pnpm extensions:build
-```
-
-Both builds should pass successfully with no errors.
-
-### Run Development Server
-```bash
-cd apps/web
-pnpm dev
-```
-
 
 
 ## Model Capabilities & Architectural Considerations
@@ -138,7 +154,6 @@ For this integration, **Mistral 7B v0.2 was chosen as a lightweight model to dem
 
 ### Limited Features
 ⚠️ **Tool calling** requires models with system message support (not available in Mistral 7B v0.2)  
-⚠️ **Structured output generation** (`generateObject`) - affects intent detection  
 ⚠️ **Chart generation** (requires tools)  
 ⚠️ **Complex data operations** (any feature requiring tools)  
 ⚠️ **Multi-turn conversations with tools**  
@@ -152,13 +167,40 @@ Mistral 7B v0.2's chat template only accepts `user` and `assistant` roles. When 
 The llama.cpp server rejects these with: **"Only user and assistant roles are supported!"**
 
 This means:
-- ❌ Intent detection fails → Can't route requests properly
 - ❌ Data queries fail → Can't execute SQL or access databases
 - ❌ Chart generation fails → Can't generate visualizations
 - ✅ Basic chat works → Simple user/assistant text exchanges only
 
 ### Architecture Flexibility as a solution
 The integration is **model-agnostic**. To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+), simply replace the `.gguf` file in the Docker setup. The provider architecture remains unchanged.
+
+### Upgrading the Model
+
+To use a more capable model (Llama 3.1+, Qwen 2.5, Mistral v0.3+):
+
+1. Open `llama-docker/Dockerfile` and update these two sections with your preferred model (keep in mind resource constraints):
+
+**Download section** - Change the model URL and filename:
+```dockerfile
+RUN echo "Downloading Mistral 7B model..." && \
+    curl -L -o /app/models/...gguf \
+    https://huggingface.co/TheBloke/...gguf && \
+    echo "Model downloaded successfully!"
+```
+
+**CMD section** - Update the model path:
+```dockerfile
+CMD ["/app/llama.cpp/build/bin/llama-server", "-m", "/app/models/...", "--host", "0.0.0.0", "--port", "8080", "-c", "8192", "-b", "512", "--threads", "8", "--no-mmap"]
+```
+
+2. Update `LLAMACPP_MODEL_NAME` in your `apps/web/.env` file to match the new model filename
+
+3. Rebuild and restart the Docker container:
+```bash
+cd llama-docker
+docker-compose build --no-cache
+docker-compose up -d
+```
 
 **Recommended Models for Full Feature Support:**
 - Llama 3.1 8B Instruct or larger
@@ -168,6 +210,7 @@ The integration is **model-agnostic**. To use a more capable model (Llama 3.1+, 
 These models include better chat templates that support system messages and tool calling, enabling the full feature set of Qwery.
 
 ## Technical Approach
+
 
 ### Implementation Details
 - **SDK:** Uses Vercel AI SDK with `@ai-sdk/openai` adapter
@@ -215,23 +258,10 @@ function getModel(): string {
 ### How to Test in Qwery
 
 1. **Start Docker Container**
-   ```bash
-   cd llama-docker
-   docker-compose up -d
-   ```
 
 2. **Build and Run Development Server**
-   ```bash
-   cd apps/web
-   pnpm build
-   cd ../..
-   pnpm extensions:build
-   pnpm --filter web dev
-   ```
 
 3. **Create New Project**
-   - Open Qwery in your browser
-   - Create a new project and conversation
 
 4. **Select LlamaCpp Model**
    - Open model dropdown
@@ -245,19 +275,21 @@ function getModel(): string {
 ### Expected Behavior
 - ✅ Simple chat messages should receive responses
 - ✅ System info queries should work ("who are you?")
+- ✅ Any querie with intent( other ) should work ("who are you?")
 - ❌ Complex queries requiring tools may fail gracefully
-- ❌ Data source queries will not execute (model limitation)
 
 ## Assumptions
 
 The integration was built with the following assumptions:
 
 1. **llama.cpp runs on port 8080** - Default port configuration
-2. **Docker available on system** - Required for running llama.cpp server
+2. **Docker available and running on system** - Docker service is installed and actively running to host the llama.cpp server
 3. **Model pre-downloaded in Docker image** - No runtime download required
 4. **OpenAI-compatible format acceptable** - Uses standard OpenAI API schema
 5. **Server-side execution appropriate** - No client-side inference needed
 6. **Local network access** - Application can reach `127.0.0.1:8080`
+7. **Node.js (version 22.20.0 >18)** - Required for running the application
+8. **pnpm (version 10.18.1)** - Package manager version for dependency management
 
 ## Confirmation
 
@@ -269,6 +301,79 @@ The integration was built with the following assumptions:
 ✅ **Environment variables documented** - Clear setup instructions  
 ✅ **Provider architecture validated** - Successfully tested with real model
 ## Troubleshooting
+
+**React Router Version Conflict Error?**
+
+If all builds pass successfully but when you run:
+```bash
+cd apps/web
+pnpm dev
+```
+
+You encounter errors like:
+```
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRoutesImpl"
+X [ERROR] No matching export in "react-router" for import "UNSAFE_useRouteId"
+X [ERROR] No matching export in "react-router" for import "AbortedDeferredError"
+X [ERROR] No matching export in "react-router" for import "defer"
+X [ERROR] No matching export in "react-router" for import "json"
+```
+
+**Solution:**
+
+1. Update `package.json` in the root repository:
+
+```json
+"pnpm": {
+  "overrides": {
+    "react-is": "19.0.0",
+    "react-router": "7.9.5",
+    "react-router-dom": "npm:empty-npm-package@1.0.0",
+    "@react-router/dev": "7.9.5",
+    "@react-router/node": "7.9.5",
+    "@react-router/serve": "7.9.5",
+    "@react-router/express": "7.9.5",
+    "@react-router/fs-routes": "7.9.5"
+  },
+```
+
+2. Update `apps/web/vite.config.ts` to add resolve alias:
+
+```typescript
+export default defineConfig(({ command }) => ({
+  resolve: {
+    alias: {
+      'react-router-dom': 'react-router',
+    },
+  },
+  ssr: {
+    noExternal:
+      command === 'build'
+        ? true
+        : ['posthog-js', '@posthog/react', 'streamdown'],
+    external: [
+      'better-sqlite3',
+      '@duckdb/node-api',
+      '@duckdb/node-bindings-linux-arm64',
+      '@duckdb/node-bindings-linux-x64',
+      '@duckdb/node-bindings-darwin-arm64',
+      '@duckdb/node-bindings-darwin-x64',
+      '@duckdb/node-bindings-win32-x64',
+    ],
+  },
+```
+
+3. Reinstall dependencies:
+```bash
+pnpm install
+```
+5. Rebuild
+4. Try running the dev server again:
+```bash
+cd apps/web
+pnpm dev
+```
+
 
 ### Common Issues
 
