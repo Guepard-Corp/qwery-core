@@ -88,9 +88,20 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'local': {
+      // TECHNICAL ASSESSMENT: Integration of llama.cpp 
+      const { createLocalModelProvider } = await import(
+        './models/local-model.provider'
+      );
+      return createLocalModelProvider({
+        baseURL: getEnv('LOCAL_LLM_ENDPOINT'),
+        apiKey: 'not-needed',
+      });
+    }
+
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm,local.`,
       );
   }
 }
