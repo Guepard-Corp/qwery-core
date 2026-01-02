@@ -170,7 +170,7 @@ export function initializeSchema(db: Database.Database): void {
   // Usage table (time series data)
   db.exec(`
     CREATE TABLE IF NOT EXISTS usage (
-      id INTEGER PRIMARY KEY,
+      id TEXT PRIMARY KEY,
       conversation_id TEXT NOT NULL,
       project_id TEXT NOT NULL,
       organization_id TEXT NOT NULL,

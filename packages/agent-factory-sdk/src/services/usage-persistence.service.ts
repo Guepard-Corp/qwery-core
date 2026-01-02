@@ -1,4 +1,5 @@
 import { type LanguageModelUsage } from 'ai';
+import { v4 as uuidv4 } from 'uuid';
 import {
   IUsageRepository,
   IConversationRepository,
@@ -14,8 +15,12 @@ function mapLanguageModelUsageToCreateUsageInput(
   usage: LanguageModelUsage,
   model: string,
   userId: string = 'system',
-): Omit<CreateUsageInput, 'conversationId' | 'projectId' | 'organizationId'> {
+): Omit<
+  CreateUsageInput,
+  'conversationId' | 'projectId' | 'organizationId'
+> {
   return {
+    id: uuidv4(),
     userId,
     model,
     inputTokens: usage.inputTokens ?? 0,
