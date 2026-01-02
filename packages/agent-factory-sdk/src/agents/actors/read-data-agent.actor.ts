@@ -29,6 +29,10 @@ import { getDatasourceDatabaseName } from '../../tools/datasource-name-utils';
 import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
 import type { PromptSource } from '../../domain';
 import { PROMPT_SOURCE } from '../../domain';
+import {
+  autoDiscoverSchemas,
+  generateDetailedSchemaSummary,
+} from '../../tools/auto-schema-discovery';
 
 // Lazy workspace resolution - only resolve when actually needed, not at module load time
 // This prevents side effects when the module is imported in browser/SSR contexts
@@ -174,9 +178,57 @@ export const readDataAgent = async (
     );
   }
 
+  // Auto-discover schemas after datasources are attached
+  let systemPrompt = READ_DATA_AGENT_PROMPT;
+  if (repositories && queryEngine) {
+    try {
+      const autoSchemaStartTime = performance.now();
+      const schemaDiscovery = await autoDiscoverSchemas(
+        conversationId,
+        queryEngine,
+        repositories,
+      );
+      const autoSchemaTime = performance.now() - autoSchemaStartTime;
+      
+      if (schemaDiscovery && schemaDiscovery.schemas.size > 0) {
+        console.log(
+          `[ReadDataAgent] Auto-discovered ${schemaDiscovery.tables.length} table(s) in ${autoSchemaTime.toFixed(2)}ms`,
+        );
+        
+        // Inject schema information into system prompt
+        const schemaSummary = generateDetailedSchemaSummary(
+          schemaDiscovery.schemas,
+        );
+        systemPrompt = `${READ_DATA_AGENT_PROMPT}
+
+---
+
+## AUTO-DISCOVERED DATA SOURCES
+
+The following data sources have been automatically discovered and are ready to use:
+
+${schemaSummary}
+
+**IMPORTANT:** You now have immediate access to these tables. When the user asks questions about data:
+1. Use the table names listed above directly in your SQL queries
+2. You do NOT need to call getSchema first unless you need additional details
+3. Reference the columns listed above in your queries
+4. If the user's question is unclear about which table to use, suggest the available tables above
+
+`;
+      }
+    } catch (error) {
+      console.warn(
+        '[ReadDataAgent] Failed to auto-discover schemas:',
+        error,
+      );
+      // Continue without auto-discovery
+    }
+  }
+
   const result = new Agent({
     model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
+    system: systemPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -187,8 +239,19 @@ export const readDataAgent = async (
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
           }
-          const { join } = await import('node:path');
-          const dbPath = join(workspace, conversationId, 'database.db');
+          
+          // Handle both Node.js file paths and browser URI paths
+          let dbPath: string;
+          if (workspace.startsWith('file://') || workspace.startsWith('file:')) {
+            // Browser/OPFS path - use forward slashes
+            const basePath = workspace.replace(/\\/g, '/');
+            dbPath = `${basePath}/${conversationId}/database.db`;
+          } else {
+            // Node.js file path - use path.join
+            const { join } = await import('node:path');
+            dbPath = join(workspace, conversationId, 'database.db');
+          }
+          
           // testConnection still uses dbPath directly, which is fine for testing
           const result = await testConnection({
             dbPath: dbPath,
@@ -228,9 +291,21 @@ export const readDataAgent = async (
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
           }
-          const { join } = await import('node:path');
-          const fileDir = join(workspace, conversationId);
-          const dbPath = join(fileDir, 'database.duckdb');
+          
+          // Handle both Node.js file paths and browser URI paths
+          let fileDir: string;
+          let dbPath: string;
+          if (workspace.startsWith('file://') || workspace.startsWith('file:')) {
+            // Browser/OPFS path - use forward slashes
+            const basePath = workspace.replace(/\\/g, '/');
+            fileDir = `${basePath}/${conversationId}`;
+            dbPath = `${fileDir}/database.duckdb`;
+          } else {
+            // Node.js file path - use path.join
+            const { join } = await import('node:path');
+            fileDir = join(workspace, conversationId);
+            dbPath = join(fileDir, 'database.duckdb');
+          }
 
           console.log(
             `[ReadDataAgent] Workspace: ${workspace}, ConversationId: ${conversationId}, dbPath: ${dbPath}`,
@@ -755,7 +830,22 @@ export const readDataAgent = async (
           }
 
           const queryStartTime = performance.now();
-          const result = await queryEngine.query(query);
+          let result;
+          try {
+            result = await queryEngine.query(query);
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            // Check if error is about table/view not existing
+            if (errorMsg.toLowerCase().includes('does not exist') || 
+                errorMsg.toLowerCase().includes('not found') ||
+                errorMsg.toLowerCase().includes('no such table')) {
+              throw new Error(
+                `Table/view not found. ${errorMsg}. Please call getSchema (without parameters) first to discover available tables and their actual names. Do not use generic names like 'datasource' or 'table' - use the actual table names returned by getSchema.`
+              );
+            }
+            // Re-throw other errors as-is
+            throw error;
+          }
           const queryTime = performance.now() - queryStartTime;
           const totalTime = performance.now() - startTime;
           console.log(
@@ -829,8 +919,18 @@ export const readDataAgent = async (
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
           }
-          const { join } = await import('node:path');
-          const fileDir = join(workspace, conversationId);
+          
+          // Handle both Node.js file paths and browser URI paths
+          let fileDir: string;
+          if (workspace.startsWith('file://') || workspace.startsWith('file:')) {
+            // Browser/OPFS path - use forward slashes
+            const basePath = workspace.replace(/\\/g, '/');
+            fileDir = `${basePath}/${conversationId}`;
+          } else {
+            // Node.js file path - use path.join
+            const { join } = await import('node:path');
+            fileDir = join(workspace, conversationId);
+          }
 
           // Load business context if available
           let businessContext: BusinessContext | null = null;
@@ -872,8 +972,18 @@ export const readDataAgent = async (
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
           }
-          const { join } = await import('node:path');
-          const fileDir = join(workspace, conversationId);
+          
+          // Handle both Node.js file paths and browser URI paths
+          let fileDir: string;
+          if (workspace.startsWith('file://') || workspace.startsWith('file:')) {
+            // Browser/OPFS path - use forward slashes
+            const basePath = workspace.replace(/\\/g, '/');
+            fileDir = `${basePath}/${conversationId}`;
+          } else {
+            // Node.js file path - use path.join
+            const { join } = await import('node:path');
+            fileDir = join(workspace, conversationId);
+          }
 
           // Load business context if available
           const contextStartTime = performance.now();
