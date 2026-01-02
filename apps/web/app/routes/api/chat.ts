@@ -46,7 +46,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = 'ollama/mistral',
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +104,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || 'ollama/mistral';
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -205,7 +205,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           '[Chat API] Running intent detection for:',
           lastUserMessageText.substring(0, 100),
         );
-        const intentResult = await detectIntent(lastUserMessageText);
+        const intentResult = await detectIntent(lastUserMessageText, model);
         needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
         console.log('[Chat API] Intent detection result:', {
           intent: (intentResult as { intent?: string }).intent,

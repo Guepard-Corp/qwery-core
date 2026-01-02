@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^3.0.56",
-    "@ai-sdk/azure": "^2.0.73",
     "@ai-sdk/openai": "^2.0.68",
     "@ai-sdk/provider": "^2.0.0",
     "@duckdb/node-api": "1.4.2-r.1",

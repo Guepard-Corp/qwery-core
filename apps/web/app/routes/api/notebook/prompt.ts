@@ -274,7 +274,7 @@ export async function action({ request }: ActionFunctionArgs) {
     datasourceId,
     projectId,
     userId,
-    model = 'azure/gpt-5-mini',
+    model = 'ollama/mistral',
     notebookCellType,
   } = body;
 
@@ -307,7 +307,7 @@ export async function action({ request }: ActionFunctionArgs) {
         '[Notebook Prompt API] Running intent detection for:',
         query.substring(0, 100),
       );
-      const intentResult = await detectIntent(query);
+      const intentResult = await detectIntent(query, model);
       needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
       console.log('[Notebook Prompt API] Intent detection result:', {
         intent: (intentResult as { intent?: string }).intent,
