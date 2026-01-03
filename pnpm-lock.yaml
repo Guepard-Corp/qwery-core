@@ -477,6 +477,12 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+<<<<<<< HEAD
+=======
+      '@types/node':
+        specifier: ^24.9.2
+        version: 24.9.2
+>>>>>>> 56a7544 (Initial commit)
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.0
@@ -526,7 +532,11 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.1.16)
       typescript:
+<<<<<<< HEAD
         specifier: 'catalog:'
+=======
+        specifier: ^5.9.3
+>>>>>>> 56a7544 (Initial commit)
         version: 5.9.3
       vite:
         specifier: 'catalog:'
@@ -625,6 +635,12 @@ importers:
       '@ai-sdk/azure':
         specifier: ^2.0.73
         version: 2.0.73(zod@3.25.76)
+<<<<<<< HEAD
+=======
+      '@ai-sdk/openai':
+        specifier: ^2.0.71
+        version: 2.0.71(zod@3.25.76)
+>>>>>>> 56a7544 (Initial commit)
       '@aws-sdk/client-s3':
         specifier: ^3.936.0
         version: 3.948.0

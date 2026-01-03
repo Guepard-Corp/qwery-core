@@ -13,13 +13,25 @@ function parseModelName(modelString: string): {
       `[AgentFactory] Invalid model: modelString must be a non-empty string, got '${modelString}'`,
     );
   }
+<<<<<<< HEAD
   const parts = modelString.split('/');
   if (parts.length !== 2) {
+=======
+  const separatorIndex = modelString.indexOf('/');
+  if (separatorIndex === -1) {
+>>>>>>> 56a7544 (Initial commit)
     throw new Error(
       `[AgentFactory] Invalid model format: expected 'provider/model', got '${modelString}'`,
     );
   }
+<<<<<<< HEAD
   return { providerId: parts[0]!, modelName: parts[1]! };
+=======
+  const providerId = modelString.substring(0, separatorIndex);
+  const modelName = modelString.substring(separatorIndex + 1);
+
+  return { providerId, modelName };
+>>>>>>> 56a7544 (Initial commit)
 }
 
 function getEnv(key: string): string | undefined {
@@ -44,6 +56,19 @@ async function createProvider(
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
+<<<<<<< HEAD
+=======
+    case 'openai': {
+      const { createOpenAIModelProvider } = await import(
+        './models/openai-model.provider'
+      );
+      return createOpenAIModelProvider({
+        apiKey: getEnv('OPENAI_API_KEY'),
+        baseUrl: getEnv('OPENAI_BASE_URL'),
+        defaultModel: getEnv('OPENAI_MODEL') ?? modelName,
+      });
+    }
+>>>>>>> 56a7544 (Initial commit)
     case 'azure': {
       const { createAzureModelProvider } = await import(
         './models/azure-model.provider'
@@ -90,7 +115,11 @@ async function createProvider(
     }
     default:
       throw new Error(
+<<<<<<< HEAD
         `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+=======
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: openai, azure, ollama, browser, transformer-browser, transformer, webllm.`,
+>>>>>>> 56a7544 (Initial commit)
       );
   }
 }

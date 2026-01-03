@@ -167,11 +167,19 @@ export class FactoryAgent {
           subscription.unsubscribe();
           reject(
             new Error(
+<<<<<<< HEAD
               `FactoryAgent response timeout: state machine did not produce streamResult within 60 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
             ),
           );
         }
       }, 60000);
+=======
+              `FactoryAgent response timeout: state machine did not produce streamResult within 600 seconds. Last state: ${lastState}, state changes: ${stateChangeCount}`,
+            ),
+          );
+        }
+      }, 600000);
+>>>>>>> 56a7544 (Initial commit)
 
       let userInputSent = false;
 

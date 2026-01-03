@@ -104,7 +104,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
+<<<<<<< HEAD
   const model: string = body.model || 'azure/gpt-5-mini';
+=======
+  // Prioritize payload model (User selection), then env var (Local default), then hardcoded fallback
+  const model: string = body.model || process.env.AGENT_MODEL || 'azure/gpt-5-mini';
+>>>>>>> 56a7544 (Initial commit)
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -313,7 +318,18 @@ User request: ${cleanText}`;
       messages: await validateUIMessages({ messages: processedMessages }),
     });
 
+<<<<<<< HEAD
     if (!streamResponse.body) {
+=======
+    console.log('[Chat API] agent.respond returned:', {
+      status: streamResponse.status,
+      headers: Object.fromEntries(streamResponse.headers.entries()),
+      hasBody: !!streamResponse.body
+    });
+
+    if (!streamResponse.body) {
+      console.warn('[Chat API] No body in streamResponse');
+>>>>>>> 56a7544 (Initial commit)
       return new Response(null, { status: 204 });
     }
 
@@ -321,10 +337,17 @@ User request: ${cleanText}`;
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
+<<<<<<< HEAD
           ?.filter((part) => part.type === 'text')
           .map((part) => (part as { text: string }).text)
           .join(' ')
           .trim() || ''
+=======
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
+>>>>>>> 56a7544 (Initial commit)
       : '';
 
     const stream = new ReadableStream({
@@ -336,6 +359,10 @@ User request: ${cleanText}`;
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
+<<<<<<< HEAD
+=======
+              console.log('[Chat API] Stream complete');
+>>>>>>> 56a7544 (Initial commit)
               controller.close();
 
               // After stream completes, generate title if needed
@@ -406,7 +433,10 @@ User request: ${cleanText}`;
                   }
                 }, 1000); // Wait 1 second for messages to be saved
               }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 56a7544 (Initial commit)
               break;
             }
 

@@ -6,7 +6,11 @@ import { resolveModel } from '../../services/model-resolver';
 
 export const summarizeIntent = async (text: string, intent: Intent) => {
   const result = streamText({
+<<<<<<< HEAD
     model: await resolveModel('azure/gpt-5-mini'),
+=======
+    model: await resolveModel(process.env.AGENT_MODEL || 'openai/TheBloke/Mistral-7B-Instruct-v0.2-GGUF:Q4_K_M'),
+>>>>>>> 56a7544 (Initial commit)
     prompt: SUMMARIZE_INTENT_PROMPT(text, intent),
   });
 

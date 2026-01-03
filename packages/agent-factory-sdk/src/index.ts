@@ -24,6 +24,13 @@ const baseModels = [
     value: 'azure/gpt-5-mini',
   },
   {
+<<<<<<< HEAD
+=======
+    name: 'Mistral 7B (Local)',
+    value: 'openai/TheBloke/Mistral-7B-Instruct-v0.2-GGUF:Q4_K_M',
+  },
+  {
+>>>>>>> 56a7544 (Initial commit)
     name: 'DeepSeek R1 (8B)',
     value: 'ollama/deepseek-r1:8b',
   },
