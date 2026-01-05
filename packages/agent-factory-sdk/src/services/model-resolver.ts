@@ -88,9 +88,17 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'local': {
+      const { createLocalModelProvider } = await import(
+        './models/local-model.provider'
+      );
+      return createLocalModelProvider({
+        defaultModel: getEnv('LLAMACPP_MODEL') ?? getEnv('LOCAL_MODEL') ?? modelName,
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, local.`,
       );
   }
 }
