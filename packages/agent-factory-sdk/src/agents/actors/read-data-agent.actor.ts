@@ -10,12 +10,16 @@ import {
 import { fromPromise } from 'xstate/actors';
 import { resolveModel } from '../../services';
 import { testConnection } from '../../tools/test-connection';
-import type { SimpleSchema, SimpleTable } from '@qwery/domain/entities';
+import type {
+  SimpleSchema,
+  SimpleTable,
+  Datasource,
+} from '@qwery/domain/entities';
 import { selectChartType, generateChart } from '../tools/generate-chart';
 import { renameTable } from '../../tools/rename-table';
 import { deleteTable } from '../../tools/delete-table';
 import { loadBusinessContext } from '../../tools/utils/business-context.storage';
-import { READ_DATA_AGENT_PROMPT } from '../prompts/read-data-agent.prompt';
+import { buildReadDataAgentPrompt } from '../prompts/read-data-agent.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { mergeBusinessContexts } from '../../tools/utils/business-context.storage';
 import { getConfig } from '../../tools/utils/business-context.config';
@@ -29,6 +33,12 @@ import { getDatasourceDatabaseName } from '../../tools/datasource-name-utils';
 import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
 import type { PromptSource } from '../../domain';
 import { PROMPT_SOURCE } from '../../domain';
+import { getSchemaCache } from '../../tools/schema-cache';
+import {
+  storeQueryResult,
+  getQueryResult,
+} from '../../tools/query-result-cache';
+import { extractTablePathsFromQuery } from '../../tools/validate-table-paths';
 
 // Lazy workspace resolution - only resolve when actually needed, not at module load time
 // This prevents side effects when the module is imported in browser/SSR contexts
@@ -62,6 +72,39 @@ function getWorkspace(): string | undefined {
   return WORKSPACE_CACHE;
 }
 
+/**
+ * Extract datasource IDs from message metadata
+ * Checks the last user message for datasources in metadata
+ */
+function extractDatasourcesFromMessages(
+  messages: UIMessage[],
+): string[] | undefined {
+  if (!messages || messages.length === 0) {
+    return undefined;
+  }
+
+  // Find the last user message
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message && message.role === 'user' && message.metadata) {
+      const metadata = message.metadata as Record<string, unknown>;
+      const datasources = metadata.datasources;
+      if (
+        Array.isArray(datasources) &&
+        datasources.length > 0 &&
+        datasources.every((ds) => typeof ds === 'string')
+      ) {
+        console.log(
+          `[ReadDataAgent] Extracted ${datasources.length} datasource(s) from message metadata`,
+        );
+        return datasources as string[];
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export const readDataAgent = async (
   conversationId: string,
   messages: UIMessage[],
@@ -78,6 +121,10 @@ export const readDataAgent = async (
 ) => {
   const needSQL = intent?.needsSQL ?? false;
   const needChart = intent?.needsChart ?? false;
+
+  // Extract datasources from message metadata (prioritized)
+  const metadataDatasources = extractDatasourcesFromMessages(messages);
+
   console.log('[readDataAgent] Starting with context:', {
     conversationId,
     promptSource,
@@ -86,6 +133,7 @@ export const readDataAgent = async (
     intentNeedsSQL: intent?.needsSQL,
     intentNeedsChart: intent?.needsChart,
     messageCount: messages.length,
+    metadataDatasources: metadataDatasources?.length || 0,
   });
   // Initialize engine and attach datasources if repositories are provided
   const agentInitStartTime = performance.now();
@@ -103,7 +151,13 @@ export const readDataAgent = async (
         `[ReadDataAgent] [PERF] Agent init getConversation took ${getConvTime.toFixed(2)}ms`,
       );
 
-      if (conversation?.datasources && conversation.datasources.length > 0) {
+      // Determine which datasources to use (prioritize metadata over conversation)
+      const datasourcesToUse =
+        metadataDatasources && metadataDatasources.length > 0
+          ? metadataDatasources
+          : conversation?.datasources || [];
+
+      if (datasourcesToUse.length > 0) {
         // Initialize engine (in-memory, no workingDir needed but required by schema)
         const initStartTime = performance.now();
         try {
@@ -112,19 +166,97 @@ export const readDataAgent = async (
             config: {},
           });
 
-          // Load datasources
+          // Load datasources using prioritized list
           const loaded = await loadDatasources(
-            conversation.datasources,
+            datasourcesToUse,
             repositories.datasource,
           );
 
           // Attach all datasources
           if (loaded.length > 0) {
-            await queryEngine.attach(loaded.map((d) => d.datasource));
+            const workspace = getWorkspace();
+            if (!workspace) {
+              throw new Error('WORKSPACE environment variable is not set');
+            }
+            // DuckDBQueryEngine.attach accepts optional options parameter
+            await (
+              queryEngine as {
+                attach: (
+                  datasources: import('@qwery/domain/entities').Datasource[],
+                  options?: {
+                    conversationId?: string;
+                    workspace?: string;
+                  },
+                ) => Promise<void>;
+              }
+            ).attach(
+              loaded.map((d) => d.datasource),
+              {
+                conversationId,
+                workspace,
+              },
+            );
             await queryEngine.connect();
             console.log(
               `[ReadDataAgent] Initialized engine and attached ${loaded.length} datasource(s)`,
             );
+
+            // Load and cache schema metadata immediately after attach
+            console.log(
+              `[ReadDataAgent] [CACHE] Loading schema cache for ${loaded.length} datasource(s) after attach...`,
+            );
+            const schemaCache = getSchemaCache(conversationId);
+
+            // Don't invalidate cache - just filter out unattached datasources when building prompt
+
+            // Find uncached datasources (new or not yet cached)
+            const uncachedDatasources = loaded.filter(
+              ({ datasource }) => !schemaCache.isCached(datasource.id),
+            );
+
+            if (uncachedDatasources.length > 0) {
+              console.log(
+                `[ReadDataAgent] [CACHE] ${uncachedDatasources.length} uncached datasource(s) found, loading metadata...`,
+              );
+              const cacheLoadStartTime = performance.now();
+              const metadata = await queryEngine.metadata(
+                uncachedDatasources.map((d) => d.datasource),
+              );
+
+              console.log(
+                `[ReadDataAgent] [CACHE] Metadata retrieved: ${metadata.tables.length} table(s), ${metadata.columns.length} column(s)`,
+              );
+              if (metadata.tables.length > 0) {
+                console.log(
+                  `[ReadDataAgent] [CACHE] Sample tables: ${metadata.tables
+                    .slice(0, 5)
+                    .map((t) => `${t.schema || 'main'}.${t.name}`)
+                    .join(', ')}`,
+                );
+              }
+
+              // Cache each datasource
+              for (const { datasource } of uncachedDatasources) {
+                const dbName = getDatasourceDatabaseName(datasource);
+                console.log(
+                  `[ReadDataAgent] [CACHE] Loading cache for datasource ${datasource.id} (provider: ${datasource.datasource_provider}, dbName: ${dbName})`,
+                );
+                await schemaCache.loadSchemaForDatasource(
+                  datasource.id,
+                  metadata,
+                  datasource.datasource_provider,
+                  dbName,
+                );
+              }
+              const cacheLoadTime = performance.now() - cacheLoadStartTime;
+              console.log(
+                `[ReadDataAgent] [CACHE] ✓ Cache loaded for ${uncachedDatasources.length} datasource(s) during init in ${cacheLoadTime.toFixed(2)}ms`,
+              );
+            } else {
+              console.log(
+                `[ReadDataAgent] [CACHE] ✓ All datasources already cached, skipping load`,
+              );
+            }
           }
         } catch (_initError) {
           const errorMsg =
@@ -139,7 +271,7 @@ export const readDataAgent = async (
         }
         const initTime = performance.now() - initStartTime;
         console.log(
-          `[ReadDataAgent] [PERF] Engine initialization and datasource attachment took ${initTime.toFixed(2)}ms (${conversation.datasources.length} datasources)`,
+          `[ReadDataAgent] [PERF] Engine initialization and datasource attachment took ${initTime.toFixed(2)}ms (${datasourcesToUse.length} datasources)`,
         );
       } else {
         // Initialize engine even if no datasources (for queries without datasources)
@@ -174,9 +306,56 @@ export const readDataAgent = async (
     );
   }
 
+  // Build prompt with attached datasources information
+  // Prioritize datasources from message metadata over conversation datasources
+  let attachedDatasources: Datasource[] = [];
+  let prioritizedDatasourceIds: string[] = [];
+  if (repositories && queryEngine) {
+    try {
+      const getConversationService = new GetConversationBySlugService(
+        repositories.conversation,
+      );
+      const conversation = await getConversationService.execute(conversationId);
+
+      // Prioritize metadata datasources if present, otherwise use conversation datasources
+      if (metadataDatasources && metadataDatasources.length > 0) {
+        prioritizedDatasourceIds = metadataDatasources;
+        console.log(
+          `[ReadDataAgent] Using ${prioritizedDatasourceIds.length} datasource(s) from message metadata (prioritized)`,
+        );
+      } else if (conversation?.datasources?.length) {
+        prioritizedDatasourceIds = conversation.datasources;
+        console.log(
+          `[ReadDataAgent] Using ${prioritizedDatasourceIds.length} datasource(s) from conversation`,
+        );
+      }
+
+      if (prioritizedDatasourceIds.length > 0) {
+        const loaded = await loadDatasources(
+          prioritizedDatasourceIds,
+          repositories.datasource,
+        );
+        // Only include datasources that are in the prioritized list
+        attachedDatasources = loaded
+          .map((d) => d.datasource)
+          .filter((ds) => prioritizedDatasourceIds.includes(ds.id));
+        console.log(
+          `[ReadDataAgent] Loaded ${attachedDatasources.length} datasource(s) for prompt (from ${prioritizedDatasourceIds.length} prioritized)`,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        '[ReadDataAgent] Failed to load datasources for prompt:',
+        error,
+      );
+    }
+  }
+
+  const agentPrompt = buildReadDataAgentPrompt(attachedDatasources);
+
   const result = new Agent({
     model: await resolveModel(model),
-    system: READ_DATA_AGENT_PROMPT,
+    system: agentPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -236,35 +415,133 @@ export const readDataAgent = async (
             `[ReadDataAgent] Workspace: ${workspace}, ConversationId: ${conversationId}, dbPath: ${dbPath}`,
           );
 
-          // Sync datasources before querying schema
-          const syncStartTime = performance.now();
-          let syncTime = 0;
+          // Get schema cache for this conversation
+          console.log(
+            `[ReadDataAgent] [CACHE] getSchema called, checking cache...`,
+          );
+          const schemaCache = getSchemaCache(conversationId);
+
+          // Get datasources info (only if needed for uncached datasources)
           let allDatasources: Array<{
             datasource: import('@qwery/domain/entities').Datasource;
           }> = [];
+
+          // Track sync time (will be 0 if all datasources are cached)
+          const syncStartTime = performance.now();
+          let syncTime = 0;
+
+          // Check if we need to sync datasources (only if there are uncached ones)
           if (repositories) {
             try {
-              const getConvStartTime = performance.now();
               const getConversationService = new GetConversationBySlugService(
                 repositories.conversation,
               );
               const conversation =
                 await getConversationService.execute(conversationId);
-              const getConvTime = performance.now() - getConvStartTime;
-              console.log(
-                `[ReadDataAgent] [PERF] getConversation took ${getConvTime.toFixed(2)}ms`,
-              );
-              if (conversation?.datasources?.length) {
-                // Load all datasources
+
+              // Use prioritized datasources (metadata > conversation)
+              const datasourcesToUse =
+                metadataDatasources && metadataDatasources.length > 0
+                  ? metadataDatasources
+                  : conversation?.datasources || [];
+
+              if (datasourcesToUse.length > 0) {
                 allDatasources = await loadDatasources(
-                  conversation.datasources,
+                  datasourcesToUse,
                   repositories.datasource,
                 );
 
-                // Attach all datasources (engine handles deduplication)
-                await queryEngine.attach(
-                  allDatasources.map((d) => d.datasource),
+                // Check for datasource changes - invalidate cache for removed datasources
+                const cachedDatasourceIds = schemaCache.getDatasources();
+                const currentDatasourceIds = new Set(
+                  allDatasources.map((d) => d.datasource.id),
                 );
+
+                // Remove cache entries for datasources no longer attached
+                for (const cachedId of cachedDatasourceIds) {
+                  if (!currentDatasourceIds.has(cachedId)) {
+                    console.log(
+                      `[ReadDataAgent] [CACHE] Datasource ${cachedId} no longer attached, invalidating cache`,
+                    );
+                    schemaCache.invalidate(cachedId);
+                  }
+                }
+
+                // Check if any datasources are uncached or if datasources changed
+                const uncachedDatasources = allDatasources.filter(
+                  ({ datasource }) => !schemaCache.isCached(datasource.id),
+                );
+
+                // Force refresh if metadata datasources differ from cached
+                const hasMetadataDatasources =
+                  metadataDatasources && metadataDatasources.length > 0;
+                const metadataDiffers =
+                  hasMetadataDatasources &&
+                  metadataDatasources.some((id) => !schemaCache.isCached(id));
+
+                // Only sync if there are uncached datasources or metadata differs
+                if (uncachedDatasources.length > 0 || metadataDiffers) {
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✗ ${uncachedDatasources.length} uncached datasource(s) found${metadataDiffers ? ' (metadata differs)' : ''}, syncing and loading cache...`,
+                  );
+                  const syncStartTime = performance.now();
+
+                  // Attach all datasources (engine handles deduplication)
+                  const workspace = getWorkspace();
+                  if (!workspace) {
+                    throw new Error(
+                      'WORKSPACE environment variable is not set',
+                    );
+                  }
+                  // DuckDBQueryEngine.attach accepts optional options parameter
+                  // CRITICAL: Must await attach to ensure tables are created before querying metadata
+                  await (
+                    queryEngine as {
+                      attach: (
+                        datasources: import('@qwery/domain/entities').Datasource[],
+                        options?: {
+                          conversationId?: string;
+                          workspace?: string;
+                        },
+                      ) => Promise<void>;
+                    }
+                  ).attach(
+                    allDatasources.map((d) => d.datasource),
+                    {
+                      conversationId,
+                      workspace,
+                    },
+                  );
+
+                  // Load and cache metadata for uncached datasources
+                  // Tables are now guaranteed to exist after await attach
+                  const cacheLoadStartTime = performance.now();
+                  const metadata = await queryEngine.metadata(
+                    uncachedDatasources.map((d) => d.datasource),
+                  );
+
+                  // Cache each datasource
+                  for (const { datasource } of uncachedDatasources) {
+                    const dbName = getDatasourceDatabaseName(datasource);
+                    await schemaCache.loadSchemaForDatasource(
+                      datasource.id,
+                      metadata,
+                      datasource.datasource_provider,
+                      dbName,
+                    );
+                  }
+                  const cacheLoadTime = performance.now() - cacheLoadStartTime;
+                  syncTime = performance.now() - syncStartTime;
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✓ Sync and cache load completed in ${syncTime.toFixed(2)}ms (cache: ${cacheLoadTime.toFixed(2)}ms)`,
+                  );
+                } else {
+                  // All datasources are cached, get datasource IDs from cache
+                  syncTime = performance.now() - syncStartTime;
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✓ All datasources cached, skipping expensive sync (${syncTime.toFixed(2)}ms)`,
+                  );
+                }
               }
             } catch (error) {
               console.warn(
@@ -272,49 +549,101 @@ export const readDataAgent = async (
                 error,
               );
             }
+          } else {
+            syncTime = performance.now() - syncStartTime;
           }
-          syncTime = performance.now() - syncStartTime;
-          console.log(
-            `[ReadDataAgent] [PERF] syncDatasources took ${syncTime.toFixed(2)}ms`,
-          );
 
-          // Get metadata from query engine
+          // Get metadata from cache or query engine
           const schemaDiscoveryStartTime = performance.now();
           let schemaDiscoveryTime = 0;
           let collectedSchemas: Map<string, SimpleSchema> = new Map();
 
           try {
-            // Build datasource database map for transformation
-            const datasourceDatabaseMap = new Map<string, string>();
-            for (const { datasource } of allDatasources) {
-              const dbName = getDatasourceDatabaseName(datasource);
-              datasourceDatabaseMap.set(datasource.id, dbName);
+            // If we don't have allDatasources yet (because we skipped sync), load them for cache lookup
+            if (allDatasources.length === 0 && repositories) {
+              try {
+                const getConversationService = new GetConversationBySlugService(
+                  repositories.conversation,
+                );
+                const conversation =
+                  await getConversationService.execute(conversationId);
+                if (conversation?.datasources?.length) {
+                  allDatasources = await loadDatasources(
+                    conversation.datasources,
+                    repositories.datasource,
+                  );
+                }
+              } catch (error) {
+                console.warn(
+                  '[ReadDataAgent] Failed to load datasources for cache lookup:',
+                  error,
+                );
+              }
             }
 
-            // Get metadata from query engine
-            const metadataStartTime = performance.now();
-            const metadata = await queryEngine.metadata(
-              allDatasources.length > 0
-                ? allDatasources.map((d) => d.datasource)
-                : undefined,
-            );
-            const metadataTime = performance.now() - metadataStartTime;
-            console.log(
-              `[ReadDataAgent] [PERF] queryEngine.metadata took ${metadataTime.toFixed(2)}ms`,
-            );
+            // Check if we can use cache
+            const allCached =
+              allDatasources.length > 0 &&
+              allDatasources.every(({ datasource }) =>
+                schemaCache.isCached(datasource.id),
+              );
 
-            // Transform metadata to SimpleSchema format using domain service
-            const transformStartTime = performance.now();
-            const transformService =
-              new TransformMetadataToSimpleSchemaService();
-            collectedSchemas = await transformService.execute({
-              metadata,
-              datasourceDatabaseMap,
-            });
-            const transformTime = performance.now() - transformStartTime;
-            console.log(
-              `[ReadDataAgent] [PERF] transformMetadataToSimpleSchema took ${transformTime.toFixed(2)}ms`,
-            );
+            if (allCached && allDatasources.length > 0) {
+              // Use cache - get all schemas (filtering by requestedViews happens below)
+              console.log(
+                `[ReadDataAgent] [CACHE] ✓ Using cached schema for ${allDatasources.length} datasource(s)`,
+              );
+              collectedSchemas = schemaCache.toSimpleSchemas(
+                allDatasources.map((d) => d.datasource.id),
+              );
+              schemaDiscoveryTime =
+                performance.now() - schemaDiscoveryStartTime;
+              console.log(
+                `[ReadDataAgent] [CACHE] ✓ Schema retrieved from cache in ${schemaDiscoveryTime.toFixed(2)}ms (${collectedSchemas.size} schema(s))`,
+              );
+            } else {
+              console.log(
+                `[ReadDataAgent] [CACHE] ✗ Cache miss or fallback, querying DuckDB metadata...`,
+              );
+              // Fallback to querying DuckDB (for main database or uncached datasources)
+              // Build datasource database map and provider map for transformation
+              const datasourceDatabaseMap = new Map<string, string>();
+              const datasourceProviderMap = new Map<string, string>();
+              for (const { datasource } of allDatasources) {
+                const dbName = getDatasourceDatabaseName(datasource);
+                datasourceDatabaseMap.set(datasource.id, dbName);
+                datasourceProviderMap.set(
+                  datasource.id,
+                  datasource.datasource_provider,
+                );
+              }
+
+              // Get metadata from query engine
+              const metadataStartTime = performance.now();
+              const metadata = await queryEngine.metadata(
+                allDatasources.length > 0
+                  ? allDatasources.map((d) => d.datasource)
+                  : undefined,
+              );
+              const metadataTime = performance.now() - metadataStartTime;
+              console.log(
+                `[ReadDataAgent] [PERF] queryEngine.metadata took ${metadataTime.toFixed(2)}ms`,
+              );
+
+              // Transform metadata to SimpleSchema format using domain service
+              const transformStartTime = performance.now();
+              const transformService =
+                new TransformMetadataToSimpleSchemaService();
+              collectedSchemas = await transformService.execute({
+                metadata,
+                datasourceDatabaseMap,
+                datasourceProviderMap,
+              });
+              const transformTime = performance.now() - transformStartTime;
+              console.log(
+                `[ReadDataAgent] [PERF] transformMetadataToSimpleSchema took ${transformTime.toFixed(2)}ms`,
+              );
+            }
 
             // Filter by requested views if provided
             if (requestedViews && requestedViews.length > 0) {
@@ -363,11 +692,13 @@ export const readDataAgent = async (
                   for (const [key, schemaData] of collectedSchemas.entries()) {
                     for (const t of schemaData.tables) {
                       // Check if table name matches (handle both formatted and simple names)
+                      // Table names in cache are formatted (e.g., "datasource.schema.table")
                       const tableNameMatch =
                         t.tableName === table ||
                         t.tableName === viewId ||
                         t.tableName.endsWith(`.${table}`) ||
-                        t.tableName.endsWith(`.${viewId}`);
+                        t.tableName.endsWith(`.${viewId}`) ||
+                        (viewId.includes('.') && t.tableName === viewId);
                       if (tableNameMatch) {
                         foundSchema = schemaData;
                         foundKey = key;
@@ -380,13 +711,25 @@ export const readDataAgent = async (
 
                 if (foundSchema && foundKey) {
                   // Create a filtered schema with only the matching table
+                  // Table names in cache are formatted (e.g., "datasource.schema.table" or "datasource.table")
+                  // Match against both the full formatted name and the simple table name
                   const filteredTables = foundSchema.tables.filter((t) => {
-                    const tableNameMatch =
-                      t.tableName === table ||
-                      t.tableName === viewId ||
+                    // Exact matches
+                    if (t.tableName === table || t.tableName === viewId) {
+                      return true;
+                    }
+                    // Match formatted names: "datasource.schema.table" or "datasource.table"
+                    if (
                       t.tableName.endsWith(`.${table}`) ||
-                      t.tableName.endsWith(`.${viewId}`);
-                    return tableNameMatch;
+                      t.tableName.endsWith(`.${viewId}`)
+                    ) {
+                      return true;
+                    }
+                    // Match if viewId is a full path and tableName contains it
+                    if (viewId.includes('.') && t.tableName === viewId) {
+                      return true;
+                    }
+                    return false;
                   });
 
                   if (filteredTables.length > 0) {
@@ -719,8 +1062,7 @@ export const readDataAgent = async (
             throw new Error('Query engine not available');
           }
 
-          // Sync datasources before querying if repositories available
-          const syncStartTime = performance.now();
+          // Validate that query only references attached datasources
           if (repositories) {
             try {
               const getConversationService = new GetConversationBySlugService(
@@ -728,17 +1070,198 @@ export const readDataAgent = async (
               );
               const conversation =
                 await getConversationService.execute(conversationId);
-              if (conversation?.datasources?.length) {
-                // Load all datasources
+
+              // Use prioritized datasources (metadata > conversation)
+              const datasourcesToUse =
+                metadataDatasources && metadataDatasources.length > 0
+                  ? metadataDatasources
+                  : conversation?.datasources || [];
+
+              if (datasourcesToUse.length > 0) {
                 const loaded = await loadDatasources(
-                  conversation.datasources,
+                  datasourcesToUse,
                   repositories.datasource,
                 );
 
-                // Get currently attached datasources (we'll need to track this or reattach all)
-                // For now, just reattach all datasources (simple approach)
-                // In the future, we could track attached datasources and only attach/detach changed ones
-                await queryEngine.attach(loaded.map((d) => d.datasource));
+                // Get attached datasource database names
+                const attachedDbNames = new Set(
+                  loaded.map((d) => getDatasourceDatabaseName(d.datasource)),
+                );
+
+                // Extract table references from SQL query using proper extraction function
+                // This function uses word boundaries to avoid matching "FROM" in function calls
+                // and properly handles table aliases
+                const tablePaths = extractTablePathsFromQuery(query);
+                const referencedDatasources = new Set<string>();
+
+                for (const tablePath of tablePaths) {
+                  // Extract datasource name (first part before dot)
+                  // Handle both formats:
+                  // - datasource.schema.table (3 parts)
+                  // - datasource.table (2 parts)
+                  // - table (1 part - main database, skip validation)
+                  const parts = tablePath.split('.');
+                  if (parts.length >= 2 && parts[0]) {
+                    // Only validate if table path has at least 2 parts (datasource.table or datasource.schema.table)
+                    // Simple table names without datasource prefix are in main database and don't need validation
+                    const datasourceName = parts[0];
+                    referencedDatasources.add(datasourceName);
+                  }
+                  // Skip simple table names (no dots) - they're in main database
+                }
+
+                // Check if all referenced datasources are attached
+                const invalidDatasources = Array.from(
+                  referencedDatasources,
+                ).filter((dbName) => !attachedDbNames.has(dbName));
+
+                if (invalidDatasources.length > 0) {
+                  throw new Error(
+                    `Query references unattached datasources: ${invalidDatasources.join(', ')}. Only these datasources are attached: ${Array.from(attachedDbNames).join(', ')}`,
+                  );
+                }
+              }
+            } catch (error) {
+              // If validation fails, log but don't block execution (query engine will handle errors)
+              if (
+                error instanceof Error &&
+                error.message.includes('unattached datasources')
+              ) {
+                throw error; // Re-throw validation errors
+              }
+              console.warn(
+                '[runQuery] Datasource validation failed, continuing with query execution:',
+                error,
+              );
+            }
+          }
+
+          // Sync datasources before querying if repositories available
+          // Only sync if there are uncached datasources (cache is loaded during agent init)
+          const syncStartTime = performance.now();
+          let syncTime = 0;
+          if (repositories) {
+            try {
+              const schemaCache = getSchemaCache(conversationId);
+              const getConversationService = new GetConversationBySlugService(
+                repositories.conversation,
+              );
+              const conversation =
+                await getConversationService.execute(conversationId);
+
+              // Use prioritized datasources (metadata > conversation)
+              const datasourcesToUse =
+                metadataDatasources && metadataDatasources.length > 0
+                  ? metadataDatasources
+                  : conversation?.datasources || [];
+
+              if (datasourcesToUse.length > 0) {
+                // Load all datasources
+                const loaded = await loadDatasources(
+                  datasourcesToUse,
+                  repositories.datasource,
+                );
+
+                // Check for datasource changes - invalidate cache for removed datasources
+                const cachedDatasourceIds = schemaCache.getDatasources();
+                const currentDatasourceIds = new Set(
+                  loaded.map((d) => d.datasource.id),
+                );
+
+                // Remove cache entries for datasources no longer attached
+                for (const cachedId of cachedDatasourceIds) {
+                  if (!currentDatasourceIds.has(cachedId)) {
+                    console.log(
+                      `[ReadDataAgent] [CACHE] Datasource ${cachedId} no longer attached in runQuery, invalidating cache`,
+                    );
+                    schemaCache.invalidate(cachedId);
+                  }
+                }
+
+                // Check which datasources need to be cached
+                const uncachedDatasources = loaded.filter(
+                  ({ datasource }) => !schemaCache.isCached(datasource.id),
+                );
+
+                // Only sync if there are uncached datasources
+                if (uncachedDatasources.length > 0) {
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✗ ${uncachedDatasources.length} uncached datasource(s) in runQuery, loading cache...`,
+                  );
+                  // Attach all datasources (engine handles deduplication)
+                  const workspace = getWorkspace();
+                  if (!workspace) {
+                    throw new Error(
+                      'WORKSPACE environment variable is not set',
+                    );
+                  }
+                  // DuckDBQueryEngine.attach accepts optional options parameter
+                  await (
+                    queryEngine as {
+                      attach: (
+                        datasources: import('@qwery/domain/entities').Datasource[],
+                        options?: {
+                          conversationId?: string;
+                          workspace?: string;
+                        },
+                      ) => Promise<void>;
+                    }
+                  ).attach(
+                    loaded.map((d) => d.datasource),
+                    {
+                      conversationId,
+                      workspace,
+                    },
+                  );
+
+                  // Load and cache metadata for uncached datasources
+                  const metadata = await queryEngine.metadata(
+                    uncachedDatasources.map((d) => d.datasource),
+                  );
+
+                  // Cache each datasource
+                  for (const { datasource } of uncachedDatasources) {
+                    const dbName = getDatasourceDatabaseName(datasource);
+                    await schemaCache.loadSchemaForDatasource(
+                      datasource.id,
+                      metadata,
+                      datasource.datasource_provider,
+                      dbName,
+                    );
+                  }
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✓ Cache loaded for ${uncachedDatasources.length} datasource(s) in runQuery`,
+                  );
+                } else {
+                  // All datasources are cached, just ensure they're attached (engine handles deduplication)
+                  console.log(
+                    `[ReadDataAgent] [CACHE] ✓ All datasources cached in runQuery, skipping metadata load`,
+                  );
+                  const workspace = getWorkspace();
+                  if (!workspace) {
+                    throw new Error(
+                      'WORKSPACE environment variable is not set',
+                    );
+                  }
+                  // DuckDBQueryEngine.attach accepts optional options parameter
+                  await (
+                    queryEngine as {
+                      attach: (
+                        datasources: import('@qwery/domain/entities').Datasource[],
+                        options?: {
+                          conversationId?: string;
+                          workspace?: string;
+                        },
+                      ) => Promise<void>;
+                    }
+                  ).attach(
+                    loaded.map((d) => d.datasource),
+                    {
+                      conversationId,
+                      workspace,
+                    },
+                  );
+                }
               }
             } catch (error) {
               console.warn(
@@ -747,11 +1270,58 @@ export const readDataAgent = async (
               );
             }
           }
-          const syncTime = performance.now() - syncStartTime;
+          syncTime = performance.now() - syncStartTime;
           if (syncTime > 10) {
             console.log(
               `[ReadDataAgent] [PERF] runQuery syncDatasources took ${syncTime.toFixed(2)}ms`,
             );
+          }
+
+          // Validate that all table paths in the query exist in attached datasources
+          if (repositories) {
+            try {
+              const schemaCache = getSchemaCache(conversationId);
+              const tablePaths = extractTablePathsFromQuery(query);
+              const allAvailablePaths =
+                schemaCache.getAllTablePathsFromAllDatasources();
+              const missingTables: string[] = [];
+
+              for (const tablePath of tablePaths) {
+                // Check if table exists in cache
+                if (
+                  !schemaCache.hasTablePath(tablePath) &&
+                  !allAvailablePaths.includes(tablePath)
+                ) {
+                  // Also check if it's a simple table name that might be in main database
+                  const isSimpleName = !tablePath.includes('.');
+                  if (!isSimpleName) {
+                    missingTables.push(tablePath);
+                  }
+                }
+              }
+
+              if (missingTables.length > 0) {
+                const availablePaths = allAvailablePaths
+                  .slice(0, 20)
+                  .join(', ');
+                throw new Error(
+                  `The following tables are not available in attached datasources: ${missingTables.join(', ')}. Available tables: ${availablePaths}${allAvailablePaths.length > 20 ? '...' : ''}. Please check the attached datasources list and use only tables that exist.`,
+                );
+              }
+            } catch (error) {
+              // If validation fails with our custom error, throw it
+              if (
+                error instanceof Error &&
+                error.message.includes('not available in attached datasources')
+              ) {
+                throw error;
+              }
+              // Otherwise, log warning but continue (might be a complex query we can't parse)
+              console.warn(
+                '[ReadDataAgent] Failed to validate table paths in query:',
+                error,
+              );
+            }
           }
 
           const queryStartTime = performance.now();
@@ -762,18 +1332,40 @@ export const readDataAgent = async (
             `[ReadDataAgent] [PERF] runQuery TOTAL took ${totalTime.toFixed(2)}ms (sync: ${syncTime.toFixed(2)}ms, query: ${queryTime.toFixed(2)}ms, rows: ${result.rows.length})`,
           );
 
-          // For chart requests in inline mode, return both result AND SQL for pasting
+          // Store full results in cache to avoid injecting into agent context
+          const columnNames = result.columns.map((col) =>
+            typeof col === 'string' ? col : col.name || String(col),
+          );
+          const queryId = storeQueryResult(
+            conversationId,
+            query,
+            columnNames,
+            result.rows,
+          );
+
+          // Return full results for UI display, but agent should use queryId to avoid token waste
+          // The prompt instructs the agent to ignore the full results and only use queryId
+          const fullResult = {
+            columns: columnNames,
+            rows: result.rows,
+          };
+
           if (isChartRequestInInlineMode) {
+            // Chart request in inline mode: return full results + SQL for pasting
             return {
-              result: result,
+              result: fullResult,
               shouldPaste: true,
               sqlQuery: query,
-              chartExecutionOverride: true, // Flag to show visual indicator in UI
+              chartExecutionOverride: true,
+              queryId, // Agent should use this, not the full results
             };
           }
 
+          // Return full results for UI display
+          // Agent prompt instructs to ignore full results and use queryId instead
           return {
-            result: result,
+            result: fullResult,
+            queryId, // Agent should use this to retrieve results for tools
           };
         },
       }),
@@ -817,14 +1409,50 @@ export const readDataAgent = async (
         description:
           'Analyzes query results to determine the best chart type (bar, line, or pie) based on the data structure and user intent. Use this before generating a chart to select the most appropriate visualization type.',
         inputSchema: z.object({
-          queryResults: z.object({
-            rows: z.array(z.record(z.unknown())),
-            columns: z.array(z.string()),
-          }),
+          queryId: z
+            .string()
+            .optional()
+            .describe(
+              'Query ID from runQuery to retrieve full results from cache',
+            ),
+          queryResults: z
+            .object({
+              rows: z.array(z.record(z.unknown())),
+              columns: z.array(z.string()),
+            })
+            .optional()
+            .describe('Query results (optional if queryId is provided)'),
           sqlQuery: z.string().optional(),
           userInput: z.string().optional(),
         }),
-        execute: async ({ queryResults, sqlQuery = '', userInput = '' }) => {
+        execute: async ({
+          queryId,
+          queryResults,
+          sqlQuery = '',
+          userInput = '',
+        }) => {
+          // If queryId is provided, retrieve full results from cache
+          let fullQueryResults = queryResults;
+          if (queryId) {
+            const cachedResult = getQueryResult(conversationId, queryId);
+            if (cachedResult) {
+              fullQueryResults = {
+                columns: cachedResult.columns,
+                rows: cachedResult.rows,
+              };
+              console.log(
+                `[selectChartType] Retrieved full results from cache: ${cachedResult.rows.length} rows`,
+              );
+            } else {
+              console.warn(
+                `[selectChartType] Query result not found in cache: ${queryId}, using provided queryResults`,
+              );
+            }
+          }
+
+          if (!fullQueryResults) {
+            throw new Error('Either queryId or queryResults must be provided');
+          }
           const workspace = getWorkspace();
           if (!workspace) {
             throw new Error('WORKSPACE environment variable is not set');
@@ -841,7 +1469,7 @@ export const readDataAgent = async (
           }
 
           const result = await selectChartType(
-            queryResults,
+            fullQueryResults,
             sqlQuery,
             userInput,
             businessContext,
@@ -854,19 +1482,51 @@ export const readDataAgent = async (
           'Generates a chart configuration JSON for visualization. Takes query results and creates a chart (bar, line, or pie) with proper data transformation, colors, and labels. Use this after selecting a chart type or when the user requests a specific chart type.',
         inputSchema: z.object({
           chartType: z.enum(['bar', 'line', 'pie']).optional(),
-          queryResults: z.object({
-            rows: z.array(z.record(z.unknown())),
-            columns: z.array(z.string()),
-          }),
+          queryId: z
+            .string()
+            .optional()
+            .describe(
+              'Query ID from runQuery to retrieve full results from cache',
+            ),
+          queryResults: z
+            .object({
+              rows: z.array(z.record(z.unknown())),
+              columns: z.array(z.string()),
+            })
+            .optional()
+            .describe('Query results (optional if queryId is provided)'),
           sqlQuery: z.string().optional(),
           userInput: z.string().optional(),
         }),
         execute: async ({
           chartType,
+          queryId,
           queryResults,
           sqlQuery = '',
           userInput = '',
         }) => {
+          // If queryId is provided, retrieve full results from cache
+          let fullQueryResults = queryResults;
+          if (queryId) {
+            const cachedResult = getQueryResult(conversationId, queryId);
+            if (cachedResult) {
+              fullQueryResults = {
+                columns: cachedResult.columns,
+                rows: cachedResult.rows,
+              };
+              console.log(
+                `[generateChart] Retrieved full results from cache: ${cachedResult.rows.length} rows`,
+              );
+            } else {
+              console.warn(
+                `[generateChart] Query result not found in cache: ${queryId}, using provided queryResults`,
+              );
+            }
+          }
+
+          if (!fullQueryResults) {
+            throw new Error('Either queryId or queryResults must be provided');
+          }
           const startTime = performance.now();
           const workspace = getWorkspace();
           if (!workspace) {
@@ -893,7 +1553,7 @@ export const readDataAgent = async (
           const generateStartTime = performance.now();
           const result = await generateChart({
             chartType,
-            queryResults,
+            queryResults: fullQueryResults,
             sqlQuery,
             userInput,
             businessContext,

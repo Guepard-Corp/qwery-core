@@ -33,8 +33,8 @@ SQL Query: ${sqlQuery}
 Query Results:
 - Columns: ${JSON.stringify(queryResults.columns)}
 - Total rows: ${queryResults.rows.length}
-- Sample data structure (first 3 rows for type inference only): ${JSON.stringify(queryResults.rows.slice(0, 3), null, 2)}
-- Note: Use this sample to understand data types and structure. The full data will be used at render time.
+- Sample data (first 3 rows for type inference only): ${JSON.stringify(queryResults.rows.slice(0, 3), null, 2)}
+- **IMPORTANT**: You have access to the FULL query results via the queryResults parameter. Use the sample above only for understanding data types and structure. Transform ALL rows from the full queryResults.rows array into chart data format.
 
 Chart Configuration Guidelines:
 

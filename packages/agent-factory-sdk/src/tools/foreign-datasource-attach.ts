@@ -32,6 +32,8 @@ export interface AttachToConnectionOptions {
     >
   >;
   datasource: Datasource;
+  conversationId?: string;
+  workspace?: string;
 }
 
 /**
@@ -40,11 +42,32 @@ export interface AttachToConnectionOptions {
  * (since DuckDB attachments are session-scoped)
  */
 export async function attachForeignDatasourceToConnection(
-  opts: AttachToConnectionOptions,
+  opts: AttachToConnectionOptions & {
+    conversationId?: string;
+    workspace?: string;
+  },
 ): Promise<void> {
-  const { conn, datasource } = opts;
+  const { conn, datasource, conversationId, workspace } = opts;
   const provider = datasource.datasource_provider;
   const config = datasource.config as Record<string, unknown>;
+
+  // Special handling for gsheet-csv - use attachGSheetDatasource for semantic naming
+  if (provider === 'gsheet-csv') {
+    if (!conversationId || !workspace) {
+      throw new Error(
+        'gsheet-csv requires conversationId and workspace for persistent database attachment',
+      );
+    }
+    const { attachGSheetDatasource } = await import('./gsheet-to-duckdb');
+    await attachGSheetDatasource({
+      connection: conn,
+      datasource,
+      extractSchema: true,
+      conversationId,
+      workspace,
+    });
+    return;
+  }
 
   // Get provider mapping using abstraction
   const mapping = await getProviderMapping(provider);
