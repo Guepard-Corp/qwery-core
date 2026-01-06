@@ -24,6 +24,10 @@ const baseModels = [
     value: 'azure/gpt-5-mini',
   },
   {
+    name: 'Qwen2.5 Coder (7B)',
+    value: 'vllm/qwen2.5-coder-7b-instruct',
+  },
+  {
     name: 'DeepSeek R1 (8B)',
     value: 'ollama/deepseek-r1:8b',
   },

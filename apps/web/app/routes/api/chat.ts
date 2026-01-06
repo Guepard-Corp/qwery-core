@@ -12,6 +12,7 @@ import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
+import { ACTIVE_LLM } from '~/default-model';
 
 const agents = new Map<string, FactoryAgent>();
 const agentLastAccess = new Map<string, number>();
@@ -19,7 +20,6 @@ const agentCreationLocks = new Map<string, Promise<FactoryAgent>>();
 
 const AGENT_INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
-
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now();
@@ -46,7 +46,7 @@ const repositories = await createRepositories();
 
 async function getOrCreateAgent(
   conversationSlug: string,
-  model: string = 'azure/gpt-5-mini',
+  model: string = ACTIVE_LLM,
 ): Promise<FactoryAgent> {
   let agent = agents.get(conversationSlug);
   if (agent) {
@@ -104,7 +104,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const body = await request.json();
   const messages: UIMessage[] = body.messages;
-  const model: string = body.model || 'azure/gpt-5-mini';
+  const model: string = body.model || ACTIVE_LLM;
   const datasources: string[] | undefined = body.datasources;
 
   try {
@@ -321,10 +321,10 @@ User request: ${cleanText}`;
     const firstUserMessage = messages.find((msg) => msg.role === 'user');
     const userMessageText = firstUserMessage
       ? firstUserMessage.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => (part as { text: string }).text)
-          .join(' ')
-          .trim() || ''
+        ?.filter((part) => part.type === 'text')
+        .map((part) => (part as { text: string }).text)
+        .join(' ')
+        .trim() || ''
       : '';
 
     const stream = new ReadableStream({

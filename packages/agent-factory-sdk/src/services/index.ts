@@ -1,5 +1,6 @@
 export * from './model-resolver';
 export * from './models/azure-model.provider';
+export * from './models/vllm-model.provider';
 export * from './models/ollama-model.provider';
 export * from './webllm-model.provider';
 export * from './default-transport';

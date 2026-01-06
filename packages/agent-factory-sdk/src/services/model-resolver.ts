@@ -56,6 +56,16 @@ async function createProvider(
         deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
       });
     }
+    case 'vllm': {
+      const { createVllmModelProvider } = await import(
+        './models/vllm-model.provider'
+      );
+      return createVllmModelProvider({
+        baseURL: getEnv('VLLM_BASE_URL') || 'http://localhost:8000/v1',
+        defaultModel: getEnv('VLLM_MODEL') ?? modelName,
+        apiKey: getEnv('VLLM_API_KEY') || 'test-abc123',
+      });
+    }
     case 'ollama': {
       const { createOllamaModelProvider } = await import(
         './models/ollama-model.provider'

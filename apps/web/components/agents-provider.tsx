@@ -147,11 +147,11 @@ export function AgentsProvider({
         )
         .join('\n');
 
-      const _prompt = `You are a SQL query assistant. 
-      The user wants to run a query: "${query}" on datasource: "${datasource.datasource_provider}". 
+      const _prompt = `You are a SQL query assistant.
+      The user wants to run a query: "${query}" on datasource: "${datasource.datasource_provider}".
       The schema of the datasource is: "${schema}".
       Generate an appropriate SQL query based on this request.
-      
+
       Respect the following rules:
       - The query should be a valid SQL query.
       - Only send the SQL query, no other text.
@@ -188,7 +188,7 @@ export function AgentsProvider({
           datasourceId,
           projectId,
           userId,
-          model: options.model || 'azure/gpt-5-mini',
+          model: options.model || 'azure/gpt-5-mini', //FIXME: Add my vllm/qwen if error happens
         },
       );
 
