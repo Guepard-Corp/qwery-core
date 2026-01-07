@@ -19,13 +19,13 @@ export const detectIntent = async (
       // Add timeout to detect hanging calls
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(
-          () => reject(new Error('generateObject timeout after 30 seconds')),
-          30000,
+          () => reject(new Error('generateObject timeout after 120 seconds')),
+          120000,
         );
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel('llamacpp/qwen2.5-7b-instruct'),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text, previousMessages),
       });

@@ -23,6 +23,14 @@ Generate only the title, nothing else:`;
   return fullPrompt;
 };
 
+function getModelString(): string {
+  return (
+    process.env.AGENT_FACTORY_MODEL ??
+    process.env.QWERY_MODEL ??
+    'llamacpp/qwen2.5-7b-instruct'
+  );
+}
+
 export async function generateConversationTitle(
   userMessage: string,
   agentResponse?: string,
@@ -35,18 +43,17 @@ export async function generateConversationTitle(
       );
     });
 
+    const modelString = getModelString();
+
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(modelString),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 
     const result = await Promise.race([generatePromise, timeoutPromise]);
     const title = result.text.trim();
 
-    const cleanTitle = title
-      .replace(/^["']|["']$/g, '')
-      .trim()
-      .slice(0, 60);
+    const cleanTitle = title.replace(/^["']|["']$/g, '').trim().slice(0, 60);
 
     return cleanTitle || 'New Conversation';
   } catch (error) {

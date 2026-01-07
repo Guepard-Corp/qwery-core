@@ -41,6 +41,9 @@ export class NotebookRunner {
   }
 
   public async runCell(options: RunCellOptions): Promise<RunCellResult> {
+      if (options.mode === 'natural') {
+    throw new CliUsageError('Natural language mode is not yet available');
+  }
     // If SQL mode, execute directly
     if (options.mode === 'sql') {
       const driver = await createDriverForDatasource(options.datasource);
@@ -101,7 +104,7 @@ export class NotebookRunner {
 
         agent = await FactoryAgent.create({
           conversationSlug,
-          model: 'azure/gpt-5-mini',
+          model: 'llamacpp/qwen2.5-7b-instruct',
           repositories: repositories as FactoryAgentOptions['repositories'],
         });
         agents.set(options.datasource.id, agent);

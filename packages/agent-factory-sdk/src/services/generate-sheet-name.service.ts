@@ -2,10 +2,7 @@ import { generateText } from 'ai';
 import { resolveModel } from './model-resolver';
 import type { SimpleSchema } from '@qwery/domain/entities';
 
-const GENERATE_SHEET_NAME_PROMPT = (
-  currentName: string,
-  schema: SimpleSchema,
-) => {
+const GENERATE_SHEET_NAME_PROMPT = (currentName: string, schema: SimpleSchema) => {
   const table = schema.tables[0];
   const columns = table?.columns
     .map(
@@ -31,6 +28,14 @@ Requirements:
 Generate the new sheet name:`;
 };
 
+function getModelString(): string {
+  return (
+    process.env.AGENT_FACTORY_MODEL ??
+    process.env.QWERY_MODEL ??
+    'llamacpp/qwen2.5-7b-instruct'
+  );
+}
+
 export async function generateSheetName(
   currentName: string,
   schema: SimpleSchema,
@@ -44,8 +49,10 @@ export async function generateSheetName(
       );
     });
 
+    const modelString = getModelString();
+
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(modelString),
       prompt: GENERATE_SHEET_NAME_PROMPT(currentName, schema),
     });
 
