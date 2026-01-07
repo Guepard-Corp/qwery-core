@@ -25,7 +25,7 @@ export const detectIntent = async (
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel('lmstudio/llama-3.2-3b-instruct'),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text, previousMessages),
       });

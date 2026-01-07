@@ -4,6 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "prebuild": "pnpm -w extensions:build",
     "build": "cross-env NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 react-router build",
     "dev": "react-router dev",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
