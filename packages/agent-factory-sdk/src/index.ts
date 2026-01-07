@@ -16,12 +16,12 @@ export {
   generateText,
   validateUIMessages,
 } from 'ai';
-export { createAzure } from '@ai-sdk/azure';
+
 
 const baseModels = [
   {
-    name: 'GPT-5 Mini',
-    value: 'azure/gpt-5-mini',
+    name: 'Ministral 3B (LM Studio)',
+    value: 'lmstudio/ministralai/ministral-3-3b',
   },
   {
     name: 'DeepSeek R1 (8B)',

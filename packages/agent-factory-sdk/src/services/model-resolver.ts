@@ -13,13 +13,16 @@ function parseModelName(modelString: string): {
       `[AgentFactory] Invalid model: modelString must be a non-empty string, got '${modelString}'`,
     );
   }
-  const parts = modelString.split('/');
-  if (parts.length !== 2) {
+  const firstSlashIndex = modelString.indexOf('/');
+  if (firstSlashIndex === -1 || firstSlashIndex === modelString.length - 1) {
     throw new Error(
       `[AgentFactory] Invalid model format: expected 'provider/model', got '${modelString}'`,
     );
   }
-  return { providerId: parts[0]!, modelName: parts[1]! };
+  return {
+    providerId: modelString.substring(0, firstSlashIndex),
+    modelName: modelString.substring(firstSlashIndex + 1),
+  };
 }
 
 function getEnv(key: string): string | undefined {
@@ -29,33 +32,12 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-function requireEnv(key: string, providerLabel: string): string {
-  const value = getEnv(key);
-  if (!value) {
-    throw new Error(
-      `[AgentFactory][${providerLabel}] Missing required environment variable '${key}'.`,
-    );
-  }
-  return value;
-}
-
 async function createProvider(
   providerId: string,
   modelName: string,
 ): Promise<ModelProvider> {
   switch (providerId) {
-    case 'azure': {
-      const { createAzureModelProvider } = await import(
-        './models/azure-model.provider'
-      );
-      return createAzureModelProvider({
-        resourceName: requireEnv('AZURE_RESOURCE_NAME', 'Azure'),
-        apiKey: requireEnv('AZURE_API_KEY', 'Azure'),
-        apiVersion: getEnv('AZURE_API_VERSION'),
-        baseURL: getEnv('AZURE_OPENAI_BASE_URL'),
-        deployment: getEnv('AZURE_OPENAI_DEPLOYMENT') ?? modelName,
-      });
-    }
+
     case 'ollama': {
       const { createOllamaModelProvider } = await import(
         './models/ollama-model.provider'
@@ -88,11 +70,28 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'lmstudio': {
+      const { createLMStudioModelProvider } = await import(
+        './models/lmstudio-model.provider'
+      );
+      return createLMStudioModelProvider({
+        baseURL: getEnv('LMSTUDIO_BASE_URL'),
+        apiKey: getEnv('LMSTUDIO_API_KEY'),
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: ollama, browser, transformer-browser, transformer, webllm, lmstudio.`,
       );
   }
+}
+
+export function getDefaultModel(): string {
+  return (
+    getEnv('VITE_DEFAULT_LLM_MODEL') ??
+    getEnv('DEFAULT_LLM_MODEL') ??
+    'lmstudio/ministralai/ministral-3-3b'
+  );
 }
 
 export async function resolveModel(
