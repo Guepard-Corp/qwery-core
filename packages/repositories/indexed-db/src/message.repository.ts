@@ -273,7 +273,7 @@ export class MessageRepository extends IMessageRepository {
           // After reverse, messages[0] is the oldest (first message in chronological order)
           // This is the cursor for the next "before" query
           const nextCursor =
-            messages.length > 0
+            messages.length > 0 && messages[0]
               ? messages[0].createdAt.toISOString()
               : null;
 

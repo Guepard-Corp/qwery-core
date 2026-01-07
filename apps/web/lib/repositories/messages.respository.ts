@@ -1,4 +1,8 @@
-import { RepositoryFindOptions } from '@qwery/domain/common';
+import {
+  RepositoryFindOptions,
+  PaginationOptions,
+  PaginatedResult,
+} from '@qwery/domain/common';
 import type { Message } from '@qwery/domain/entities';
 import { IMessageRepository } from '@qwery/domain/repositories';
 import { apiGet, apiPost } from './api-client';
@@ -39,6 +43,37 @@ export class MessageRepository extends IMessageRepository {
       false,
     );
     return result || [];
+  }
+
+  /**
+   * Find messages by conversation ID with pagination (frontend API method)
+   * Uses cursor-based pagination to fetch older messages
+   */
+  async findByConversationIdPaginated(
+    conversationId: string,
+    options: PaginationOptions,
+  ): Promise<PaginatedResult<Message>> {
+    const params = new URLSearchParams({
+      conversationSlug: conversationId,
+    });
+    if (options.cursor) {
+      params.append('cursor', options.cursor);
+    }
+    params.append('limit', String(options.limit));
+
+    const result = await apiGet<PaginatedResult<Message>>(
+      `/messages?${params.toString()}`,
+      false,
+      {
+        timeout: 30000, // 30 second timeout
+      },
+    );
+
+    if (!result) {
+      return { messages: [], nextCursor: null, hasMore: false };
+    }
+
+    return result;
   }
 
   async create(entity: Message): Promise<Message> {

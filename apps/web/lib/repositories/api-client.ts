@@ -24,18 +24,45 @@ async function handleResponse<T>(
   return response.json();
 }
 
+export interface ApiGetOptions {
+  allowNotFound?: boolean;
+  signal?: AbortSignal;
+  timeout?: number;
+}
+
 export async function apiGet<T>(
   endpoint: string,
   allowNotFound = false,
+  options?: ApiGetOptions,
 ): Promise<T | null> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const controller = options?.signal
+    ? undefined
+    : new AbortController();
+  const timeoutId =
+    options?.timeout && controller
+      ? setTimeout(() => controller.abort(), options.timeout)
+      : undefined;
 
-  return handleResponse<T>(response, allowNotFound);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: options?.signal || controller?.signal,
+    });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    return handleResponse<T>(response, allowNotFound || options?.allowNotFound || false);
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    throw error;
+  }
 }
 
 export async function apiPost<T>(endpoint: string, data: unknown): Promise<T> {

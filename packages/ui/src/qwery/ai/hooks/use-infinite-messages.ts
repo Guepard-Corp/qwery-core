@@ -2,11 +2,18 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { UIMessage } from 'ai';
 import type { MessageOutput } from '@qwery/domain/usecases';
 import { MessageRole } from '@qwery/domain/entities';
+import type { PaginatedResult } from '@qwery/domain/common';
 
 /**
  * Default number of messages to load per page
  */
 export const DEFAULT_MESSAGES_PER_PAGE = 10;
+
+/**
+ * Starting value for firstItemIndex in Virtuoso.
+ * High number allows prepending older messages without negative indices.
+ */
+const FIRST_ITEM_INDEX_START = 100000;
 
 interface UseInfiniteMessagesOptions {
     conversationSlug: string;
@@ -97,6 +104,15 @@ function convertMessageOutputToUIMessage(
     };
 }
 
+/**
+ * Extracts ISO timestamp from UIMessage for cursor-based pagination.
+ * 
+ * @param message - UIMessage from @ai-sdk/react
+ * @returns ISO timestamp string or null if not found
+ * 
+ * CRITICAL: Must not return current time as fallback - this would break pagination.
+ * Returns null if timestamp cannot be extracted, allowing the caller to handle the error.
+ */
 function extractTimestamp(message: UIMessage): string | null {
     if (message.metadata && typeof message.metadata === 'object') {
         const meta = message.metadata as Record<string, unknown>;
@@ -113,23 +129,57 @@ function extractTimestamp(message: UIMessage): string | null {
     return null;
 }
 
+/**
+ * Finds the oldest message in an array by comparing timestamps.
+ * Ensures cursor extraction works regardless of initial message order.
+ * 
+ * @param messages - Array of UIMessage objects
+ * @returns The oldest message or null if array is empty or no valid timestamps found
+ */
+function findOldestMessage(messages: UIMessage[]): UIMessage | null {
+    if (messages.length === 0) {
+        return null;
+    }
+
+    // Sort messages by timestamp to ensure we get the oldest
+    const messagesWithTimestamps = messages
+        .map((message) => ({
+            message,
+            timestamp: extractTimestamp(message),
+        }))
+        .filter((item): item is { message: UIMessage; timestamp: string } => 
+            item.timestamp !== null
+        );
+
+    if (messagesWithTimestamps.length === 0) {
+        return null;
+    }
+
+    // Sort by timestamp (ascending = oldest first)
+    messagesWithTimestamps.sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeA - timeB;
+    });
+
+    return messagesWithTimestamps[0]?.message ?? null;
+}
+
 export function useInfiniteMessages(
     options: UseInfiniteMessagesOptions,
 ): UseInfiniteMessagesReturn {
     const { conversationSlug, initialMessages, messagesPerPage = DEFAULT_MESSAGES_PER_PAGE } = options;
 
     // Start with high index for firstItemIndex pattern
-    const [firstItemIndex, setFirstItemIndex] = useState(100000);
+    const [firstItemIndex, setFirstItemIndex] = useState(FIRST_ITEM_INDEX_START);
     const [messages, setMessages] = useState<UIMessage[]>(initialMessages);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
     const [hasMoreOlder, setHasMoreOlder] = useState(true);
     const [loadError, setLoadError] = useState<Error | null>(null);
     const [olderCursor, setOlderCursor] = useState<string | null>(() => {
-        if (initialMessages.length > 0 && initialMessages[0]) {
-            const oldest = initialMessages[0];
-            return extractTimestamp(oldest);
-        }
-        return null;
+        // Fix Issue #1: Find oldest message regardless of array order
+        const oldest = findOldestMessage(initialMessages);
+        return oldest ? extractTimestamp(oldest) : null;
     });
 
     // Track last synced message count to avoid unnecessary full merges
@@ -140,7 +190,7 @@ export function useInfiniteMessages(
         if (!Array.isArray(initialMessages)) {
             console.warn('initialMessages is not an array, resetting to empty array');
             setMessages([]);
-            setFirstItemIndex(100000);
+            setFirstItemIndex(FIRST_ITEM_INDEX_START);
             setHasMoreOlder(false);
             setOlderCursor(null);
             setLoadError(null);
@@ -149,10 +199,12 @@ export function useInfiniteMessages(
         }
 
         setMessages(initialMessages);
-        setFirstItemIndex(100000);
+        setFirstItemIndex(FIRST_ITEM_INDEX_START);
         
-        if (initialMessages.length > 0 && initialMessages[0]) {
-            const cursor = extractTimestamp(initialMessages[0]);
+        // Fix Issue #1: Find oldest message regardless of array order
+        const oldest = findOldestMessage(initialMessages);
+        if (oldest) {
+            const cursor = extractTimestamp(oldest);
             if (cursor) {
                 setOlderCursor(cursor);
                 setHasMoreOlder(initialMessages.length >= messagesPerPage);
@@ -162,7 +214,7 @@ export function useInfiniteMessages(
                 setOlderCursor(null);
             }
         } else {
-            // Empty conversation
+            // Empty conversation or no valid timestamps
             setHasMoreOlder(false);
             setOlderCursor(null);
         }
@@ -170,6 +222,17 @@ export function useInfiniteMessages(
         lastSyncedLengthRef.current = initialMessages.length;
     }, [initialMessages, messagesPerPage]);
 
+    /**
+     * Loads older messages when user scrolls to top of chat.
+     * Uses cursor-based pagination to fetch messages before the current oldest message.
+     * 
+     * Guards:
+     * - Returns early if already loading (prevents duplicate requests)
+     * - Returns early if no more messages exist (hasMoreOlder = false)
+     * - Returns early if cursor is null (no reference point)
+     * 
+     * @returns Promise that resolves when messages are loaded and state updated
+     */
     const loadOlderMessages = useCallback(async () => {
         // Prevent concurrent loads and invalid states
         if (isLoadingOlder || !hasMoreOlder) return;
@@ -191,29 +254,50 @@ export function useInfiniteMessages(
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-            const response = await fetch(
-                `/api/messages?conversationSlug=${encodeURIComponent(conversationSlug)}&cursor=${encodeURIComponent(olderCursor)}&limit=${messagesPerPage}`,
-                { signal: controller.signal },
-            );
+            // Build query parameters following the same pattern as apiGet
+            const params = new URLSearchParams({
+                conversationSlug,
+                cursor: olderCursor,
+                limit: String(messagesPerPage),
+            });
+
+            const response = await fetch(`/api/messages?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                signal: controller.signal,
+            });
 
             clearTimeout(timeoutId);
 
+            // Handle response following apiGet pattern
             if (!response.ok) {
-                // Handle specific error codes
+                const error = await response.json().catch(() => ({
+                    error: response.statusText || 'Unknown error',
+                }));
+                
+                // Provide specific error messages for common status codes
                 if (response.status === 404) {
-                    throw new Error('Conversation not found');
+                    throw new Error(error.error || 'Conversation not found');
                 } else if (response.status === 400) {
-                    throw new Error('Invalid request parameters');
+                    throw new Error(error.error || 'Invalid request parameters');
                 } else if (response.status >= 500) {
-                    throw new Error('Server error. Please try again later.');
+                    throw new Error(error.error || 'Server error. Please try again later.');
                 } else {
                     throw new Error(
-                        `Failed to load messages: ${response.statusText} (${response.status})`,
+                        error.error || error.message || `Failed to load messages: ${response.statusText} (${response.status})`,
                     );
                 }
             }
 
-            const result = await response.json();
+            // Handle response parsing (same as apiGet handleResponse)
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Invalid response format from server');
+            }
+
+            const result = (await response.json()) as PaginatedResult<MessageOutput>;
             
             // Validate response structure
             if (!result || typeof result !== 'object') {
@@ -251,13 +335,12 @@ export function useInfiniteMessages(
                     // Update cursor - validate it exists
                     if (nextCursor && typeof nextCursor === 'string') {
                         setOlderCursor(nextCursor);
+                        // Fix Issue #4: Combine hasMore logic - use API response AND message count
+                        setHasMoreOlder(hasMore === true && convertedMessages.length >= messagesPerPage);
                     } else {
                         // If no valid cursor, check if we got fewer messages than requested
                         setHasMoreOlder(convertedMessages.length >= messagesPerPage);
                     }
-                    
-                    // Update hasMore based on API response
-                    setHasMoreOlder(hasMore === true);
                 } else {
                     // No valid messages after conversion - likely no more exist
                     setHasMoreOlder(false);
@@ -321,6 +404,17 @@ export function useInfiniteMessages(
         [],
     );
 
+    /**
+     * Merges new messages from useChat with existing virtualized messages.
+     * Optimized to only process new messages using lastSyncedLengthRef.
+     * 
+     * Handles three scenarios:
+     * 1. Conversation switch (length decreased) - full reset
+     * 2. New messages added (length increased) - append new, update existing
+     * 3. Streaming updates (same length) - update existing messages only
+     * 
+     * @param newMessages - Array of messages from useChat (may include new or updated messages)
+     */
     const mergeMessages = useCallback((newMessages: UIMessage[]) => {
         // Validate input
         if (!Array.isArray(newMessages)) {
@@ -332,7 +426,7 @@ export function useInfiniteMessages(
             // If conversation switched (length decreased), do full reset
             if (newMessages.length < lastSyncedLengthRef.current) {
                 lastSyncedLengthRef.current = newMessages.length;
-                setFirstItemIndex(100000);
+                setFirstItemIndex(FIRST_ITEM_INDEX_START);
                 return newMessages;
             }
 
