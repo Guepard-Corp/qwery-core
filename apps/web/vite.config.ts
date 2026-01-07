@@ -80,6 +80,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
+    manifest: true,
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;
