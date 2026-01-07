@@ -35,9 +35,7 @@ export async function apiGet<T>(
   allowNotFound = false,
   options?: ApiGetOptions,
 ): Promise<T | null> {
-  const controller = options?.signal
-    ? undefined
-    : new AbortController();
+  const controller = options?.signal ? undefined : new AbortController();
   const timeoutId =
     options?.timeout && controller
       ? setTimeout(() => controller.abort(), options.timeout)
@@ -56,7 +54,10 @@ export async function apiGet<T>(
       clearTimeout(timeoutId);
     }
 
-    return handleResponse<T>(response, allowNotFound || options?.allowNotFound || false);
+    return handleResponse<T>(
+      response,
+      allowNotFound || options?.allowNotFound || false,
+    );
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);

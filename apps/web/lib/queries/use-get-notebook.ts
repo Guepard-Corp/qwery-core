@@ -54,12 +54,13 @@ export function useGetNotebook(
 export function useGetNotebookById(
   repository: INotebookRepository,
   id: string,
+  options?: { enabled?: boolean },
 ) {
   const useCase = new GetNotebookService(repository);
   return useQuery({
     queryKey: getNotebookKey(id),
     queryFn: () => useCase.execute(id),
     staleTime: 30 * 1000,
-    enabled: !!id,
+    enabled: options?.enabled !== undefined ? options.enabled && !!id : !!id,
   });
 }

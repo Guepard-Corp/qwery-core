@@ -27,7 +27,13 @@ import {
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { useAgentStatus } from './agent-status-context';
-import { CopyIcon, RefreshCcwIcon, CheckIcon, XIcon, ArrowDownIcon } from 'lucide-react';
+import {
+  CopyIcon,
+  RefreshCcwIcon,
+  CheckIcon,
+  XIcon,
+  ArrowDownIcon,
+} from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { Textarea } from '../shadcn/textarea';
 import {
@@ -49,7 +55,6 @@ import {
   ToolPart,
   useInfiniteMessages,
   VirtuosoMessageList,
-  type VirtuosoMessageListRef,
 } from './ai';
 import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
@@ -174,12 +179,18 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
     [transport, state.model],
   );
 
-  const { messages: chatMessages, sendMessage, status, regenerate, stop, setMessages } =
-    useChat({
-      messages: initialMessages,
-      experimental_throttle: 100,
-      transport: transportInstance,
-    });
+  const {
+    messages: chatMessages,
+    sendMessage,
+    status,
+    regenerate,
+    stop,
+    setMessages,
+  } = useChat({
+    messages: initialMessages,
+    experimental_throttle: 100,
+    transport: transportInstance,
+  });
 
   // Infinite messages hook for pagination (only if conversationSlug is provided)
   const {
@@ -629,161 +640,210 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                   <ConversationEmptyState
                     title="Start a conversation"
                     description="Ask me anything and I'll help you out. You can ask questions or get explanations."
-                    icon={<Sparkles className="text-muted-foreground size-12" />}
+                    icon={
+                      <Sparkles className="text-muted-foreground size-12" />
+                    }
                   />
                 ) : (
-                // Fallback to old rendering when conversationSlug is not provided
-                messages.map((message) => {
-                  const sourceParts = message.parts.filter(
-                    (part: { type: string }) => part.type === 'source-url',
-                  );
+                  // Fallback to old rendering when conversationSlug is not provided
+                  messages.map((message) => {
+                    const sourceParts = message.parts.filter(
+                      (part: { type: string }) => part.type === 'source-url',
+                    );
 
-                  const textParts = message.parts.filter(
-                    (p) => p.type === 'text',
-                  );
-                  const isLastAssistantMessage =
-                    message.id === lastAssistantMessage?.id;
+                    const textParts = message.parts.filter(
+                      (p) => p.type === 'text',
+                    );
+                    const isLastAssistantMessage =
+                      message.id === lastAssistantMessage?.id;
 
-                  const lastTextPartIndex =
-                    textParts.length > 0
-                      ? message.parts.findLastIndex((p) => p.type === 'text')
-                      : -1;
+                    const lastTextPartIndex =
+                      textParts.length > 0
+                        ? message.parts.findLastIndex((p) => p.type === 'text')
+                        : -1;
 
-                  return (
-                    <div
-                      key={message.id}
-                      className="max-w-full min-w-0 overflow-x-hidden"
-                    >
-                      {message.role === 'assistant' &&
-                        sourceParts.length > 0 && (
-                          <Sources>
-                            <SourcesTrigger count={sourceParts.length} />
-                            {sourceParts.map((part, i: number) => {
-                              const sourcePart = part as {
-                                type: 'source-url';
-                                url?: string;
-                              };
-                              return (
-                                <SourcesContent key={`${message.id}-${i}`}>
-                                  <Source
-                                    key={`${message.id}-${i}`}
-                                    href={sourcePart.url}
-                                    title={sourcePart.url}
-                                  />
-                                </SourcesContent>
-                              );
-                            })}
-                          </Sources>
-                        )}
-                      {message.parts.map((part, i: number) => {
-                        const isLastTextPart =
-                          part.type === 'text' && i === lastTextPartIndex;
-                        const isStreaming =
-                          status === 'streaming' &&
-                          isLastAssistantMessage &&
-                          isLastTextPart;
-                        const isResponseComplete =
-                          !isStreaming &&
-                          isLastAssistantMessage &&
-                          isLastTextPart;
-                        switch (part.type) {
-                          case 'text': {
-                            const isEditing = editingMessageId === message.id;
-                            return (
-                              <div
-                                key={`${message.id}-${i}`}
-                                className={cn(
-                                  'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                                  message.role === 'user' && 'justify-end',
-                                  message.role === 'assistant' &&
-                                    'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                  message.role === 'user' &&
-                                    'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                )}
-                              >
-                                {message.role === 'assistant' && (
-                                  <div className="mt-1 shrink-0">
-                                    <BotAvatar
-                                      size={6}
-                                      isLoading={isStreaming}
+                    return (
+                      <div
+                        key={message.id}
+                        className="max-w-full min-w-0 overflow-x-hidden"
+                      >
+                        {message.role === 'assistant' &&
+                          sourceParts.length > 0 && (
+                            <Sources>
+                              <SourcesTrigger count={sourceParts.length} />
+                              {sourceParts.map((part, i: number) => {
+                                const sourcePart = part as {
+                                  type: 'source-url';
+                                  url?: string;
+                                };
+                                return (
+                                  <SourcesContent key={`${message.id}-${i}`}>
+                                    <Source
+                                      key={`${message.id}-${i}`}
+                                      href={sourcePart.url}
+                                      title={sourcePart.url}
                                     />
-                                  </div>
-                                )}
-                                <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                                  {isEditing && message.role === 'user' ? (
-                                    <>
-                                      <Textarea
-                                        value={editText}
-                                        onChange={(e) =>
-                                          setEditText(e.target.value)
-                                        }
-                                        className="min-h-[60px] resize-none"
-                                        onKeyDown={(e) => {
-                                          if (
-                                            e.key === 'Enter' &&
-                                            (e.metaKey || e.ctrlKey)
-                                          ) {
-                                            e.preventDefault();
-                                            handleEditSubmit();
-                                          } else if (e.key === 'Escape') {
-                                            e.preventDefault();
-                                            handleEditCancel();
-                                          }
-                                        }}
-                                        autoFocus
+                                  </SourcesContent>
+                                );
+                              })}
+                            </Sources>
+                          )}
+                        {message.parts.map((part, i: number) => {
+                          const isLastTextPart =
+                            part.type === 'text' && i === lastTextPartIndex;
+                          const isStreaming =
+                            status === 'streaming' &&
+                            isLastAssistantMessage &&
+                            isLastTextPart;
+                          const isResponseComplete =
+                            !isStreaming &&
+                            isLastAssistantMessage &&
+                            isLastTextPart;
+                          switch (part.type) {
+                            case 'text': {
+                              const isEditing = editingMessageId === message.id;
+                              return (
+                                <div
+                                  key={`${message.id}-${i}`}
+                                  className={cn(
+                                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
+                                    message.role === 'user' && 'justify-end',
+                                    message.role === 'assistant' &&
+                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                    message.role === 'user' &&
+                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                  )}
+                                >
+                                  {message.role === 'assistant' && (
+                                    <div className="mt-1 shrink-0">
+                                      <BotAvatar
+                                        size={6}
+                                        isLoading={isStreaming}
                                       />
-                                      <div className="mt-1 flex items-center justify-end gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={handleEditSubmit}
-                                          className="h-7 w-7"
-                                          title="Save"
-                                        >
-                                          <CheckIcon className="size-3" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={handleEditCancel}
-                                          className="h-7 w-7"
-                                          title="Cancel"
-                                        >
-                                          <XIcon className="size-3" />
-                                        </Button>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <>
-                                      {message.role === 'user' ? (
-                                        // User messages - check if it's a suggestion with context
-                                        (() => {
-                                          const { text, context } =
-                                            parseMessageWithContext(part.text);
-
-                                          // Extract datasources from message metadata or use selectedDatasources for the last user message
-                                          const messageDatasources = (() => {
-                                            // Priority 1: Check message metadata first (for notebook cell messages and persisted messages)
-                                            // This ensures notebook cell datasource is always used
+                                    </div>
+                                  )}
+                                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                                    {isEditing && message.role === 'user' ? (
+                                      <>
+                                        <Textarea
+                                          value={editText}
+                                          onChange={(e) =>
+                                            setEditText(e.target.value)
+                                          }
+                                          className="min-h-[60px] resize-none"
+                                          onKeyDown={(e) => {
                                             if (
-                                              message.metadata &&
-                                              typeof message.metadata ===
-                                                'object'
+                                              e.key === 'Enter' &&
+                                              (e.metaKey || e.ctrlKey)
                                             ) {
-                                              const metadata =
-                                                message.metadata as Record<
-                                                  string,
-                                                  unknown
-                                                >;
+                                              e.preventDefault();
+                                              handleEditSubmit();
+                                            } else if (e.key === 'Escape') {
+                                              e.preventDefault();
+                                              handleEditCancel();
+                                            }
+                                          }}
+                                          autoFocus
+                                        />
+                                        <div className="mt-1 flex items-center justify-end gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleEditSubmit}
+                                            className="h-7 w-7"
+                                            title="Save"
+                                          >
+                                            <CheckIcon className="size-3" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleEditCancel}
+                                            className="h-7 w-7"
+                                            title="Cancel"
+                                          >
+                                            <XIcon className="size-3" />
+                                          </Button>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        {message.role === 'user' ? (
+                                          // User messages - check if it's a suggestion with context
+                                          (() => {
+                                            const { text, context } =
+                                              parseMessageWithContext(
+                                                part.text,
+                                              );
+
+                                            // Extract datasources from message metadata or use selectedDatasources for the last user message
+                                            const messageDatasources = (() => {
+                                              // Priority 1: Check message metadata first (for notebook cell messages and persisted messages)
+                                              // This ensures notebook cell datasource is always used
                                               if (
-                                                'datasources' in metadata &&
-                                                Array.isArray(
-                                                  metadata.datasources,
-                                                )
+                                                message.metadata &&
+                                                typeof message.metadata ===
+                                                  'object'
                                               ) {
-                                                const metadataDatasources = (
-                                                  metadata.datasources as string[]
-                                                )
+                                                const metadata =
+                                                  message.metadata as Record<
+                                                    string,
+                                                    unknown
+                                                  >;
+                                                if (
+                                                  'datasources' in metadata &&
+                                                  Array.isArray(
+                                                    metadata.datasources,
+                                                  )
+                                                ) {
+                                                  const metadataDatasources = (
+                                                    metadata.datasources as string[]
+                                                  )
+                                                    .map((dsId) =>
+                                                      datasources?.find(
+                                                        (ds) => ds.id === dsId,
+                                                      ),
+                                                    )
+                                                    .filter(
+                                                      (
+                                                        ds,
+                                                      ): ds is DatasourceItem =>
+                                                        ds !== undefined,
+                                                    );
+                                                  // Only use metadata datasources if they exist and are valid
+                                                  if (
+                                                    metadataDatasources.length >
+                                                    0
+                                                  ) {
+                                                    return metadataDatasources;
+                                                  }
+                                                }
+                                              }
+
+                                              // Priority 2: For the last user message (especially during streaming), use selectedDatasources
+                                              // This ensures correct datasource is shown immediately, even before metadata is set
+                                              const lastUserMessage = [
+                                                ...messages,
+                                              ]
+                                                .reverse()
+                                                .find(
+                                                  (msg) => msg.role === 'user',
+                                                );
+
+                                              const isLastUserMessage =
+                                                lastUserMessage?.id ===
+                                                message.id;
+
+                                              // Use selectedDatasources for the last user message if:
+                                              // 1. It's the last user message (most recent)
+                                              // 2. We're streaming or the message was just sent (metadata might not be set yet)
+                                              // 3. selectedDatasources is available
+                                              if (
+                                                isLastUserMessage &&
+                                                selectedDatasources &&
+                                                selectedDatasources.length > 0
+                                              ) {
+                                                return selectedDatasources
                                                   .map((dsId) =>
                                                     datasources?.find(
                                                       (ds) => ds.id === dsId,
@@ -795,320 +855,284 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                                     ): ds is DatasourceItem =>
                                                       ds !== undefined,
                                                   );
-                                                // Only use metadata datasources if they exist and are valid
-                                                if (
-                                                  metadataDatasources.length > 0
-                                                ) {
-                                                  return metadataDatasources;
-                                                }
                                               }
-                                            }
 
-                                            // Priority 2: For the last user message (especially during streaming), use selectedDatasources
-                                            // This ensures correct datasource is shown immediately, even before metadata is set
-                                            const lastUserMessage = [
-                                              ...messages,
-                                            ]
-                                              .reverse()
-                                              .find(
-                                                (msg) => msg.role === 'user',
+                                              return undefined;
+                                            })();
+
+                                            if (context) {
+                                              // Use UserMessageBubble for suggestions with context
+                                              return (
+                                                <UserMessageBubble
+                                                  key={`${message.id}-${i}`}
+                                                  text={text}
+                                                  context={context}
+                                                  messageId={message.id}
+                                                  datasources={
+                                                    messageDatasources
+                                                  }
+                                                  pluginLogoMap={pluginLogoMap}
+                                                />
                                               );
-
-                                            const isLastUserMessage =
-                                              lastUserMessage?.id ===
-                                              message.id;
-
-                                            // Use selectedDatasources for the last user message if:
-                                            // 1. It's the last user message (most recent)
-                                            // 2. We're streaming or the message was just sent (metadata might not be set yet)
-                                            // 3. selectedDatasources is available
-                                            if (
-                                              isLastUserMessage &&
-                                              selectedDatasources &&
-                                              selectedDatasources.length > 0
-                                            ) {
-                                              return selectedDatasources
-                                                .map((dsId) =>
-                                                  datasources?.find(
-                                                    (ds) => ds.id === dsId,
-                                                  ),
-                                                )
-                                                .filter(
-                                                  (ds): ds is DatasourceItem =>
-                                                    ds !== undefined,
-                                                );
                                             }
 
-                                            return undefined;
-                                          })();
-
-                                          if (context) {
-                                            // Use UserMessageBubble for suggestions with context
+                                            // Regular user message with datasources
                                             return (
-                                              <UserMessageBubble
-                                                key={`${message.id}-${i}`}
-                                                text={text}
-                                                context={context}
-                                                messageId={message.id}
-                                                datasources={messageDatasources}
-                                                pluginLogoMap={pluginLogoMap}
-                                              />
+                                              <div className="flex flex-col items-end gap-1.5">
+                                                {messageDatasources &&
+                                                  messageDatasources.length >
+                                                    0 && (
+                                                    <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
+                                                      <DatasourceBadges
+                                                        datasources={
+                                                          messageDatasources
+                                                        }
+                                                        pluginLogoMap={
+                                                          pluginLogoMap
+                                                        }
+                                                      />
+                                                    </div>
+                                                  )}
+                                                <Message
+                                                  key={`${message.id}-${i}`}
+                                                  from={message.role}
+                                                  className="w-full max-w-full min-w-0"
+                                                >
+                                                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                                    <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                      {part.text}
+                                                    </div>
+                                                  </MessageContent>
+                                                </Message>
+                                              </div>
                                             );
-                                          }
-
-                                          // Regular user message with datasources
-                                          return (
-                                            <div className="flex flex-col items-end gap-1.5">
-                                              {messageDatasources &&
-                                                messageDatasources.length >
-                                                  0 && (
-                                                  <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
-                                                    <DatasourceBadges
-                                                      datasources={
-                                                        messageDatasources
-                                                      }
-                                                      pluginLogoMap={
-                                                        pluginLogoMap
-                                                      }
-                                                    />
-                                                  </div>
-                                                )}
+                                          })()
+                                        ) : (
+                                          // Assistant messages
+                                          <>
+                                            {!isStreaming && (
                                               <Message
-                                                key={`${message.id}-${i}`}
                                                 from={message.role}
                                                 className="w-full max-w-full min-w-0"
                                               >
                                                 <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
                                                   <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                                    {part.text}
+                                                    <StreamdownWithSuggestions
+                                                      sendMessage={sendMessage}
+                                                      messages={messages}
+                                                      currentMessageId={
+                                                        message.id
+                                                      }
+                                                    >
+                                                      {part.text}
+                                                    </StreamdownWithSuggestions>
                                                   </div>
                                                 </MessageContent>
                                               </Message>
-                                            </div>
-                                          );
-                                        })()
-                                      ) : (
-                                        // Assistant messages
-                                        <>
-                                          {!isStreaming && (
-                                            <Message
-                                              from={message.role}
-                                              className="w-full max-w-full min-w-0"
-                                            >
-                                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                                  <StreamdownWithSuggestions
-                                                    sendMessage={sendMessage}
-                                                    messages={messages}
-                                                    currentMessageId={
-                                                      message.id
-                                                    }
-                                                  >
-                                                    {part.text}
-                                                  </StreamdownWithSuggestions>
-                                                </div>
-                                              </MessageContent>
-                                            </Message>
-                                          )}
-                                          {isStreaming && (
-                                            <Message
-                                              from={message.role}
-                                              className="w-full max-w-full min-w-0"
-                                            >
-                                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                                  <StreamdownWithSuggestions
-                                                    sendMessage={sendMessage}
-                                                    messages={messages}
-                                                    currentMessageId={
-                                                      message.id
-                                                    }
-                                                  >
-                                                    {part.text}
-                                                  </StreamdownWithSuggestions>
-                                                </div>
-                                              </MessageContent>
-                                            </Message>
-                                          )}
-                                        </>
-                                      )}
-                                      {/* Actions below the bubble */}
-                                      {(isResponseComplete ||
-                                        (message.role === 'user' &&
-                                          isLastTextPart)) && (
-                                        <div
-                                          className={cn(
-                                            'mt-1 flex items-center gap-2',
-                                            message.role === 'user' &&
-                                              'justify-end',
-                                          )}
-                                        >
-                                          {message.role === 'assistant' && (
+                                            )}
+                                            {isStreaming && (
+                                              <Message
+                                                from={message.role}
+                                                className="w-full max-w-full min-w-0"
+                                              >
+                                                <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                                  <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                    <StreamdownWithSuggestions
+                                                      sendMessage={sendMessage}
+                                                      messages={messages}
+                                                      currentMessageId={
+                                                        message.id
+                                                      }
+                                                    >
+                                                      {part.text}
+                                                    </StreamdownWithSuggestions>
+                                                  </div>
+                                                </MessageContent>
+                                              </Message>
+                                            )}
+                                          </>
+                                        )}
+                                        {/* Actions below the bubble */}
+                                        {(isResponseComplete ||
+                                          (message.role === 'user' &&
+                                            isLastTextPart)) && (
+                                          <div
+                                            className={cn(
+                                              'mt-1 flex items-center gap-2',
+                                              message.role === 'user' &&
+                                                'justify-end',
+                                            )}
+                                          >
+                                            {message.role === 'assistant' && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={handleRegenerate}
+                                                className="h-7 w-7"
+                                                title="Retry"
+                                              >
+                                                <RefreshCcwIcon className="size-3" />
+                                              </Button>
+                                            )}
                                             <Button
                                               variant="ghost"
                                               size="icon"
-                                              onClick={handleRegenerate}
+                                              onClick={async () => {
+                                                const partId = `${message.id}-${i}`;
+                                                try {
+                                                  await navigator.clipboard.writeText(
+                                                    part.text,
+                                                  );
+                                                  setCopiedMessagePartId(
+                                                    partId,
+                                                  );
+                                                  setTimeout(() => {
+                                                    setCopiedMessagePartId(
+                                                      null,
+                                                    );
+                                                  }, 2000);
+                                                } catch (error) {
+                                                  console.error(
+                                                    'Failed to copy:',
+                                                    error,
+                                                  );
+                                                }
+                                              }}
                                               className="h-7 w-7"
-                                              title="Retry"
-                                            >
-                                              <RefreshCcwIcon className="size-3" />
-                                            </Button>
-                                          )}
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={async () => {
-                                              const partId = `${message.id}-${i}`;
-                                              try {
-                                                await navigator.clipboard.writeText(
-                                                  part.text,
-                                                );
-                                                setCopiedMessagePartId(partId);
-                                                setTimeout(() => {
-                                                  setCopiedMessagePartId(null);
-                                                }, 2000);
-                                              } catch (error) {
-                                                console.error(
-                                                  'Failed to copy:',
-                                                  error,
-                                                );
+                                              title={
+                                                copiedMessagePartId ===
+                                                `${message.id}-${i}`
+                                                  ? 'Copied!'
+                                                  : 'Copy'
                                               }
-                                            }}
-                                            className="h-7 w-7"
-                                            title={
-                                              copiedMessagePartId ===
-                                              `${message.id}-${i}`
-                                                ? 'Copied!'
-                                                : 'Copy'
-                                            }
-                                          >
-                                            {copiedMessagePartId ===
-                                            `${message.id}-${i}` ? (
-                                              <CheckIcon className="size-3 text-green-600" />
-                                            ) : (
-                                              <CopyIcon className="size-3" />
-                                            )}
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </>
+                                            >
+                                              {copiedMessagePartId ===
+                                              `${message.id}-${i}` ? (
+                                                <CheckIcon className="size-3 text-green-600" />
+                                              ) : (
+                                                <CopyIcon className="size-3" />
+                                              )}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                  {message.role === 'user' && (
+                                    <div className="mt-1 size-6 shrink-0" />
                                   )}
                                 </div>
-                                {message.role === 'user' && (
-                                  <div className="mt-1 size-6 shrink-0" />
-                                )}
-                              </div>
-                            );
-                          }
-                          case 'reasoning':
-                            return (
-                              <ReasoningPart
-                                key={`${message.id}-${i}`}
-                                part={
-                                  part as { type: 'reasoning'; text: string }
-                                }
-                                messageId={message.id}
-                                index={i}
-                                isStreaming={
-                                  status === 'streaming' &&
-                                  i === message.parts.length - 1 &&
-                                  message.id === messages.at(-1)?.id
-                                }
-                                sendMessage={sendMessage}
-                                messages={messages}
-                              />
-                            );
-                          default:
-                            if (part.type.startsWith('tool-')) {
-                              const toolPart = part as ToolUIPart;
-                              const inProgressStates = new Set([
-                                'input-streaming',
-                                'input-available',
-                                'approval-requested',
-                              ]);
-                              const isToolInProgress = inProgressStates.has(
-                                toolPart.state as string,
-                              );
-
-                              // Show loader while tool is in progress
-                              if (isToolInProgress) {
-                                const toolName =
-                                  'toolName' in toolPart &&
-                                  typeof toolPart.toolName === 'string'
-                                    ? getUserFriendlyToolName(
-                                        `tool-${toolPart.toolName}`,
-                                      )
-                                    : getUserFriendlyToolName(toolPart.type);
-                                return (
-                                  <Tool
-                                    key={`${message.id}-${i}`}
-                                    defaultOpen={false}
-                                  >
-                                    <ToolHeader
-                                      title={toolName}
-                                      type={toolPart.type}
-                                      state={toolPart.state}
-                                    />
-                                    <ToolContent>
-                                      {toolPart.input != null ? (
-                                        <ToolInput input={toolPart.input} />
-                                      ) : null}
-                                      <div className="flex items-center justify-center py-8">
-                                        <Loader size={20} />
-                                      </div>
-                                    </ToolContent>
-                                  </Tool>
-                                );
-                              }
-
-                              // Use ToolPart component for completed tools (includes visualizers)
-                              // Use ref to ensure notebook context persists even if prop changes during re-render
-                              // This prevents paste button from disappearing when messages reset
-                              return (
-                                <ToolPart
-                                  key={`${message.id}-${i}`}
-                                  part={toolPart}
-                                  messageId={message.id}
-                                  index={i}
-                                  onPasteToNotebook={onPasteToNotebook}
-                                  notebookContext={currentNotebookContext}
-                                />
                               );
                             }
-                            return null;
-                        }
-                      })}
+                            case 'reasoning':
+                              return (
+                                <ReasoningPart
+                                  key={`${message.id}-${i}`}
+                                  part={
+                                    part as { type: 'reasoning'; text: string }
+                                  }
+                                  messageId={message.id}
+                                  index={i}
+                                  isStreaming={
+                                    status === 'streaming' &&
+                                    i === message.parts.length - 1 &&
+                                    message.id === messages.at(-1)?.id
+                                  }
+                                  sendMessage={sendMessage}
+                                  messages={messages}
+                                />
+                              );
+                            default:
+                              if (part.type.startsWith('tool-')) {
+                                const toolPart = part as ToolUIPart;
+                                const inProgressStates = new Set([
+                                  'input-streaming',
+                                  'input-available',
+                                  'approval-requested',
+                                ]);
+                                const isToolInProgress = inProgressStates.has(
+                                  toolPart.state as string,
+                                );
+
+                                // Show loader while tool is in progress
+                                if (isToolInProgress) {
+                                  const toolName =
+                                    'toolName' in toolPart &&
+                                    typeof toolPart.toolName === 'string'
+                                      ? getUserFriendlyToolName(
+                                          `tool-${toolPart.toolName}`,
+                                        )
+                                      : getUserFriendlyToolName(toolPart.type);
+                                  return (
+                                    <Tool
+                                      key={`${message.id}-${i}`}
+                                      defaultOpen={false}
+                                    >
+                                      <ToolHeader
+                                        title={toolName}
+                                        type={toolPart.type}
+                                        state={toolPart.state}
+                                      />
+                                      <ToolContent>
+                                        {toolPart.input != null ? (
+                                          <ToolInput input={toolPart.input} />
+                                        ) : null}
+                                        <div className="flex items-center justify-center py-8">
+                                          <Loader size={20} />
+                                        </div>
+                                      </ToolContent>
+                                    </Tool>
+                                  );
+                                }
+
+                                // Use ToolPart component for completed tools (includes visualizers)
+                                // Use ref to ensure notebook context persists even if prop changes during re-render
+                                // This prevents paste button from disappearing when messages reset
+                                return (
+                                  <ToolPart
+                                    key={`${message.id}-${i}`}
+                                    part={toolPart}
+                                    messageId={message.id}
+                                    index={i}
+                                    onPasteToNotebook={onPasteToNotebook}
+                                    notebookContext={currentNotebookContext}
+                                  />
+                                );
+                              }
+                              return null;
+                          }
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+                {(status === 'submitted' ||
+                  (status === 'streaming' &&
+                    (!lastAssistantHasText || !lastMessageIsAssistant))) && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden duration-300">
+                    <BotAvatar
+                      size={6}
+                      isLoading={true}
+                      className="mt-1 shrink-0"
+                    />
+                    <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                      <Message
+                        from="assistant"
+                        className="w-full max-w-full min-w-0"
+                      >
+                        <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                          <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                            <MessageResponse></MessageResponse>
+                          </div>
+                        </MessageContent>
+                      </Message>
                     </div>
-                  );
-                })
-              )}
-              {(status === 'submitted' ||
-                (status === 'streaming' &&
-                  (!lastAssistantHasText || !lastMessageIsAssistant))) && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden duration-300">
-                  <BotAvatar
-                    size={6}
-                    isLoading={true}
-                    className="mt-1 shrink-0"
-                  />
-                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                    <Message
-                      from="assistant"
-                      className="w-full max-w-full min-w-0"
-                    >
-                      <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                        <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                          <MessageResponse></MessageResponse>
-                        </div>
-                      </MessageContent>
-                    </Message>
                   </div>
-                </div>
-              )}
-            </ConversationContent>
-            <ConversationScrollButton />
-            <ScrollToBottomRefSetter scrollRef={scrollToBottomRef} />
-          </Conversation>
+                )}
+              </ConversationContent>
+              <ConversationScrollButton />
+              <ScrollToBottomRefSetter scrollRef={scrollToBottomRef} />
+            </Conversation>
           )}
         </div>
 
@@ -1150,9 +1174,10 @@ function ScrollToBottomRefSetter({
     scrollToBottom = context.scrollToBottom;
   } catch {
     // Context not available (using Virtuoso) - scrollRef will be set by VirtuosoMessageList
-    return null;
+    scrollToBottom = null;
   }
 
+  // Always call hooks - conditionally use the value
   useEffect(() => {
     if (scrollToBottom) {
       scrollRef.current = scrollToBottom;

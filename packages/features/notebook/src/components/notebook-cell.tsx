@@ -25,7 +25,6 @@ import {
   Loader2,
   Maximize2,
   MoreVertical,
-  Pencil,
   PlayIcon,
   Sparkles,
   Trash2,

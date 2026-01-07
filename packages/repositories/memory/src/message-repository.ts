@@ -82,9 +82,7 @@ export class MessageRepository extends IMessageRepository {
 
     // Take limit + 1 to check hasMore
     const hasMore = filtered.length > options.limit;
-    const messages = filtered
-      .slice(0, options.limit)
-      .reverse(); // Reverse to oldest-first
+    const messages = filtered.slice(0, options.limit).reverse(); // Reverse to oldest-first
 
     // After reverse, messages[0] is the oldest (first message in chronological order)
     // This is the cursor for the next "before" query

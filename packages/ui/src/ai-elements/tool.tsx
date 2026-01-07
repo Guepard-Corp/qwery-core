@@ -150,7 +150,7 @@ export const ToolHeader = ({
   return (
     <CollapsibleTrigger
       className={cn(
-        'bg-background sticky top-0 z-10 flex w-full min-w-0 max-w-full items-center justify-between gap-2 border-b p-3 cursor-pointer',
+        'bg-background sticky top-0 z-10 flex w-full max-w-full min-w-0 cursor-pointer items-center justify-between gap-2 border-b p-3',
         className,
       )}
       style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
@@ -158,7 +158,7 @@ export const ToolHeader = ({
     >
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
         <span className="shrink-0">{toolIcon}</span>
-        <span className="truncate text-sm font-medium min-w-0">{toolName}</span>
+        <span className="min-w-0 truncate text-sm font-medium">{toolName}</span>
         <Badge
           variant={statusConfig.variant}
           className={cn(
@@ -167,7 +167,9 @@ export const ToolHeader = ({
           )}
         >
           {statusConfig.icon}
-          <span className="whitespace-nowrap text-xs">{statusConfig.label}</span>
+          <span className="text-xs whitespace-nowrap">
+            {statusConfig.label}
+          </span>
         </Badge>
       </div>
       <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
@@ -180,7 +182,7 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground data-[state=closed]:animate-out data-[state=open]:animate-in outline-none min-w-0 max-w-full overflow-hidden',
+      'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground data-[state=closed]:animate-out data-[state=open]:animate-in max-w-full min-w-0 overflow-hidden outline-none',
       className,
     )}
     {...props}
@@ -193,18 +195,18 @@ export type ToolInputProps = ComponentProps<'div'> & {
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <Collapsible
-    className={cn('min-w-0 max-w-full overflow-hidden', className)}
+    className={cn('max-w-full min-w-0 overflow-hidden', className)}
     defaultOpen={false}
     {...props}
   >
     <CollapsibleTrigger className="group hover:bg-muted/50 flex w-full min-w-0 items-center gap-2 px-4 py-3 text-left transition-colors">
       <ChevronDownIcon className="text-muted-foreground size-3 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase truncate">
+      <span className="text-muted-foreground truncate text-xs font-medium tracking-wide uppercase">
         Parameters
       </span>
     </CollapsibleTrigger>
     <CollapsibleContent>
-      <div className="px-4 pb-4 min-w-0 max-w-full">
+      <div className="max-w-full min-w-0 px-4 pb-4">
         <div className="bg-muted/50 max-w-full min-w-0 overflow-hidden rounded-md">
           <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
         </div>

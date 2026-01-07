@@ -108,7 +108,7 @@ export function SchemaVisualizer({
               {groupedTables[dsName]?.map((table) => (
                 <div
                   key={table.tableName}
-                  className="bg-background min-w-0 max-w-full overflow-hidden rounded-md border"
+                  className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                 >
                   {/* Table Header */}
                   <div className="bg-muted/30 flex items-center justify-between border-b px-3 py-2">

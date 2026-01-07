@@ -266,9 +266,7 @@ export class MessageRepository extends IMessageRepository {
           cursor.continue();
         } else {
           const hasMore = results.length > options.limit;
-          const messages = results
-            .slice(0, options.limit)
-            .reverse(); // Reverse to oldest-first
+          const messages = results.slice(0, options.limit).reverse(); // Reverse to oldest-first
 
           // After reverse, messages[0] is the oldest (first message in chronological order)
           // This is the cursor for the next "before" query

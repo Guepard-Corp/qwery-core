@@ -704,11 +704,13 @@ export function ToolPart({
       )}
     >
       <ToolHeader title={toolName} type={part.type} state={part.state} />
-      <ToolContent className="p-0 min-w-0 max-w-full">
+      <ToolContent className="max-w-full min-w-0 p-0">
         {showInput ? (
           <ToolInput input={part.input} className="border-b" />
         ) : null}
-        <div className="p-4 min-w-0 max-w-full overflow-hidden">{renderToolOutput()}</div>
+        <div className="max-w-full min-w-0 overflow-hidden p-4">
+          {renderToolOutput()}
+        </div>
       </ToolContent>
     </Tool>
   );

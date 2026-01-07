@@ -15,9 +15,10 @@ export function convertMessages(
 
   return messages.map((message) => {
     // Extract createdAt from MessageOutput for cursor-based pagination
-    const createdAt = message.createdAt instanceof Date
-      ? message.createdAt.toISOString()
-      : new Date(message.createdAt).toISOString();
+    const createdAt =
+      message.createdAt instanceof Date
+        ? message.createdAt.toISOString()
+        : new Date(message.createdAt).toISOString();
 
     // Check if content already contains a UIMessage structure (with parts and role)
     if (
@@ -32,7 +33,7 @@ export function convertMessages(
         'metadata' in message.content
           ? (message.content.metadata as Record<string, unknown>)
           : {};
-      
+
       return {
         id: message.id, // Use MessageEntity.id as source of truth
         role: message.content.role as 'user' | 'assistant' | 'system',

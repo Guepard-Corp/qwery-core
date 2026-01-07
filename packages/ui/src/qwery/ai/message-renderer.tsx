@@ -124,7 +124,10 @@ export const MessageRenderer = memo(MessageRendererComponent, (prev, next) => {
   // Re-render if message is the last message and status is streaming
   // (for streaming indicators)
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
-  if (isLastMessage && (prev.status === 'streaming' || next.status === 'streaming')) {
+  if (
+    isLastMessage &&
+    (prev.status === 'streaming' || next.status === 'streaming')
+  ) {
     return false;
   }
 
@@ -132,7 +135,9 @@ export const MessageRenderer = memo(MessageRendererComponent, (prev, next) => {
   // But only if this message is affected
   if (prev.messages.length !== next.messages.length) {
     // Check if this message is still in the array
-    const messageStillExists = next.messages.some((m) => m.id === prev.message.id);
+    const messageStillExists = next.messages.some(
+      (m) => m.id === prev.message.id,
+    );
     if (!messageStillExists) {
       return false;
     }

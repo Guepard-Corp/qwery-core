@@ -49,7 +49,10 @@ export * from './charts/chart-utils';
 export * from './scroll-utils';
 
 // Infinite messages hook
-export { useInfiniteMessages, DEFAULT_MESSAGES_PER_PAGE } from './hooks/use-infinite-messages';
+export {
+  useInfiniteMessages,
+  DEFAULT_MESSAGES_PER_PAGE,
+} from './hooks/use-infinite-messages';
 
 // Virtuoso message list component
 export {

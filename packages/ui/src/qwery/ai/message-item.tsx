@@ -8,10 +8,7 @@ import { BotAvatar } from '../bot-avatar';
 import { Button } from '../../shadcn/button';
 import { Textarea } from '../../shadcn/textarea';
 import { CopyIcon, RefreshCcwIcon, CheckIcon, XIcon } from 'lucide-react';
-import {
-  Message,
-  MessageContent,
-} from '../../ai-elements/message';
+import { Message, MessageContent } from '../../ai-elements/message';
 import {
   Source,
   Sources,
@@ -25,7 +22,12 @@ import {
   parseMessageWithContext,
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
-import { Tool, ToolHeader, ToolContent, ToolInput } from '../../ai-elements/tool';
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+} from '../../ai-elements/tool';
 import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './tool-ui-config';
@@ -53,8 +55,15 @@ export interface MessageItemProps {
   onEditTextChange: (text: string) => void;
   onRegenerate: () => void;
   onCopyPart: (partId: string) => void;
-  sendMessage?: ReturnType<typeof import('@ai-sdk/react').useChat>['sendMessage'];
-  onPasteToNotebook?: (sqlQuery: string, notebookCellType: 'query' | 'prompt', datasourceId: string, cellId: number) => void;
+  sendMessage?: ReturnType<
+    typeof import('@ai-sdk/react').useChat
+  >['sendMessage'];
+  onPasteToNotebook?: (
+    sqlQuery: string,
+    notebookCellType: 'query' | 'prompt',
+    datasourceId: string,
+    cellId: number,
+  ) => void;
 }
 
 function MessageItemComponent({
@@ -81,11 +90,8 @@ function MessageItemComponent({
     (part: { type: string }) => part.type === 'source-url',
   );
 
-  const textParts = message.parts.filter(
-    (p) => p.type === 'text',
-  );
-  const isLastAssistantMessage =
-    message.id === lastAssistantMessage?.id;
+  const textParts = message.parts.filter((p) => p.type === 'text');
+  const isLastAssistantMessage = message.id === lastAssistantMessage?.id;
 
   const lastTextPartIndex =
     textParts.length > 0
@@ -93,39 +99,37 @@ function MessageItemComponent({
       : -1;
 
   return (
-    <div data-message-id={message.id} className="min-w-0 w-full max-w-full overflow-x-hidden py-2" style={{ width: '100%', maxWidth: '100%' }}>
-      {message.role === 'assistant' &&
-        sourceParts.length > 0 && (
-          <Sources>
-            <SourcesTrigger count={sourceParts.length} />
-            {sourceParts.map((part, i: number) => {
-              const sourcePart = part as {
-                type: 'source-url';
-                url?: string;
-              };
-              return (
-                <SourcesContent key={`${message.id}-${i}`}>
-                  <Source
-                    key={`${message.id}-${i}`}
-                    href={sourcePart.url}
-                    title={sourcePart.url}
-                  />
-                </SourcesContent>
-              );
-            })}
-          </Sources>
-        )}
+    <div
+      data-message-id={message.id}
+      className="w-full max-w-full min-w-0 overflow-x-hidden py-2"
+      style={{ width: '100%', maxWidth: '100%' }}
+    >
+      {message.role === 'assistant' && sourceParts.length > 0 && (
+        <Sources>
+          <SourcesTrigger count={sourceParts.length} />
+          {sourceParts.map((part, i: number) => {
+            const sourcePart = part as {
+              type: 'source-url';
+              url?: string;
+            };
+            return (
+              <SourcesContent key={`${message.id}-${i}`}>
+                <Source
+                  key={`${message.id}-${i}`}
+                  href={sourcePart.url}
+                  title={sourcePart.url}
+                />
+              </SourcesContent>
+            );
+          })}
+        </Sources>
+      )}
       {message.parts.map((part, i: number) => {
-        const isLastTextPart =
-          part.type === 'text' && i === lastTextPartIndex;
+        const isLastTextPart = part.type === 'text' && i === lastTextPartIndex;
         const isStreaming =
-          status === 'streaming' &&
-          isLastAssistantMessage &&
-          isLastTextPart;
+          status === 'streaming' && isLastAssistantMessage && isLastTextPart;
         const isResponseComplete =
-          !isStreaming &&
-          isLastAssistantMessage &&
-          isLastTextPart;
+          !isStreaming && isLastAssistantMessage && isLastTextPart;
         switch (part.type) {
           case 'text': {
             const isEditing = editingMessageId === message.id;
@@ -133,7 +137,7 @@ function MessageItemComponent({
               <div
                 key={`${message.id}-${i}`}
                 className={cn(
-                  'flex items-start gap-3 min-w-0 max-w-full overflow-x-hidden',
+                  'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
                   message.role === 'user' && 'justify-end',
                   message.role === 'assistant' &&
                     'animate-in fade-in slide-in-from-bottom-4 duration-300',
@@ -143,10 +147,7 @@ function MessageItemComponent({
               >
                 {message.role === 'assistant' && (
                   <div className="mt-1 shrink-0">
-                    <BotAvatar
-                      size={6}
-                      isLoading={false}
-                    />
+                    <BotAvatar size={6} isLoading={false} />
                   </div>
                 )}
                 <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
@@ -158,10 +159,7 @@ function MessageItemComponent({
                           onEditTextChange(e.target.value);
                         }}
                         onKeyDown={(e) => {
-                          if (
-                            e.key === 'Enter' &&
-                            (e.metaKey || e.ctrlKey)
-                          ) {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                             e.preventDefault();
                             onEditSubmit();
                           } else if (e.key === 'Escape') {
@@ -201,45 +199,71 @@ function MessageItemComponent({
                           const { text, context } = parseMessageWithContext(
                             part.text,
                           );
-                          
+
                           // Extract datasources from message metadata or use selectedDatasources for the last user message
                           const messageDatasources = (() => {
                             // Priority 1: Check message metadata first (for notebook cell messages and persisted messages)
                             // This ensures notebook cell datasource is always used
-                            if (message.metadata && typeof message.metadata === 'object') {
-                              const metadata = message.metadata as Record<string, unknown>;
-                              if ('datasources' in metadata && Array.isArray(metadata.datasources)) {
-                                const metadataDatasources = (metadata.datasources as string[])
-                                  .map((dsId) => datasources?.find((ds) => ds.id === dsId))
-                                  .filter((ds): ds is DatasourceItem => ds !== undefined);
+                            if (
+                              message.metadata &&
+                              typeof message.metadata === 'object'
+                            ) {
+                              const metadata = message.metadata as Record<
+                                string,
+                                unknown
+                              >;
+                              if (
+                                'datasources' in metadata &&
+                                Array.isArray(metadata.datasources)
+                              ) {
+                                const metadataDatasources = (
+                                  metadata.datasources as string[]
+                                )
+                                  .map((dsId) =>
+                                    datasources?.find((ds) => ds.id === dsId),
+                                  )
+                                  .filter(
+                                    (ds): ds is DatasourceItem =>
+                                      ds !== undefined,
+                                  );
                                 // Only use metadata datasources if they exist and are valid
                                 if (metadataDatasources.length > 0) {
                                   return metadataDatasources;
                                 }
                               }
                             }
-                            
+
                             // Priority 2: For the last user message (especially during streaming), use selectedDatasources
                             // This ensures correct datasource is shown immediately, even before metadata is set
                             const lastUserMessage = [...messages]
                               .reverse()
                               .find((msg) => msg.role === 'user');
-                            
-                            const isLastUserMessage = lastUserMessage?.id === message.id;
-                            
+
+                            const isLastUserMessage =
+                              lastUserMessage?.id === message.id;
+
                             // Use selectedDatasources for the last user message if:
                             // 1. It's the last user message (most recent)
                             // 2. We're streaming or the message was just sent (metadata might not be set yet)
                             // 3. selectedDatasources is available
-                            if (isLastUserMessage && selectedDatasources && selectedDatasources.length > 0) {
+                            if (
+                              isLastUserMessage &&
+                              selectedDatasources &&
+                              selectedDatasources.length > 0
+                            ) {
                               return selectedDatasources
-                                .map((dsId) => datasources?.find((ds) => ds.id === dsId))
-                                .filter((ds): ds is DatasourceItem => ds !== undefined);
+                                .map((dsId) =>
+                                  datasources?.find((ds) => ds.id === dsId),
+                                )
+                                .filter(
+                                  (ds): ds is DatasourceItem =>
+                                    ds !== undefined,
+                                );
                             }
-                            
+
                             return undefined;
                           })();
-                          
+
                           if (context) {
                             // Use UserMessageBubble for suggestions with context
                             return (
@@ -253,25 +277,26 @@ function MessageItemComponent({
                               />
                             );
                           }
-                          
+
                           // Regular user message with datasources
                           return (
                             <div className="flex flex-col items-end gap-1.5">
-                              {messageDatasources && messageDatasources.length > 0 && (
-                                <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
-                                  <DatasourceBadges
-                                    datasources={messageDatasources}
-                                    pluginLogoMap={pluginLogoMap}
-                                  />
-                                </div>
-                              )}
+                              {messageDatasources &&
+                                messageDatasources.length > 0 && (
+                                  <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
+                                    <DatasourceBadges
+                                      datasources={messageDatasources}
+                                      pluginLogoMap={pluginLogoMap}
+                                    />
+                                  </div>
+                                )}
                               <Message
                                 key={`${message.id}-${i}`}
                                 from={message.role}
-                                className="w-full min-w-0 max-w-full"
+                                className="w-full max-w-full min-w-0"
                               >
-                                <MessageContent className="min-w-0 max-w-full overflow-x-hidden">
-                                  <div className="inline-flex items-baseline gap-0.5 min-w-0 break-words overflow-wrap-anywhere">
+                                <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                  <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
                                     {part.text}
                                   </div>
                                 </MessageContent>
@@ -285,10 +310,10 @@ function MessageItemComponent({
                           {!isStreaming && (
                             <Message
                               from={message.role}
-                              className="w-full min-w-0 max-w-full"
+                              className="w-full max-w-full min-w-0"
                             >
-                              <MessageContent className="min-w-0 max-w-full overflow-x-hidden">
-                                <div className="inline-flex items-baseline gap-0.5 min-w-0 break-words overflow-wrap-anywhere">
+                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
                                   <StreamdownWithSuggestions
                                     sendMessage={sendMessage}
                                     messages={messages}
@@ -303,10 +328,10 @@ function MessageItemComponent({
                           {isStreaming && (
                             <Message
                               from={message.role}
-                              className="w-full min-w-0 max-w-full"
+                              className="w-full max-w-full min-w-0"
                             >
-                              <MessageContent className="min-w-0 max-w-full overflow-x-hidden">
-                                <div className="inline-flex items-baseline gap-0.5 min-w-0 break-words overflow-wrap-anywhere">
+                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
                                   <StreamdownWithSuggestions
                                     sendMessage={sendMessage}
                                     messages={messages}
@@ -322,13 +347,11 @@ function MessageItemComponent({
                       )}
                       {/* Actions below the bubble */}
                       {(isResponseComplete ||
-                        (message.role === 'user' &&
-                          isLastTextPart)) && (
+                        (message.role === 'user' && isLastTextPart)) && (
                         <div
                           className={cn(
                             'mt-1 flex items-center gap-2',
-                            message.role === 'user' &&
-                              'justify-end',
+                            message.role === 'user' && 'justify-end',
                           )}
                         >
                           {message.role === 'assistant' && (
@@ -348,30 +371,23 @@ function MessageItemComponent({
                             onClick={async () => {
                               const partId = `${message.id}-${i}`;
                               try {
-                                await navigator.clipboard.writeText(
-                                  part.text,
-                                );
+                                await navigator.clipboard.writeText(part.text);
                                 onCopyPart(partId);
                                 setTimeout(() => {
                                   onCopyPart('');
                                 }, 2000);
                               } catch (error) {
-                                console.error(
-                                  'Failed to copy:',
-                                  error,
-                                );
+                                console.error('Failed to copy:', error);
                               }
                             }}
                             className="h-7 w-7"
                             title={
-                              copiedMessagePartId ===
-                              `${message.id}-${i}`
+                              copiedMessagePartId === `${message.id}-${i}`
                                 ? 'Copied!'
                                 : 'Copy'
                             }
                           >
-                            {copiedMessagePartId ===
-                            `${message.id}-${i}` ? (
+                            {copiedMessagePartId === `${message.id}-${i}` ? (
                               <CheckIcon className="size-3 text-green-600" />
                             ) : (
                               <CopyIcon className="size-3" />
@@ -500,7 +516,10 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
 
   // Re-render if message is the last message and status is streaming
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
-  if (isLastMessage && (prev.status === 'streaming' || next.status === 'streaming')) {
+  if (
+    isLastMessage &&
+    (prev.status === 'streaming' || next.status === 'streaming')
+  ) {
     return false;
   }
 
@@ -508,7 +527,9 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
   // But only if this message is affected
   if (prev.messages.length !== next.messages.length) {
     // Check if this message is still in the array
-    const messageStillExists = next.messages.some((m) => m.id === prev.message.id);
+    const messageStillExists = next.messages.some(
+      (m) => m.id === prev.message.id,
+    );
     if (!messageStillExists) {
       return false;
     }
