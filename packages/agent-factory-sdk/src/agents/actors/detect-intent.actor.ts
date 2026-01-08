@@ -4,7 +4,7 @@ import { fromPromise } from 'xstate/actors';
 import type { UIMessage } from 'ai';
 import { INTENTS_LIST, IntentSchema } from '../types';
 import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
-import { resolveModel } from '../../services/model-resolver';
+import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
 export const detectIntent = async (
   text: string,
@@ -25,7 +25,7 @@ export const detectIntent = async (
       });
 
       const generatePromise = generateObject({
-        model: await resolveModel('azure/gpt-5-mini'),
+        model: await resolveModel(getDefaultModel()),
         schema: IntentSchema,
         prompt: DETECT_INTENT_PROMPT(text, previousMessages),
       });

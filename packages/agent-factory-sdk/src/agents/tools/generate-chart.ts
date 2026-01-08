@@ -1,5 +1,5 @@
 import { generateObject } from 'ai';
-import { resolveModel } from '../../services';
+import { resolveModel, getDefaultModel } from '../../services';
 import {
   ChartTypeSelectionSchema,
   ChartConfigSchema,
@@ -65,7 +65,7 @@ export async function selectChartType(
       : null;
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       schema: ChartTypeSelectionSchema,
       prompt: SELECT_CHART_TYPE_PROMPT(
         userInput,
@@ -119,7 +119,7 @@ export async function generateChartConfig(
     });
 
     const generatePromise = generateObject({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       schema: ChartConfigSchema,
       prompt: GENERATE_CHART_CONFIG_PROMPT(
         chartType,

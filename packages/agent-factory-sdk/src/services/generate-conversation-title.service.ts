@@ -1,5 +1,5 @@
 import { generateText } from 'ai';
-import { resolveModel } from './model-resolver';
+import { resolveModel, getDefaultModel } from './model-resolver';
 
 const GENERATE_TITLE_PROMPT = (userMessage: string, agentResponse?: string) => {
   const basePrompt = `Based on the following conversation exchange, generate a concise, descriptive title for this conversation. The title should be:
@@ -36,7 +36,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel('azure/gpt-5-mini'),
+      model: await resolveModel(getDefaultModel()),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 

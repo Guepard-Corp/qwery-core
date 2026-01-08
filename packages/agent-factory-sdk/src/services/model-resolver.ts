@@ -23,10 +23,18 @@ function parseModelName(modelString: string): {
 }
 
 function getEnv(key: string): string | undefined {
+  let value: string | undefined;
+
   if (typeof process !== 'undefined' && process.env) {
-    return process.env[key];
+    value = process.env[key];
   }
-  return undefined;
+  // Support Vite environment variables in browser context
+  if (!value && typeof import.meta !== 'undefined' && import.meta.env) {
+    value = import.meta.env[key];
+  }
+
+  // Treat empty strings as undefined
+  return value && value.trim() !== '' ? value : undefined;
 }
 
 function requireEnv(key: string, providerLabel: string): string {
@@ -106,4 +114,63 @@ export async function resolveModel(
   const { providerId, modelName } = parseModelName(modelString);
   const provider = await createProvider(providerId, modelName);
   return provider.resolveModel(modelName);
+}
+
+/**
+ * Gets the default model from environment variables.
+ * Format: {provider}/{model}
+ *
+ * Provider is determined from:
+ * - AGENT_PROVIDER or VITE_AGENT_PROVIDER
+ *
+ * Model name is determined from provider-specific env vars (checks both regular and VITE_ prefixed):
+ * - Azure: AZURE_OPENAI_DEPLOYMENT or VITE_AZURE_OPENAI_DEPLOYMENT (defaults to "gpt-5-mini")
+ * - Ollama: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "deepseek-r1:8b")
+ * - WebLLM: WEBLLM_MODEL or VITE_WEBLLM_MODEL (defaults to "Llama-3.1-8B-Instruct-q4f32_1-MLC")
+ * - Transformer: TRANSFORMER_MODEL or VITE_TRANSFORMER_MODEL (defaults to "SmolLM2-360M-Instruct")
+ * - Browser: "built-in"
+ */
+export function getDefaultModel(): string {
+  const provider =
+    getEnv('AGENT_PROVIDER') || getEnv('VITE_AGENT_PROVIDER') || 'azure';
+
+  let modelName: string;
+  switch (provider) {
+    case 'azure':
+      modelName =
+        getEnv('AZURE_OPENAI_DEPLOYMENT') ||
+        getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
+        'gpt-5-mini';
+      break;
+    case 'ollama':
+      modelName =
+        getEnv('OLLAMA_MODEL') ||
+        getEnv('VITE_OLLAMA_MODEL') ||
+        'deepseek-r1:8b';
+      break;
+    case 'webllm':
+      modelName =
+        getEnv('WEBLLM_MODEL') ||
+        getEnv('VITE_WEBLLM_MODEL') ||
+        'Llama-3.1-8B-Instruct-q4f32_1-MLC';
+      break;
+    case 'transformer':
+    case 'transformer-browser':
+      modelName =
+        getEnv('TRANSFORMER_MODEL') ||
+        getEnv('VITE_TRANSFORMER_MODEL') ||
+        'SmolLM2-360M-Instruct';
+      break;
+    case 'browser':
+      modelName = 'built-in';
+      break;
+    default:
+      modelName =
+        getEnv('AZURE_OPENAI_DEPLOYMENT') ||
+        getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
+        'gpt-5-mini';
+      return `azure/${modelName}`;
+  }
+
+  return `${provider}/${modelName}`;
 }

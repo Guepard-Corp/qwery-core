@@ -6,6 +6,7 @@ import {
   type FactoryAgentOptions,
   validateUIMessages,
   type UIMessage,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import {
   ConversationRepository,
@@ -101,7 +102,7 @@ export class NotebookRunner {
 
         agent = await FactoryAgent.create({
           conversationSlug,
-          model: 'azure/gpt-5-mini',
+          model: getDefaultModel(),
           repositories: repositories as FactoryAgentOptions['repositories'],
         });
         agents.set(options.datasource.id, agent);
@@ -183,7 +184,6 @@ export class NotebookRunner {
         rowCount: 1,
       };
     } catch (error) {
-      // Catch Azure credential errors and other agent initialization errors
       if (
         error instanceof Error &&
         (error.message.includes('Azure credentials') ||
@@ -192,7 +192,6 @@ export class NotebookRunner {
       ) {
         throw new CliUsageError('Natural language mode is not yet available');
       }
-      // Re-throw other errors
       throw error;
     }
   }

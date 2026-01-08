@@ -11,6 +11,7 @@ import {
   validateUIMessages,
   MessagePersistenceService,
   type UIMessage,
+  getDefaultModel,
 } from '@qwery/agent-factory-sdk';
 import { nanoid } from 'nanoid';
 
@@ -363,7 +364,7 @@ export class InteractiveRepl {
       const streamResult = await readDataAgent(
         conversation.id,
         messages,
-        'azure/gpt-5-mini',
+        getDefaultModel(),
         queryEngine,
         repositories,
       );
@@ -486,7 +487,7 @@ export class InteractiveRepl {
 
         this.agent = await FactoryAgent.create({
           conversationSlug: this.conversationId,
-          model: 'azure/gpt-5-mini', // Default model for CLI
+          model: getDefaultModel(), // Default model from env
           repositories,
         });
       }
