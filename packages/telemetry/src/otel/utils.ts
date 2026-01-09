@@ -1,8 +1,8 @@
-import type { TelemetryManager } from './telemetry-manager';
+import type { OtelTelemetryManager } from './manager';
 import type { Span } from '@opentelemetry/api';
-import { CLI_EVENTS } from './events/cli.events';
-import { WEB_EVENTS } from './events/web.events';
-import { DESKTOP_EVENTS } from './events/desktop.events';
+import { CLI_EVENTS } from '../events/cli.events';
+import { WEB_EVENTS } from '../events/web.events';
+import { DESKTOP_EVENTS } from '../events/desktop.events';
 
 /**
  * Generic workspace context interface
@@ -129,7 +129,7 @@ export function parseActionName(actionName: string): {
  * ```
  */
 export async function withActionSpan<T>(
-  telemetry: TelemetryManager,
+  telemetry: OtelTelemetryManager,
   context: ActionContext,
   actionFn: (span: Span) => Promise<T>,
 ): Promise<T> {
@@ -255,7 +255,7 @@ export async function withActionSpan<T>(
  * Works across all app types
  */
 export function recordQueryMetrics(
-  telemetry: TelemetryManager,
+  telemetry: OtelTelemetryManager,
   appType: 'cli' | 'web' | 'desktop',
   workspace: WorkspaceContext | undefined,
   durationMs: number,
@@ -297,7 +297,7 @@ export function recordQueryMetrics(
  * Works across all app types
  */
 export function recordTokenUsage(
-  telemetry: TelemetryManager,
+  telemetry: OtelTelemetryManager,
   appType: 'cli' | 'web' | 'desktop',
   workspace: WorkspaceContext | undefined,
   promptTokens: number,
@@ -321,3 +321,4 @@ export function recordTokenUsage(
 
   telemetry.recordTokenUsage(promptTokens, completionTokens, attributes);
 }
+

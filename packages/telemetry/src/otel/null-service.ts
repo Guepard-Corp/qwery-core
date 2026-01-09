@@ -6,9 +6,20 @@
  */
 
 import type { Span } from '@opentelemetry/api';
+import { OtelClientService } from './client-service';
 
-export class NullTelemetryService {
+export class OtelNullTelemetryService {
   private sessionId: string = 'null-session';
+  /**
+   * Client service (no-op implementation)
+   */
+  clientService: OtelClientService;
+
+  constructor() {
+    // Initialize clientService without a telemetry manager (it will use no-op behavior)
+    // Passing undefined ensures it doesn't try to use any telemetry methods
+    this.clientService = new OtelClientService(undefined);
+  }
 
   /**
    * Get session ID (returns a dummy value)
@@ -150,18 +161,49 @@ export class NullTelemetryService {
   }
 
   /**
-   * Client service (no-op implementation)
+   * Record message duration (no-op)
    */
-  clientService = {
-    captureEvent: () => {},
-    startSpan: () => this.startSpan(''),
-    endSpan: () => {},
-  };
+  recordMessageDuration(
+    _durationMs: number,
+    _attributes?: Record<string, string | number | boolean>,
+  ): void {
+    // No-op
+  }
+
+  /**
+   * Record agent token usage (no-op)
+   */
+  recordAgentTokenUsage(
+    _promptTokens: number,
+    _completionTokens: number,
+    _attributes?: Record<string, string | number | boolean>,
+  ): void {
+    // No-op
+  }
+
+  /**
+   * Start span with links (returns a no-op span)
+   */
+  startSpanWithLinks(
+    _name: string,
+    _attributes?: Record<string, unknown>,
+    _parentSpanContexts?: Array<{
+      context: import('@opentelemetry/api').SpanContext;
+      attributes?: Record<string, string | number | boolean>;
+    }>,
+  ): Span {
+    return this.startSpan(_name, _attributes);
+  }
 }
 
 /**
  * Create a null telemetry service instance
  */
-export function createNullTelemetryService(): NullTelemetryService {
-  return new NullTelemetryService();
+export function createOtelNullTelemetryService(): OtelNullTelemetryService {
+  return new OtelNullTelemetryService();
 }
+
+// Export aliases for backward compatibility
+export { OtelNullTelemetryService as NullTelemetryService };
+export { createOtelNullTelemetryService as createNullTelemetryService };
+

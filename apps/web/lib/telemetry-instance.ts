@@ -1,5 +1,5 @@
 // apps/web/lib/telemetry-instance.ts
-import { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import { TelemetryManager } from '@qwery/telemetry/otel';
 
 /**
  * Server-side telemetry instance for the web application.

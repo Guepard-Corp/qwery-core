@@ -5,7 +5,7 @@ import {
 } from '@mlc-ai/web-llm';
 import { LanguageModel } from 'ai';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
-import { AGENT_EVENTS } from '@qwery/telemetry/opentelemetry/events/agent.events';
+import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
 
 type ModelProvider = {
   resolveModel: (modelName: string) => LanguageModel;

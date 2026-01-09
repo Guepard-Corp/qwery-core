@@ -12,8 +12,15 @@ import {
   DuckDBQueryEngine,
 } from '../services';
 import { createQueryEngine, AbstractQueryEngine } from '@qwery/domain/ports';
-import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
-import { AGENT_EVENTS } from '@qwery/telemetry/opentelemetry/events/agent.events';
+import type { TelemetryManager } from '@qwery/telemetry/otel';
+import {
+  createNullTelemetryService,
+  createConversationAttributes,
+  createMessageAttributes,
+  endMessageSpanWithEvent,
+  endConversationSpanWithEvent,
+} from '@qwery/telemetry/otel';
+import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
 import { context, trace, type SpanContext } from '@opentelemetry/api';
 
 export interface FactoryAgentOptions {
@@ -33,7 +40,7 @@ export class FactoryAgent {
   private actorRegistry: ActorRegistry; // NEW: Actor registry
   private model: string;
   private queryEngine: AbstractQueryEngine;
-  private readonly telemetry?: TelemetryManager;
+  private readonly telemetry: TelemetryManager;
   // Store parent span contexts for linking actor spans
   private parentSpanContexts:
     | Array<{
@@ -53,7 +60,8 @@ export class FactoryAgent {
     this.repositories = opts.repositories;
     this.actorRegistry = new ActorRegistry(); // NEW
     this.model = opts.model;
-    this.telemetry = opts.telemetry;
+    this.telemetry =
+      (opts.telemetry ?? createNullTelemetryService()) as TelemetryManager;
 
     // Create queryEngine before state machine so it can be passed
     this.queryEngine = createQueryEngine(DuckDBQueryEngine);
@@ -125,23 +133,21 @@ export class FactoryAgent {
       this.factoryActor.getSnapshot().value,
     );
 
-    // Start conversation span if telemetry is available
-    const conversationSpan = this.telemetry?.startSpan('agent.conversation', {
-      'agent.conversation.id': this.conversationSlug,
-      'agent.id': this.id,
-      'agent.conversation.message_count': opts.messages.length,
-    });
+    // Start conversation span
+    const conversationAttrs = createConversationAttributes(
+      this.conversationSlug,
+      this.id,
+      opts.messages.length,
+    );
+    const conversationSpan = this.telemetry.startSpan(
+      'agent.conversation',
+      conversationAttrs as unknown as Record<string, unknown>,
+    );
 
-    if (this.telemetry) {
-      this.telemetry.captureEvent({
-        name: AGENT_EVENTS.CONVERSATION_STARTED,
-        attributes: {
-          'agent.conversation.id': this.conversationSlug,
-          'agent.id': this.id,
-          'agent.conversation.message_count': opts.messages.length,
-        },
-      });
-    }
+    this.telemetry.captureEvent({
+      name: AGENT_EVENTS.CONVERSATION_STARTED,
+      attributes: conversationAttrs as unknown as Record<string, unknown>,
+    });
 
     // Get the current input message to track which request this is for
     const lastMessage = opts.messages[opts.messages.length - 1];
@@ -180,16 +186,20 @@ export class FactoryAgent {
     const currentInputMessage =
       textPart && 'text' in textPart ? (textPart.text as string) : '';
 
-    // Start message span if telemetry is available
-    const messageSpan = this.telemetry?.startSpan('agent.message', {
-      'agent.conversation.id': this.conversationSlug,
-      'agent.message.text': currentInputMessage,
-      'agent.message.index': opts.messages.length - 1,
-      'agent.message.role': 'user',
-    });
+    // Start message span
+    const messageAttrs = createMessageAttributes(
+      this.conversationSlug,
+      currentInputMessage,
+      opts.messages.length - 1,
+      'user',
+    );
+    const messageSpan = this.telemetry.startSpan(
+      'agent.message',
+      messageAttrs as unknown as Record<string, unknown>,
+    );
 
     // Capture parent span contexts for linking actor spans
-    if (this.telemetry && conversationSpan && messageSpan) {
+    if (conversationSpan && messageSpan) {
       this.parentSpanContexts = [
         {
           context: conversationSpan.spanContext(),
@@ -230,16 +240,10 @@ export class FactoryAgent {
       this.parentSpanContexts = undefined;
     }
 
-    if (this.telemetry && messageSpan) {
-      this.telemetry.captureEvent({
-        name: AGENT_EVENTS.MESSAGE_RECEIVED,
-        attributes: {
-          'agent.conversation.id': this.conversationSlug,
-          'agent.message.text': currentInputMessage,
-          'agent.message.index': opts.messages.length - 1,
-        },
-      });
-    }
+    this.telemetry.captureEvent({
+      name: AGENT_EVENTS.MESSAGE_RECEIVED,
+      attributes: messageAttrs as unknown as Record<string, unknown>,
+    });
 
     //console.log("Last user text:", JSON.stringify(opts.messages, null, 2));
 
@@ -248,7 +252,7 @@ export class FactoryAgent {
 
     // Run the promise within the conversation span's context for proper nesting
     const runInContext = async () => {
-      if (this.telemetry && conversationSpan) {
+      if (conversationSpan) {
         // Set conversation span as active so child spans nest properly
         return context.with(
           trace.setSpan(context.active(), conversationSpan),
@@ -314,37 +318,27 @@ export class FactoryAgent {
           subscription.unsubscribe();
 
           // End spans on timeout
-          if (this.telemetry && messageSpan && !messageEnded.current) {
+          if (messageSpan && !messageEnded.current) {
             messageEnded.current = true;
-            const messageDuration = Date.now() - conversationStartTime;
-            this.telemetry.captureEvent({
-              name: AGENT_EVENTS.MESSAGE_ERROR,
-              attributes: {
-                'agent.conversation.id': this.conversationSlug,
-                'error.message': 'Response timeout',
-                'agent.message.duration_ms': String(messageDuration),
-              },
-            });
-            // Record message duration metric
-            this.telemetry.recordMessageDuration(messageDuration, {
-              'agent.conversation.id': this.conversationSlug,
-              'agent.message.status': 'error',
-              'error.message': 'Response timeout',
-            });
-            this.telemetry.endSpan(messageSpan, false);
+            endMessageSpanWithEvent(
+              this.telemetry,
+              messageSpan,
+              this.conversationSlug,
+              conversationStartTime,
+              false,
+              'Response timeout',
+            );
           }
 
-          if (this.telemetry && conversationSpan) {
-            const conversationDuration = Date.now() - conversationStartTime;
-            this.telemetry.captureEvent({
-              name: AGENT_EVENTS.CONVERSATION_ERROR,
-              attributes: {
-                'agent.conversation.id': this.conversationSlug,
-                'error.message': `Response timeout: Last state: ${lastState}, state changes: ${stateChangeCount}`,
-                'agent.conversation.duration_ms': String(conversationDuration),
-              },
-            });
-            this.telemetry.endSpan(conversationSpan, false);
+          if (conversationSpan) {
+            endConversationSpanWithEvent(
+              this.telemetry,
+              conversationSpan,
+              this.conversationSlug,
+              conversationStartTime,
+              false,
+              `Response timeout: Last state: ${lastState}, state changes: ${stateChangeCount}`,
+            );
           }
 
           reject(
@@ -412,33 +406,28 @@ export class FactoryAgent {
             subscription.unsubscribe();
 
             // End message span on error
-            if (this.telemetry && messageSpan && !messageEnded.current) {
+            if (messageSpan && !messageEnded.current) {
               messageEnded.current = true;
-              const messageDuration = Date.now() - conversationStartTime;
-              this.telemetry.captureEvent({
-                name: AGENT_EVENTS.MESSAGE_ERROR,
-                attributes: {
-                  'agent.conversation.id': this.conversationSlug,
-                  'error.message': ctx.error,
-                  'agent.message.duration_ms': String(messageDuration),
-                },
-              });
-              this.telemetry.endSpan(messageSpan, false);
+              endMessageSpanWithEvent(
+                this.telemetry,
+                messageSpan,
+                this.conversationSlug,
+                conversationStartTime,
+                false,
+                ctx.error,
+              );
             }
 
             // End conversation span on error
-            if (this.telemetry && conversationSpan) {
-              const conversationDuration = Date.now() - conversationStartTime;
-              this.telemetry.captureEvent({
-                name: AGENT_EVENTS.CONVERSATION_ERROR,
-                attributes: {
-                  'agent.conversation.id': this.conversationSlug,
-                  'error.message': ctx.error,
-                  'agent.conversation.duration_ms':
-                    String(conversationDuration),
-                },
-              });
-              this.telemetry.endSpan(conversationSpan, false);
+            if (conversationSpan) {
+              endConversationSpanWithEvent(
+                this.telemetry,
+                conversationSpan,
+                this.conversationSlug,
+                conversationStartTime,
+                false,
+                ctx.error,
+              );
             }
 
             reject(new Error(`State machine error: ${ctx.error}`));
@@ -459,39 +448,28 @@ export class FactoryAgent {
             subscription.unsubscribe();
 
             // End message span on error
-            if (this.telemetry && messageSpan && !messageEnded.current) {
+            if (messageSpan && !messageEnded.current) {
               messageEnded.current = true;
-              const messageDuration = Date.now() - conversationStartTime;
-              this.telemetry.captureEvent({
-                name: AGENT_EVENTS.MESSAGE_ERROR,
-                attributes: {
-                  'agent.conversation.id': this.conversationSlug,
-                  'error.message': ctx.error,
-                  'agent.message.duration_ms': String(messageDuration),
-                },
-              });
-              // Record message duration metric
-              this.telemetry.recordMessageDuration(messageDuration, {
-                'agent.conversation.id': this.conversationSlug,
-                'agent.message.status': 'error',
-                'error.message': ctx.error,
-              });
-              this.telemetry.endSpan(messageSpan, false);
+              endMessageSpanWithEvent(
+                this.telemetry,
+                messageSpan,
+                this.conversationSlug,
+                conversationStartTime,
+                false,
+                ctx.error,
+              );
             }
 
             // End conversation span on error
-            if (this.telemetry && conversationSpan) {
-              const conversationDuration = Date.now() - conversationStartTime;
-              this.telemetry.captureEvent({
-                name: AGENT_EVENTS.CONVERSATION_ERROR,
-                attributes: {
-                  'agent.conversation.id': this.conversationSlug,
-                  'error.message': ctx.error,
-                  'agent.conversation.duration_ms':
-                    String(conversationDuration),
-                },
-              });
-              this.telemetry.endSpan(conversationSpan, false);
+            if (conversationSpan) {
+              endConversationSpanWithEvent(
+                this.telemetry,
+                conversationSpan,
+                this.conversationSlug,
+                conversationStartTime,
+                false,
+                ctx.error,
+              );
             }
 
             reject(new Error(`State machine error: ${ctx.error}`));
@@ -526,22 +504,15 @@ export class FactoryAgent {
               clearTimeout(timeout);
 
               // End message span on success
-              if (this.telemetry && messageSpan && !messageEnded.current) {
+              if (messageSpan && !messageEnded.current) {
                 messageEnded.current = true;
-                const messageDuration = Date.now() - conversationStartTime;
-                this.telemetry.captureEvent({
-                  name: AGENT_EVENTS.MESSAGE_PROCESSED,
-                  attributes: {
-                    'agent.conversation.id': this.conversationSlug,
-                    'agent.message.duration_ms': String(messageDuration),
-                  },
-                });
-                // Record message duration metric
-                this.telemetry.recordMessageDuration(messageDuration, {
-                  'agent.conversation.id': this.conversationSlug,
-                  'agent.message.status': 'success',
-                });
-                this.telemetry.endSpan(messageSpan, true);
+                endMessageSpanWithEvent(
+                  this.telemetry,
+                  messageSpan,
+                  this.conversationSlug,
+                  conversationStartTime,
+                  true,
+                );
               }
 
               try {
@@ -606,30 +577,25 @@ export class FactoryAgent {
                     }
 
                     // End conversation span when stream finishes
-                    if (this.telemetry && conversationSpan) {
-                      const conversationDuration =
-                        Date.now() - conversationStartTime;
-                      this.telemetry.captureEvent({
-                        name: AGENT_EVENTS.CONVERSATION_COMPLETED,
-                        attributes: {
-                          'agent.conversation.id': this.conversationSlug,
-                          'agent.conversation.duration_ms':
-                            String(conversationDuration),
-                          'agent.conversation.status': 'success',
-                        },
-                      });
+                    if (conversationSpan) {
                       // Record message duration metric if message span hasn't been ended yet
                       if (messageSpan && !messageEnded.current) {
-                        const messageDuration =
-                          Date.now() - conversationStartTime;
-                        this.telemetry.recordMessageDuration(messageDuration, {
-                          'agent.conversation.id': this.conversationSlug,
-                          'agent.message.status': 'success',
-                        });
                         messageEnded.current = true;
-                        this.telemetry.endSpan(messageSpan, true);
+                        endMessageSpanWithEvent(
+                          this.telemetry,
+                          messageSpan,
+                          this.conversationSlug,
+                          conversationStartTime,
+                          true,
+                        );
                       }
-                      this.telemetry.endSpan(conversationSpan, true);
+                      endConversationSpanWithEvent(
+                        this.telemetry,
+                        conversationSpan,
+                        this.conversationSlug,
+                        conversationStartTime,
+                        true,
+                      );
                     }
                   },
                 });
@@ -639,42 +605,27 @@ export class FactoryAgent {
                 subscription.unsubscribe();
 
                 // End spans on error
-                if (this.telemetry && messageSpan && !messageEnded.current) {
+                if (messageSpan && !messageEnded.current) {
                   messageEnded.current = true;
-                  const messageDuration = Date.now() - conversationStartTime;
-                  this.telemetry.captureEvent({
-                    name: AGENT_EVENTS.MESSAGE_ERROR,
-                    attributes: {
-                      'agent.conversation.id': this.conversationSlug,
-                      'error.message':
-                        err instanceof Error ? err.message : String(err),
-                      'agent.message.duration_ms': String(messageDuration),
-                    },
-                  });
-                  // Record message duration metric
-                  this.telemetry.recordMessageDuration(messageDuration, {
-                    'agent.conversation.id': this.conversationSlug,
-                    'agent.message.status': 'error',
-                    'error.message':
-                      err instanceof Error ? err.message : String(err),
-                  });
-                  this.telemetry.endSpan(messageSpan, false);
+                  endMessageSpanWithEvent(
+                    this.telemetry,
+                    messageSpan,
+                    this.conversationSlug,
+                    conversationStartTime,
+                    false,
+                    err instanceof Error ? err.message : String(err),
+                  );
                 }
 
-                if (this.telemetry && conversationSpan) {
-                  const conversationDuration =
-                    Date.now() - conversationStartTime;
-                  this.telemetry.captureEvent({
-                    name: AGENT_EVENTS.CONVERSATION_ERROR,
-                    attributes: {
-                      'agent.conversation.id': this.conversationSlug,
-                      'error.message':
-                        err instanceof Error ? err.message : String(err),
-                      'agent.conversation.duration_ms':
-                        String(conversationDuration),
-                    },
-                  });
-                  this.telemetry.endSpan(conversationSpan, false);
+                if (conversationSpan) {
+                  endConversationSpanWithEvent(
+                    this.telemetry,
+                    conversationSpan,
+                    this.conversationSlug,
+                    conversationStartTime,
+                    false,
+                    err instanceof Error ? err.message : String(err),
+                  );
                 }
 
                 reject(err);

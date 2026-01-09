@@ -1,5 +1,5 @@
 /**
- * Telemetry Context for React Applications
+ * OpenTelemetry Context for React Applications
  *
  * Provides React context wrapper for web/desktop apps.
  * Automatically injects workspace/session attributes into events and spans.
@@ -14,34 +14,34 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import type { TelemetryManager } from './telemetry-manager';
-import type { WorkspaceContext } from './telemetry-utils';
+import type { OtelTelemetryManager } from './manager';
+import type { WorkspaceContext } from './utils';
 
-export interface TelemetryContextValue {
-  telemetry: TelemetryManager;
+export interface OtelTelemetryContextValue {
+  telemetry: OtelTelemetryManager;
   workspace?: WorkspaceContext;
   setWorkspace: (workspace: WorkspaceContext | undefined) => void;
 }
 
-const TelemetryContext = createContext<TelemetryContextValue | null>(null);
+const OtelTelemetryContext = createContext<OtelTelemetryContextValue | null>(null);
 
-export interface TelemetryProviderProps {
+export interface OtelTelemetryProviderProps {
   children: ReactNode;
-  telemetry: TelemetryManager;
+  telemetry: OtelTelemetryManager;
   initialWorkspace?: WorkspaceContext;
 }
 
 /**
- * Telemetry Provider Component
+ * OpenTelemetry Provider Component
  *
  * Wraps the application and provides telemetry context to all children.
  * Automatically enriches events and spans with workspace context.
  */
-export function TelemetryProvider({
+export function OtelTelemetryProvider({
   children,
   telemetry,
   initialWorkspace,
-}: TelemetryProviderProps) {
+}: OtelTelemetryProviderProps) {
   const [workspace, setWorkspaceState] = useState<WorkspaceContext | undefined>(
     initialWorkspace,
   );
@@ -60,19 +60,19 @@ export function TelemetryProvider({
   );
 
   return (
-    <TelemetryContext.Provider value={value}>
+    <OtelTelemetryContext.Provider value={value}>
       {children}
-    </TelemetryContext.Provider>
+    </OtelTelemetryContext.Provider>
   );
 }
 
 /**
- * Hook to access telemetry context
+ * Hook to access OpenTelemetry context
  *
  * @example
  * ```tsx
  * function MyComponent() {
- *   const { telemetry, workspace } = useTelemetry();
+ *   const { telemetry, workspace } = useOtelTelemetry();
  *
  *   const handleClick = () => {
  *     telemetry.captureEvent({
@@ -85,27 +85,35 @@ export function TelemetryProvider({
  * }
  * ```
  */
-export function useTelemetry(): TelemetryContextValue {
-  const context = useContext(TelemetryContext);
+export function useOtelTelemetry(): OtelTelemetryContextValue {
+  const context = useContext(OtelTelemetryContext);
   if (!context) {
-    throw new Error('useTelemetry must be used within a TelemetryProvider');
+    throw new Error('useOtelTelemetry must be used within an OtelTelemetryProvider');
   }
   return context;
 }
 
 /**
- * Higher-Order Component to inject telemetry context
+ * Higher-Order Component to inject OpenTelemetry context
  *
  * @example
  * ```tsx
- * const MyComponentWithTelemetry = withTelemetryContext(MyComponent);
+ * const MyComponentWithTelemetry = withOtelTelemetryContext(MyComponent);
  * ```
  */
-export function withTelemetryContext<P extends object>(
+export function withOtelTelemetryContext<P extends object>(
   Component: React.ComponentType<P>,
 ): React.ComponentType<P> {
   return function TelemetryWrappedComponent(props: P) {
-    const telemetry = useTelemetry();
+    const telemetry = useOtelTelemetry();
     return <Component {...props} telemetry={telemetry} />;
   };
 }
+
+// Export aliases for backward compatibility
+export { OtelTelemetryProvider as TelemetryProvider };
+export { useOtelTelemetry as useTelemetry };
+export { withOtelTelemetryContext as withTelemetryContext };
+export type { OtelTelemetryContextValue as TelemetryContextValue };
+export type { OtelTelemetryProviderProps as TelemetryProviderProps };
+

@@ -1,4 +1,4 @@
-// packages/telemetry/src/opentelemetry/filtering-span-exporter.ts
+// packages/telemetry/src/otel/filtering-exporter.ts
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 
 /**
@@ -100,3 +100,4 @@ export class FilteringSpanExporter implements SpanExporter {
     return this.exporter.shutdown();
   }
 }
+

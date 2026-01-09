@@ -1,6 +1,6 @@
-// packages/telemetry/src/opentelemetry/client.telemetry.service.ts
+// packages/telemetry/src/otel/client-service.ts
 
-import type { TelemetryManager } from './telemetry-manager';
+import type { OtelTelemetryManager } from './manager';
 import type { Span } from '@opentelemetry/api';
 
 export type TelemetryEvent = {
@@ -11,21 +11,21 @@ export type TelemetryEvent = {
 };
 
 /**
- * Client Telemetry Service
+ * OpenTelemetry Client Telemetry Service
  *
  * Provides simple APIs for CLI, web, and desktop applications.
- * Integrates with TelemetryManager for underlying OpenTelemetry logic.
+ * Integrates with OtelTelemetryManager for underlying OpenTelemetry logic.
  * Handles workspace context enrichment automatically.
  */
-export class ClientTelemetryService {
-  private telemetry: TelemetryManager | null = null;
+export class OtelClientService {
+  private telemetry: OtelTelemetryManager | null = null;
   private queue: TelemetryEvent[] = [];
   private maxQueueSize = 50; // batch before sending
   private flushInterval = 5000; // flush every 5s
   private flushing = false;
   private flushTimer?: NodeJS.Timeout;
 
-  constructor(telemetry?: TelemetryManager) {
+  constructor(telemetry?: OtelTelemetryManager) {
     if (telemetry) {
       this.telemetry = telemetry;
     }
@@ -36,7 +36,7 @@ export class ClientTelemetryService {
   /**
    * Set the underlying telemetry manager
    */
-  setTelemetryManager(telemetry: TelemetryManager): void {
+  setTelemetryManager(telemetry: OtelTelemetryManager): void {
     this.telemetry = telemetry;
   }
 
@@ -225,3 +225,4 @@ export class ClientTelemetryService {
     }
   }
 }
+

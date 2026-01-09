@@ -7,7 +7,7 @@
 
 import type { Command } from 'commander';
 import type { CliContainer } from '../container/cli-container';
-import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import type { TelemetryManager } from '@qwery/telemetry/otel';
 import { withCommandSpan, CLI_EVENTS } from '../utils/telemetry-utils';
 import { printOutput, resolveFormat } from '../utils/output';
 

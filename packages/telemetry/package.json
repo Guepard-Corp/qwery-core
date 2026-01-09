@@ -11,13 +11,21 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./opentelemetry": "./src/opentelemetry/index.ts",
-    "./opentelemetry/telemetry-manager": "./src/opentelemetry/telemetry-manager.ts",
-    "./opentelemetry/telemetry-utils": "./src/opentelemetry/telemetry-utils.ts",
-    "./opentelemetry/events/agent.events": "./src/opentelemetry/events/agent.events.ts",
-    "./opentelemetry/events/cli.events": "./src/opentelemetry/events/cli.events.ts",
-    "./opentelemetry/events/web.events": "./src/opentelemetry/events/web.events.ts",
-    "./opentelemetry/events/desktop.events": "./src/opentelemetry/events/desktop.events.ts"
+    "./otel": "./src/otel/index.ts",
+    "./otel/manager": "./src/otel/manager.ts",
+    "./otel/utils": "./src/otel/utils.ts",
+    "./otel/agent-helpers": "./src/otel/agent-helpers.ts",
+    "./events/agent.events": "./src/events/agent.events.ts",
+    "./events/cli.events": "./src/events/cli.events.ts",
+    "./events/web.events": "./src/events/web.events.ts",
+    "./events/desktop.events": "./src/events/desktop.events.ts",
+    "./opentelemetry": "./src/otel/index.ts",
+    "./opentelemetry/telemetry-manager": "./src/otel/manager.ts",
+    "./opentelemetry/telemetry-utils": "./src/otel/utils.ts",
+    "./opentelemetry/events/agent.events": "./src/events/agent.events.ts",
+    "./opentelemetry/events/cli.events": "./src/events/cli.events.ts",
+    "./opentelemetry/events/web.events": "./src/events/web.events.ts",
+    "./opentelemetry/events/desktop.events": "./src/events/desktop.events.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.2",

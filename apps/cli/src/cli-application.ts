@@ -8,7 +8,7 @@ import { registerProjectCommands } from './commands/project';
 import { registerWorkspaceCommands } from './commands/workspace';
 import { CliContainer } from './container/cli-container';
 import { InteractiveRepl } from './services/interactive-repl';
-import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import type { TelemetryManager } from '@qwery/telemetry/otel';
 
 export class CliApplication {
   private readonly program: Command;

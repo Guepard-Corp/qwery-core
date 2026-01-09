@@ -13,8 +13,13 @@ import { Repositories } from '@qwery/domain/repositories';
 import { createCachedActor } from './utils/actor-cache';
 import { AbstractQueryEngine } from '@qwery/domain/ports';
 import type { PromptSource } from '../domain';
-import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
-import { AGENT_EVENTS } from '@qwery/telemetry/opentelemetry/events/agent.events';
+import type { TelemetryManager } from '@qwery/telemetry/otel';
+import {
+  withActorTelemetry,
+  createActorAttributes,
+  endActorSpanWithEvent,
+} from '@qwery/telemetry/otel';
+import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
 import {
   context as otelContext,
   trace,
@@ -27,7 +32,7 @@ export const createStateMachine = (
   model: string,
   repositories: Repositories,
   queryEngine: AbstractQueryEngine,
-  telemetry?: TelemetryManager,
+  telemetry: TelemetryManager,
   getParentSpanContexts?: () =>
     | Array<{
         context: SpanContext;
@@ -115,27 +120,20 @@ export const createStateMachine = (
         model: string;
       };
     }): Promise<AgentContext['intent']> => {
-      if (!telemetry) {
-        const result = await detectIntent(input.inputMessage, input.model);
-        return result.object;
-      }
-
       const startTime = Date.now();
       const { provider, modelName, fullModel } = parseModel(input.model);
-      // Use startSpan for proper parent-child nesting
-      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-      // If context is preserved (message span is active), spans will nest properly
-      const span = telemetry.startSpan('agent.actor.detectIntent', {
-        'agent.actor.id': 'detectIntent',
-        'agent.actor.type': 'detectIntent',
-        'agent.actor.input': JSON.stringify({
-          inputMessage: input.inputMessage,
-        }),
-        'agent.conversation.id': conversationId,
-        'agent.llm.model': fullModel,
-        'agent.llm.model.name': modelName,
-        'agent.llm.provider.id': provider,
-      });
+
+      // Create span with actor attributes
+      const span = telemetry.startSpan(
+        'agent.actor.detectIntent',
+        createActorAttributes(
+          'detectIntent',
+          'detectIntent',
+          conversationId,
+          input.model,
+          { inputMessage: input.inputMessage },
+        ),
+      );
 
       telemetry.captureEvent({
         name: AGENT_EVENTS.ACTOR_INVOKED,
@@ -152,7 +150,6 @@ export const createStateMachine = (
         async () => {
           try {
             const result = await detectIntent(input.inputMessage, input.model);
-            const duration = Date.now() - startTime;
 
             // Record token usage if available
             // Usage might be a promise or synchronous depending on provider
@@ -198,39 +195,35 @@ export const createStateMachine = (
               }
             }
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_COMPLETED,
-              attributes: {
-                'agent.actor.id': 'detectIntent',
-                'agent.actor.type': 'detectIntent',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'success',
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'detectIntent',
+              'detectIntent',
+              conversationId,
+              startTime,
+              true,
+            );
 
-            telemetry.endSpan(span, true);
             return result.object;
           } catch (error) {
-            const duration = Date.now() - startTime;
             const errorMessage =
               error instanceof Error ? error.message : String(error);
+            const errorType =
+              error instanceof Error ? error.name : 'UnknownError';
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_FAILED,
-              attributes: {
-                'agent.actor.id': 'detectIntent',
-                'agent.actor.type': 'detectIntent',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'error',
-                'error.type':
-                  error instanceof Error ? error.name : 'UnknownError',
-                'error.message': errorMessage,
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'detectIntent',
+              'detectIntent',
+              conversationId,
+              startTime,
+              false,
+              errorMessage,
+              errorType,
+            );
 
-            telemetry.endSpan(span, false);
             throw error;
           }
         },
@@ -249,23 +242,19 @@ export const createStateMachine = (
         model: string;
       };
     }) => {
-      if (!telemetry) {
-        return summarizeIntent(input.inputMessage, input.intent);
-      }
-
       const startTime = Date.now();
       const { provider, modelName, fullModel } = parseModel(input.model);
-      // Use startSpan for proper parent-child nesting
-      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-      // If context is preserved (message span is active), spans will nest properly
-      const span = telemetry.startSpan('agent.actor.summarizeIntent', {
-        'agent.actor.id': 'summarizeIntent',
-        'agent.actor.type': 'summarizeIntent',
-        'agent.conversation.id': conversationId,
-        'agent.llm.model': fullModel,
-        'agent.llm.model.name': modelName,
-        'agent.llm.provider.id': provider,
-      });
+
+      // Create span with actor attributes
+      const span = telemetry.startSpan(
+        'agent.actor.summarizeIntent',
+        createActorAttributes(
+          'summarizeIntent',
+          'summarizeIntent',
+          conversationId,
+          input.model,
+        ),
+      );
 
       telemetry.captureEvent({
         name: AGENT_EVENTS.ACTOR_INVOKED,
@@ -285,14 +274,13 @@ export const createStateMachine = (
               input.inputMessage,
               input.intent,
             );
-            const duration = Date.now() - startTime;
 
             // Capture token usage from streamText result (usage is a promise)
             // For Azure/Ollama providers, usage will be available when stream completes
             if (result.usage) {
               try {
                 const usage = await result.usage;
-                if (usage && telemetry) {
+                if (usage) {
                   // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
                   const { promptTokens, completionTokens, totalTokens } =
                     extractTokenUsage(usage);
@@ -323,39 +311,35 @@ export const createStateMachine = (
               }
             }
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_COMPLETED,
-              attributes: {
-                'agent.actor.id': 'summarizeIntent',
-                'agent.actor.type': 'summarizeIntent',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'success',
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'summarizeIntent',
+              'summarizeIntent',
+              conversationId,
+              startTime,
+              true,
+            );
 
-            telemetry.endSpan(span, true);
             return result;
           } catch (error) {
-            const duration = Date.now() - startTime;
             const errorMessage =
               error instanceof Error ? error.message : String(error);
+            const errorType =
+              error instanceof Error ? error.name : 'UnknownError';
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_FAILED,
-              attributes: {
-                'agent.actor.id': 'summarizeIntent',
-                'agent.actor.type': 'summarizeIntent',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'error',
-                'error.type':
-                  error instanceof Error ? error.name : 'UnknownError',
-                'error.message': errorMessage,
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'summarizeIntent',
+              'summarizeIntent',
+              conversationId,
+              startTime,
+              false,
+              errorMessage,
+              errorType,
+            );
 
-            telemetry.endSpan(span, false);
             throw error;
           }
         },
@@ -372,23 +356,19 @@ export const createStateMachine = (
         model: string;
       };
     }) => {
-      if (!telemetry) {
-        return greeting(input.inputMessage, input.model);
-      }
-
       const startTime = Date.now();
       const { provider, modelName, fullModel } = parseModel(input.model);
-      // Use startSpan for proper parent-child nesting
-      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-      // If context is preserved (message span is active), spans will nest properly
-      const span = telemetry.startSpan('agent.actor.greeting', {
-        'agent.actor.id': 'greeting',
-        'agent.actor.type': 'greeting',
-        'agent.conversation.id': conversationId,
-        'agent.llm.model': fullModel,
-        'agent.llm.model.name': modelName,
-        'agent.llm.provider.id': provider,
-      });
+
+      // Create span with actor attributes
+      const span = telemetry.startSpan(
+        'agent.actor.greeting',
+        createActorAttributes(
+          'greeting',
+          'greeting',
+          conversationId,
+          input.model,
+        ),
+      );
 
       telemetry.captureEvent({
         name: AGENT_EVENTS.ACTOR_INVOKED,
@@ -405,14 +385,13 @@ export const createStateMachine = (
         async () => {
           try {
             const result = await greeting(input.inputMessage, input.model);
-            const duration = Date.now() - startTime;
 
             // Capture token usage from streamText result (usage is a promise)
             // For Azure/Ollama providers, usage will be available when stream completes
             if (result.usage) {
               try {
                 const usage = await result.usage;
-                if (usage && telemetry) {
+                if (usage) {
                   // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
                   const { promptTokens, completionTokens, totalTokens } =
                     extractTokenUsage(usage);
@@ -443,39 +422,35 @@ export const createStateMachine = (
               }
             }
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_COMPLETED,
-              attributes: {
-                'agent.actor.id': 'greeting',
-                'agent.actor.type': 'greeting',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'success',
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'greeting',
+              'greeting',
+              conversationId,
+              startTime,
+              true,
+            );
 
-            telemetry.endSpan(span, true);
             return result;
           } catch (error) {
-            const duration = Date.now() - startTime;
             const errorMessage =
               error instanceof Error ? error.message : String(error);
+            const errorType =
+              error instanceof Error ? error.name : 'UnknownError';
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_FAILED,
-              attributes: {
-                'agent.actor.id': 'greeting',
-                'agent.actor.type': 'greeting',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'error',
-                'error.type':
-                  error instanceof Error ? error.name : 'UnknownError',
-                'error.message': errorMessage,
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'greeting',
+              'greeting',
+              conversationId,
+              startTime,
+              false,
+              errorMessage,
+              errorType,
+            );
 
-            telemetry.endSpan(span, false);
             throw error;
           }
         },
@@ -496,29 +471,19 @@ export const createStateMachine = (
         queryEngine: AbstractQueryEngine;
       };
     }) => {
-      if (!telemetry) {
-        return readDataAgent(
-          input.conversationId,
-          input.previousMessages,
-          input.model,
-          input.queryEngine,
-          input.repositories,
-        );
-      }
-
       const startTime = Date.now();
       const { provider, modelName, fullModel } = parseModel(input.model);
-      // Use startSpan for proper parent-child nesting
-      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-      // If context is preserved (message span is active), spans will nest properly
-      const span = telemetry.startSpan('agent.actor.readData', {
-        'agent.actor.id': 'readData',
-        'agent.actor.type': 'readData',
-        'agent.conversation.id': conversationId,
-        'agent.llm.model': fullModel,
-        'agent.llm.model.name': modelName,
-        'agent.llm.provider.id': provider,
-      });
+
+      // Create span with actor attributes
+      const span = telemetry.startSpan(
+        'agent.actor.readData',
+        createActorAttributes(
+          'readData',
+          'readData',
+          conversationId,
+          input.model,
+        ),
+      );
 
       telemetry.captureEvent({
         name: AGENT_EVENTS.ACTOR_INVOKED,
@@ -541,13 +506,12 @@ export const createStateMachine = (
               input.queryEngine,
               input.repositories,
             );
-            const duration = Date.now() - startTime;
 
             // Capture token usage from Experimental_Agent stream result (usage is a promise)
             if (result.usage) {
               try {
                 const usage = await result.usage;
-                if (usage && telemetry) {
+                if (usage) {
                   // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
                   const { promptTokens, completionTokens, totalTokens } =
                     extractTokenUsage(usage);
@@ -578,39 +542,35 @@ export const createStateMachine = (
               }
             }
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_COMPLETED,
-              attributes: {
-                'agent.actor.id': 'readData',
-                'agent.actor.type': 'readData',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'success',
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'readData',
+              'readData',
+              conversationId,
+              startTime,
+              true,
+            );
 
-            telemetry.endSpan(span, true);
             return result;
           } catch (error) {
-            const duration = Date.now() - startTime;
             const errorMessage =
               error instanceof Error ? error.message : String(error);
+            const errorType =
+              error instanceof Error ? error.name : 'UnknownError';
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_FAILED,
-              attributes: {
-                'agent.actor.id': 'readData',
-                'agent.actor.type': 'readData',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'error',
-                'error.type':
-                  error instanceof Error ? error.name : 'UnknownError',
-                'error.message': errorMessage,
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'readData',
+              'readData',
+              conversationId,
+              startTime,
+              false,
+              errorMessage,
+              errorType,
+            );
 
-            telemetry.endSpan(span, false);
             throw error;
           }
         },
@@ -627,24 +587,18 @@ export const createStateMachine = (
         conversationId: string;
       };
     }) => {
-      if (!telemetry) {
-        const result = await loadContext(
-          input.repositories,
-          input.conversationId,
-        );
-        return MessagePersistenceService.convertToUIMessages(result);
-      }
-
       const startTime = Date.now();
-      // Use startSpan for proper parent-child nesting
-      // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-      // If context is preserved (message span is active), spans will nest properly
-      // Note: loadContext may run before conversation/message spans, so it might not nest
-      const span = telemetry.startSpan('agent.actor.loadContext', {
-        'agent.actor.id': 'loadContext',
-        'agent.actor.type': 'loadContext',
-        'agent.conversation.id': conversationId,
-      });
+
+      // Create span with actor attributes (no model for loadContext)
+      const span = telemetry.startSpan(
+        'agent.actor.loadContext',
+        createActorAttributes(
+          'loadContext',
+          'loadContext',
+          conversationId,
+          undefined, // No model for loadContext
+        ),
+      );
 
       // Store span reference so we can add links later when conversation/message spans are created
       if (storeLoadContextSpan) {
@@ -671,42 +625,41 @@ export const createStateMachine = (
             );
             const messages =
               MessagePersistenceService.convertToUIMessages(result);
-            const duration = Date.now() - startTime;
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_COMPLETED,
-              attributes: {
-                'agent.actor.id': 'loadContext',
-                'agent.actor.type': 'loadContext',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'success',
-                'agent.context.message_count': messages.length,
-                'agent.conversation.id': conversationId,
-              },
+            // Add message count to span attributes
+            span.setAttributes({
+              'agent.context.message_count': messages.length,
             });
 
-            telemetry.endSpan(span, true);
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'loadContext',
+              'loadContext',
+              conversationId,
+              startTime,
+              true,
+            );
+
             return messages;
           } catch (error) {
-            const duration = Date.now() - startTime;
             const errorMessage =
               error instanceof Error ? error.message : String(error);
+            const errorType =
+              error instanceof Error ? error.name : 'UnknownError';
 
-            telemetry.captureEvent({
-              name: AGENT_EVENTS.ACTOR_FAILED,
-              attributes: {
-                'agent.actor.id': 'loadContext',
-                'agent.actor.type': 'loadContext',
-                'agent.actor.duration_ms': String(duration),
-                'agent.actor.status': 'error',
-                'error.type':
-                  error instanceof Error ? error.name : 'UnknownError',
-                'error.message': errorMessage,
-                'agent.conversation.id': conversationId,
-              },
-            });
+            endActorSpanWithEvent(
+              telemetry,
+              span,
+              'loadContext',
+              'loadContext',
+              conversationId,
+              startTime,
+              false,
+              errorMessage,
+              errorType,
+            );
 
-            telemetry.endSpan(span, false);
             throw error;
           }
         },
@@ -1094,11 +1047,11 @@ export const createStateMachine = (
                           },
                         );
                         return {
-                          inputMessage: context.inputMessage,
+                        inputMessage: context.inputMessage,
                           conversationId: context.conversationSlug, // Use slug for conversation lookups
-                          previousMessages: context.previousMessages,
-                          model: context.model,
-                          repositories: repositories,
+                        previousMessages: context.previousMessages,
+                        model: context.model,
+                        repositories: repositories,
                           queryEngine: queryEngine,
                           promptSource: context.promptSource,
                           intent: context.intent,

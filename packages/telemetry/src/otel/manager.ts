@@ -1,9 +1,4 @@
-// packages/telemetry/src/opentelemetry/telemetry-manager.ts
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
-import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
-import { credentials } from '@grpc/grpc-js';
+// packages/telemetry/src/otel/manager.ts
 import {
   ConsoleSpanExporter,
   type SpanExporter,
@@ -23,36 +18,104 @@ import {
   type Counter,
   type Histogram,
 } from '@opentelemetry/api';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { ClientTelemetryService } from './client.telemetry.service';
-import { FilteringSpanExporter } from './filtering-span-exporter';
+import { OtelClientService } from './client-service';
+import { FilteringSpanExporter } from './filtering-exporter';
 
-// Enable OpenTelemetry internal logging (optional)
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+// Lazy load Node.js-only OpenTelemetry packages to avoid bundling in browser
+// These are only loaded when actually needed in Node.js environments
+let nodeSdkModule: typeof import('@opentelemetry/sdk-node') | null = null;
+let otlpTraceExporterModule: typeof import('@opentelemetry/exporter-trace-otlp-grpc') | null = null;
+let otlpMetricExporterModule: typeof import('@opentelemetry/exporter-metrics-otlp-grpc') | null = null;
+let sdkMetricsModule: typeof import('@opentelemetry/sdk-metrics') | null = null;
+let grpcModule: typeof import('@grpc/grpc-js') | null = null;
+let resourcesModule: typeof import('@opentelemetry/resources') | null = null;
+let semanticConventionsModule: typeof import('@opentelemetry/semantic-conventions') | null = null;
+
+// Check if we're in Node.js environment
+const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+async function loadNodeModules() {
+  if (!isNode) {
+    throw new Error('OpenTelemetry Node.js modules are only available in Node.js environment');
+  }
+
+  if (!nodeSdkModule) {
+    nodeSdkModule = await import('@opentelemetry/sdk-node');
+  }
+  if (!otlpTraceExporterModule) {
+    otlpTraceExporterModule = await import('@opentelemetry/exporter-trace-otlp-grpc');
+  }
+  if (!otlpMetricExporterModule) {
+    otlpMetricExporterModule = await import('@opentelemetry/exporter-metrics-otlp-grpc');
+  }
+  if (!sdkMetricsModule) {
+    sdkMetricsModule = await import('@opentelemetry/sdk-metrics');
+  }
+  if (!grpcModule) {
+    grpcModule = await import('@grpc/grpc-js');
+  }
+  if (!resourcesModule) {
+    resourcesModule = await import('@opentelemetry/resources');
+  }
+  if (!semanticConventionsModule) {
+    semanticConventionsModule = await import('@opentelemetry/semantic-conventions');
+  }
+
+  return {
+    NodeSDK: nodeSdkModule.NodeSDK,
+    OTLPTraceExporter: otlpTraceExporterModule.OTLPTraceExporter,
+    OTLPMetricExporter: otlpMetricExporterModule.OTLPMetricExporter,
+    PeriodicExportingMetricReader: sdkMetricsModule.PeriodicExportingMetricReader,
+    credentials: grpcModule.credentials,
+    resourceFromAttributes: resourcesModule.resourceFromAttributes,
+    ATTR_SERVICE_NAME: semanticConventionsModule.ATTR_SERVICE_NAME,
+  };
+}
+
+// Enable OpenTelemetry internal logging (optional) - only in Node.js
+if (isNode) {
+  diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+}
 
 /**
  * Wraps an OTLP exporter to gracefully handle errors (e.g., when Jaeger is not running)
  * Falls back to console logging on error instead of crashing
  */
 class SafeOTLPExporter implements SpanExporter {
-  private otlpExporter: OTLPTraceExporter;
+  private otlpExporter: InstanceType<typeof import('@opentelemetry/exporter-trace-otlp-grpc').OTLPTraceExporter> | null = null;
   private consoleExporter: ConsoleSpanExporter;
   private errorCount = 0;
   private readonly ERROR_THRESHOLD = 3; // Fall back after 3 consecutive errors
+  private baseEndpoint: string;
+  private initPromise: Promise<void> | null = null;
 
   constructor(baseEndpoint: string) {
-    // For gRPC, remove http:// or https:// prefix if present
-    // gRPC expects format: host:port (e.g., "10.103.227.71:4317")
-    // Use plain text (non-TLS) connection
-    const grpcUrl = baseEndpoint.replace(/^https?:\/\//, '');
-    // Ensure we're using plain gRPC (not grpcs:// which would use TLS)
-    const plainGrpcUrl = grpcUrl.replace(/^grpcs?:\/\//, '');
-    this.otlpExporter = new OTLPTraceExporter({
-      url: plainGrpcUrl,
-      credentials: credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
-    });
+    this.baseEndpoint = baseEndpoint;
     this.consoleExporter = new ConsoleSpanExporter();
+    // Lazy initialize OTLP exporter
+    this.initPromise = this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    if (!isNode) {
+      return;
+    }
+    try {
+      const modules = await loadNodeModules();
+      // For gRPC, remove http:// or https:// prefix if present
+      // gRPC expects format: host:port (e.g., "10.103.227.71:4317")
+      // Use plain text (non-TLS) connection
+      const grpcUrl = this.baseEndpoint.replace(/^https?:\/\//, '');
+      // Ensure we're using plain gRPC (not grpcs:// which would use TLS)
+      const plainGrpcUrl = grpcUrl.replace(/^grpcs?:\/\//, '');
+      this.otlpExporter = new modules.OTLPTraceExporter({
+        url: plainGrpcUrl,
+        credentials: modules.credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
+      });
+    } catch (error) {
+      // If initialization fails, we'll just use console exporter
+      console.warn('[Telemetry] Failed to initialize OTLP exporter:', error);
+    }
   }
 
   private firstSuccess = false;
@@ -61,7 +124,30 @@ class SafeOTLPExporter implements SpanExporter {
     spans: ReadableSpan[],
     resultCallback: (result: { code: number; error?: Error }) => void,
   ): void {
+    // Ensure OTLP exporter is initialized
+    if (this.initPromise) {
+      this.initPromise.then(() => {
+        this.exportInternal(spans, resultCallback);
+      }).catch(() => {
+        // If initialization failed, use console exporter
+        this.consoleExporter.export(spans, resultCallback);
+      });
+      return;
+    }
+    this.exportInternal(spans, resultCallback);
+  }
+
+  private exportInternal(
+    spans: ReadableSpan[],
+    resultCallback: (result: { code: number; error?: Error }) => void,
+  ): void {
     // Try OTLP export first, with error handling
+    if (!this.otlpExporter) {
+      // Fallback to console if OTLP not available
+      this.consoleExporter.export(spans, resultCallback);
+      return;
+    }
+
     try {
       this.otlpExporter.export(spans, (result) => {
         // Only treat as failure if there's an actual error object
@@ -131,16 +217,16 @@ class SafeOTLPExporter implements SpanExporter {
 
   shutdown(): Promise<void> {
     return Promise.all([
-      this.otlpExporter.shutdown().catch(() => {}),
+      this.otlpExporter?.shutdown().catch(() => {}) || Promise.resolve(),
       this.consoleExporter.shutdown().catch(() => {}),
     ]).then(() => {});
   }
 }
 
 /**
- * Configuration options for TelemetryManager
+ * Configuration options for OtelTelemetryManager
  */
-export interface TelemetryManagerOptions {
+export interface OtelTelemetryManagerOptions {
   /**
    * Whether to export app-specific telemetry (cli, web, desktop spans)
    * General spans (agents, actors, LLM) are always exported regardless of this setting.
@@ -148,14 +234,28 @@ export interface TelemetryManagerOptions {
    * Can be overridden by QWERY_EXPORT_APP_TELEMETRY environment variable
    */
   exportAppTelemetry?: boolean;
+  /**
+   * Whether to export metrics to OTLP collector.
+   * Set to false if your collector doesn't support metrics service.
+   * Default: true (for backward compatibility)
+   * Can be overridden by QWERY_EXPORT_METRICS environment variable
+   */
+  exportMetrics?: boolean;
 }
 
-export class TelemetryManager {
-  private sdk: NodeSDK;
-  public clientService: ClientTelemetryService;
+/**
+ * OpenTelemetry Telemetry Manager
+ * 
+ * Manages OpenTelemetry SDK, spans, metrics, and events.
+ * Supports multiple backends: OTLP (Jaeger), Console, etc.
+ */
+export class OtelTelemetryManager {
+  private sdk: InstanceType<typeof import('@opentelemetry/sdk-node').NodeSDK> | null = null;
+  public clientService: OtelClientService;
   private serviceName: string;
   private sessionId: string;
   private meter: Meter;
+  private initPromise: Promise<void> | null = null;
 
   // Metrics instruments (initialized in initializeMetrics)
   private commandDuration!: Histogram;
@@ -177,68 +277,96 @@ export class TelemetryManager {
   constructor(
     serviceName: string = 'qwery-app',
     sessionId?: string,
-    options?: TelemetryManagerOptions,
+    options?: OtelTelemetryManagerOptions,
   ) {
     this.serviceName = serviceName;
     this.sessionId = sessionId || this.generateSessionId();
-    this.clientService = new ClientTelemetryService(this);
+    this.clientService = new OtelClientService(this);
 
-    // Create Resource using semantic conventions
-    const resource = resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: this.serviceName,
-      'session.id': this.sessionId,
-    });
-
-    // Use ConsoleSpanExporter for local/CLI testing (prints spans to console)
-    // OTLP exporter is optional and only used if OTEL_EXPORTER_OTLP_ENDPOINT is set
-    //const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    const otlpEndpoint = 'http://104.154.19.84:4317';
-
-    // Resolve exportAppTelemetry setting:
-    // 1. Check environment variable (QWERY_EXPORT_APP_TELEMETRY)
-    // 2. Check options parameter
-    // 3. Default to true (backward compatibility)
-    const exportAppTelemetryEnv =
-      process.env.QWERY_EXPORT_APP_TELEMETRY !== undefined
-        ? process.env.QWERY_EXPORT_APP_TELEMETRY !== 'false'
-        : undefined;
-    const exportAppTelemetry =
-      exportAppTelemetryEnv ?? options?.exportAppTelemetry ?? true;
-
-    // Create base exporter
-    const baseExporter = otlpEndpoint
-      ? new SafeOTLPExporter(otlpEndpoint)
-      : new ConsoleSpanExporter();
-
-    // Wrap base exporter with span filtering (general vs app-specific spans)
-    const traceExporter = new FilteringSpanExporter({
-      exporter: baseExporter,
-      exportAppTelemetry,
-    });
-
-    // Metrics exporter for gRPC
-    const metricReader = otlpEndpoint
-      ? new PeriodicExportingMetricReader({
-          exporter: new OTLPMetricExporter({
-            url: otlpEndpoint
-              .replace(/^https?:\/\//, '')
-              .replace(/^grpcs?:\/\//, ''), // Remove http:// or grpc:// prefix for plain gRPC
-            credentials: credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
-          }),
-          exportIntervalMillis: 5000, // Export every 5 seconds
-        })
-      : undefined;
-
-    this.sdk = new NodeSDK({
-      traceExporter,
-      metricReader,
-      resource,
-      autoDetectResources: true,
-    });
-
-    // Initialize metrics
+    // Initialize metrics (this doesn't require Node.js modules)
     this.meter = metrics.getMeter('qwery-cli', '1.0.0');
     this.initializeMetrics();
+
+    // Lazy initialize Node.js SDK (only in Node.js environment)
+    if (isNode) {
+      this.initPromise = this.initializeNodeSDK(options);
+    }
+  }
+
+  private async initializeNodeSDK(options?: OtelTelemetryManagerOptions): Promise<void> {
+    try {
+      const modules = await loadNodeModules();
+
+      // Create Resource using semantic conventions
+      const resource = modules.resourceFromAttributes({
+        [modules.ATTR_SERVICE_NAME]: this.serviceName,
+        'session.id': this.sessionId,
+      });
+
+      // Use ConsoleSpanExporter for local/CLI testing (prints spans to console)
+      // OTLP exporter is optional and only used if OTEL_EXPORTER_OTLP_ENDPOINT is set
+      //const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+      const otlpEndpoint = 'http://34.71.179.124:4317';
+
+      // Resolve exportAppTelemetry setting:
+      // 1. Check environment variable (QWERY_EXPORT_APP_TELEMETRY)
+      // 2. Check options parameter
+      // 3. Default to true (backward compatibility)
+      const exportAppTelemetryEnv =
+        process.env.QWERY_EXPORT_APP_TELEMETRY !== undefined
+          ? process.env.QWERY_EXPORT_APP_TELEMETRY !== 'false'
+          : undefined;
+      const exportAppTelemetry =
+        exportAppTelemetryEnv ?? options?.exportAppTelemetry ?? true;
+
+      // Create base exporter
+      const baseExporter = otlpEndpoint
+        ? new SafeOTLPExporter(otlpEndpoint)
+        : new ConsoleSpanExporter();
+
+      // Wrap base exporter with span filtering (general vs app-specific spans)
+      const traceExporter = new FilteringSpanExporter({
+        exporter: baseExporter,
+        exportAppTelemetry,
+      });
+
+      // Metrics exporter for gRPC (optional - only if collector supports metrics)
+      // Resolve exportMetrics setting:
+      // 1. Check environment variable (QWERY_EXPORT_METRICS)
+      // 2. Check options parameter
+      // 3. Default to false (many collectors don't support metrics service)
+      const exportMetricsEnv =
+        process.env.QWERY_EXPORT_METRICS !== undefined
+          ? process.env.QWERY_EXPORT_METRICS === 'true'
+          : undefined;
+      const exportMetrics =
+        exportMetricsEnv ?? options?.exportMetrics ?? true;
+
+      // Create metric reader only if metrics export is enabled
+      // Note: Metrics are still collected via the Meter API, just not exported
+      // This prevents errors when collector doesn't support metrics service
+      const metricReader =
+        otlpEndpoint && exportMetrics
+          ? new modules.PeriodicExportingMetricReader({
+              exporter: new modules.OTLPMetricExporter({
+                url: otlpEndpoint
+                  .replace(/^https?:\/\//, '')
+                  .replace(/^grpcs?:\/\//, ''), // Remove http:// or grpc:// prefix for plain gRPC
+                credentials: modules.credentials.createInsecure(), // Use insecure credentials for plain gRPC (non-TLS)
+              }),
+              exportIntervalMillis: 5000, // Export every 5 seconds
+            })
+          : undefined;
+
+      this.sdk = new modules.NodeSDK({
+        traceExporter,
+        metricReader,
+        resource,
+        autoDetectResources: true,
+      });
+    } catch (error) {
+      console.warn('[Telemetry] Failed to initialize Node.js SDK:', error);
+    }
   }
 
   private generateSessionId(): string {
@@ -336,19 +464,31 @@ export class TelemetryManager {
 
   async init() {
     try {
-      await this.sdk.start();
-      console.log('TelemetryManager: OpenTelemetry initialized.');
+      // Wait for SDK initialization if it's still in progress
+      if (this.initPromise) {
+        await this.initPromise;
+      }
+      if (this.sdk) {
+        await this.sdk.start();
+        console.log('OtelTelemetryManager: OpenTelemetry initialized.');
+      }
     } catch (error) {
-      console.error('TelemetryManager init error:', error);
+      console.error('OtelTelemetryManager init error:', error);
     }
   }
 
   async shutdown() {
     try {
-      await this.sdk.shutdown();
-      console.log('TelemetryManager: OpenTelemetry shutdown complete.');
+      // Wait for SDK initialization if it's still in progress
+      if (this.initPromise) {
+        await this.initPromise;
+      }
+      if (this.sdk) {
+        await this.sdk.shutdown();
+        console.log('OtelTelemetryManager: OpenTelemetry shutdown complete.');
+      }
     } catch (error) {
-      console.error('TelemetryManager shutdown error:', error);
+      console.error('OtelTelemetryManager shutdown error:', error);
     }
   }
 
@@ -545,3 +685,8 @@ export class TelemetryManager {
     this.tokensTotal.add(promptTokens + completionTokens, attributes);
   }
 }
+
+// Export as TelemetryManager for backward compatibility
+export { OtelTelemetryManager as TelemetryManager };
+export type { OtelTelemetryManagerOptions as TelemetryManagerOptions };
+

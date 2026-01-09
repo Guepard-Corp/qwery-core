@@ -15,7 +15,7 @@ import {
 } from '@qwery/repository-in-memory';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
-import type { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import type { TelemetryManager } from '@qwery/telemetry/otel';
 
 // Map to store agents by datasource ID
 const agents = new Map<string, FactoryAgent>();

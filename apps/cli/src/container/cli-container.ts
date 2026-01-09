@@ -1,5 +1,5 @@
 import type { Workspace } from '@qwery/domain/entities';
-import { TelemetryManager } from '@qwery/telemetry/opentelemetry';
+import { TelemetryManager } from '@qwery/telemetry/otel';
 
 import {
   CreateProjectService,
