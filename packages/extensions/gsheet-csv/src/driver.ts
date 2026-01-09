@@ -123,10 +123,69 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
+    async metadata(
+      config: unknown,
+      connection?: unknown,
+    ): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
-      const { instance, tabs: discoveredTabs } = await getInstance(parsed);
-      const conn = await instance.connect();
+      let conn: Awaited<
+        ReturnType<
+          import('@duckdb/node-api').DuckDBInstance['connect']
+        >
+      >;
+      let shouldCloseConnection = false;
+      let discoveredTabs: Array<{ gid: number; name: string }>;
+
+      // Type guard to check if connection is a DuckDB connection
+      const isDuckDBConnection = (
+        c: unknown,
+      ): c is Awaited<
+        ReturnType<
+          import('@duckdb/node-api').DuckDBInstance['connect']
+        >
+      > => {
+        return (
+          c !== null &&
+          c !== undefined &&
+          typeof c === 'object' &&
+          'run' in c &&
+          typeof (c as { run: unknown }).run === 'function'
+        );
+      };
+
+      if (connection && isDuckDBConnection(connection)) {
+        // Use provided connection - create views in main engine
+        conn = connection;
+        const match = parsed.sharedLink.match(
+          /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+        );
+        if (!match) {
+          throw new Error(`Invalid Google Sheets link format: ${parsed.sharedLink}`);
+        }
+        const spreadsheetId = match[1]!;
+        discoveredTabs = await fetchSpreadsheetMetadata(spreadsheetId);
+        if (discoveredTabs.length === 0) {
+          discoveredTabs.push({ gid: 0, name: 'sheet' });
+        }
+
+        // Create views in main engine connection
+        for (const tab of discoveredTabs) {
+          const csvUrl = convertToCsvLink(spreadsheetId, tab.gid);
+          const escapedUrl = csvUrl.replace(/'/g, "''");
+          const escapedViewName = tab.name.replace(/"/g, '""');
+
+          await conn.run(`
+            CREATE OR REPLACE VIEW "${escapedViewName}" AS
+            SELECT * FROM read_csv_auto('${escapedUrl}')
+          `);
+        }
+      } else {
+        // Fallback for testConnection or when no connection provided - create temporary instance
+        const { instance, tabs } = await getInstance(parsed);
+        discoveredTabs = tabs;
+        conn = await instance.connect();
+        shouldCloseConnection = true;
+      }
 
       try {
         const tables = [];
@@ -219,7 +278,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
           `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
         );
       } finally {
-        conn.closeSync();
+        if (shouldCloseConnection) {
+          conn.closeSync();
+        }
       }
     },
 

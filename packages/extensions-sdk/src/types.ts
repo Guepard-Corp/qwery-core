@@ -104,10 +104,19 @@ export interface DriverContext {
   runtime?: DriverRuntime;
 }
 
+/**
+ * DuckDB connection type - optional parameter for metadata() method
+ * Extensions that support DuckDB can accept this to create views in the main engine
+ */
+export type DuckDBConnection = unknown;
+
 export interface IDataSourceDriver {
   testConnection(config: unknown): Promise<void>;
   query(sql: string, config: unknown): Promise<DatasourceResultSet>;
-  metadata(config: unknown): Promise<DatasourceMetadata>;
+  metadata(
+    config: unknown,
+    connection?: DuckDBConnection,
+  ): Promise<DatasourceMetadata>;
   close?(): Promise<void>;
 }
 

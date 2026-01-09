@@ -73,10 +73,52 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
+    async metadata(
+      config: unknown,
+      connection?: unknown,
+    ): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
-      const conn = await instance.connect();
+      let conn: Awaited<
+        ReturnType<
+          import('@duckdb/node-api').DuckDBInstance['connect']
+        >
+      >;
+      let shouldCloseConnection = false;
+
+      // Type guard to check if connection is a DuckDB connection
+      const isDuckDBConnection = (
+        c: unknown,
+      ): c is Awaited<
+        ReturnType<
+          import('@duckdb/node-api').DuckDBInstance['connect']
+        >
+      > => {
+        return (
+          c !== null &&
+          c !== undefined &&
+          typeof c === 'object' &&
+          'run' in c &&
+          typeof (c as { run: unknown }).run === 'function'
+        );
+      };
+
+      if (connection && isDuckDBConnection(connection)) {
+        // Use provided connection - create view in main engine
+        conn = connection;
+        const escapedUrl = parsed.url.replace(/'/g, "''");
+        const escapedViewName = VIEW_NAME.replace(/"/g, '""');
+
+        // Create view from Parquet URL using read_parquet in main engine
+        await conn.run(`
+          CREATE OR REPLACE VIEW "${escapedViewName}" AS
+          SELECT * FROM read_parquet('${escapedUrl}')
+        `);
+      } else {
+        // Fallback for testConnection or when no connection provided - create temporary instance
+        const instance = await getInstance(parsed);
+        conn = await instance.connect();
+        shouldCloseConnection = true;
+      }
 
       try {
         // Get column information from the view using DESCRIBE
@@ -157,7 +199,9 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
           `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
         );
       } finally {
-        conn.closeSync();
+        if (shouldCloseConnection) {
+          conn.closeSync();
+        }
       }
     },
 

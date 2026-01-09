@@ -4,7 +4,7 @@ import type {
   ClickHouseAttachmentOptions,
 } from '../types';
 import { extractSchema } from '../../extract-schema';
-import { extractConnectionUrl } from '../../connection-string-utils';
+import { extractConnectionUrl } from '@qwery/extensions-sdk';
 import { getDatasourceDatabaseName } from '../../datasource-name-utils';
 import { setClickHouseSchemaMappings } from '../../clickhouse-schema-mapping';
 
@@ -106,7 +106,8 @@ export class ClickHouseAttachmentStrategy implements AttachmentStrategy {
       await driver.testConnection(datasource.config);
 
       // Get metadata to understand the schema
-      const metadata = await driver.metadata(datasource.config);
+      // Pass connection so driver can create views in main engine if supported
+      const metadata = await driver.metadata(datasource.config, conn);
 
       // Get connection URL for ClickHouse HTTP interface
       const connectionUrl = extractConnectionUrl(

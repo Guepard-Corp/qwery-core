@@ -353,79 +353,90 @@ function convertBigInt(value: unknown): unknown {
 async function toMetadata(entry: InstanceEntry): Promise<DatasourceMetadata> {
   const conn = await entry.instance.connect();
   try {
-    const describeReader = await conn.runAndReadAll(`DESCRIBE "${VIEW_NAME}"`);
-    await describeReader.readAll();
-    const describeRows = describeReader.getRowObjectsJS() as Array<{
-      column_name: string;
-      column_type: string;
-      null: string;
-    }>;
-
-    const countReader = await conn.runAndReadAll(
-      `SELECT COUNT(*) as count FROM "${VIEW_NAME}"`,
-    );
-    await countReader.readAll();
-    const countRows = countReader.getRowObjectsJS() as Array<{ count: bigint }>;
-    const rowCount = countRows[0]?.count ?? BigInt(0);
-
-    const tableId = 1;
-
-    const tables = [
-      {
-        id: tableId,
-        schema: SCHEMA_NAME,
-        name: VIEW_NAME,
-        rls_enabled: false,
-        rls_forced: false,
-        bytes: 0,
-        size: String(rowCount),
-        live_rows_estimate: Number(rowCount),
-        dead_rows_estimate: 0,
-        comment: null,
-        primary_keys: [],
-        relationships: [],
-      },
-    ];
-
-    const columns = describeRows.map((col, idx) => ({
-      id: `${SCHEMA_NAME}.${VIEW_NAME}.${col.column_name}`,
-      table_id: tableId,
-      schema: SCHEMA_NAME,
-      table: VIEW_NAME,
-      name: col.column_name,
-      ordinal_position: idx + 1,
-      data_type: col.column_type,
-      format: col.column_type,
-      is_identity: false,
-      identity_generation: null,
-      is_generated: false,
-      is_nullable: col.null === 'YES',
-      is_updatable: false,
-      is_unique: false,
-      check: null,
-      default_value: null,
-      enums: [],
-      comment: null,
-    }));
-
-    const schemas = [
-      {
-        id: 1,
-        name: SCHEMA_NAME,
-        owner: 'unknown',
-      },
-    ];
-
-    return DatasourceMetadataZodSchema.parse({
-      version: '0.0.1',
-      driver: 'youtube-data-api-v3',
-      schemas,
-      tables,
-      columns,
-    });
+    return await toMetadataFromConnection(conn);
   } finally {
     conn.closeSync();
   }
+}
+
+async function toMetadataFromConnection(
+  conn: {
+    runAndReadAll: (sql: string) => Promise<{
+      readAll: () => Promise<void>;
+      getRowObjectsJS: () => Array<Record<string, unknown>>;
+    }>;
+  },
+): Promise<DatasourceMetadata> {
+  const describeReader = await conn.runAndReadAll(`DESCRIBE "${VIEW_NAME}"`);
+  await describeReader.readAll();
+  const describeRows = describeReader.getRowObjectsJS() as Array<{
+    column_name: string;
+    column_type: string;
+    null: string;
+  }>;
+
+  const countReader = await conn.runAndReadAll(
+    `SELECT COUNT(*) as count FROM "${VIEW_NAME}"`,
+  );
+  await countReader.readAll();
+  const countRows = countReader.getRowObjectsJS() as Array<{ count: bigint }>;
+  const rowCount = countRows[0]?.count ?? BigInt(0);
+
+  const tableId = 1;
+
+  const tables = [
+    {
+      id: tableId,
+      schema: SCHEMA_NAME,
+      name: VIEW_NAME,
+      rls_enabled: false,
+      rls_forced: false,
+      bytes: 0,
+      size: String(rowCount),
+      live_rows_estimate: Number(rowCount),
+      dead_rows_estimate: 0,
+      comment: null,
+      primary_keys: [],
+      relationships: [],
+    },
+  ];
+
+  const columns = describeRows.map((col, idx) => ({
+    id: `${SCHEMA_NAME}.${VIEW_NAME}.${col.column_name}`,
+    table_id: tableId,
+    schema: SCHEMA_NAME,
+    table: VIEW_NAME,
+    name: col.column_name,
+    ordinal_position: idx + 1,
+    data_type: col.column_type,
+    format: col.column_type,
+    is_identity: false,
+    identity_generation: null,
+    is_generated: false,
+    is_nullable: col.null === 'YES',
+    is_updatable: false,
+    is_unique: false,
+    check: null,
+    default_value: null,
+    enums: [],
+    comment: null,
+  }));
+
+  const schemas = [
+    {
+      id: 1,
+      name: SCHEMA_NAME,
+      owner: 'unknown',
+    },
+  ];
+
+  return DatasourceMetadataZodSchema.parse({
+    version: '0.0.1',
+    driver: 'youtube-data-api-v3',
+    schemas,
+    tables,
+    columns,
+  });
 }
 
 export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
@@ -436,10 +447,88 @@ export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
       context.logger?.info?.('youtube: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
+    async metadata(
+      config: unknown,
+      connection?: unknown,
+    ): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
-      const entry = await ensureInstanceReady(parsed, context);
-      return toMetadata(entry);
+      
+      // Type guard to check if connection is a DuckDB connection
+      const isDuckDBConnection = (
+        c: unknown,
+      ): c is Awaited<
+        ReturnType<
+          import('@duckdb/node-api').DuckDBInstance['connect']
+        >
+      > => {
+        return (
+          c !== null &&
+          c !== undefined &&
+          typeof c === 'object' &&
+          'run' in c &&
+          typeof (c as { run: unknown }).run === 'function'
+        );
+      };
+      
+      if (connection && isDuckDBConnection(connection)) {
+        // Use provided connection - load data into main engine
+        const entry = await ensureInstanceReady(parsed, context);
+        const conn = await entry.instance.connect();
+        
+        try {
+          // Load data from entry instance into main connection
+          const dataReader = await conn.runAndReadAll(
+            `SELECT * FROM "${VIEW_NAME}"`,
+          );
+          await dataReader.readAll();
+          const rows = dataReader.getRowObjectsJS() as Array<Record<string, unknown>>;
+          
+          // Create table in main connection
+          await connection.run(buildTableSql);
+          
+          // Insert data into main connection
+          if (rows.length > 0) {
+            const valuesSql = rows
+              .map((row) => {
+                const videoId = formatString(row.videoId as string | null);
+                const title = formatString(row.title as string | null);
+                const description = formatString(row.description as string | null);
+                const publishedAt = toTimestampLiteral(row.publishedAt as string | null);
+                const channelId = formatString(row.channelId as string | null);
+                const channelTitle = formatString(row.channelTitle as string | null);
+                const categoryId = formatString(row.categoryId as string | null);
+                const durationSeconds = formatNumber(row.durationSeconds as number | null);
+                const viewCount = formatNumber(row.viewCount as number | null);
+                const likeCount = formatNumber(row.likeCount as number | null);
+                const commentCount = formatNumber(row.commentCount as number | null);
+                const favoriteCount = formatNumber(row.favoriteCount as number | null);
+                const definition = formatString(row.definition as string | null);
+                const dimension = formatString(row.dimension as string | null);
+                const liveBroadcastContent = formatString(row.liveBroadcastContent as string | null);
+                const tags = formatStringArray((row.tags as string[]) || []);
+                
+                return `(${videoId}, ${title}, ${description}, ${publishedAt}, ${channelId}, ${channelTitle}, ${categoryId}, ${durationSeconds}, ${viewCount}, ${likeCount}, ${commentCount}, ${favoriteCount}, ${definition}, ${dimension}, ${liveBroadcastContent}, ${tags})`;
+              })
+              .join(',');
+            
+            await connection.run(`INSERT INTO "${VIEW_NAME}" VALUES ${valuesSql};`);
+          }
+          
+          // Use main connection for metadata
+          return toMetadataFromConnection(connection as {
+            runAndReadAll: (sql: string) => Promise<{
+              readAll: () => Promise<void>;
+              getRowObjectsJS: () => Array<Record<string, unknown>>;
+            }>;
+          });
+        } finally {
+          conn.closeSync();
+        }
+      } else {
+        // Fallback for testConnection or when no connection provided - use isolated instance
+        const entry = await ensureInstanceReady(parsed, context);
+        return toMetadata(entry);
+      }
     },
 
     async query(sql: string, config: unknown): Promise<DatasourceResultSet> {

@@ -8,7 +8,7 @@
  * 4. Uses extension discovery to dynamically determine mappings
  */
 
-import { extractConnectionUrl } from './connection-string-utils';
+import { extractConnectionUrl } from '@qwery/extensions-sdk';
 
 export type DuckDBForeignType = 'POSTGRES' | 'MYSQL' | 'SQLITE';
 

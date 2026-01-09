@@ -106,9 +106,13 @@ export abstract class AbstractQueryEngine {
    * - Handle connection errors gracefully
    *
    * @param datasources - Array of datasources to attach
+   * @param options - Optional attachment options (conversationId, workspace, etc.)
    * @throws {Error} If attachment fails for any datasource
    */
-  abstract attach(datasources: Datasource[]): Promise<void>;
+  abstract attach(
+    datasources: Datasource[],
+    options?: { conversationId?: string; workspace?: string },
+  ): Promise<void>;
 
   /**
    * Detach one or more datasources from the query engine.

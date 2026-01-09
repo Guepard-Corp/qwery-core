@@ -8,7 +8,7 @@ import type {
   DatasourceResultSet,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
-import { extractConnectionUrl } from '@qwery/agent-factory-sdk/tools/connection-string-utils';
+import { extractConnectionUrl } from '@qwery/extensions-sdk';
 
 const ConfigSchema = z
   .object({
@@ -318,8 +318,12 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
 
     async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
       const parsed = ConfigSchema.parse(config);
+      const connectionUrl = extractConnectionUrl(
+        parsed as Record<string, unknown>,
+        'postgresql',
+      );
       const { rows, rowCount, fields } = (await withClient(
-        parsed,
+        { connectionUrl },
         (client) => client.query(sql),
       )) as PgQueryResult;
 

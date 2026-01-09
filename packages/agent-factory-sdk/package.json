@@ -16,7 +16,6 @@
     ".": "./src/index.ts",
     "./tools/datasource-name-utils": "./src/tools/datasource-name-utils.ts",
     "./tools/datasource-loader": "./src/tools/datasource-loader.ts",
-    "./tools/connection-string-utils": "./src/tools/connection-string-utils.ts",
     "./services/duckdb-query-engine.service": "./src/services/duckdb-query-engine.service.ts"
   },
   "dependencies": {

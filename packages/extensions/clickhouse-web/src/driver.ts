@@ -8,7 +8,7 @@ import type {
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
-import { extractConnectionUrl } from '@qwery/agent-factory-sdk/tools/connection-string-utils';
+import { extractConnectionUrl } from '@qwery/extensions-sdk';
 
 const ConfigSchema = z
   .object({
