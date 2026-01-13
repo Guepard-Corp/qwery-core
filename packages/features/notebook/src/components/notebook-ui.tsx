@@ -11,6 +11,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   arrayMove,
@@ -21,16 +22,19 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   BookText,
+  DatabaseIcon,
   Loader2,
   Pencil,
   Plus,
+  Save,
   Sparkles,
   Trash2,
   Type,
+  X,
 } from 'lucide-react';
 
 import type { DatasourceResultSet, Notebook } from '@qwery/domain/entities';
-import { WorkspaceModeEnum } from '@qwery/domain/enums';
+import { WorkspaceModeEnum, type CellType } from '@qwery/domain/enums';
 import { Button } from '@qwery/ui/button';
 import {
   DropdownMenu,
@@ -64,6 +68,14 @@ import { Textarea } from '@qwery/ui/textarea';
 import { Alert, AlertDescription } from '@qwery/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@qwery/ui/select';
+import { Shortcuts } from '@qwery/ui/shortcuts';
 
 interface NotebookUIProps {
   notebook?: Notebook;
@@ -78,6 +90,7 @@ interface NotebookUIProps {
   ) => void;
   onCellsChange?: (cells: NotebookCellData[]) => void;
   onNotebookChange?: (notebook: Partial<Notebook>) => void;
+  onSave?: () => void;
   cellResults?: Map<number, DatasourceResultSet>;
   cellErrors?: Map<number, string>;
   cellLoadingStates?: Map<number, boolean>;
@@ -91,6 +104,7 @@ interface NotebookUIProps {
 const SortableCell = React.memo(function SortableCellComponent({
   cell,
   onQueryChange,
+  onTitleChange,
   onDatasourceChange,
   onRunQuery,
   onRunQueryWithAgent,
@@ -111,6 +125,7 @@ const SortableCell = React.memo(function SortableCellComponent({
 }: {
   cell: NotebookCellData;
   onQueryChange: (cellId: number, query: string) => void;
+  onTitleChange?: (cellId: number, title: string) => void;
   onDatasourceChange: (cellId: number, datasourceId: string | null) => void;
   onRunQuery?: (cellId: number, query: string, datasourceId: string) => void;
   onRunQueryWithAgent?: (
@@ -155,6 +170,13 @@ const SortableCell = React.memo(function SortableCellComponent({
       onQueryChange(cell.cellId, value);
     },
     [cell.cellId, onQueryChange],
+  );
+
+  const handleTitleChange = useCallback(
+    (title: string) => {
+      onTitleChange?.(cell.cellId, title);
+    },
+    [cell.cellId, onTitleChange],
   );
 
   const handleDatasourceChange = useCallback(
@@ -212,13 +234,14 @@ const SortableCell = React.memo(function SortableCellComponent({
           ? 'transform 0s'
           : 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
-      className="transition-opacity duration-200 ease-out data-[dragging=true]:opacity-80"
+      className="group relative transition-opacity duration-200 ease-out data-[dragging=true]:opacity-80"
       data-dragging={isDragging ? 'true' : 'false'}
     >
       <NotebookCell
         cell={cell}
         datasources={datasources}
         onQueryChange={handleQueryChange}
+        onTitleChange={handleTitleChange}
         onDatasourceChange={handleDatasourceChange}
         onRunQuery={handleRunQuery}
         onRunQueryWithAgent={handleRunQueryWithAgent}
@@ -256,7 +279,7 @@ function FullViewDialog({
   cells: NotebookCellData[];
   cellResults: Map<number, DatasourceResultSet>;
   cellErrors: Map<number, string>;
-  allDatasources: Array<{ id: string; name: string }>;
+  allDatasources: NotebookDatasourceInfo[];
   onQueryChange: (cellId: number, query: string) => void;
   onClose: () => void;
 }) {
@@ -290,11 +313,8 @@ function FullViewDialog({
       const cellDatasourceId = cell.datasources[0];
       const found = allDatasources.find((ds) => ds.id === cellDatasourceId);
       if (found) {
-        return cellDatasourceId;
+        return found;
       }
-    }
-    if (allDatasources && allDatasources.length > 0 && allDatasources[0]) {
-      return allDatasources[0].id;
     }
     return undefined;
   }, [cell, allDatasources]);
@@ -322,27 +342,50 @@ function FullViewDialog({
     return null;
   }
 
-  const datasourceName =
-    allDatasources.find((ds) => ds.id === selectedDatasource)?.name ||
-    selectedDatasource;
+  const renderDatasourceDisplay = () => {
+    if (!selectedDatasource || !isQueryCell) return null;
+    
+    const displayName = selectedDatasource.name || selectedDatasource.id;
+    const initials = displayName.slice(0, 2).toUpperCase();
+
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {selectedDatasource.logo ? (
+          <img
+            src={selectedDatasource.logo}
+            alt={`${displayName} logo`}
+            className="h-4 w-4 rounded object-contain"
+          />
+        ) : (
+          <span className="bg-muted inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold uppercase">
+            {initials}
+          </span>
+        )}
+        <span>{displayName}</span>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={cellId !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[95vh] max-w-[95vw] flex-col">
         <DialogHeader>
-          <DialogTitle>
-            {isQueryCell
-              ? `Query Cell${datasourceName ? ` - ${datasourceName}` : ''}`
-              : isTextCell
-                ? 'Text Cell'
-                : 'Prompt Cell'}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {isQueryCell
+                ? 'Query Cell'
+                : isTextCell
+                  ? 'Text Cell'
+                  : 'Prompt Cell'}
+            </DialogTitle>
+            {renderDatasourceDisplay()}
+          </div>
         </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-auto">
           {/* Editor */}
           <div
             ref={codeMirrorContainerRef}
-            className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[50vh] min-h-[200px] flex-1 overflow-auto rounded-md border [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+            className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[50vh] min-h-[200px] flex-1 overflow-auto rounded-none border [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {isQueryCell ? (
               <CodeMirror
@@ -357,7 +400,7 @@ function FullViewDialog({
                   dropCursor: false,
                   allowMultipleSelections: false,
                 }}
-                className="h-full [&_.cm-content]:px-4 [&_.cm-content]:py-2 [&_.cm-editor]:h-full [&_.cm-editor]:bg-transparent [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm"
+                className="h-full [&_.cm-content]:px-4 [&_.cm-content]:py-2 [&_.cm-editor]:h-full [&_.cm-editor]:bg-transparent [&_.cm-editor]:rounded-none [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm"
               />
             ) : (
               <Textarea
@@ -431,7 +474,7 @@ function DeleteNotebookButton({
         <Button
           size="icon"
           variant="ghost"
-          className={`h-7 w-7 transition-opacity ${isHovering ? 'opacity-100' : 'opacity-0'}`}
+          className={`h-7 w-7 transition-all duration-300 ease-in-out ${isHovering ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'}`}
           data-test="notebook-delete-trigger"
           disabled={isDeleting}
           aria-label="Delete notebook"
@@ -486,6 +529,7 @@ export function NotebookUI({
   onRunQueryWithAgent,
   onCellsChange,
   onNotebookChange,
+  onSave,
   cellResults: externalCellResults,
   cellErrors: externalCellErrors,
   cellLoadingStates: externalCellLoadingStates,
@@ -504,6 +548,7 @@ export function NotebookUI({
         datasources: cell.datasources,
         isActive: cell.isActive,
         runMode: cell.runMode,
+        title: cell.title,
       }));
     }
     if (initialCells) {
@@ -561,6 +606,7 @@ export function NotebookUI({
           datasources: cell.datasources,
           isActive: cell.isActive,
           runMode: cell.runMode,
+          title: cell.title,
         })),
       );
 
@@ -575,6 +621,7 @@ export function NotebookUI({
             datasources: cell.datasources,
             isActive: cell.isActive,
             runMode: cell.runMode,
+            title: cell.title,
           })),
         );
       }
@@ -602,13 +649,13 @@ export function NotebookUI({
 
   const handleAddCell = (
     afterCellId?: number,
-    cellType: 'query' | 'text' | 'prompt' = 'query',
-    atBeginning = false,
+    cellType: CellType = 'query',
   ) => {
     const maxCellId =
       cells.length > 0
         ? Math.max(...cells.map((c: NotebookCellData) => c.cellId), 0)
         : 0;
+    const cellNumber = cells.length + 1;
     const newCell: NotebookCellData = {
       query:
         cellType === 'query'
@@ -621,13 +668,10 @@ export function NotebookUI({
       datasources: [],
       isActive: true,
       runMode: 'default',
+      title: `Cell ${cellNumber}`,
     };
 
-    if (atBeginning) {
-      const newCells = [newCell, ...cells];
-      setCells(newCells);
-      onCellsChange?.(newCells);
-    } else if (afterCellId !== undefined) {
+    if (afterCellId !== undefined) {
       const index = cells.findIndex(
         (c: NotebookCellData) => c.cellId === afterCellId,
       );
@@ -650,6 +694,19 @@ export function NotebookUI({
       setCells((prev) => {
         const newCells = prev.map((cell) =>
           cell.cellId === cellId ? { ...cell, query } : cell,
+        );
+        onCellsChange?.(newCells);
+        return newCells;
+      });
+    },
+    [onCellsChange],
+  );
+
+  const handleTitleChange = useCallback(
+    (cellId: number, title: string) => {
+      setCells((prev) => {
+        const newCells = prev.map((cell) =>
+          cell.cellId === cellId ? { ...cell, title: title || undefined } : cell,
         );
         onCellsChange?.(newCells);
         return newCells;
@@ -739,9 +796,11 @@ export function NotebookUI({
         if (!cell) return prev;
 
         const maxCellId = Math.max(...prev.map((c) => c.cellId), 0);
+        const cellNumber = prev.length + 1;
         const newCell: NotebookCellData = {
           ...cell,
           cellId: maxCellId + 1,
+          title: cell.title ? `${cell.title} (copy)` : `Cell ${cellNumber}`,
         };
 
         const index = prev.findIndex((c) => c.cellId === cellId);
@@ -815,12 +874,14 @@ export function NotebookUI({
   // Focus input when editing starts
   React.useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+        titleInputRef.current?.select();
+      }, 0);
     }
   }, [isEditingTitle]);
 
-  const handleTitleSave = () => {
+  const handleTitleSave = React.useCallback(() => {
     const trimmed = titleValue.trim();
     const didChange = Boolean(trimmed) && trimmed !== displayTitle;
 
@@ -832,17 +893,28 @@ export function NotebookUI({
       setTitleValue(displayTitle);
     }
     setIsEditingTitle(false);
-  };
+  }, [titleValue, displayTitle, onNotebookChange]);
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTitleBlur = React.useCallback(() => {
+    // Only save on blur if we're still in edit mode (not cancelled)
+    if (isEditingTitle) {
+      handleTitleSave();
+    }
+  }, [isEditingTitle, handleTitleSave]);
+
+  const handleTitleCancel = React.useCallback(() => {
+    setTitleValue(displayTitle);
+    setIsEditingTitle(false);
+  }, [displayTitle]);
+
+  const handleTitleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleTitleSave();
     } else if (e.key === 'Escape') {
-      setTitleValue(displayTitle);
-      setIsEditingTitle(false);
+      handleTitleCancel();
     }
-  };
+  }, [handleTitleSave, handleTitleCancel]);
 
   const allDatasources = useMemo((): NotebookDatasourceInfo[] => {
     const notebookDatasourceIds = notebook?.datasources || [];
@@ -879,18 +951,29 @@ export function NotebookUI({
           onMouseLeave={() => setIsHoveringTitle(false)}
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 items-center">
+            <div className="flex flex-1 items-center gap-2">
               {isEditingTitle ? (
-                <Input
-                  ref={titleInputRef}
-                  value={titleValue}
-                  onChange={(e) => setTitleValue(e.target.value)}
-                  onBlur={handleTitleSave}
-                  onKeyDown={handleTitleKeyDown}
-                  className="focus-visible:ring-ring h-auto w-full border-0 bg-transparent px-0 py-0 text-2xl font-semibold focus-visible:ring-2"
-                />
+                <>
+                  <Input
+                    ref={titleInputRef}
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={handleTitleKeyDown}
+                    className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-2xl font-semibold focus-visible:ring-0 shadow-none"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={handleTitleCancel}
+                    aria-label="Discard changes"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
               ) : (
-                <div className="group flex items-center gap-2">
+                <>
                   <h1 className="text-2xl font-semibold">{headerTitle}</h1>
                   {hasUnsavedChanges && (
                     <span
@@ -899,10 +982,24 @@ export function NotebookUI({
                       title="Unsaved changes"
                     />
                   )}
+                  {onSave && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-7 w-7 shrink-0 transition-all duration-300 ease-in-out ${isHoveringTitle ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSave();
+                      }}
+                      aria-label="Save notebook"
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     size="icon"
                     variant="ghost"
-                    className={`h-7 w-7 transition-opacity ${isHoveringTitle ? 'opacity-100' : 'opacity-0'}`}
+                    className={`h-7 w-7 shrink-0 transition-all duration-300 ease-in-out ${isHoveringTitle ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'}`}
                     onClick={() => setIsEditingTitle(true)}
                     aria-label="Edit title"
                   >
@@ -913,31 +1010,70 @@ export function NotebookUI({
                     isDeleting={isDeletingNotebook}
                     isHovering={isHoveringTitle}
                   />
-                </div>
+                </>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                onClick={() => {
+                  const isMac =
+                    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                  const event = new KeyboardEvent('keydown', {
+                    key: 'l',
+                    code: 'KeyL',
+                    [isMac ? 'metaKey' : 'ctrlKey']: true,
+                    bubbles: true,
+                    cancelable: true,
+                  });
+                  window.dispatchEvent(event);
+                }}
+                className="cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    const isMac =
+                      navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                    const keyboardEvent = new KeyboardEvent('keydown', {
+                      key: 'l',
+                      code: 'KeyL',
+                      [isMac ? 'metaKey' : 'ctrlKey']: true,
+                      bubbles: true,
+                      cancelable: true,
+                    });
+                    window.dispatchEvent(keyboardEvent);
+                  }
+                }}
+              >
+                <Shortcuts
+                  items={[
+                    {
+                      text: 'Agent',
+                      keys: ['⌘', 'L'],
+                    },
+                  ]}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Cells container */}
-      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pl-16 pr-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
           <SortableContext
             items={cells.map((c) => c.cellId.toString())}
             strategy={verticalListSortingStrategy}
           >
-            <div className="flex flex-col gap-4">
-              {/* Top divider - to add cell at the very beginning */}
-              <CellDivider
-                onAddCell={(type) => handleAddCell(undefined, type, true)}
-              />
+            <div className="flex flex-col gap-4 pt-6">
               {cells.map((cell, index) => {
                 // Get error for this specific cell only - ensure strict isolation
                 let cellError: string | undefined = undefined;
@@ -957,6 +1093,7 @@ export function NotebookUI({
                     <SortableCell
                       cell={cell}
                       onQueryChange={handleQueryChange}
+                      onTitleChange={handleTitleChange}
                       onDatasourceChange={handleDatasourceChange}
                       onRunQuery={handleRunQuery}
                       onRunQueryWithAgent={handleRunQueryWithAgent}
@@ -1000,7 +1137,7 @@ export function NotebookUI({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="border-border hover:bg-accent/50 group flex h-12 w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
+                      className="border-border hover:bg-accent/50 group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
                     >
                       <Plus className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
                       <span className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition-colors">

@@ -2,9 +2,7 @@
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useEffect, useState, useRef } from 'react';
-
-import { Send, AlertCircle, GripVertical } from 'lucide-react';
-
+import { Send, AlertCircle, Sparkles, X, GripHorizontal } from 'lucide-react';
 import { Button } from '@qwery/ui/button';
 import { Textarea } from '@qwery/ui/textarea';
 import { Alert, AlertDescription } from '@qwery/ui/alert';
@@ -116,7 +114,6 @@ export function NotebookCellAiPopup({
     }
 
     if (selectedDatasource && showDatasourceError) {
-      // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => setShowDatasourceError(false), 0);
     }
 
@@ -184,7 +181,6 @@ export function NotebookCellAiPopup({
       return;
     }
 
-    // Prefer first line if available, otherwise use active line or cursor line
     const firstLine = cmEditor.querySelector('.cm-line') as HTMLElement | null;
     const activeLine = cmEditor.querySelector(
       '.cm-activeLine',
@@ -196,7 +192,6 @@ export function NotebookCellAiPopup({
       (cursor?.closest('.cm-line') as HTMLElement | null);
 
     if (!lineElement) {
-      // Use setTimeout to avoid synchronous setState in effect
       const containerWidth = editorContainerRef.current.clientWidth;
       const calculatedWidth = Math.min(containerWidth - 32, 400);
       const calculatedHeight = 160;
@@ -219,8 +214,8 @@ export function NotebookCellAiPopup({
     const editorContainerRect =
       editorContainerRef.current.getBoundingClientRect();
 
-    const popupHeight = 160; // max-h-[160px] - smaller popup
-    const popupTopOffset = 4; // spacing from line - reduced
+    const popupHeight = 160;
+    const popupTopOffset = 12;
 
     const spaceBelow = editorContainerRect.bottom - lineRect.bottom;
     const spaceAbove = lineRect.top - editorContainerRect.top;
@@ -263,10 +258,9 @@ export function NotebookCellAiPopup({
       placement = 'below';
     }
 
-    // Calculate width based on container width, with max constraint
     const containerWidth = editorContainerRect.width;
-    const calculatedWidth = Math.min(containerWidth - 32, 400);
-    const calculatedHeight = 160;
+    const calculatedWidth = Math.min(containerWidth - 32, 440);
+    const calculatedHeight = 180;
 
     setTimeout(
       () =>
@@ -281,7 +275,6 @@ export function NotebookCellAiPopup({
     );
   }, [isOpen, isQueryCell, codeMirrorRef, editorContainerRef]);
 
-  // Drag functionality
   useEffect(() => {
     if (
       !isDragging ||
@@ -337,7 +330,6 @@ export function NotebookCellAiPopup({
     };
   }, [isDragging, popupPosition, editorContainerRef]);
 
-  // Resize functionality
   useEffect(() => {
     if (
       !isResizing ||
@@ -358,8 +350,8 @@ export function NotebookCellAiPopup({
       const deltaX = e.clientX - resizeStartPos.current.x;
       const deltaY = e.clientY - resizeStartPos.current.y;
 
-      const minWidth = 200;
-      const minHeight = 100;
+      const minWidth = 240;
+      const minHeight = 120;
       const maxWidth = containerRect.width - popupPosition.left;
       const maxHeight = containerRect.height - popupPosition.top;
 
@@ -424,12 +416,13 @@ export function NotebookCellAiPopup({
       ref={popupRef}
       data-ai-popup
       className={cn(
-        'bg-background/95 border-border absolute z-50 flex flex-col overflow-hidden rounded-lg border shadow-xl backdrop-blur-sm',
+        'absolute z-50 flex flex-col overflow-hidden transition-all duration-200 ease-out',
+        'border-border bg-background',
+        'rounded-lg border shadow-lg',
         isOpen
-          ? 'animate-in fade-in-0 zoom-in-95'
+          ? 'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2'
           : 'animate-out fade-out-0 zoom-out-95',
-        isDragging && 'cursor-grabbing',
-        !isDragging && 'cursor-grab',
+        isDragging ? 'cursor-grabbing' : 'cursor-default',
       )}
       style={{
         top: `${popupPosition.top}px`,
@@ -440,17 +433,37 @@ export function NotebookCellAiPopup({
       onMouseDown={handleDragStart}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Drag handle */}
       <div
         data-drag-handle
-        className="border-border bg-muted/30 hover:bg-muted/50 flex h-6 cursor-grab items-center justify-center border-b"
+        className="group flex h-10 shrink-0 cursor-grab select-none items-center justify-between border-b border-border bg-muted/50 px-3 active:cursor-grabbing"
         onMouseDown={(e) => {
           e.stopPropagation();
           handleDragStart(e);
         }}
       >
-        <GripVertical className="text-muted-foreground h-3 w-3" />
+        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-accent text-accent-foreground">
+            <Sparkles className="h-3 w-3" />
+          </div>
+          <span>AI Assistant</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <GripHorizontal className="text-muted-foreground transition-colors group-hover:text-foreground" size={14} />
+          <div className="h-3 w-px bg-border" />
+          <button
+            type="button"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => {
+              onCloseAiPopup();
+              setAiQuestion('');
+            }}
+            aria-label="Close"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -464,66 +477,60 @@ export function NotebookCellAiPopup({
           setShowDatasourceError(false);
           onRunQueryWithAgent(aiQuestion, selectedDatasource, cellType);
         }}
-        className="relative flex h-full w-full flex-col overflow-y-auto"
+        className="relative flex min-h-0 flex-1 flex-col"
       >
         {showDatasourceError && !selectedDatasource && (
-          <Alert
-            variant="destructive"
-            className="mb-2 flex shrink-0 items-center gap-2 px-3 py-1.5"
-          >
-            <AlertCircle className="h-3.5 w-3.5" />
-            <AlertDescription className="text-xs">
-              Please select a datasource first before sending an AI query.
-            </AlertDescription>
-          </Alert>
+          <div className="absolute top-2 right-2 left-2 z-20 animate-in fade-in slide-in-from-top-1">
+            <Alert variant="destructive" className="px-3 py-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <AlertDescription className="text-xs font-medium">
+                  Select a datasource first
+                </AlertDescription>
+              </div>
+            </Alert>
+          </div>
         )}
+
         <Textarea
           ref={aiInputRef}
           value={aiQuestion}
           onChange={(e) => {
             setAiQuestion(e.target.value);
-            // Clear error when user starts typing
             if (showDatasourceError) {
               setShowDatasourceError(false);
             }
           }}
-          placeholder="Ask the AI agent anything about this cell..."
-          className="border-border bg-background/95 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 relative w-full flex-1 resize-none overflow-y-auto rounded-lg border-0 text-sm shadow-inner focus-visible:ring-0 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+          placeholder="Ask me anything..."
+          className="h-full w-full resize-none border-0 bg-transparent p-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
           autoFocus
           disabled={isLoading}
         />
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground absolute top-2 right-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded transition"
-          onClick={() => {
-            onCloseAiPopup();
-            setAiQuestion('');
-          }}
-          aria-label="Close AI prompt"
-        >
-          ×
-        </button>
-        <Button
-          type="submit"
-          size="icon"
-          className="absolute right-2 bottom-2 h-7 w-7 rounded-full shadow-lg"
-          disabled={!aiQuestion.trim() || isLoading}
-        >
-          {isLoading ? (
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : (
-            <Send className="h-3 w-3" />
-          )}
-        </Button>
+
+        <div className="flex shrink-0 items-center justify-end border-t border-border bg-muted/30 p-2">
+          <Button
+            type="submit"
+            size="sm"
+            className="h-7 gap-1.5 px-3 text-xs font-medium"
+            disabled={!aiQuestion.trim() || isLoading}
+          >
+            {isLoading ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <>
+                Send <Send className="h-3 w-3" />
+              </>
+            )}
+          </Button>
+        </div>
       </form>
-      {/* Resize handle */}
+
       <div
-        className="bg-border/50 hover:bg-border absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
+        className="absolute right-0 bottom-0 z-20 h-4 w-4 cursor-nwse-resize opacity-0 transition-opacity hover:opacity-100"
         onMouseDown={handleResizeStart}
-        style={{
-          clipPath: 'polygon(100% 0, 0 100%, 100% 100%)',
-        }}
-      />
+      >
+        <div className="absolute right-1 bottom-1 h-1.5 w-1.5 rounded-sm bg-muted-foreground/50" />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronsUpDown } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { ChevronRight, ChevronsUpDown, Notebook } from 'lucide-react';
 
 import {
   Command,
@@ -24,8 +24,6 @@ import {
   BreadcrumbSeparator,
 } from '../shadcn/breadcrumb';
 
-const MAX_VISIBLE_ITEMS = 5;
-
 export interface BreadcrumbNodeItem {
   id: string;
   name: string;
@@ -38,6 +36,7 @@ export interface BreadcrumbNodeProps {
   isLoading: boolean;
   currentLabel: string;
   currentSlug?: string;
+  currentId?: string;
   currentIcon?: string;
   searchPlaceholder: string;
   viewAllLabel: string;
@@ -46,6 +45,10 @@ export interface BreadcrumbNodeProps {
   onSelect: (item: BreadcrumbNodeItem) => void;
   onViewAll: () => void;
   onNew: () => void;
+  // Notebook-specific props
+  isNotebook?: boolean;
+  unsavedNotebookSlugs?: string[];
+  maxVisibleItems?: number;
 }
 
 function BreadcrumbNodeDropdown({
@@ -53,6 +56,7 @@ function BreadcrumbNodeDropdown({
   isLoading,
   currentLabel,
   currentSlug,
+  currentId,
   currentIcon,
   searchPlaceholder,
   viewAllLabel,
@@ -61,9 +65,44 @@ function BreadcrumbNodeDropdown({
   onSelect,
   onViewAll,
   onNew,
+  isNotebook = false,
+  unsavedNotebookSlugs = [],
+  maxVisibleItems = 5,
 }: BreadcrumbNodeProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [localUnsavedSlugs, setLocalUnsavedSlugs] = useState<string[]>([]);
+
+  // Sync unsaved notebook slugs from localStorage for notebooks
+  useEffect(() => {
+    if (!isNotebook) return;
+
+    const updateUnsavedSlugs = () => {
+      try {
+        const unsaved = JSON.parse(
+          localStorage.getItem('notebook:unsaved') || '[]',
+        ) as string[];
+        setLocalUnsavedSlugs(unsaved);
+      } catch {
+        setLocalUnsavedSlugs([]);
+      }
+    };
+
+    updateUnsavedSlugs();
+    window.addEventListener('storage', updateUnsavedSlugs);
+    const interval = setInterval(updateUnsavedSlugs, 500);
+    return () => {
+      window.removeEventListener('storage', updateUnsavedSlugs);
+      clearInterval(interval);
+    };
+  }, [isNotebook]);
+
+  // Use provided unsaved slugs or local ones
+  const effectiveUnsavedSlugs = isNotebook
+    ? unsavedNotebookSlugs.length > 0
+      ? unsavedNotebookSlugs
+      : localUnsavedSlugs
+    : [];
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) {
@@ -73,11 +112,13 @@ function BreadcrumbNodeDropdown({
     return items.filter(
       (item) =>
         item.name.toLowerCase().includes(query) ||
-        item.slug.toLowerCase().includes(query),
+        item.slug.toLowerCase().includes(query) ||
+        item.id.toLowerCase().includes(query),
     );
   }, [items, search]);
 
-  const visibleItems = filteredItems.slice(0, MAX_VISIBLE_ITEMS);
+  // Show all items (no limit)
+  const visibleItems = filteredItems;
 
   const handleSelect = (item: BreadcrumbNodeItem) => {
     onSelect(item);
@@ -122,46 +163,74 @@ function BreadcrumbNodeDropdown({
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList>
-            {isLoading ? (
-              <div className="p-2">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="mt-2 h-8 w-full" />
-                <Skeleton className="mt-2 h-8 w-full" />
-              </div>
-            ) : (
-              <>
-                <CommandEmpty>
-                  <span className="text-muted-foreground text-sm">
-                    No results found
-                  </span>
-                </CommandEmpty>
-                {visibleItems.length > 0 && (
-                  <CommandGroup>
-                    {visibleItems.map((item) => {
-                      const isCurrent = item.slug === currentSlug;
-                      return (
-                        <CommandItem
-                          key={item.id}
-                          onSelect={() => handleSelect(item)}
-                          className={cn(
-                            'cursor-pointer',
-                            isCurrent && 'bg-accent text-accent-foreground',
-                          )}
-                        >
-                          {item.icon && (
-                            <img
-                              src={item.icon}
-                              alt={item.name}
-                              className="mr-2 h-4 w-4 shrink-0 object-contain"
-                            />
-                          )}
-                          <span className="truncate">{item.name}</span>
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                )}
+          <div className="flex max-h-[300px] flex-col">
+            {/* Scrollable items list */}
+            <CommandList className="min-h-0 flex-1 overflow-y-auto">
+              {isLoading ? (
+                <div className="p-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="mt-2 h-8 w-full" />
+                  <Skeleton className="mt-2 h-8 w-full" />
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>
+                    <span className="text-muted-foreground text-sm">
+                      No results found
+                    </span>
+                  </CommandEmpty>
+                  {visibleItems.length > 0 && (
+                    <CommandGroup>
+                      {visibleItems.map((item) => {
+                        // For notebooks, use ID for comparison; for others, use slug
+                        const isCurrent = isNotebook
+                          ? item.id === currentId
+                          : item.slug === currentSlug;
+                        const hasUnsavedChanges =
+                          isNotebook &&
+                          effectiveUnsavedSlugs.includes(item.slug);
+
+                        return (
+                          <CommandItem
+                            key={item.id}
+                            value={
+                              isNotebook
+                                ? item.id
+                                : `${item.name} ${item.slug} ${item.id}`
+                            }
+                            onSelect={() => handleSelect(item)}
+                            className={cn(
+                              'cursor-pointer',
+                              isCurrent && 'bg-accent text-accent-foreground',
+                            )}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              {/* Show notebook icon for notebooks, or custom icon if provided */}
+                              {isNotebook ? (
+                                <Notebook className="h-4 w-4 shrink-0" />
+                              ) : item.icon ? (
+                                <img
+                                  src={item.icon}
+                                  alt={item.name}
+                                  className="h-4 w-4 shrink-0 object-contain"
+                                />
+                              ) : null}
+                              <span className="truncate">{item.name}</span>
+                              {hasUnsavedChanges && (
+                                <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
+                              )}
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  )}
+                </>
+              )}
+            </CommandList>
+            {/* Fixed footer with View All and New options */}
+            {!isLoading && (
+              <div className="shrink-0 border-t">
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
@@ -177,9 +246,9 @@ function BreadcrumbNodeDropdown({
                     {newLabel}
                   </CommandItem>
                 </CommandGroup>
-              </>
+              </div>
             )}
-          </CommandList>
+          </div>
         </Command>
       </PopoverContent>
     </Popover>
@@ -256,6 +325,7 @@ export function QweryBreadcrumb({
   onNewProject,
   onNewDatasource,
   onNewNotebook,
+  unsavedNotebookSlugs = [],
 }: QweryBreadcrumbProps) {
   if (!organization?.current || !project?.current) {
     return null;
@@ -338,6 +408,7 @@ export function QweryBreadcrumb({
                   isLoading={object.isLoading}
                   currentLabel={object.current.name}
                   currentSlug={object.current.slug}
+                  currentId={object.current.id}
                   currentIcon={object.current.icon}
                   searchPlaceholder={labels.searchNotebooks}
                   viewAllLabel={labels.viewAllNotebooks}
@@ -346,6 +417,9 @@ export function QweryBreadcrumb({
                   onSelect={onNotebookSelect}
                   onViewAll={onViewAllNotebooks}
                   onNew={onNewNotebook}
+                  isNotebook={true}
+                  unsavedNotebookSlugs={unsavedNotebookSlugs}
+                  maxVisibleItems={5}
                 />
               )}
             </BreadcrumbItem>

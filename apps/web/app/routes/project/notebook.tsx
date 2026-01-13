@@ -440,6 +440,7 @@ export default function NotebookPage() {
             cellId: cell.cellId || 0,
             isActive: cell.isActive ?? true,
             runMode: cell.runMode || 'default',
+            title: cell.title,
           })),
         } as Notebook;
       })();
@@ -499,7 +500,8 @@ export default function NotebookPage() {
         JSON.stringify(currentCell.datasources) !==
           JSON.stringify(savedCell.datasources) ||
         currentCell.isActive !== savedCell.isActive ||
-        currentCell.runMode !== savedCell.runMode
+        currentCell.runMode !== savedCell.runMode ||
+        (currentCell.title || '') !== (savedCell.title || '')
       ) {
         return true;
       }
@@ -583,6 +585,7 @@ export default function NotebookPage() {
         datasources: cell.datasources,
         isActive: cell.isActive ?? true,
         runMode: cell.runMode ?? 'default',
+        title: cell.title,
       })),
     };
 
@@ -594,6 +597,7 @@ export default function NotebookPage() {
         cells: currentNotebookStateRef.current.cells.map((cell) => ({
           ...cell,
           datasources: [...cell.datasources],
+          title: cell.title,
         })),
         title: currentNotebookStateRef.current.title,
       };
@@ -653,6 +657,7 @@ export default function NotebookPage() {
               datasources: cell.datasources,
               isActive: cell.isActive ?? true,
               runMode: cell.runMode ?? 'default',
+              title: cell.title,
             })) || [],
           title: changes.title ?? normalizedNotebook.title,
         };
@@ -799,6 +804,7 @@ export default function NotebookPage() {
           datasources: [...(cell.datasources || [])],
           isActive: cell.isActive ?? true,
           runMode: cell.runMode ?? 'default',
+          title: cell.title,
         })),
         title: normalizedNotebook.title,
       };
@@ -811,6 +817,7 @@ export default function NotebookPage() {
           cells: savedState.cells.map((cell) => ({
             ...cell,
             datasources: [...cell.datasources],
+            title: cell.title,
           })),
           title: savedState.title,
         };
@@ -821,6 +828,7 @@ export default function NotebookPage() {
           cells: savedState.cells.map((cell) => ({
             ...cell,
             datasources: [...cell.datasources],
+            title: cell.title,
           })),
           title: savedState.title,
         };
@@ -1030,6 +1038,7 @@ export default function NotebookPage() {
           onRunQuery={handleRunQuery}
           onCellsChange={handleCellsChange}
           onNotebookChange={handleNotebookChange}
+          onSave={handleSave}
           onRunQueryWithAgent={handleRunQueryWithAgent}
           cellResults={cellResults}
           cellErrors={cellErrors}

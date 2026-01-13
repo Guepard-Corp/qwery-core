@@ -34,7 +34,7 @@ export function Shortcuts({ items, className }: ShortcutsProps) {
   return (
     <div
       className={cn(
-        'bg-popover text-popover-foreground rounded-lg border p-1 shadow-md',
+        'bg-popover text-popover-foreground min-w-[120px] rounded-lg border p-1.5 shadow-md',
         className,
       )}
     >
