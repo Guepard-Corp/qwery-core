@@ -70,8 +70,8 @@ export const detectIntent = async (text: string, model: string) => {
 
   return {
     object: {
-      intent: 'other' as const,
-      complexity: 'simple' as const,
+    intent: 'other' as const,
+    complexity: 'simple' as const,
       needsChart: false,
       needsSQL: false,
     },

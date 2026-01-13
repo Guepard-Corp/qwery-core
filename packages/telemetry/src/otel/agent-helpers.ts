@@ -89,6 +89,53 @@ export function createActorAttributes(
   return attributes;
 }
 
+export function createLLMAttributes(
+  modelName: string,
+  providerId: string,
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    conversationId?: string;
+    actorId?: string;
+  },
+): AgentLLMAttributes & Record<string, string | number> {
+  const attributes: AgentLLMAttributes & Record<string, string | number> = {
+    'agent.llm.model.name': modelName,
+    'agent.llm.provider.id': providerId,
+  };
+
+  if (options?.temperature !== undefined) {
+    attributes['agent.llm.temperature'] = options.temperature;
+  }
+
+  if (options?.maxTokens !== undefined) {
+    attributes['agent.llm.max_tokens'] = options.maxTokens;
+  }
+
+  if (options?.conversationId) {
+    attributes['agent.conversation.id'] = options.conversationId;
+  }
+
+  if (options?.actorId) {
+    attributes['agent.actor.id'] = options.actorId;
+  }
+
+  return attributes;
+}
+
+export function createLLMSpanAttributes(
+  modelName: string,
+  providerId: string,
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    conversationId?: string;
+    actorId?: string;
+  },
+): Record<string, string | number> {
+  return createLLMAttributes(modelName, providerId, options);
+}
+
 export function endMessageSpanWithEvent(
   telemetry: TelemetryManager,
   span: Span | undefined,

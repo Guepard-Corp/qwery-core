@@ -6,6 +6,10 @@ import {
 import { LanguageModel } from 'ai';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
+import {
+  createLLMSpanAttributes,
+  createLLMAttributes,
+} from '@qwery/telemetry/otel/agent-helpers';
 
 type ModelProvider = {
   resolveModel: (modelName: string) => LanguageModel;
@@ -70,20 +74,17 @@ function createWebLLMModel(
       maxTokens?: number;
     }) => {
       const tracer = trace.getTracer('agent-factory-sdk');
+      const spanAttributes = createLLMSpanAttributes(modelName, 'webllm', {
+        temperature: options.temperature ?? temperature,
+        maxTokens: options.maxTokens || 0,
+      });
       const span = tracer.startSpan('agent.llm.call', {
-        attributes: {
-          'agent.llm.model.name': modelName,
-          'agent.llm.provider.id': 'webllm',
-          'agent.llm.temperature': options.temperature ?? temperature,
-          'agent.llm.max_tokens': options.maxTokens || 0,
-        },
+        attributes: spanAttributes,
       });
 
       try {
-        span.addEvent(AGENT_EVENTS.LLM_CALL_STARTED, {
-          'agent.llm.model.name': modelName,
-          'agent.llm.provider.id': 'webllm',
-        });
+        const startEventAttributes = createLLMAttributes(modelName, 'webllm');
+        span.addEvent(AGENT_EVENTS.LLM_CALL_STARTED, startEventAttributes);
 
         const startTime = Date.now();
         const engine = await getOrCreateEngine(modelName, initProgressCallback);
@@ -103,7 +104,9 @@ function createWebLLMModel(
         const completionTokens = response.usage?.completion_tokens || 0;
         const totalTokens = response.usage?.total_tokens || 0;
 
+        const completionAttributes = createLLMAttributes(modelName, 'webllm');
         span.setAttributes({
+          ...completionAttributes,
           'agent.llm.prompt.tokens': promptTokens,
           'agent.llm.completion.tokens': completionTokens,
           'agent.llm.total.tokens': totalTokens,
@@ -111,16 +114,19 @@ function createWebLLMModel(
           'agent.llm.status': 'success',
         });
 
+        const completedEventAttributes = createLLMAttributes(modelName, 'webllm');
         span.addEvent(AGENT_EVENTS.LLM_CALL_COMPLETED, {
-          'agent.llm.model.name': modelName,
-          'agent.llm.provider.id': 'webllm',
+          ...completedEventAttributes,
           'agent.llm.duration_ms': String(duration),
         });
 
         if (totalTokens > 0) {
+          const tokensEventAttributes = createLLMAttributes(
+            modelName,
+            'webllm',
+          );
           span.addEvent(AGENT_EVENTS.LLM_TOKENS_USED, {
-            'agent.llm.model.name': modelName,
-            'agent.llm.provider.id': 'webllm',
+            ...tokensEventAttributes,
             'agent.llm.prompt.tokens': promptTokens,
             'agent.llm.completion.tokens': completionTokens,
             'agent.llm.total.tokens': totalTokens,
@@ -155,15 +161,16 @@ function createWebLLMModel(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
+        const errorAttributes = createLLMAttributes(modelName, 'webllm');
         span.setAttributes({
+          ...errorAttributes,
           'agent.llm.status': 'error',
           'error.type': error instanceof Error ? error.name : 'UnknownError',
           'error.message': errorMessage,
         });
 
         span.addEvent(AGENT_EVENTS.LLM_CALL_ERROR, {
-          'agent.llm.model.name': modelName,
-          'agent.llm.provider.id': 'webllm',
+          ...errorAttributes,
           'error.message': errorMessage,
         });
 
