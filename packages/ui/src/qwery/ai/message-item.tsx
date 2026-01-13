@@ -138,7 +138,7 @@ function MessageItemComponent({
                 key={`${message.id}-${i}`}
                 className={cn(
                   'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                  message.role === 'user' && 'justify-end',
+                  message.role === 'user' && 'justify-end group',
                   message.role === 'assistant' &&
                     'animate-in fade-in slide-in-from-bottom-4 duration-300',
                   message.role === 'user' &&
@@ -352,6 +352,8 @@ function MessageItemComponent({
                           className={cn(
                             'mt-1 flex items-center gap-2',
                             message.role === 'user' && 'justify-end',
+                            message.role === 'user' &&
+                              'opacity-0 transition-opacity group-hover:opacity-100',
                           )}
                         >
                           {message.role === 'assistant' && (

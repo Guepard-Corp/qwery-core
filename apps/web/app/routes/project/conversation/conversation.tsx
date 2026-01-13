@@ -23,6 +23,9 @@ export default function ConversationPage() {
     repositories.conversation,
     repositories.message,
     slug as string,
+    {
+      refetchInterval: 2000,
+    },
   );
 
   const getConversation = useGetConversationBySlug(
@@ -30,7 +33,6 @@ export default function ConversationPage() {
     slug as string,
   );
 
-  // Extract notebookId from conversation title if it matches "Notebook - {notebookId}" pattern
   const notebookId = useMemo(() => {
     const conversation = getConversation.data;
     if (!conversation?.title) return null;
@@ -40,12 +42,10 @@ export default function ConversationPage() {
     return match ? match[1] : null;
   }, [getConversation.data]);
 
-  // Fetch notebook by ID to get its slug
   const notebook = useGetNotebookById(repositories.notebook, notebookId || '', {
     enabled: !!notebookId,
   });
 
-  // Handle navigation to notebook page
   const handleGoToNotebook = () => {
     if (!notebook.data?.slug || !slug) return;
 
@@ -58,12 +58,10 @@ export default function ConversationPage() {
     navigate(url.pathname + url.search);
   };
 
-  // Reset auto-send flag when conversation changes
   useEffect(() => {
     hasAutoSentRef.current = false;
   }, [slug]);
 
-  // Auto-send seedMessage if conversation has no messages but has a seedMessage
   useEffect(() => {
     if (
       !hasAutoSentRef.current &&
@@ -74,7 +72,6 @@ export default function ConversationPage() {
     ) {
       hasAutoSentRef.current = true;
       const seedMessage = getConversation.data.seedMessage;
-      // Small delay to ensure the agent is ready
       setTimeout(() => {
         if (seedMessage) {
           agentRef.current?.sendMessage(seedMessage);

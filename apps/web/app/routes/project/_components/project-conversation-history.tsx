@@ -19,12 +19,10 @@ export function ProjectConversationHistory() {
   const { repositories, workspace } = useWorkspace();
   const location = useLocation();
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
-  const { isProcessing } = useAgentStatus();
+  const { isProcessing, processingConversationSlug } = useAgentStatus();
 
-  // Use workspace.projectId directly
   const projectId = workspace.projectId as string | undefined;
 
-  // Use location.pathname matching
   const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
   const projectSlug = projectSlugMatch?.[1];
   const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
@@ -71,7 +69,6 @@ export function ProjectConversationHistory() {
   );
   const currentConversationId = currentConversation?.id;
 
-  // Detect title changes and show toast notifications
   useEffect(() => {
     conversations.forEach((conversation) => {
       const previousTitle = previousTitlesRef.current.get(conversation.id);
@@ -103,7 +100,7 @@ export function ProjectConversationHistory() {
     }
     createConversationMutation.mutate({
       projectId: projectId,
-      taskId: uuidv4(), // TODO: Create or get actual task
+      taskId: uuidv4(),
       title: 'New Conversation',
       seedMessage: '',
       datasources: [],
@@ -135,7 +132,6 @@ export function ProjectConversationHistory() {
     deleteConversationMutation.mutate(conversationId, {
       onSuccess: () => {
         toast.success('Conversation deleted');
-        // Navigate away if we deleted the current conversation
         if (conversationId === currentConversationId) {
           navigate(createPath(pathsConfig.app.project, projectSlug || ''));
         }
@@ -148,30 +144,37 @@ export function ProjectConversationHistory() {
     });
   };
 
-  const onConversationsDelete = (conversationIds: string[]) => {
-    // Delete conversations sequentially
-    const deletePromises = conversationIds.map((id) =>
-      deleteConversationMutation.mutateAsync(id),
+  const onConversationsDelete = async (conversationIds: string[]) => {
+    if (conversationIds.length === 0) return;
+
+    const results = await Promise.allSettled(
+      conversationIds.map((id) => deleteConversationMutation.mutateAsync(id)),
     );
 
-    Promise.all(deletePromises)
-      .then(() => {
-        toast.success(
-          `Deleted ${conversationIds.length} conversation${conversationIds.length !== 1 ? 's' : ''}`,
-        );
-        // Navigate away if we deleted the current conversation
-        if (
-          currentConversationId &&
-          conversationIds.includes(currentConversationId)
-        ) {
-          navigate(createPath(pathsConfig.app.project, projectSlug || ''));
-        }
-      })
-      .catch((error) => {
-        toast.error(
-          `Failed to delete conversations: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      });
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    if (succeeded > 0) {
+      toast.success(
+        `Deleted ${succeeded} conversation${succeeded !== 1 ? 's' : ''}`,
+      );
+    }
+
+    if (failed > 0) {
+      const errors = results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map((r) => r.reason?.message || 'Unknown error')
+        .join(', ');
+      toast.error(`Failed to delete ${failed} conversation${failed !== 1 ? 's' : ''}: ${errors}`);
+    }
+
+    if (
+      currentConversationId &&
+      conversationIds.includes(currentConversationId) &&
+      succeeded > 0
+    ) {
+      navigate(createPath(pathsConfig.app.project, projectSlug || ''));
+    }
   };
 
   return (
@@ -180,6 +183,7 @@ export function ProjectConversationHistory() {
       isLoading={isLoading}
       currentConversationId={currentConversationId}
       isProcessing={isProcessing}
+      processingConversationSlug={processingConversationSlug || undefined}
       onConversationSelect={onConversationSelect}
       onNewConversation={onNewConversation}
       onConversationEdit={onConversationEdit}

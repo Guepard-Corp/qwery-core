@@ -33,20 +33,20 @@ import {
   AlertDialogTitle,
 } from '../../shadcn/alert-dialog';
 import { Checkbox } from '../../shadcn/checkbox';
-
-export interface Conversation {
-  id: string;
-  slug: string;
-  title: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import {
+  formatRelativeTime,
+  groupConversationsByTime,
+  sortTimeGroups,
+  type Conversation,
+} from './utils/conversation-utils';
+export type { Conversation };
 
 export interface ConversationHistoryProps {
   conversations?: Conversation[];
   isLoading?: boolean;
   currentConversationId?: string;
   isProcessing?: boolean;
+  processingConversationSlug?: string;
   onConversationSelect?: (conversationId: string) => void;
   onNewConversation?: () => void;
   onConversationEdit?: (conversationId: string, newTitle: string) => void;
@@ -54,133 +54,12 @@ export interface ConversationHistoryProps {
   onConversationsDelete?: (conversationIds: string[]) => void;
 }
 
-function formatRelativeTime(date: Date, isCurrent = false): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  // For current conversation, show "now" or "few seconds ago"
-  if (isCurrent) {
-    if (diffSeconds < 5) {
-      return 'now';
-    }
-    if (diffSeconds < 60) {
-      return 'few seconds ago';
-    }
-  }
-
-  const timeStr = date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  if (diffDays === 0) {
-    return `Today at ${timeStr}`;
-  }
-  if (diffDays === 1) {
-    return `Yesterday at ${timeStr}`;
-  }
-
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'long' });
-  const year = date.getFullYear();
-  return `${day} ${month} ${year} at ${timeStr}`;
-}
-
-function formatRelativeDate(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return 'Today';
-  }
-  if (diffDays === 1) {
-    return 'Yesterday';
-  }
-
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'long' });
-  const year = date.getFullYear();
-  return `${day} ${month} ${year}`;
-}
-
-function groupConversationsByTime(
-  conversations: Conversation[],
-  currentConversationId?: string,
-): {
-  currentConversation: Conversation | null;
-  groups: Record<string, Conversation[]>;
-} {
-  const groups: Record<string, Conversation[]> = {};
-  let currentConversation: Conversation | null = null;
-
-  conversations.forEach((conversation) => {
-    // Extract current conversation
-    if (conversation.id === currentConversationId) {
-      currentConversation = conversation;
-      return;
-    }
-
-    const group = formatRelativeDate(conversation.updatedAt);
-    if (!groups[group]) {
-      groups[group] = [];
-    }
-    groups[group]!.push(conversation);
-  });
-
-  Object.keys(groups).forEach((key) => {
-    const group = groups[key];
-    if (group) {
-      group.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-    }
-  });
-
-  return { currentConversation, groups };
-}
-
-function sortTimeGroups(groups: Record<string, Conversation[]>): string[] {
-  const keys = Object.keys(groups);
-  return keys.sort((a, b) => {
-    if (a === 'Today') return -1;
-    if (b === 'Today') return 1;
-
-    if (a === 'Yesterday') return -1;
-    if (b === 'Yesterday') return 1;
-    const dateA = parseDateString(a);
-    const dateB = parseDateString(b);
-
-    if (dateA && dateB) {
-      return dateB.getTime() - dateA.getTime();
-    }
-
-    return a.localeCompare(b);
-  });
-}
-
-function parseDateString(dateStr: string): Date | null {
-  const parts = dateStr.split(' ');
-  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-    const day = parseInt(parts[0], 10);
-    const monthName = parts[1];
-    const year = parseInt(parts[2], 10);
-
-    if (!isNaN(day) && !isNaN(year) && monthName) {
-      const monthIndex = new Date(`${monthName} 1, 2000`).getMonth();
-      if (!isNaN(monthIndex)) {
-        return new Date(year, monthIndex, day);
-      }
-    }
-  }
-  return null;
-}
-
 export function ConversationHistory({
   conversations = [],
   isLoading: _isLoading = false,
   currentConversationId,
   isProcessing = false,
+  processingConversationSlug,
   onConversationSelect,
   onNewConversation,
   onConversationEdit,
@@ -199,24 +78,20 @@ export function ConversationHistory({
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
-  // Get current conversation separately
   const currentConversation = useMemo(() => {
     return conversations.find((c) => c.id === currentConversationId) || null;
   }, [conversations, currentConversationId]);
 
-  // Flatten all conversations (excluding current) and sort by updatedAt
   const allConversations = useMemo(() => {
     return conversations
       .filter((c) => c.id !== currentConversationId)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }, [conversations, currentConversationId]);
 
-  // Get visible conversations based on pagination
   const visibleConversations = useMemo(() => {
     return allConversations.slice(0, visibleCount);
   }, [allConversations, visibleCount]);
 
-  // Group visible conversations (current is handled separately in render)
   const { groups: groupedConversations } = useMemo(() => {
     return groupConversationsByTime(
       visibleConversations,
@@ -317,16 +192,13 @@ export function ConversationHistory({
     }
   }, [editingId]);
 
-  // Detect title changes and trigger animation
   useEffect(() => {
     conversations.forEach((conversation) => {
       const previousTitle = previousTitlesRef.current.get(conversation.id);
       const currentTitle = conversation.title;
 
       if (previousTitle && previousTitle !== currentTitle) {
-        // Trigger animation
         setAnimatingIds((prev) => new Set(prev).add(conversation.id));
-        // Remove animation after it completes
         setTimeout(() => {
           setAnimatingIds((prev) => {
             const next = new Set(prev);
@@ -340,13 +212,10 @@ export function ConversationHistory({
     });
   }, [conversations]);
 
-  // Reset visible count when dialog opens
-  // Use a ref to track if we've reset for this open state to avoid setState in effect
   const hasResetRef = useRef(false);
   useEffect(() => {
     if (open && !hasResetRef.current) {
       hasResetRef.current = true;
-      // Use requestAnimationFrame to defer state update
       requestAnimationFrame(() => {
         setVisibleCount(20);
       });
@@ -357,7 +226,6 @@ export function ConversationHistory({
 
   const handleLoadMore = () => {
     setIsLoadingMore(true);
-    // Small delay to show loading state, then load more
     setTimeout(() => {
       setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));
       setIsLoadingMore(false);
@@ -572,7 +440,8 @@ export function ConversationHistory({
                             <Pencil className="size-3" />
                           </button>
                         )}
-                        {isProcessing ? (
+                        {processingConversationSlug ===
+                        currentConversation.slug ? (
                           <div className="flex shrink-0 items-center">
                             <div className="size-2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50" />
                           </div>
@@ -742,6 +611,15 @@ export function ConversationHistory({
                                   <Pencil className="size-3" />
                                 </button>
                               )}
+                              {processingConversationSlug === conversation.slug ? (
+                                <div className="flex shrink-0 items-center">
+                                  <div className="size-2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50" />
+                                </div>
+                              ) : isCurrent ? (
+                                <div className="flex shrink-0 items-center">
+                                  <div className="bg-primary size-1.5 rounded-full" />
+                                </div>
+                              ) : null}
                             </>
                           )}
                         </div>

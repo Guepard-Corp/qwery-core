@@ -11,7 +11,8 @@ import {
 
 interface AgentStatusContextType {
   isProcessing: boolean;
-  setIsProcessing: (isProcessing: boolean) => void;
+  processingConversationSlug: string | null;
+  setIsProcessing: (isProcessing: boolean, conversationSlug?: string) => void;
 }
 
 const AgentStatusContext = createContext<AgentStatusContextType | undefined>(
@@ -19,15 +20,25 @@ const AgentStatusContext = createContext<AgentStatusContextType | undefined>(
 );
 
 export function AgentStatusProvider({ children }: { children: ReactNode }) {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessingState] = useState(false);
+  const [processingConversationSlug, setProcessingConversationSlug] =
+    useState<string | null>(null);
 
-  const setProcessing = useCallback((value: boolean) => {
-    setIsProcessing(value);
-  }, []);
+  const setProcessing = useCallback(
+    (value: boolean, conversationSlug?: string) => {
+      setIsProcessingState(value);
+      setProcessingConversationSlug(value ? conversationSlug || null : null);
+    },
+    [],
+  );
 
   const value = useMemo(
-    () => ({ isProcessing, setIsProcessing: setProcessing }),
-    [isProcessing, setProcessing],
+    () => ({
+      isProcessing,
+      processingConversationSlug,
+      setIsProcessing: setProcessing,
+    }),
+    [isProcessing, processingConversationSlug, setProcessing],
   );
 
   return (
@@ -39,9 +50,12 @@ export function AgentStatusProvider({ children }: { children: ReactNode }) {
 
 export function useAgentStatus() {
   const context = useContext(AgentStatusContext);
-  // Return default values if context is not available (for optional usage)
   if (context === undefined) {
-    return { isProcessing: false, setIsProcessing: () => {} };
+    return {
+      isProcessing: false,
+      processingConversationSlug: null,
+      setIsProcessing: () => {},
+    };
   }
   return context;
 }
