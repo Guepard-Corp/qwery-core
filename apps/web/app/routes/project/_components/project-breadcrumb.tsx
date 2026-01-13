@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -39,6 +39,30 @@ export function ProjectBreadcrumb() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+  const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
+    [],
+  );
+
+  useEffect(() => {
+    const updateUnsavedSlugs = () => {
+      try {
+        const unsaved = JSON.parse(
+          localStorage.getItem('notebook:unsaved') || '[]',
+        ) as string[];
+        setUnsavedNotebookSlugs(unsaved);
+      } catch {
+        setUnsavedNotebookSlugs([]);
+      }
+    };
+
+    updateUnsavedSlugs();
+    window.addEventListener('storage', updateUnsavedSlugs);
+    const interval = setInterval(updateUnsavedSlugs, 500);
+    return () => {
+      window.removeEventListener('storage', updateUnsavedSlugs);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Detect current object (datasource or notebook)
   const isDatasourceRoute = location.pathname.startsWith('/ds/');
@@ -312,7 +336,7 @@ export function ProjectBreadcrumb() {
           currentProject?.slug || '',
         ),
         viewAllNotebooks: createPath(
-          pathsConfig.app.project,
+          pathsConfig.app.projectNotebooks,
           currentProject?.slug || '',
         ),
       }}
@@ -337,7 +361,7 @@ export function ProjectBreadcrumb() {
       }}
       onViewAllNotebooks={() => {
         if (currentProject) {
-          navigate(createPath(pathsConfig.app.project, currentProject.slug));
+          navigate(createPath(pathsConfig.app.projectNotebooks, currentProject.slug));
         }
       }}
       onNewOrg={handleNewOrg}

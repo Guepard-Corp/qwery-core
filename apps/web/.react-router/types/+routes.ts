@@ -108,6 +108,11 @@ type Pages = {
       "slug": string;
     };
   };
+  "/prj/:slug/notebooks": {
+    params: {
+      "slug": string;
+    };
+  };
   "/prj/:slug/ds": {
     params: {
       "slug": string;
@@ -175,7 +180,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/:id" | "/api/projects" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
+    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/:id" | "/api/projects" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
   };
   "routes/version.ts": {
     id: "routes/version";
@@ -283,7 +288,7 @@ type RouteFiles = {
   };
   "routes/project/layout.tsx": {
     id: "routes/project/layout";
-    page: "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug";
+    page: "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug";
   };
   "routes/project/index.tsx": {
     id: "routes/project/index";
@@ -292,6 +297,10 @@ type RouteFiles = {
   "routes/project/notebook.tsx": {
     id: "routes/project/notebook";
     page: "/notebook/:slug";
+  };
+  "routes/project/notebooks/index.tsx": {
+    id: "routes/project/notebooks/index";
+    page: "/prj/:slug/notebooks";
   };
   "routes/project/datasources/index.tsx": {
     id: "routes/project/datasources/index";
@@ -378,6 +387,7 @@ type RouteModules = {
   "routes/project/layout": typeof import("./app/routes/project/layout.tsx");
   "routes/project/index": typeof import("./app/routes/project/index.tsx");
   "routes/project/notebook": typeof import("./app/routes/project/notebook.tsx");
+  "routes/project/notebooks/index": typeof import("./app/routes/project/notebooks/index.tsx");
   "routes/project/datasources/index": typeof import("./app/routes/project/datasources/index.tsx");
   "routes/project/datasources/sources": typeof import("./app/routes/project/datasources/sources.tsx");
   "routes/project/datasources/new": typeof import("./app/routes/project/datasources/new.tsx");

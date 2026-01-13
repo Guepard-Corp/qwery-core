@@ -30,6 +30,7 @@ const PathsSchema = z.object({
     newProjectDatasource: z.string().min(1),
     availableSources: z.string().min(1),
     projectNotebook: z.string().min(1),
+    projectNotebooks: z.string().min(1),
     projectPlayground: z.string().min(1),
     projectConversation: z.string().min(1),
     conversation: z.string().min(1),
@@ -69,6 +70,7 @@ const pathsConfig = PathsSchema.parse({
     availableSources: '/prj/[slug]/ds/new',
     newProjectDatasource: '/prj/[slug]/ds/[name]/new',
     projectNotebook: '/notebook/[slug]',
+    projectNotebooks: '/prj/[slug]/notebooks',
     projectPlayground: '/prj/[slug]/playground',
     projectConversation: '/prj/[slug]/c',
     conversation: '/c/[slug]',
@@ -78,7 +80,9 @@ const pathsConfig = PathsSchema.parse({
   },
 } satisfies z.infer<typeof PathsSchema>);
 
-export function createPath(path: string, slug: string) {
+export function createPath(path: string, slug: string | undefined) {
+  if (!path) return '';
+  if (!slug) return path;
   return path.replace('[slug]', slug);
 }
 

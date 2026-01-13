@@ -33,6 +33,7 @@ export const defaultI18nNamespaces = [
   'datasources',
   'welcome',
   'organizations',
+  'notebooks',
 ];
 
 /**
