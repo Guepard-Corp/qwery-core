@@ -422,16 +422,25 @@ Charlie,Sales,75000`;
           expect(pgResult.rows[1]?.email).toBe('bob@example.com');
 
           // Perform federated query joining PostgreSQL and CSV data
-          // The CSV datasource creates a view, so we need to find the view name
-          // Query duckdb_views() to find the view created for the CSV datasource
-          const viewsResult = await engine.query(`
-            SELECT view_name 
-            FROM duckdb_views() 
-            WHERE view_name LIKE '%test_csv_ds%'
+          // The CSV datasource creates a table in an attached database, so we need to find the table name
+          // Query information_schema to find the table created for the CSV datasource
+          const csvDbName = dbNames.find(
+            (name: string) =>
+              name !== 'memory' && name !== 'main' && name !== attachedDbName,
+          );
+          expect(csvDbName).toBeDefined();
+
+          // Get the table name from the CSV datasource's attached database
+          const tablesResult = await engine.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_catalog = '${csvDbName}' 
+              AND table_schema = 'main'
+            ORDER BY table_name
           `);
-          expect(viewsResult.rows.length).toBeGreaterThan(0);
-          const csvViewName = viewsResult.rows[0]?.view_name as string;
-          expect(csvViewName).toBeDefined();
+          expect(tablesResult.rows.length).toBeGreaterThan(0);
+          const csvTableName = tablesResult.rows[0]?.table_name as string;
+          expect(csvTableName).toBeDefined();
 
           const federatedResult = await engine.query(`
             SELECT 
@@ -441,7 +450,7 @@ Charlie,Sales,75000`;
               csv.department,
               csv.salary
             FROM "${attachedDbName}".public.test_users pg
-            INNER JOIN "${csvViewName}" csv ON pg.name = csv.name
+            INNER JOIN "${csvDbName}"."${csvTableName}" csv ON pg.name = csv.name
             ORDER BY pg.id
           `);
 

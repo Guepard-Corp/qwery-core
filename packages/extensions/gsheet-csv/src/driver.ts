@@ -11,6 +11,9 @@ import {
   DatasourceMetadataZodSchema,
   withTimeout,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
+  getQueryEngineConnection,
+  isQueryEngineConnection,
+  type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
 const ConfigSchema = z.object({
@@ -205,34 +208,19 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       connection?: unknown,
     ): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
-      let conn: Awaited<
-        ReturnType<
-          import('@duckdb/node-api').DuckDBInstance['connect']
-        >
-      >;
+      let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['instance']['connect']>>;
       let shouldCloseConnection = false;
       let discoveredTabs: Array<{ gid: number; name: string }>;
 
-      // Type guard to check if connection is a DuckDB connection
-      const isDuckDBConnection = (
-        c: unknown,
-      ): c is Awaited<
-        ReturnType<
-          import('@duckdb/node-api').DuckDBInstance['connect']
-        >
-      > => {
-        return (
-          c !== null &&
-          c !== undefined &&
-          typeof c === 'object' &&
-          'run' in c &&
-          typeof (c as { run: unknown }).run === 'function'
-        );
-      };
+      // Check if connection parameter is provided, otherwise use queryEngineConnection from context
+      const queryEngineConn =
+        (connection && isQueryEngineConnection(connection)
+          ? connection
+          : null) || getQueryEngineConnection(context);
 
-      if (connection && isDuckDBConnection(connection)) {
+      if (queryEngineConn) {
         // Use provided connection - create views in main engine
-        conn = connection;
+        conn = queryEngineConn;
         const match = parsed.sharedLink.match(
           /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
         );
@@ -355,8 +343,8 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
           `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
         );
       } finally {
-        if (shouldCloseConnection) {
-        conn.closeSync();
+        if (shouldCloseConnection && 'closeSync' in conn && typeof conn.closeSync === 'function') {
+          conn.closeSync();
         }
       }
     },

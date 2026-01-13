@@ -3,8 +3,9 @@ import type {
   AttachmentResult,
   DuckDBNativeAttachmentOptions,
 } from '../types';
-import { extractSchema } from '../../extract-schema';
 import { generateSemanticViewName } from '../../view-registry';
+import { getDatasourceDatabaseName } from '../../datasource-name-utils';
+import type { SimpleSchema } from '@qwery/domain/entities';
 
 const sanitizeName = (value: string): string => {
   const cleaned = value.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -32,21 +33,120 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
   async attach(
     options: DuckDBNativeAttachmentOptions,
   ): Promise<AttachmentResult> {
-    const { connection: conn, datasource } = options;
+    const { connection: conn, datasource, conversationId, workspace } = options;
     const provider = datasource.datasource_provider;
     const config = datasource.config as Record<string, unknown>;
 
-    // Generate a temporary name for initial creation to allow semantic renaming later
+    // Use datasource name directly as database name (sanitized) - same pattern as gsheets
+    const attachedDatabaseName = getDatasourceDatabaseName(datasource);
+    const escapedDbName = attachedDatabaseName.replace(/"/g, '""');
+
+    // Create persistent attached database using SQLite file (same pattern as gsheets)
+    // If conversationId/workspace are provided, create persistent DB; otherwise use in-memory
+    let databaseAttached = false;
+    try {
+      const escapedDbNameForQuery = attachedDatabaseName.replace(/'/g, "''");
+      const dbListReader = await conn.runAndReadAll(
+        `SELECT name FROM pragma_database_list WHERE name = '${escapedDbNameForQuery}'`,
+      );
+      await dbListReader.readAll();
+      const existingDbs = dbListReader.getRowObjectsJS() as Array<{
+        name: string;
+      }>;
+
+      if (existingDbs.length === 0) {
+        if (conversationId && workspace) {
+          // Create persistent database file
+          const { join } = await import('node:path');
+          const { mkdir } = await import('node:fs/promises');
+          const conversationDir = join(workspace, conversationId);
+          await mkdir(conversationDir, { recursive: true });
+          const dbFilePath = join(
+            conversationDir,
+            `${attachedDatabaseName}.db`,
+          );
+
+          const escapedPath = dbFilePath.replace(/'/g, "''");
+          await conn.run(`ATTACH '${escapedPath}' AS "${escapedDbName}"`);
+          databaseAttached = true;
+
+          console.log(
+            `[DuckDBNativeAttach] Attached persistent database: ${attachedDatabaseName} at ${dbFilePath}`,
+          );
+        } else {
+          // Create in-memory attached database for temporary use
+          await conn.run(`ATTACH ':memory:' AS "${escapedDbName}"`);
+          databaseAttached = true;
+
+          console.log(
+            `[DuckDBNativeAttach] Attached in-memory database: ${attachedDatabaseName}`,
+          );
+        }
+      } else {
+        databaseAttached = true;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to attach database ${attachedDatabaseName}: ${errorMsg}`,
+      );
+    }
+
+    if (!databaseAttached) {
+      throw new Error(
+        `Database ${attachedDatabaseName} was not attached successfully`,
+      );
+    }
+
+    // Drop any existing temp tables from previous runs to ensure clean state
+    try {
+      const existingTablesReader = await conn.runAndReadAll(
+        `SELECT table_name FROM information_schema.tables 
+         WHERE table_catalog = '${attachedDatabaseName.replace(/'/g, "''")}' 
+           AND table_schema = 'main' 
+           AND table_type = 'BASE TABLE'`,
+      );
+      await existingTablesReader.readAll();
+      const existingTables = existingTablesReader.getRowObjectsJS() as Array<{
+        table_name: string;
+      }>;
+
+      if (existingTables.length > 0) {
+        console.log(
+          `[DuckDBNativeAttach] Dropping ${existingTables.length} existing table(s) to ensure clean state`,
+        );
+        for (const table of existingTables) {
+          const escapedTableName = table.table_name.replace(/"/g, '""');
+          try {
+            await conn.run(
+              `DROP TABLE IF EXISTS "${escapedDbName}"."${escapedTableName}"`,
+            );
+          } catch (error) {
+            console.warn(
+              `[DuckDBNativeAttach] Failed to drop table ${table.table_name}:`,
+              error,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[DuckDBNativeAttach] Failed to check/drop existing tables, continuing:`,
+        error,
+      );
+    }
+
+    // Generate a temporary table name for initial creation
     const baseName =
       datasource.name?.trim() ||
       datasource.datasource_provider?.trim() ||
       'data';
-    const tempViewName = sanitizeName(
+    const tempTableName = sanitizeName(
       `tmp_${datasource.id}_${baseName}`.toLowerCase(),
     );
-    const escapedTempViewName = tempViewName.replace(/"/g, '""');
+    const escapedTempTableName = tempTableName.replace(/"/g, '""');
 
-    // Create view directly from source based on provider type
+    // Create table directly from source based on provider type in the attached database
     switch (provider) {
       case 'csv': {
         const path =
@@ -57,7 +157,7 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
           throw new Error('csv datasource requires path or url in config');
         }
         await conn.run(`
-          CREATE OR REPLACE VIEW "${escapedTempViewName}" AS
+          CREATE OR REPLACE TABLE "${escapedDbName}"."${escapedTempTableName}" AS
           SELECT * FROM read_csv_auto('${path.replace(/'/g, "''")}')
         `);
         break;
@@ -73,7 +173,7 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
           );
         }
         await conn.run(`
-          CREATE OR REPLACE VIEW "${escapedTempViewName}" AS
+          CREATE OR REPLACE TABLE "${escapedDbName}"."${escapedTempTableName}" AS
           SELECT * FROM read_json_auto('${url.replace(/'/g, "''")}')
         `);
         break;
@@ -86,7 +186,7 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
           );
         }
         await conn.run(`
-          CREATE OR REPLACE VIEW "${escapedTempViewName}" AS
+          CREATE OR REPLACE TABLE "${escapedDbName}"."${escapedTempTableName}" AS
           SELECT * FROM read_parquet('${url.replace(/'/g, "''")}')
         `);
         break;
@@ -95,43 +195,103 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
         throw new Error(`Unsupported DuckDB-native provider: ${provider}`);
     }
 
-    // Verify the view was created successfully
+    // Verify the table was created successfully
     try {
       const verifyReader = await conn.runAndReadAll(
-        `SELECT 1 FROM "${escapedTempViewName}" LIMIT 1`,
+        `SELECT 1 FROM "${escapedDbName}"."${escapedTempTableName}" LIMIT 1`,
       );
       await verifyReader.readAll();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `Failed to create or verify view "${tempViewName}": ${errorMsg}`,
+        `Failed to create or verify table "${attachedDatabaseName}.${tempTableName}": ${errorMsg}`,
       );
     }
 
-    // Extract schema from the created view
-    const schema = await extractSchema({
-      connection: conn,
-      viewName: tempViewName,
-    });
+    // Extract schema directly from the table (same pattern as gsheets)
+    let schema: SimpleSchema | undefined;
+    try {
+      const describeReader = await conn.runAndReadAll(
+        `DESCRIBE "${escapedDbName}"."${escapedTempTableName}"`,
+      );
+      await describeReader.readAll();
+      const describeRows = describeReader.getRowObjectsJS() as Array<{
+        column_name: string;
+        column_type: string;
+      }>;
 
-    // Generate semantic name from schema
-    const semanticName = generateSemanticViewName(schema);
-    const finalViewName = sanitizeName(
-      `${datasource.id}_${semanticName}`.toLowerCase(),
-    );
-    const escapedFinalViewName = finalViewName.replace(/"/g, '""');
+      const columns = describeRows.map((row) => ({
+        columnName: row.column_name,
+        columnType: row.column_type,
+      }));
 
-    // Rename view to semantic name
-    if (finalViewName !== tempViewName) {
-      await conn.run(
-        `ALTER VIEW "${escapedTempViewName}" RENAME TO "${escapedFinalViewName}"`,
+      schema = {
+        databaseName: attachedDatabaseName,
+        schemaName: 'main',
+        tables: [
+          {
+            tableName: tempTableName,
+            columns,
+          },
+        ],
+      };
+    } catch (error) {
+      console.warn(
+        `[DuckDBNativeAttach] Failed to extract schema for table ${tempTableName}:`,
+        error,
+      );
+    }
+
+    // Generate semantic name from schema (same pattern as gsheets)
+    let finalTableName: string;
+    if (schema) {
+      finalTableName = generateSemanticViewName(schema, []);
+      finalTableName = sanitizeName(finalTableName.toLowerCase());
+      console.log(
+        `[DuckDBNativeAttach] Generated semantic name: ${finalTableName} from schema`,
+      );
+    } else {
+      // Fallback to base name if schema extraction failed
+      finalTableName = sanitizeName(baseName.toLowerCase());
+      console.warn(
+        `[DuckDBNativeAttach] Schema extraction failed, using base name: ${finalTableName}`,
+      );
+    }
+    const escapedFinalTableName = finalTableName.replace(/"/g, '""');
+
+    // Always rename table to semantic name (even if same, ensures clean state)
+    if (finalTableName !== tempTableName) {
+      try {
+        await conn.run(
+          `ALTER TABLE "${escapedDbName}"."${escapedTempTableName}" RENAME TO "${escapedFinalTableName}"`,
+        );
+        console.log(
+          `[DuckDBNativeAttach] Renamed table from ${tempTableName} to ${finalTableName}`,
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[DuckDBNativeAttach] Failed to rename table from ${tempTableName} to ${finalTableName}: ${errorMsg}`,
+        );
+        // If rename fails, use temp name
+        finalTableName = tempTableName;
+      }
+    } else {
+      console.log(
+        `[DuckDBNativeAttach] Semantic name matches temp name, keeping: ${finalTableName}`,
       );
     }
 
     return {
-      viewName: finalViewName,
-      displayName: finalViewName,
-      schema,
+      attachedDatabaseName,
+      tables: [
+        {
+          schema: attachedDatabaseName,
+          table: finalTableName,
+          path: `${attachedDatabaseName}.${finalTableName}`,
+          schemaDefinition: schema,
+        },
+      ],
     };
   }
 }

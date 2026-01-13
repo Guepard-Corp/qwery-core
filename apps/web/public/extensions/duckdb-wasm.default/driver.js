@@ -20912,9 +20912,7 @@ async function withTimeout(promise, timeoutMs, errorMessage) {
   const timeoutPromise = new Promise((_2, reject) => {
     timeoutId = setTimeout(() => {
       reject(
-        new Error(
-          errorMessage ?? `Operation timed out after ${timeoutMs}ms`
-        )
+        new Error(errorMessage ?? `Operation timed out after ${timeoutMs}ms`)
       );
     }, timeoutMs);
   });

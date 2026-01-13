@@ -9,7 +9,11 @@ import type {
   IDataSourceDriver,
   DatasourceResultSet,
 } from '@qwery/extensions-sdk';
-import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
+import {
+  DatasourceMetadataZodSchema,
+  getQueryEngineConnection,
+  type QueryEngineConnection,
+} from '@qwery/extensions-sdk';
 
 const ConfigSchema = z.object({
   apiKey: z.string().min(1, 'apiKey is required'),
@@ -450,25 +454,10 @@ export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
     async metadata(config: unknown): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
       
-      if (
-        context.queryEngineConnection &&
-        typeof context.queryEngineConnection === 'object' &&
-        'run' in context.queryEngineConnection &&
-        typeof (context.queryEngineConnection as { run: unknown }).run ===
-          'function' &&
-        'runAndReadAll' in context.queryEngineConnection
-      ) {
+      const queryEngineConn = getQueryEngineConnection(context);
+      if (queryEngineConn) {
         // Use provided connection - load data into main engine
-        const connection = context.queryEngineConnection as Awaited<
-          ReturnType<
-            import('@duckdb/node-api').DuckDBInstance['connect']
-          >
-        > & {
-          runAndReadAll: (sql: string) => Promise<{
-            readAll: () => Promise<void>;
-            getRowObjectsJS: () => Array<Record<string, unknown>>;
-          }>;
-        };
+        const connection = queryEngineConn;
         const entry = await ensureInstanceReady(parsed, context);
         const conn = await entry.instance.connect();
         

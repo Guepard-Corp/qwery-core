@@ -11,6 +11,8 @@ import {
   DatasourceMetadataZodSchema,
   withTimeout,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
+  getQueryEngineConnection,
+  type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
 const ConfigSchema = z
@@ -99,26 +101,13 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
 
     async metadata(config: unknown): Promise<DatasourceMetadata> {
       const parsed = ConfigSchema.parse(config);
-      let conn: Awaited<
-        ReturnType<
-          import('@duckdb/node-api').DuckDBInstance['connect']
-        >
-      >;
+      let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
       let shouldCloseConnection = false;
 
-      if (
-        context.queryEngineConnection &&
-        typeof context.queryEngineConnection === 'object' &&
-        'run' in context.queryEngineConnection &&
-        typeof (context.queryEngineConnection as { run: unknown }).run ===
-          'function'
-      ) {
+      const queryEngineConn = getQueryEngineConnection(context);
+      if (queryEngineConn) {
         // Use provided connection - create view in main engine
-        conn = context.queryEngineConnection as Awaited<
-          ReturnType<
-            import('@duckdb/node-api').DuckDBInstance['connect']
-          >
-        >;
+        conn = queryEngineConn;
         const escapedUrl = parsed.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
@@ -213,8 +202,8 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
           `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
         );
       } finally {
-        if (shouldCloseConnection) {
-        conn.closeSync();
+        if (shouldCloseConnection && 'closeSync' in conn && typeof conn.closeSync === 'function') {
+          conn.closeSync();
         }
       }
     },

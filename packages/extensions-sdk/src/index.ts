@@ -8,3 +8,4 @@ export * from './manifest-discovery';
 export * from './json-schema-to-zod';
 export * from './connection-string-utils';
 export * from './timeout-utils';
+export * from './query-engine-connection';
