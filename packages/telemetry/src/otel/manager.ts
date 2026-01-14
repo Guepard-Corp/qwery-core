@@ -18,7 +18,6 @@ import {
   type Counter,
   type Histogram,
 } from '@opentelemetry/api';
-import { randomBytes } from 'node:crypto';
 import { OtelClientService } from './client-service';
 import { FilteringSpanExporter } from './filtering-exporter';
 
@@ -37,6 +36,32 @@ let semanticConventionsModule:
   | null = null;
 
 const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+function secureRandomStringBase36(length: number): string {
+  // Prefer randomUUID when available (Node + modern browsers).
+  const uuidFn = globalThis.crypto?.randomUUID;
+  if (typeof uuidFn === 'function') {
+    // randomUUID() is cryptographically secure; compact to base36-ish chars.
+    const compact = uuidFn().replaceAll('-', '');
+    // hex -> base36-ish (still plenty of entropy for a session id suffix)
+    return BigInt(`0x${compact}`).toString(36).slice(0, length);
+  }
+
+  // Fallback: WebCrypto getRandomValues (also cryptographically secure).
+  const webCrypto = globalThis.crypto;
+  if (webCrypto && typeof webCrypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(Math.max(8, Math.ceil(length * 0.75)));
+    webCrypto.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map((b) => b.toString(36))
+      .join('')
+      .slice(0, length);
+  }
+
+  // Extremely old runtimes only. Keep deterministic + low risk of collision,
+  // but avoid importing Node builtins that Vite may externalize in the browser.
+  return `${Date.now().toString(36)}${length}`;
+}
 
 async function loadNodeModules() {
   if (!isNode) {
@@ -702,11 +727,7 @@ export class OtelTelemetryManager {
 
   private generateSessionId(): string {
     const prefix = this.serviceName.includes('cli') ? 'cli' : 'web';
-    const bytes = randomBytes(4);
-    const randomString = Array.from(bytes)
-      .map((byte) => byte.toString(36))
-      .join('')
-      .substring(0, 7);
+    const randomString = secureRandomStringBase36(7);
     return `${prefix}-${Date.now()}-${randomString}`;
   }
 
