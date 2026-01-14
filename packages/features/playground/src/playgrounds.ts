@@ -6,7 +6,7 @@ import { getExtension } from '@qwery/extensions-loader';
 import { PlaygroundFactory } from './factory/playground-factory';
 import { generateRandomName } from './utils/names';
 
-export const PLAYGROUNDS = [
+export const PLAYGROUNDS: Playground[] = [
   {
     id: 'pglite',
     logo: '/images/datasources/postgresql_icon_big.png',
@@ -17,15 +17,17 @@ export const PLAYGROUNDS = [
       description:
         'PostgreSQL is a powerful, open source object-relational database system.',
       datasource_provider: 'pglite',
-      datasource_driver: 'pglite',
+      datasource_driver: 'pglite.default',
       datasource_kind: DatasourceKind.EMBEDDED,
-      config: {},
+      config: {
+        driverId: 'pglite.default',
+      },
     },
   },
-] as Playground[];
+];
 
 export class PlaygroundBuilder {
-  constructor(private readonly datasourceRepository: IDatasourceRepository) {}
+  constructor(private readonly datasourceRepository: IDatasourceRepository) { }
 
   async build(id: string, projectId: string): Promise<Datasource> {
     const selectedPlayground = PLAYGROUNDS.find(
@@ -40,34 +42,45 @@ export class PlaygroundBuilder {
       selectedPlayground.id,
       projectId,
     );
-    const connectionConfig = playgroundDatabase.getConnectionConfig();
+    const connectionConfig = playgroundDatabase.getConnectionConfig(projectId);
 
-    const datasource: Datasource = {
+    const now = new Date();
+    const userId = 'system';
+    
+    const datasource: Partial<Datasource> = {
       ...selectedPlayground.datasource,
       projectId,
-      config: connectionConfig,
+      config: {
+        ...connectionConfig,
+        driverId: selectedPlayground.datasource.datasource_driver,
+      },
+      createdBy: userId,
     };
 
     const createdDatasource =
-      await this.datasourceRepository.create(datasource);
+      await this.datasourceRepository.create(datasource as Datasource);
 
-    const extension = await getExtension(datasource.datasource_provider);
+    const datasourceProvider = selectedPlayground.datasource.datasource_provider;
+    const datasourceName = selectedPlayground.datasource.name;
+    const datasourceConfig = datasource.config || {};
+
+    const extension = await getExtension(datasourceProvider);
     if (!extension) {
       throw new Error(
-        `Extension not found for datasource ${datasource.datasource_provider}`,
+        `Extension not found for datasource ${datasourceProvider}`,
       );
     }
     const driver = await extension.getDriver(
-      datasource.name,
-      datasource.config,
+      datasourceName,
+      datasourceConfig,
     );
     if (!driver) {
       throw new Error(
-        `Driver not found for datasource ${datasource.datasource_provider}`,
+        `Driver not found for datasource ${datasourceProvider}`,
       );
     }
 
-    await playgroundDatabase.seed(driver, datasource.config);
+    await playgroundDatabase.seed(driver, datasourceConfig);
     if (driver.close) {
       await driver.close();
     }

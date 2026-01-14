@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useNavigate, useParams } from 'react-router';
 
@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
+import { Database, Table2, Users, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Playground } from '@qwery/domain/entities';
@@ -22,6 +23,7 @@ import { Input } from '@qwery/ui/input';
 import { Kbd, KbdGroup } from '@qwery/ui/kbd';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
+import { PLAYGROUND_TABLES } from '@qwery/playground/utils/playground-sql';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -58,7 +60,9 @@ export function ListPlaygrounds({
     repositories.datasource,
     () => {
       toast.success('Playground created successfully');
-      navigate(createPath(pathsConfig.app.projectNotebook, project_id));
+      navigate(createPath(pathsConfig.app.projectDatasources, project_id), {
+        replace: true,
+      });
     },
     (error) => {
       toast.error(
@@ -183,38 +187,81 @@ export function ListPlaygrounds({
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {paginatedPlaygrounds.map((playground) => {
+                const tableIcons: Record<string, React.ReactNode> = {
+                  users: <Users className="h-4 w-4" />,
+                  products: <ShoppingCart className="h-4 w-4" />,
+                  orders: <Table2 className="h-4 w-4" />,
+                };
+
                 return (
                   <Card
                     key={playground.id}
-                    className="hover:bg-accent/50 transition-colors"
+                    className="group hover:border-primary/30 hover:shadow-lg transition-all"
                   >
-                    <CardHeader>
+                    <CardHeader className="pb-3">
                       <div className="flex items-center gap-3">
                         {playground.logo && (
-                          <img
-                            src={playground.logo}
-                            alt={playground.name}
-                            className="h-10 w-10 flex-shrink-0 rounded object-contain"
-                          />
+                          <div className="bg-muted/50 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
+                            <img
+                              src={playground.logo}
+                              alt={playground.name}
+                              className="h-8 w-8 object-contain"
+                            />
+                          </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <CardTitle className="truncate text-base">
+                          <CardTitle className="truncate text-lg">
                             {playground.name}
                           </CardTitle>
+                          <CardDescription className="mt-1">
+                            {playground.description}
+                          </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col gap-2">
-                        <p className="text-muted-foreground text-sm">
-                          {playground.description}
-                        </p>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-wider">
+                          <Database className="h-3.5 w-3.5" />
+                          <span>Sample Tables</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {PLAYGROUND_TABLES.slice(0, 3).map((table) => (
+                            <div
+                              key={table.name}
+                              className="bg-muted/50 border-border flex items-start gap-2 rounded-md border p-2 text-sm"
+                            >
+                              <div className="text-muted-foreground mt-0.5">
+                                {tableIcons[table.name] || (
+                                  <Table2 className="h-3.5 w-3.5" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium capitalize">
+                                  {table.name}
+                                </div>
+                                {table.description && (
+                                  <div className="text-muted-foreground text-xs">
+                                    {table.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {PLAYGROUND_TABLES.length > 3 && (
+                            <div className="text-muted-foreground text-xs">
+                              +{PLAYGROUND_TABLES.length - 3} more tables
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-4 flex gap-2">
+
+
+                      <div className="pt-2">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          className="flex-1"
+                          className="w-full"
                           onClick={() => handleCreate(playground.id)}
                           disabled={
                             createPlaygroundMutation.isPending ||
@@ -223,7 +270,7 @@ export function ListPlaygrounds({
                         >
                           {createPlaygroundMutation.isPending
                             ? 'Creating...'
-                            : 'Create'}
+                            : 'Create Playground'}
                         </Button>
                       </div>
                     </CardContent>
@@ -284,7 +331,7 @@ export function ListPlaygrounds({
                             }
                             size="sm"
                             onClick={() => goToPage(page)}
-                            className="min-w-[2.5rem]"
+                            className="min-w-10"
                           >
                             {page}
                           </Button>

@@ -16,7 +16,8 @@
     "./playground-try": "./src/components/playground-try.tsx",
     "./playgrounds": "./src/playgrounds.ts",
     "./factory": "./src/factory/playground-factory.ts",
-    "./factory/database": "./src/factory/playground-database.ts"
+    "./factory/database": "./src/factory/playground-database.ts",
+    "./utils/playground-sql": "./src/utils/playground-sql.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.12",

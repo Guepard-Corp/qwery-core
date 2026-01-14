@@ -2,10 +2,12 @@ import { reactRouter } from '@react-router/dev/vite';
 import { defineConfig, type Plugin } from 'vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import tailwindCssVitePlugin from '@qwery/tailwind-config/vite';
 
-// Plugin to set correct MIME type for WASM files
+// Plugin to set correct MIME type for WASM files and extension drivers
 function wasmMimeTypePlugin(): Plugin {
   return {
     name: 'wasm-mime-type',
@@ -13,6 +15,35 @@ function wasmMimeTypePlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
+
+        if (url.startsWith('/extensions/')) {
+          try {
+            // Resolve public directory relative to the vite config file location
+            const publicDir = path.resolve(process.cwd(), 'apps/web/public');
+            const filePath = path.join(publicDir, url);
+            
+            if (fs.existsSync(filePath)) {
+              const stats = fs.statSync(filePath);
+              if (stats.isFile()) {
+                if (url.endsWith('.js')) {
+                  res.setHeader('Content-Type', 'application/javascript');
+                } else if (url.endsWith('.wasm')) {
+                  res.setHeader('Content-Type', 'application/wasm');
+                } else if (url.endsWith('.data')) {
+                  res.setHeader('Content-Type', 'application/octet-stream');
+                } else if (url.endsWith('.json')) {
+                  res.setHeader('Content-Type', 'application/json');
+                }
+                
+                const fileContent = fs.readFileSync(filePath);
+                res.end(fileContent);
+                return;
+              }
+            }
+          } catch (error) {
+            //continue to next middleware
+          }
+        }
 
         // Handle WASM files with correct MIME type
         if (url.endsWith('.wasm')) {

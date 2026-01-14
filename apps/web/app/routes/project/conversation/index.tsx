@@ -21,6 +21,7 @@ import {
 import { cn } from '@qwery/ui/utils';
 import { Button } from '@qwery/ui/button';
 import { Skeleton } from '@qwery/ui/skeleton';
+import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
 
 function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -170,20 +171,8 @@ export default function ConversationIndexPage() {
                   Recent Conversations
                 </h2>
               </div>
-              <div className="mx-auto w-full max-w-2xl space-y-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="bg-card flex w-full items-center gap-4 rounded-lg border px-5 py-4"
-                  >
-                    <Skeleton className="size-10 shrink-0 rounded-lg" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </div>
-                    <Skeleton className="size-4 shrink-0" />
-                  </div>
-                ))}
+              <div className="mx-auto w-full max-w-2xl">
+                <LoadingSkeleton variant="list" count={4} />
               </div>
             </div>
           ) : sortedConversations.length > 0 ? (
