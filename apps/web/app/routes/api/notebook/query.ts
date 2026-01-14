@@ -165,29 +165,28 @@ export async function action({ request }: ActionFunctionArgs) {
         const telemetry = await getWebTelemetry();
         // Extract workspace context from conversation if available
         let workspace;
-        if (conversationId) {
-          try {
-            const conversation =
-              await repositories.conversation.findBySlug(conversationId);
-            if (conversation) {
-              // Fetch project to get organizationId
-              const project = await repositories.project.findById(
-                conversation.projectId,
-              );
-              workspace = {
-                userId: conversation.createdBy,
-                organizationId: project?.organizationId,
-                projectId: conversation.projectId,
-              };
-            }
-          } catch {
-            // Ignore errors when extracting workspace context
+
+        try {
+          const conversation =
+            await repositories.conversation.findBySlug(conversationId);
+          if (conversation) {
+            // Fetch project to get organizationId
+            const project = await repositories.project.findById(
+              conversation.projectId,
+            );
+            workspace = {
+              userId: conversation.createdBy,
+              organizationId: project?.organizationId,
+              projectId: conversation.projectId,
+            };
           }
+        } catch {
+          // Ignore errors when extracting workspace context
         }
 
         recordQueryMetrics(telemetry, 'web', workspace, duration, rowCount, {
           'datasource.id': datasourceId,
-          'conversation.id': conversationId || '',
+          'conversation.id': conversationId,
           'query.mode': 'notebook',
         });
       } catch (metricsError) {

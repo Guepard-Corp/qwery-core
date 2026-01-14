@@ -18,6 +18,7 @@ import {
   type Counter,
   type Histogram,
 } from '@opentelemetry/api';
+import { randomBytes } from 'node:crypto';
 import { OtelClientService } from './client-service';
 import { FilteringSpanExporter } from './filtering-exporter';
 
@@ -701,7 +702,12 @@ export class OtelTelemetryManager {
 
   private generateSessionId(): string {
     const prefix = this.serviceName.includes('cli') ? 'cli' : 'web';
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const bytes = randomBytes(4);
+    const randomString = Array.from(bytes)
+      .map((byte) => byte.toString(36))
+      .join('')
+      .substring(0, 7);
+    return `${prefix}-${Date.now()}-${randomString}`;
   }
 
   private initializeMetrics(): void {

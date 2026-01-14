@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { Workspace } from '@qwery/domain/entities';
 import { TelemetryManager } from '@qwery/telemetry/otel';
 
@@ -74,8 +75,12 @@ export class CliContainer {
   constructor(
     private readonly stateStore: FileStateStore = new FileStateStore(),
   ) {
-    // Generate session ID for this CLI run
-    const sessionId = `cli-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const bytes = randomBytes(4);
+    const randomString = Array.from(bytes)
+      .map((byte) => byte.toString(36))
+      .join('')
+      .substring(0, 7);
+    const sessionId = `cli-${Date.now()}-${randomString}`;
     this.telemetry = new TelemetryManager('qwery-cli', sessionId);
     this.notebookRunner = new NotebookRunner(this.telemetry);
   }

@@ -209,7 +209,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           '[Chat API] Running intent detection for:',
           lastUserMessageText.substring(0, 100),
         );
-        const intentResult = await detectIntent(lastUserMessageText, model);
+        const intentResult = await detectIntent(lastUserMessageText, messages);
         needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
         console.log('[Chat API] Intent detection result:', {
           intent: (intentResult as { intent?: string }).intent,

@@ -123,8 +123,8 @@ export const createStateMachine = (
     }): Promise<AgentContext['intent']> => {
       const startTime = Date.now();
       const {
-        provider,
-        modelName,
+        provider: _provider,
+        modelName: _modelName,
         fullModel: _fullModel,
       } = parseModel(input.model);
 
@@ -154,51 +154,7 @@ export const createStateMachine = (
         trace.setSpan(otelContext.active(), span),
         async () => {
           try {
-            const result = await detectIntent(input.inputMessage, input.model);
-
-            // Record token usage if available
-            // Usage might be a promise or synchronous depending on provider
-            let usage: unknown = null;
-            if (result.usage) {
-              // Handle both promise and synchronous usage
-              if (result.usage instanceof Promise) {
-                try {
-                  usage = await result.usage;
-                } catch {
-                  // Ignore errors in usage promise
-                }
-              } else {
-                usage = result.usage;
-              }
-            }
-
-            if (usage) {
-              // LanguageModelV2Usage structure varies by provider
-              // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
-              const { promptTokens, completionTokens, totalTokens } =
-                extractTokenUsage(usage);
-
-              if (promptTokens > 0 || completionTokens > 0) {
-                // Add token usage as span attributes so it appears in exported data
-                span.setAttributes({
-                  'agent.llm.prompt.tokens': promptTokens,
-                  'agent.llm.completion.tokens': completionTokens,
-                  'agent.llm.total.tokens': totalTokens,
-                });
-
-                // Also record as metrics (using agent-specific method for dashboard)
-                telemetry.recordAgentTokenUsage(
-                  promptTokens,
-                  completionTokens,
-                  {
-                    'agent.llm.model.name': modelName,
-                    'agent.llm.provider.id': provider,
-                    'agent.actor.id': 'detectIntent',
-                    'agent.conversation.id': conversationId,
-                  },
-                );
-              }
-            }
+            const result = await detectIntent(input.inputMessage, undefined);
 
             endActorSpanWithEvent(
               telemetry,
@@ -210,7 +166,7 @@ export const createStateMachine = (
               true,
             );
 
-            return result.object;
+            return result;
           } catch (error) {
             const errorMessage =
               error instanceof Error ? error.message : String(error);

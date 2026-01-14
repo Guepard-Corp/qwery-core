@@ -11,10 +11,7 @@ import {
   parseConnectionString,
 } from '../utils/connection-string';
 import { createIdentity } from '../utils/identity';
-import {
-  createDriverForDatasource,
-  createDriverFromExtension,
-} from '../extensions/driver-factory';
+import { createDriverFromExtension } from '../extensions/driver-factory';
 import { withCommandSpan, CLI_EVENTS } from '../utils/telemetry-utils';
 
 interface DatasourceListOptions {
@@ -31,10 +28,6 @@ interface DatasourceCreateOptions {
   projectId?: string;
   skipTest?: boolean;
   format?: string;
-}
-
-interface DatasourceTestOptions {
-  datasourceId?: string;
 }
 
 export function registerDatasourceCommands(
@@ -244,76 +237,6 @@ export function registerDatasourceCommands(
           });
 
           return { count: datasources.length };
-        },
-      );
-    });
-
-  // ------------------- TEST -------------------
-  datasource
-    .command('test <datasourceId>')
-    .description('Test connectivity for a stored datasource')
-    .action(async (datasourceId: string, _options: DatasourceTestOptions) => {
-      await withCommandSpan(
-        container.telemetry,
-        container,
-        'datasource.test',
-        { datasourceId },
-        'command',
-        async (_span) => {
-          container.telemetry.captureEvent({
-            name: CLI_EVENTS.COMMAND_VALIDATED,
-            attributes: {
-              'datasource.id': datasourceId,
-            },
-          });
-
-          const repositories = container.getRepositories();
-          const datasource =
-            await repositories.datasource.findById(datasourceId);
-          if (!datasource) {
-            container.telemetry.captureEvent({
-              name: CLI_EVENTS.ERROR_NOT_FOUND,
-              attributes: {
-                'error.type': 'resource_not_found',
-                'resource.type': 'datasource',
-                'resource.id': datasourceId,
-              },
-            });
-            throw new CliUsageError(
-              `Datasource with id ${datasourceId} not found`,
-            );
-          }
-
-          container.telemetry.captureEvent({
-            name: CLI_EVENTS.COMMAND_TESTING_CONNECTION,
-            attributes: {
-              'datasource.id': datasource.id,
-              'datasource.provider': datasource.datasource_provider,
-            },
-          });
-
-          const startTime = Date.now();
-          const driver = await createDriverForDatasource(datasource);
-          try {
-            await driver.testConnection(datasource.config ?? {});
-            const duration = Date.now() - startTime;
-
-            container.telemetry.captureEvent({
-              name: CLI_EVENTS.COMMAND_CONNECTION_SUCCESS,
-              attributes: {
-                'datasource.id': datasource.id,
-                'connection.duration_ms': String(duration),
-              },
-            });
-
-            console.log(
-              `Connection to ${datasource.name} (${datasource.datasource_provider}) succeeded.`,
-            );
-          } finally {
-            driver.close?.();
-          }
-
-          return { datasourceId: datasource.id, success: true };
         },
       );
     });
