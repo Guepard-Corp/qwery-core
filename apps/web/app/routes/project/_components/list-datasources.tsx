@@ -35,6 +35,7 @@ import { Trans } from '@qwery/ui/trans';
 import { DatasourceCard } from '@qwery/ui/qwery/datasource';
 import { Switch } from '@qwery/ui/switch';
 import { cn } from '@qwery/ui/utils';
+import { formatRelativeTime } from '@qwery/ui/ai';
 
 import {
   DropdownMenu,
@@ -531,7 +532,7 @@ export function ListDatasources({
                                   <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
                                 </Link>
                               }
-                              data-test={`datasource-card-${datasource.id}`}
+                              dataTest={`datasource-card-${datasource.id}`}
                             />
                           );
                         })}
@@ -562,8 +563,9 @@ export function ListDatasources({
                                     datasource.datasource_provider,
                                   )
                                 : undefined;
-                              const date = new Date(datasource.createdAt);
-                              const formattedDate = date.toLocaleDateString();
+                              const formattedDateTime = formatRelativeTime(
+                                new Date(datasource.createdAt),
+                              );
 
                               return (
                                 <TableRow
@@ -610,7 +612,7 @@ export function ListDatasources({
                                   <TableCell className="text-muted-foreground text-sm">
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="h-3.5 w-3.5" />
-                                      {formattedDate}
+                                      {formattedDateTime}
                                     </div>
                                   </TableCell>
                                   <TableCell className="pr-6 text-right">
@@ -714,8 +716,9 @@ export function ListDatasources({
                   const logo = datasource.datasource_provider
                     ? pluginLogoMap.get(datasource.datasource_provider)
                     : undefined;
-                  const date = new Date(datasource.createdAt);
-                  const formattedDate = date.toLocaleDateString();
+                  const formattedDateTime = formatRelativeTime(
+                    new Date(datasource.createdAt),
+                  );
 
                   return (
                     <TableRow
@@ -757,7 +760,7 @@ export function ListDatasources({
                       <TableCell className="text-muted-foreground text-sm">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
-                          {formattedDate}
+                          {formattedDateTime}
                         </div>
                       </TableCell>
                       <TableCell className="pr-6 text-right">

@@ -13258,7 +13258,8 @@ var CellSchema = external_exports.object({
   cellId: external_exports.number().int().min(1).describe("The cell identifier"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the cell"),
   isActive: external_exports.boolean().describe("Whether the cell is active"),
-  runMode: external_exports.enum(RunModeSchema.options).describe("The run mode of the cell")
+  runMode: external_exports.enum(RunModeSchema.options).describe("The run mode of the cell"),
+  title: external_exports.string().optional().describe("The optional title of the cell")
 });
 var NotebookSchema = external_exports.object({
   id: external_exports.string().uuid().describe("The unique identifier for the notebook"),
@@ -13297,7 +13298,8 @@ var NotebookEntity = class extends Entity {
           // 10 lines total (9 newlines + 1 empty line)
           datasources: [],
           isActive: true,
-          runMode: "default"
+          runMode: "default",
+          title: "Cell 1"
         }
       ],
       isPublic: false

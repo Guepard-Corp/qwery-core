@@ -799,7 +799,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                               );
                                             }
 
-x                                            return (
+                                            return (
                                               <div className="flex flex-col items-end gap-1.5">
                                                 {messageDatasources &&
                                                   messageDatasources.length >
