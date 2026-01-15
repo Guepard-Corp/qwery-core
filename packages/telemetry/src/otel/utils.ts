@@ -3,6 +3,7 @@ import type { Span } from '@opentelemetry/api';
 import { CLI_EVENTS } from '../events/cli.events';
 import { WEB_EVENTS } from '../events/web.events';
 import { DESKTOP_EVENTS } from '../events/desktop.events';
+import { getTelemetryConfig } from './config';
 
 /**
  * Generic workspace context interface
@@ -262,7 +263,7 @@ export function recordQueryMetrics(
   rowCount: number,
   additionalAttributes?: Record<string, string | number | boolean>,
 ): void {
-  if (process.env.QWERY_TELEMETRY_DEBUG === 'true') {
+  if (getTelemetryConfig().debug) {
     console.log('[Telemetry] recordQueryMetrics called:', {
       appType,
       durationMs,
@@ -288,7 +289,7 @@ export function recordQueryMetrics(
     },
   );
 
-  if (process.env.QWERY_TELEMETRY_DEBUG === 'true') {
+  if (getTelemetryConfig().debug) {
     console.log('[Telemetry] Query metrics attributes:', attributes);
   }
 
@@ -319,7 +320,7 @@ export function recordTokenUsage(
   completionTokens: number,
   additionalAttributes?: Record<string, string | number | boolean>,
 ): void {
-  if (process.env.QWERY_TELEMETRY_DEBUG === 'true') {
+  if (getTelemetryConfig().debug) {
     console.log('[Telemetry] recordTokenUsage called:', {
       appType,
       promptTokens,
@@ -346,7 +347,7 @@ export function recordTokenUsage(
     },
   );
 
-  if (process.env.QWERY_TELEMETRY_DEBUG === 'true') {
+  if (getTelemetryConfig().debug) {
     console.log('[Telemetry] Token usage attributes:', attributes);
   }
 
