@@ -22,6 +22,7 @@ import {
 } from '../../ai-elements/prompt-input';
 import { ChatStatus } from 'ai';
 import QweryContext, { QweryContextProps } from './context';
+import { isResponseInProgress, getChatStatusConfig } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 
 export interface QweryPromptInputProps {
@@ -76,10 +77,7 @@ function PromptInputContent(props: QweryPromptInputProps) {
               e.preventDefault();
               e.stopPropagation();
 
-              if (
-                props.status === 'streaming' ||
-                props.status === 'submitted'
-              ) {
+              if (isResponseInProgress(props.status)) {
                 return;
               }
 
@@ -151,22 +149,19 @@ function PromptInputContent(props: QweryPromptInputProps) {
           <PromptInputSubmit
             disabled={
               props.stopDisabled ||
-              (props.status !== 'streaming' &&
-                props.status !== 'submitted' &&
+              (!isResponseInProgress(props.status) &&
                 !props.input.trim() &&
                 attachmentsCount === 0)
             }
             status={props.status}
             type={
-              (props.status === 'streaming' || props.status === 'submitted') &&
-              !props.stopDisabled
+              isResponseInProgress(props.status) && !props.stopDisabled
                 ? 'button'
                 : 'submit'
             }
             onClick={async (e) => {
               if (
-                (props.status === 'streaming' ||
-                  props.status === 'submitted') &&
+                isResponseInProgress(props.status) &&
                 !props.stopDisabled &&
                 props.onStop
               ) {

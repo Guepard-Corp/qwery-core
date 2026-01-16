@@ -54,6 +54,7 @@ import {
   ChartTypeSelector,
   type ChartTypeSelection,
 } from './charts/chart-type-selector';
+import type { NotebookCellType } from './utils/notebook-cell-type';
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'error';
 
@@ -296,13 +297,13 @@ export interface ToolPartProps {
   isRequestInProgress?: boolean;
   onPasteToNotebook?: (
     sqlQuery: string,
-    notebookCellType: 'query' | 'prompt',
+    notebookCellType: NotebookCellType,
     datasourceId: string,
     cellId: number,
   ) => void;
   notebookContext?: {
     cellId?: number;
-    notebookCellType?: 'query' | 'prompt';
+    notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
 }

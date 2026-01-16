@@ -33,6 +33,12 @@ import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './tool-ui-config';
 import { ToolPart } from './message-parts';
 import { getUserFriendlyToolName } from './utils/tool-name';
+import {
+  isChatStreaming,
+  isResponseInProgress,
+  getChatStatusConfig,
+} from './utils/chat-status';
+import type { NotebookCellType } from './utils/notebook-cell-type';
 
 export interface MessageItemProps {
   message: UIMessage;
@@ -47,7 +53,7 @@ export interface MessageItemProps {
   pluginLogoMap?: Map<string, string>;
   notebookContext?: {
     cellId?: number;
-    notebookCellType?: 'query' | 'prompt';
+    notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
   onEditSubmit: () => void;
@@ -60,7 +66,7 @@ export interface MessageItemProps {
   >['sendMessage'];
   onPasteToNotebook?: (
     sqlQuery: string,
-    notebookCellType: 'query' | 'prompt',
+    notebookCellType: NotebookCellType,
     datasourceId: string,
     cellId: number,
   ) => void;
@@ -127,9 +133,10 @@ function MessageItemComponent({
       {message.parts.map((part, i: number) => {
         const isLastTextPart = part.type === 'text' && i === lastTextPartIndex;
         const isStreaming =
-          status === 'streaming' && isLastAssistantMessage && isLastTextPart;
+          isChatStreaming(status) && isLastAssistantMessage && isLastTextPart;
         const isResponseComplete =
           !isStreaming && isLastAssistantMessage && isLastTextPart;
+        const statusConfig = getChatStatusConfig(status);
         switch (part.type) {
           case 'text': {
             const isEditing = editingMessageId === message.id;
@@ -356,17 +363,22 @@ function MessageItemComponent({
                               'opacity-0 transition-opacity group-hover:opacity-100',
                           )}
                         >
-                          {message.role === 'assistant' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={onRegenerate}
-                              className="h-7 w-7"
-                              title="Retry"
-                            >
-                              <RefreshCcwIcon className="size-3" />
-                            </Button>
-                          )}
+                          {message.role === 'assistant' &&
+                            statusConfig.showRegenerateButton &&
+                            !(
+                              isLastAssistantMessage &&
+                              statusConfig.hideRegenerateOnLastMessage
+                            ) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onRegenerate}
+                                className="h-7 w-7"
+                                title="Retry"
+                              >
+                                <RefreshCcwIcon className="size-3" />
+                              </Button>
+                            )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -414,7 +426,7 @@ function MessageItemComponent({
                 messageId={message.id}
                 index={i}
                 isStreaming={
-                  status === 'streaming' &&
+                  isChatStreaming(status) &&
                   i === message.parts.length - 1 &&
                   message.id === messages.at(-1)?.id
                 }
@@ -520,7 +532,7 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
   if (
     isLastMessage &&
-    (prev.status === 'streaming' || next.status === 'streaming')
+    (isChatStreaming(prev.status) || isChatStreaming(next.status))
   ) {
     return false;
   }

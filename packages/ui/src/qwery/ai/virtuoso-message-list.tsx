@@ -15,6 +15,7 @@ import {
 import type { UIMessage } from 'ai';
 import type { ChatStatus } from 'ai';
 import { MessageItem, type MessageItemProps } from './message-item';
+import { isChatStreaming, isChatSubmitted, isResponseInProgress } from './utils/chat-status';
 import { Loader } from '../../ai-elements/loader';
 import { Button } from '../../shadcn/button';
 import { BotAvatar } from '../bot-avatar';
@@ -75,7 +76,7 @@ export const VirtuosoMessageList = forwardRef<
   const wasAtBottomWhenStreamStartedRef = useRef(true);
 
   useEffect(() => {
-    if (status === 'streaming') {
+    if (isChatStreaming(status)) {
       wasAtBottomWhenStreamStartedRef.current = shouldFollowOutput;
     }
   }, [status, shouldFollowOutput]);
@@ -149,8 +150,8 @@ export const VirtuosoMessageList = forwardRef<
       },
       Footer: () => {
         if (
-          status === 'submitted' ||
-          (status === 'streaming' &&
+          isChatSubmitted(status) ||
+          (isChatStreaming(status) &&
             (!lastAssistantHasText || !lastMessageIsAssistant))
         ) {
           return (
