@@ -14,7 +14,7 @@ import {
 import { createQueryEngine, AbstractQueryEngine } from '@qwery/domain/ports';
 import type { TelemetryManager } from '@qwery/telemetry/otel';
 import {
-  createNullTelemetryService,
+  createOtelNullTelemetryService,
   createConversationAttributes,
   createMessageAttributes,
   endMessageSpanWithEvent,
@@ -61,7 +61,7 @@ export class FactoryAgent {
     this.actorRegistry = new ActorRegistry(); // NEW
     this.model = opts.model;
     this.telemetry = (opts.telemetry ??
-      createNullTelemetryService()) as TelemetryManager;
+      createOtelNullTelemetryService()) as TelemetryManager;
 
     // Create queryEngine before state machine so it can be passed
     this.queryEngine = createQueryEngine(DuckDBQueryEngine);
