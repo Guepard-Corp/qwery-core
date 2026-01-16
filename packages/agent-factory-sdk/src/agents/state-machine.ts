@@ -110,8 +110,7 @@ export const createStateMachine = (
   // Create telemetry-wrapped actors
   // All actors use startSpan for consistent nesting behavior
   // OpenTelemetry's AsyncLocalStorage should preserve context across async boundaries
-  // Since we wrap _executeRespond in context.with(), the message span should be active
-  // when actors are invoked, allowing proper parent-child nesting
+  // Context is set when sending USER_INPUT, allowing actors to access parent spans
   const detectIntentActor = fromPromise(
     async ({
       input,
@@ -467,87 +466,75 @@ export const createStateMachine = (
         },
       });
 
-      // Run within the span's context to ensure proper nesting
-      return otelContext.with(
-        trace.setSpan(otelContext.active(), span),
-        async () => {
-          try {
-            const result = await readDataAgent(
-              input.conversationId,
-              input.previousMessages,
-              input.model,
-              input.queryEngine,
-              input.repositories,
-            );
+      const parentContext = otelContext.active();
+      const activeSpan = trace.getSpan(parentContext);
+      if (activeSpan) {
+        span.addLink({
+          context: activeSpan.spanContext(),
+        });
+      }
 
-            // Capture token usage from Experimental_Agent stream result (usage is a promise)
-            if (result.usage) {
-              try {
-                const usage = await result.usage;
-                if (usage) {
-                  // Azure uses inputTokens/outputTokens, others use promptTokens/completionTokens
-                  const { promptTokens, completionTokens, totalTokens } =
-                    extractTokenUsage(usage);
+      try {
+        const result = await readDataAgent(
+          input.conversationId,
+          input.previousMessages,
+          input.model,
+          input.queryEngine,
+          input.repositories,
+        );
 
-                  if (promptTokens > 0 || completionTokens > 0) {
-                    // Add token usage as span attributes so it appears in exported data
-                    span.setAttributes({
-                      'agent.llm.prompt.tokens': promptTokens,
-                      'agent.llm.completion.tokens': completionTokens,
-                      'agent.llm.total.tokens': totalTokens,
-                    });
+        if (result.usage) {
+          result.usage
+            .then((usage) => {
+              if (usage) {
+                const { promptTokens, completionTokens, totalTokens } =
+                  extractTokenUsage(usage);
 
-                    // Also record as metrics (using agent-specific method for dashboard)
-                    telemetry.recordAgentTokenUsage(
-                      promptTokens,
-                      completionTokens,
-                      {
-                        'agent.llm.model.name': modelName,
-                        'agent.llm.provider.id': provider,
-                        'agent.actor.id': 'readData',
-                        'agent.conversation.id': conversationId,
-                      },
-                    );
-                  }
+                if (promptTokens > 0 || completionTokens > 0) {
+                  span.setAttributes({
+                    'agent.llm.prompt.tokens': promptTokens,
+                    'agent.llm.completion.tokens': completionTokens,
+                    'agent.llm.total.tokens': totalTokens,
+                  });
+
+                  telemetry.recordAgentTokenUsage(
+                    promptTokens,
+                    completionTokens,
+                    {
+                      'agent.llm.model.name': modelName,
+                      'agent.llm.provider.id': provider,
+                      'agent.actor.id': 'readData',
+                      'agent.conversation.id': conversationId,
+                    },
+                  );
                 }
-              } catch {
-                // Ignore errors in usage capture
               }
-            }
+            })
+            .catch(() => {
+              // Ignore errors in usage capture
+            });
+        }
 
-            endActorSpanWithEvent(
-              telemetry,
-              span,
-              'readData',
-              'readData',
-              conversationId,
-              startTime,
-              true,
-            );
+        return result;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorType = error instanceof Error ? error.name : 'UnknownError';
 
-            return result;
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            const errorType =
-              error instanceof Error ? error.name : 'UnknownError';
+        endActorSpanWithEvent(
+          telemetry,
+          span,
+          'readData',
+          'readData',
+          conversationId,
+          startTime,
+          false,
+          errorMessage,
+          errorType,
+        );
 
-            endActorSpanWithEvent(
-              telemetry,
-              span,
-              'readData',
-              'readData',
-              conversationId,
-              startTime,
-              false,
-              errorMessage,
-              errorType,
-            );
-
-            throw error;
-          }
-        },
-      );
+        throw error;
+      }
     },
   );
 
@@ -573,7 +560,6 @@ export const createStateMachine = (
         ),
       );
 
-      // Store span reference so we can add links later when conversation/message spans are created
       if (storeLoadContextSpan) {
         storeLoadContextSpan(span);
       }
@@ -599,7 +585,6 @@ export const createStateMachine = (
             const messages =
               MessagePersistenceService.convertToUIMessages(result);
 
-            // Add message count to span attributes
             span.setAttributes({
               'agent.context.message_count': messages.length,
             });
@@ -649,17 +634,10 @@ export const createStateMachine = (
       detectIntentActor,
       detectIntentActorCached: createCachedActor(
         detectIntentActor,
-        (input: { inputMessage: string; previousMessages?: unknown[] }) => {
-          // Include last message from context in cache key for follow-up questions
-          const lastContextMessage = input.previousMessages?.length
-            ? input.previousMessages[input.previousMessages.length - 1]
-            : null;
-          const contextKey = lastContextMessage
-            ? JSON.stringify(lastContextMessage).slice(0, 100)
-            : '';
-          return `${input.inputMessage}::${contextKey}`; // Cache key includes message + context
+        (input: { inputMessage: string; model: string }) => {
+          return `${input.inputMessage}::${input.model}`;
         },
-        30000, // 30 second TTL (shorter for better context awareness)
+        30000,
       ),
       summarizeIntentActor,
       greetingActor,
@@ -678,7 +656,6 @@ export const createStateMachine = (
 
       isSystem: ({ event }) => event.output?.intent === 'system',
 
-      // NEW: Check if should retry
       shouldRetry: ({ context }) => {
         const retryCount = context.retryCount || 0;
         return retryCount < 3;
@@ -692,7 +669,7 @@ export const createStateMachine = (
     delays: {
       retryDelay: ({ context }) => {
         const retryCount = context.retryCount || 0;
-        return Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        return Math.pow(2, retryCount) * 1000;
       },
     },
   });
@@ -749,7 +726,7 @@ export const createStateMachine = (
               model: ({ context }) => context.model,
               inputMessage: ({ event }) =>
                 event.messages[event.messages.length - 1]?.parts[0]?.text ?? '',
-              streamResult: () => undefined, // Clear previous result when starting new request
+              streamResult: () => undefined,
               error: () => undefined,
               promptSource: ({ event }) => {
                 const lastUserMessage = event.messages
@@ -803,7 +780,6 @@ export const createStateMachine = (
                   input: ({ context }: { context: AgentContext }) => ({
                     inputMessage: context.inputMessage,
                     model: context.model,
-                    previousMessages: context.previousMessages,
                   }),
                   onDone: [
                     {
@@ -822,7 +798,7 @@ export const createStateMachine = (
                           );
                           return intent;
                         },
-                        retryCount: () => 0, // Reset on success
+                        retryCount: () => 0,
                         model: ({ context }) => context.model,
                       }),
                     },
@@ -1021,7 +997,7 @@ export const createStateMachine = (
                         );
                         return {
                           inputMessage: context.inputMessage,
-                          conversationId: context.conversationSlug, // Use slug for conversation lookups
+                          conversationId: context.conversationSlug,
                           previousMessages: context.previousMessages,
                           model: context.model,
                           repositories: repositories,
@@ -1034,7 +1010,7 @@ export const createStateMachine = (
                         target: 'completed',
                         actions: assign({
                           streamResult: ({ event }) => event.output,
-                          retryCount: () => 0, // Reset on success
+                          retryCount: () => 0,
                           model: ({ context }) => context.model,
                         }),
                       },

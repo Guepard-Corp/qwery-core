@@ -133,6 +133,18 @@ export class FactoryAgent {
       this.factoryActor.getSnapshot().value,
     );
 
+    const currentState = this.factoryActor.getSnapshot().value;
+    if (currentState !== 'idle') {
+      await new Promise<void>((resolve) => {
+        const subscription = this.factoryActor.subscribe((state) => {
+          if (state.value === 'idle') {
+            subscription.unsubscribe();
+            resolve();
+          }
+        });
+      });
+    }
+
     // Start conversation span
     const conversationAttrs = createConversationAttributes(
       this.conversationSlug,
@@ -245,67 +257,8 @@ export class FactoryAgent {
       attributes: messageAttrs as unknown as Record<string, unknown>,
     });
 
-    //console.log("Last user text:", JSON.stringify(opts.messages, null, 2));
-
     const conversationStartTime = Date.now();
     const messageEnded = { current: false };
-
-    // Run the promise within the conversation span's context for proper nesting
-    const runInContext = async () => {
-      if (conversationSpan) {
-        // Set conversation span as active so child spans nest properly
-        return context.with(
-          trace.setSpan(context.active(), conversationSpan),
-          async () => {
-            // Set message span as active within conversation context
-            if (messageSpan) {
-              return context.with(
-                trace.setSpan(context.active(), messageSpan),
-                async () => {
-                  return await this._executeRespond(
-                    opts,
-                    conversationSpan,
-                    messageSpan,
-                    conversationStartTime,
-                    messageEnded,
-                  );
-                },
-              );
-            }
-            return await this._executeRespond(
-              opts,
-              conversationSpan,
-              messageSpan,
-              conversationStartTime,
-              messageEnded,
-            );
-          },
-        );
-      }
-      return await this._executeRespond(
-        opts,
-        conversationSpan,
-        messageSpan,
-        conversationStartTime,
-        messageEnded,
-      );
-    };
-
-    return await runInContext();
-  }
-
-  private async _executeRespond(
-    opts: { messages: UIMessage[] },
-    conversationSpan: ReturnType<TelemetryManager['startSpan']> | undefined,
-    messageSpan: ReturnType<TelemetryManager['startSpan']> | undefined,
-    conversationStartTime: number,
-    messageEnded: { current: boolean },
-  ): Promise<Response> {
-    // Extract current input message for logging
-    const lastMessage = opts.messages[opts.messages.length - 1];
-    const textPart = lastMessage?.parts.find((p) => p.type === 'text');
-    const currentInputMessage =
-      textPart && 'text' in textPart ? (textPart.text as string) : '';
 
     return await new Promise<Response>((resolve, reject) => {
       let resolved = false;
@@ -317,8 +270,7 @@ export class FactoryAgent {
         if (!resolved) {
           subscription.unsubscribe();
 
-          // End spans on timeout
-          if (messageSpan && !messageEnded.current) {
+          if (messageSpan && messageSpan.isRecording()) {
             messageEnded.current = true;
             endMessageSpanWithEvent(
               this.telemetry,
@@ -330,7 +282,7 @@ export class FactoryAgent {
             );
           }
 
-          if (conversationSpan) {
+          if (conversationSpan && conversationSpan.isRecording()) {
             endConversationSpanWithEvent(
               this.telemetry,
               conversationSpan,
@@ -354,17 +306,41 @@ export class FactoryAgent {
       const sendUserInput = () => {
         if (!userInputSent) {
           userInputSent = true;
-          console.log(
-            `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
-          );
-          this.factoryActor.send({
-            type: 'USER_INPUT',
-            messages: opts.messages,
-          });
-          console.log(
-            `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
-            this.factoryActor.getSnapshot().value,
-          );
+          if (conversationSpan && messageSpan) {
+            context.with(
+              trace.setSpan(context.active(), conversationSpan),
+              () => {
+                context.with(
+                  trace.setSpan(context.active(), messageSpan),
+                  () => {
+                    console.log(
+                      `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
+                    );
+                    this.factoryActor.send({
+                      type: 'USER_INPUT',
+                      messages: opts.messages,
+                    });
+                    console.log(
+                      `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
+                      this.factoryActor.getSnapshot().value,
+                    );
+                  },
+                );
+              },
+            );
+          } else {
+            console.log(
+              `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
+            );
+            this.factoryActor.send({
+              type: 'USER_INPUT',
+              messages: opts.messages,
+            });
+            console.log(
+              `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
+              this.factoryActor.getSnapshot().value,
+            );
+          }
         }
       };
 
@@ -377,7 +353,6 @@ export class FactoryAgent {
         lastState = currentState;
         stateChangeCount++;
 
-        // Debug logging for state transitions
         if (
           stateChangeCount <= 5 ||
           currentState.includes('detectIntent') ||
@@ -388,13 +363,11 @@ export class FactoryAgent {
           );
         }
 
-        // Wait for idle state before sending USER_INPUT
         if (currentState === 'idle' && !userInputSent) {
           sendUserInput();
           return;
         }
 
-        // Check for errors in context
         if (ctx.error) {
           console.error(
             `[FactoryAgent ${this.id}] Error in context:`,
@@ -405,8 +378,11 @@ export class FactoryAgent {
             clearTimeout(timeout);
             subscription.unsubscribe();
 
-            // End message span on error
-            if (messageSpan && !messageEnded.current) {
+            if (
+              messageSpan &&
+              messageSpan.isRecording() &&
+              !messageEnded.current
+            ) {
               messageEnded.current = true;
               endMessageSpanWithEvent(
                 this.telemetry,
@@ -418,8 +394,7 @@ export class FactoryAgent {
               );
             }
 
-            // End conversation span on error
-            if (conversationSpan) {
+            if (conversationSpan && conversationSpan.isRecording()) {
               endConversationSpanWithEvent(
                 this.telemetry,
                 conversationSpan,
@@ -435,7 +410,6 @@ export class FactoryAgent {
           return;
         }
 
-        // Check if we're back to idle without a streamResult (error case)
         if (
           currentState.includes('idle') &&
           !ctx.streamResult &&
@@ -447,8 +421,11 @@ export class FactoryAgent {
             clearTimeout(timeout);
             subscription.unsubscribe();
 
-            // End message span on error
-            if (messageSpan && !messageEnded.current) {
+            if (
+              messageSpan &&
+              messageSpan.isRecording() &&
+              !messageEnded.current
+            ) {
               messageEnded.current = true;
               endMessageSpanWithEvent(
                 this.telemetry,
@@ -460,8 +437,7 @@ export class FactoryAgent {
               );
             }
 
-            // End conversation span on error
-            if (conversationSpan) {
+            if (conversationSpan && conversationSpan.isRecording()) {
               endConversationSpanWithEvent(
                 this.telemetry,
                 conversationSpan,
@@ -477,7 +453,6 @@ export class FactoryAgent {
           return;
         }
 
-        // Check if we're stuck in detectIntent for too long
         if (currentState.includes('detectIntent') && stateChangeCount > 10) {
           console.warn(
             `[FactoryAgent ${this.id}] Appears stuck in detectIntent after ${stateChangeCount} state changes`,
@@ -485,26 +460,23 @@ export class FactoryAgent {
           return;
         }
 
-        // Mark that we've started processing (state is running or we have a result)
         if (state.value === 'running' || ctx.streamResult) {
           requestStarted = true;
         }
 
         // When the state machine has produced the StreamTextResult, verify it's for the current request
         if (ctx.streamResult && requestStarted) {
-          // Verify this result is for the current request by checking inputMessage matches
           const resultInputMessage = ctx.inputMessage;
-          const currentInputMessage =
-            (opts.messages[opts.messages.length - 1]?.parts.find(
-              (p) => p.type === 'text' && 'text' in p,
-            )?.text as string) || '';
           if (resultInputMessage === currentInputMessage) {
             if (!resolved) {
               resolved = true;
               clearTimeout(timeout);
 
-              // End message span on success
-              if (messageSpan && !messageEnded.current) {
+              if (
+                messageSpan &&
+                messageSpan.isRecording() &&
+                !messageEnded.current
+              ) {
                 messageEnded.current = true;
                 endMessageSpanWithEvent(
                   this.telemetry,
@@ -517,8 +489,6 @@ export class FactoryAgent {
 
               try {
                 const response = ctx.streamResult.toUIMessageStreamResponse({
-                  // Generate server-side UUIDs for message persistence
-                  // This ensures consistent IDs across sessions and prevents UUID format errors
                   generateMessageId: () => uuidv4(),
                   onFinish: async ({
                     messages,
@@ -532,10 +502,8 @@ export class FactoryAgent {
                         type: 'FINISH_STREAM',
                       });
 
-                      // Get totalUsage from streamResult (it's a Promise)
                       const totalUsage = await ctx.streamResult.totalUsage;
 
-                      // Create usage record
                       const usagePersistenceService =
                         new UsagePersistenceService(
                           this.repositories.usage,
@@ -566,8 +534,6 @@ export class FactoryAgent {
                           `Failed to persist some assistant messages for conversation ${this.conversationSlug}:`,
                           result.errors.map((e) => e.message).join(', '),
                         );
-                        // Note: Errors are logged but response already sent to client
-                        // In future, could send error notification via separate channel
                       }
                     } catch (error) {
                       console.warn(
@@ -576,19 +542,7 @@ export class FactoryAgent {
                       );
                     }
 
-                    // End conversation span when stream finishes
-                    if (conversationSpan) {
-                      // Record message duration metric if message span hasn't been ended yet
-                      if (messageSpan && !messageEnded.current) {
-                        messageEnded.current = true;
-                        endMessageSpanWithEvent(
-                          this.telemetry,
-                          messageSpan,
-                          this.conversationSlug,
-                          conversationStartTime,
-                          true,
-                        );
-                      }
+                    if (conversationSpan && conversationSpan.isRecording()) {
                       endConversationSpanWithEvent(
                         this.telemetry,
                         conversationSpan,
@@ -605,7 +559,11 @@ export class FactoryAgent {
                 subscription.unsubscribe();
 
                 // End spans on error
-                if (messageSpan && !messageEnded.current) {
+                if (
+                  messageSpan &&
+                  messageSpan.isRecording() &&
+                  !messageEnded.current
+                ) {
                   messageEnded.current = true;
                   endMessageSpanWithEvent(
                     this.telemetry,
@@ -617,7 +575,7 @@ export class FactoryAgent {
                   );
                 }
 
-                if (conversationSpan) {
+                if (conversationSpan && conversationSpan.isRecording()) {
                   endConversationSpanWithEvent(
                     this.telemetry,
                     conversationSpan,
@@ -632,46 +590,10 @@ export class FactoryAgent {
               }
             }
           }
-          // If inputMessage doesn't match, it's a stale result - wait for the correct one
         }
       });
 
-      const currentState = this.factoryActor.getSnapshot().value;
-      const currentStateStr =
-        typeof currentState === 'string'
-          ? currentState
-          : JSON.stringify(currentState);
-
-      if (currentStateStr.includes('loadContext')) {
-        // Wait for loadContext to complete before sending USER_INPUT
-        const loadContextSubscription = this.factoryActor.subscribe((state) => {
-          const stateValue = state.value;
-          const stateStr =
-            typeof stateValue === 'string'
-              ? stateValue
-              : JSON.stringify(stateValue);
-          if (stateStr.includes('idle') || stateStr.includes('running')) {
-            loadContextSubscription.unsubscribe();
-            // Now send USER_INPUT within the message span context
-            if (messageSpan) {
-              context.with(trace.setSpan(context.active(), messageSpan), () => {
-                sendUserInput();
-              });
-            } else {
-              sendUserInput();
-            }
-          }
-        });
-      } else {
-        // State machine is ready, send USER_INPUT immediately within message span context
-        if (messageSpan) {
-          context.with(trace.setSpan(context.active(), messageSpan), () => {
-            sendUserInput();
-          });
-        } else {
-          sendUserInput();
-        }
-      }
+      sendUserInput();
     });
   }
 
