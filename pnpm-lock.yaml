@@ -1660,6 +1660,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@qwery/domain':
+        specifier: workspace:*
+        version: link:../domain
       pino:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1806,6 +1809,9 @@ importers:
       '@qwery/domain':
         specifier: workspace:*
         version: link:../domain
+      '@qwery/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

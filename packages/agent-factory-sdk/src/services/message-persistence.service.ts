@@ -6,6 +6,12 @@ import {
 import { CreateMessageService } from '@qwery/domain/services';
 import { MessageRole } from '@qwery/domain/entities';
 import { MessageOutput } from '@qwery/domain/usecases';
+import {
+  messageRoleToUIRole,
+  normalizeUIRole,
+  uiRoleToMessageRole,
+  type UIMessageRole,
+} from '@qwery/shared/message-role-utils';
 
 /**
  * Validates if a string is a valid UUID format
@@ -34,21 +40,6 @@ function convertUIMessageToContent(
   };
 }
 
-/**
- * Maps UIMessage role to MessageRole enum
- */
-function mapUIRoleToMessageRole(role: UIMessage['role']): MessageRole {
-  switch (role) {
-    case 'user':
-      return MessageRole.USER;
-    case 'assistant':
-      return MessageRole.ASSISTANT;
-    case 'system':
-      return MessageRole.SYSTEM;
-    default:
-      return MessageRole.ASSISTANT;
-  }
-}
 
 export class MessagePersistenceService {
   constructor(
@@ -97,7 +88,7 @@ export class MessagePersistenceService {
         await useCase.execute({
           input: {
             content: convertUIMessageToContent(message),
-            role: mapUIRoleToMessageRole(message.role),
+            role: uiRoleToMessageRole(message.role),
             createdBy,
           },
           conversationSlug: this.conversationSlug,
@@ -139,7 +130,7 @@ export class MessagePersistenceService {
         // Content already contains full UIMessage structure - restore all fields
         return {
           id: message.id, // Use MessageEntity.id as source of truth
-          role: message.content.role as 'user' | 'assistant' | 'system',
+          role: normalizeUIRole(message.content.role),
           metadata:
             'metadata' in message.content
               ? (message.content.metadata as UIMessage['metadata'])
@@ -149,17 +140,7 @@ export class MessagePersistenceService {
       }
 
       // Fallback: Legacy format - reconstruct from MessageRole and content
-      // Map MessageRole enum to UIMessage role string
-      let role: 'user' | 'assistant' | 'system';
-      if (message.role === MessageRole.USER) {
-        role = 'user';
-      } else if (message.role === MessageRole.ASSISTANT) {
-        role = 'assistant';
-      } else if (message.role === MessageRole.SYSTEM) {
-        role = 'system';
-      } else {
-        role = 'assistant';
-      }
+      const role: UIMessageRole = messageRoleToUIRole(message.role);
 
       // Extract text from content object (legacy format)
       const text =

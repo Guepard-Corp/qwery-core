@@ -1,6 +1,11 @@
 import { MessageOutput } from '@qwery/domain/usecases';
 import { MessageRole } from '@qwery/domain/entities';
 import { UIMessage } from '@qwery/agent-factory-sdk';
+import {
+  messageRoleToUIRole,
+  normalizeUIRole,
+  type UIMessageRole,
+} from '@qwery/shared/message-role-utils';
 
 /**
  * Converts MessageOutput[] to UIMessage[]
@@ -14,13 +19,11 @@ export function convertMessages(
   }
 
   return messages.map((message) => {
-    // Extract createdAt from MessageOutput for cursor-based pagination
     const createdAt =
       message.createdAt instanceof Date
         ? message.createdAt.toISOString()
         : new Date(message.createdAt).toISOString();
 
-    // Check if content already contains a UIMessage structure (with parts and role)
     if (
       typeof message.content === 'object' &&
       message.content !== null &&
@@ -28,15 +31,14 @@ export function convertMessages(
       Array.isArray(message.content.parts) &&
       'role' in message.content
     ) {
-      // Content already contains full UIMessage structure - restore all fields
       const existingMetadata =
         'metadata' in message.content
           ? (message.content.metadata as Record<string, unknown>)
           : {};
 
       return {
-        id: message.id, // Use MessageEntity.id as source of truth
-        role: message.content.role as 'user' | 'assistant' | 'system',
+        id: message.id,
+        role: normalizeUIRole(message.content.role),
         metadata: {
           ...existingMetadata,
           createdAt,
@@ -46,19 +48,8 @@ export function convertMessages(
     }
 
     // Fallback: Legacy format - reconstruct from MessageRole and content
-    // Map MessageRole enum to UIMessage role string
-    let role: 'user' | 'assistant' | 'system';
-    if (message.role === MessageRole.USER) {
-      role = 'user';
-    } else if (message.role === MessageRole.ASSISTANT) {
-      role = 'assistant';
-    } else if (message.role === MessageRole.SYSTEM) {
-      role = 'system';
-    } else {
-      role = 'assistant';
-    }
+    const role: UIMessageRole = messageRoleToUIRole(message.role);
 
-    // Extract text from content object (legacy format)
     const text =
       typeof message.content === 'object' &&
       message.content !== null &&
