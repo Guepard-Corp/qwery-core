@@ -25,16 +25,20 @@ export function uiRoleToMessageRole(role: UIMessageRole): MessageRole {
   }
 }
 
-export function normalizeUIRole(
-  role: unknown,
-): UIMessageRole {
-  if (typeof role === 'string' && UI_MESSAGE_ROLES.includes(role as UIMessageRole)) {
+export function normalizeUIRole(role: unknown): UIMessageRole {
+  if (
+    typeof role === 'string' &&
+    UI_MESSAGE_ROLES.includes(role as UIMessageRole)
+  ) {
     return role as UIMessageRole;
   }
   return 'assistant';
 }
 
 export function isUIMessageRole(value: unknown): value is UIMessageRole {
-  return typeof value === 'string' && UI_MESSAGE_ROLES.includes(value as UIMessageRole);
+  return (
+    typeof value === 'string' &&
+    UI_MESSAGE_ROLES.includes(value as UIMessageRole)
+  );
 }
 
