@@ -14,9 +14,7 @@ export function isChatSubmitted(status: ChatStatus | undefined): boolean {
   return status === 'submitted';
 }
 
-export function isResponseInProgress(
-  status: ChatStatus | undefined,
-): boolean {
+export function isResponseInProgress(status: ChatStatus | undefined): boolean {
   return isChatActive(status);
 }
 
@@ -58,4 +56,3 @@ export function getChatStatusConfig(
     hideRegenerateOnLastMessage: false,
   };
 }
-

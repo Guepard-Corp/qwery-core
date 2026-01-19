@@ -1,8 +1,6 @@
 export type NotebookCellType = 'query' | 'prompt';
 
-export function isNotebookCellType(
-  value: unknown,
-): value is NotebookCellType {
+export function isNotebookCellType(value: unknown): value is NotebookCellType {
   return value === 'query' || value === 'prompt';
 }
 
@@ -16,9 +14,7 @@ export function assertNotebookCellType(
   }
 }
 
-export function getNotebookCellTypeLabel(
-  cellType: NotebookCellType,
-): string {
+export function getNotebookCellTypeLabel(cellType: NotebookCellType): string {
   return cellType === 'query' ? 'Query' : 'Prompt';
 }
 
@@ -45,4 +41,3 @@ export function getNotebookCellTypeConfig(
     icon: 'message-square',
   };
 }
-
