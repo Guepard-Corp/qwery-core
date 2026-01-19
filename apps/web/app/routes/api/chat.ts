@@ -11,6 +11,7 @@ import {
 } from '@qwery/agent-factory-sdk';
 import { generateConversationTitle } from '@qwery/agent-factory-sdk';
 import { MessageRole } from '@qwery/domain/entities';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '~/lib/utils/error-handler';
 import { getWebTelemetry } from '~/lib/telemetry-instance';
@@ -228,7 +229,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const processedMessages = messages.map((message, index) => {
       // Add metadata for the last user message
       const isLastUserMessage =
-        message.role === 'user' && index === messages.length - 1;
+        normalizeUIRole(message.role) === 'user' &&
+        index === messages.length - 1;
 
       if (isLastUserMessage) {
         // Detect if message is coming from notebook (inline mode)
@@ -269,7 +271,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         };
       }
 
-      if (message.role === 'user') {
+      if (normalizeUIRole(message.role) === 'user') {
         const textPart = message.parts.find((p) => p.type === 'text');
         if (textPart && 'text' in textPart) {
           const text = textPart.text;

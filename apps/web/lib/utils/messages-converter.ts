@@ -1,5 +1,4 @@
 import { MessageOutput } from '@qwery/domain/usecases';
-import { MessageRole } from '@qwery/domain/entities';
 import { UIMessage } from '@qwery/agent-factory-sdk';
 import {
   messageRoleToUIRole,
