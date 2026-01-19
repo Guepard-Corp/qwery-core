@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { UIMessage } from 'ai';
 import type { MessageOutput } from '@qwery/domain/usecases';
-import { MessageRole } from '@qwery/domain/entities';
-import type { PaginatedResult } from '@qwery/domain/common';
 import {
   messageRoleToUIRole,
   normalizeUIRole,
@@ -348,11 +346,23 @@ export function useInfiniteMessages(
         throw new Error('Invalid messages format in response');
       }
 
-      if (nextCursor !== null && nextCursor !== undefined && typeof nextCursor !== 'string') {
-        throw new Error('Invalid response format: nextCursor must be string or null');
+      if (
+        nextCursor !== null &&
+        nextCursor !== undefined &&
+        typeof nextCursor !== 'string'
+      ) {
+        throw new Error(
+          'Invalid response format: nextCursor must be string or null',
+        );
       }
-      if (hasMore !== null && hasMore !== undefined && typeof hasMore !== 'boolean') {
-        throw new Error('Invalid response format: hasMore must be boolean or null');
+      if (
+        hasMore !== null &&
+        hasMore !== undefined &&
+        typeof hasMore !== 'boolean'
+      ) {
+        throw new Error(
+          'Invalid response format: hasMore must be boolean or null',
+        );
       }
 
       if (olderMessages.length === 0) {
@@ -377,7 +387,7 @@ export function useInfiniteMessages(
           if (nextCursor && typeof nextCursor === 'string') {
             setOlderCursor(nextCursor);
           }
-          
+
           if (typeof hasMore === 'boolean') {
             setHasMoreOlder(hasMore);
           } else {

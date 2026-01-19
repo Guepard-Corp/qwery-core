@@ -575,7 +575,7 @@ export function FormRenderer<T extends ZodSchemaType>({
   });
 
   // Watch all form values to detect changes
-  // eslint-disable-next-line react-hooks/incompatible-library
+
   const watchedValues = form.watch();
   const previousValuesRef = React.useRef<z.infer<T> | null>(null);
   const onFormReadyRef = React.useRef(onFormReady);
