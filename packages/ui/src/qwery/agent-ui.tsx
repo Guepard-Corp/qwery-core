@@ -27,6 +27,7 @@ import {
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { useAgentStatus } from './ai/agent-status-context';
+import { useCompletionSound } from './ai/utils/notification-sound';
 import {
   CopyIcon,
   RefreshCcwIcon,
@@ -182,6 +183,10 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
     transport: transportInstance,
   });
 
+  // Play notification sound when agent response completes
+  useCompletionSound(status);
+
+  // Infinite messages hook for pagination (only if conversationSlug is provided)
   const {
     messages: virtualizedMessages,
     firstItemIndex,

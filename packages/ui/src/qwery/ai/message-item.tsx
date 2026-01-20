@@ -369,16 +369,16 @@ function MessageItemComponent({
                               isLastAssistantMessage &&
                               statusConfig.hideRegenerateOnLastMessage
                             ) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onRegenerate}
-                                className="h-7 w-7"
-                                title="Retry"
-                              >
-                                <RefreshCcwIcon className="size-3" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={onRegenerate}
+                              className="h-7 w-7"
+                              title="Retry"
+                            >
+                              <RefreshCcwIcon className="size-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

@@ -19,6 +19,7 @@ export { type ChatStatus } from 'ai';
 export { AgentTabs } from './agent-tabs';
 export * from './utils/chat-status';
 export * from './utils/notebook-cell-type';
+export * from './utils/notification-sound';
 export { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 export {
   DatasourceBadges,
