@@ -22,7 +22,7 @@ import {
 } from '../../ai-elements/prompt-input';
 import { ChatStatus } from 'ai';
 import QweryContext, { QweryContextProps } from './context';
-import { isResponseInProgress, getChatStatusConfig } from './utils/chat-status';
+import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 
 export interface QweryPromptInputProps {

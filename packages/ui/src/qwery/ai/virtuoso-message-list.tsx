@@ -15,7 +15,7 @@ import {
 import type { UIMessage } from 'ai';
 import type { ChatStatus } from 'ai';
 import { MessageItem, type MessageItemProps } from './message-item';
-import { isChatStreaming, isChatSubmitted, isResponseInProgress } from './utils/chat-status';
+import { isChatStreaming, isChatSubmitted } from './utils/chat-status';
 import { Loader } from '../../ai-elements/loader';
 import { Button } from '../../shadcn/button';
 import { BotAvatar } from '../bot-avatar';
@@ -74,30 +74,37 @@ export const VirtuosoMessageList = forwardRef<
   const [shouldFollowOutput, setShouldFollowOutput] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const wasAtBottomWhenStreamStartedRef = useRef(true);
+  const [wasAtBottomWhenStreamStarted, setWasAtBottomWhenStreamStarted] =
+    useState(true);
 
   useEffect(() => {
     if (isChatStreaming(status)) {
-      wasAtBottomWhenStreamStartedRef.current = shouldFollowOutput;
+      const value = shouldFollowOutput;
+      wasAtBottomWhenStreamStartedRef.current = value;
+      setWasAtBottomWhenStreamStarted(value);
     }
   }, [status, shouldFollowOutput]);
 
-  const stableMessageItemProps = useMemo(() => messageItemProps, [
-    messageItemProps.lastAssistantMessage,
-    messageItemProps.editingMessageId,
-    messageItemProps.editText,
-    messageItemProps.copiedMessagePartId,
-    messageItemProps.datasources,
-    messageItemProps.selectedDatasources,
-    messageItemProps.pluginLogoMap,
-    messageItemProps.notebookContext,
-    messageItemProps.onEditSubmit,
-    messageItemProps.onEditCancel,
-    messageItemProps.onEditTextChange,
-    messageItemProps.onRegenerate,
-    messageItemProps.onCopyPart,
-    messageItemProps.sendMessage,
-    messageItemProps.onPasteToNotebook,
-  ]);
+  const stableMessageItemProps = useMemo(
+    () => messageItemProps,
+    [
+      messageItemProps.lastAssistantMessage,
+      messageItemProps.editingMessageId,
+      messageItemProps.editText,
+      messageItemProps.copiedMessagePartId,
+      messageItemProps.datasources,
+      messageItemProps.selectedDatasources,
+      messageItemProps.pluginLogoMap,
+      messageItemProps.notebookContext,
+      messageItemProps.onEditSubmit,
+      messageItemProps.onEditCancel,
+      messageItemProps.onEditTextChange,
+      messageItemProps.onRegenerate,
+      messageItemProps.onCopyPart,
+      messageItemProps.sendMessage,
+      messageItemProps.onPasteToNotebook,
+    ],
+  );
 
   const itemContent = useCallback(
     (index: number, message: UIMessage) => {
@@ -149,6 +156,26 @@ export const VirtuosoMessageList = forwardRef<
         return null;
       },
       Footer: () => {
+        if (error) {
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
+              <BotAvatar size={6} isLoading={false} className="mt-1 shrink-0" />
+              <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                <Message from="assistant" className="w-full max-w-full min-w-0">
+                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                    <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
+                      <p className="font-medium">Error</p>
+                      <p className="text-destructive/80 mt-1">
+                        {error.message ||
+                          'Failed to get response from agent. Please try again.'}
+                      </p>
+                    </div>
+                  </MessageContent>
+                </Message>
+              </div>
+            </div>
+          );
+        }
         if (
           isChatSubmitted(status) ||
           (isChatStreaming(status) &&
@@ -213,8 +240,9 @@ export const VirtuosoMessageList = forwardRef<
   useEffect(() => {
     if (!hasPerformedInitialScrollRef.current && messages.length > 0) {
       const wasEmpty = previousMessagesLengthRef.current === 0;
-      const isFirstRender = previousMessagesLengthRef.current === messages.length;
-      
+      const isFirstRender =
+        previousMessagesLengthRef.current === messages.length;
+
       if ((wasEmpty || isFirstRender) && virtuosoRef.current) {
         const timeoutId = setTimeout(() => {
           if (virtuosoRef.current) {
@@ -233,11 +261,10 @@ export const VirtuosoMessageList = forwardRef<
     previousMessagesLengthRef.current = messages.length;
   }, [messages.length]);
 
-  const shouldAutoScroll =
-    wasAtBottomWhenStreamStartedRef.current && shouldFollowOutput;
+  const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="virtuoso-message-container relative h-full w-full overflow-x-hidden"
     >
       <Virtuoso

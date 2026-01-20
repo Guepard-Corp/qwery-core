@@ -2,6 +2,7 @@ import { UIMessage } from 'ai';
 import { ChatStatus } from 'ai';
 import { isChatStreaming } from './utils/chat-status';
 import { memo } from 'react';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import {
   TaskPart,
   TextPart,
@@ -35,7 +36,8 @@ function MessageRendererComponent({
   ) as Array<{ type: 'source-url'; sourceId: string; url?: string }>;
 
   const hasSources =
-    (message.role === 'assistant' || message.role === 'user') &&
+    (normalizeUIRole(message.role) === 'assistant' ||
+      normalizeUIRole(message.role) === 'user') &&
     sourceParts.length > 0;
 
   return (

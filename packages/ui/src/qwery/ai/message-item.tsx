@@ -9,6 +9,7 @@ import { Button } from '../../shadcn/button';
 import { Textarea } from '../../shadcn/textarea';
 import { CopyIcon, RefreshCcwIcon, CheckIcon, XIcon } from 'lucide-react';
 import { Message, MessageContent } from '../../ai-elements/message';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import {
   Source,
   Sources,
@@ -33,11 +34,7 @@ import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './tool-ui-config';
 import { ToolPart } from './message-parts';
 import { getUserFriendlyToolName } from './utils/tool-name';
-import {
-  isChatStreaming,
-  isResponseInProgress,
-  getChatStatusConfig,
-} from './utils/chat-status';
+import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
 
 export interface MessageItemProps {
@@ -145,20 +142,21 @@ function MessageItemComponent({
                 key={`${message.id}-${i}`}
                 className={cn(
                   'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                  message.role === 'user' && 'justify-end group',
-                  message.role === 'assistant' &&
+                  normalizeUIRole(message.role) === 'user' && 'justify-end',
+                  normalizeUIRole(message.role) === 'assistant' &&
                     'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                  message.role === 'user' &&
+                  normalizeUIRole(message.role) === 'user' &&
                     'animate-in fade-in slide-in-from-bottom-4 duration-300',
                 )}
               >
-                {message.role === 'assistant' && (
+                {normalizeUIRole(message.role) === 'assistant' && (
                   <div className="mt-1 shrink-0">
                     <BotAvatar size={6} isLoading={false} />
                   </div>
                 )}
                 <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                  {isEditing && message.role === 'user' ? (
+                  {isEditing &&
+                  normalizeUIRole(message.role) === 'user' ? (
                     <>
                       <Textarea
                         value={editText}
@@ -200,8 +198,7 @@ function MessageItemComponent({
                     </>
                   ) : (
                     <>
-                      {message.role === 'user' ? (
-                        // User messages - check if it's a suggestion with context
+                      {normalizeUIRole(message.role) === 'user' ? (
                         (() => {
                           const { text, context } = parseMessageWithContext(
                             part.text,
@@ -209,8 +206,6 @@ function MessageItemComponent({
 
                           // Extract datasources from message metadata or use selectedDatasources for the last user message
                           const messageDatasources = (() => {
-                            // Priority 1: Check message metadata first (for notebook cell messages and persisted messages)
-                            // This ensures notebook cell datasource is always used
                             if (
                               message.metadata &&
                               typeof message.metadata === 'object'
@@ -244,7 +239,10 @@ function MessageItemComponent({
                             // This ensures correct datasource is shown immediately, even before metadata is set
                             const lastUserMessage = [...messages]
                               .reverse()
-                              .find((msg) => msg.role === 'user');
+                              .find(
+                                (msg) =>
+                                  normalizeUIRole(msg.role) === 'user',
+                              );
 
                             const isLastUserMessage =
                               lastUserMessage?.id === message.id;
@@ -354,13 +352,13 @@ function MessageItemComponent({
                       )}
                       {/* Actions below the bubble */}
                       {(isResponseComplete ||
-                        (message.role === 'user' && isLastTextPart)) && (
+                        (normalizeUIRole(message.role) === 'user' &&
+                          isLastTextPart)) && (
                         <div
                           className={cn(
                             'mt-1 flex items-center gap-2',
-                            message.role === 'user' && 'justify-end',
-                            message.role === 'user' &&
-                              'opacity-0 transition-opacity group-hover:opacity-100',
+                            normalizeUIRole(message.role) === 'user' &&
+                              'justify-end',
                           )}
                         >
                           {message.role === 'assistant' &&
@@ -369,16 +367,16 @@ function MessageItemComponent({
                               isLastAssistantMessage &&
                               statusConfig.hideRegenerateOnLastMessage
                             ) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={onRegenerate}
-                              className="h-7 w-7"
-                              title="Retry"
-                            >
-                              <RefreshCcwIcon className="size-3" />
-                            </Button>
-                          )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onRegenerate}
+                                className="h-7 w-7"
+                                title="Retry"
+                              >
+                                <RefreshCcwIcon className="size-3" />
+                              </Button>
+                            )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -412,7 +410,7 @@ function MessageItemComponent({
                     </>
                   )}
                 </div>
-                {message.role === 'user' && (
+                {normalizeUIRole(message.role) === 'user' && (
                   <div className="mt-1 size-6 shrink-0" />
                 )}
               </div>

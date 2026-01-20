@@ -12,7 +12,7 @@ import {
   PromptInputTools,
 } from '../../ai-elements/prompt-input';
 import { ChatStatus } from 'ai';
-import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
+import { isChatStreaming } from './utils/chat-status';
 import { MessageSquareIcon, Sparkles } from 'lucide-react';
 
 export interface ConversationWelcomeProps {
