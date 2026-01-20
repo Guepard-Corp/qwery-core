@@ -12,6 +12,7 @@ import {
   MessageContent,
   MessageResponse,
 } from '../ai-elements/message';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import { ReasoningPart } from './ai/message-parts';
 import { StreamdownWithSuggestions } from './ai/streamdown-with-suggestions';
 import {
@@ -645,16 +646,20 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                               return (
                                 <div
                                   key={`${message.id}-${i}`}
-                                  className={cn(
-                                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                                    message.role === 'user' && 'justify-end',
-                                    message.role === 'assistant' &&
-                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                    message.role === 'user' &&
-                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                  )}
+                                    className={cn(
+                                      'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
+                                      normalizeUIRole(message.role) ===
+                                        'user' && 'justify-end',
+                                      normalizeUIRole(message.role) ===
+                                        'assistant' &&
+                                        'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                      normalizeUIRole(message.role) ===
+                                        'user' &&
+                                        'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                    )}
                                 >
-                                  {message.role === 'assistant' && (
+                                    {normalizeUIRole(message.role) ===
+                                      'assistant' && (
                                     <div className="mt-1 shrink-0">
                                       <BotAvatar
                                         size={6}
@@ -663,7 +668,9 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                     </div>
                                   )}
                                   <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                                    {isEditing && message.role === 'user' ? (
+                                    {isEditing &&
+                                    normalizeUIRole(message.role) ===
+                                      'user' ? (
                                       <>
                                         <Textarea
                                           value={editText}
@@ -708,7 +715,9 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                       </>
                                     ) : (
                                       <>
-                                        {message.role === 'user' ? (
+                                        {normalizeUIRole(message.role) ===
+                                          'user' ? (
+                                          // User messages - check if it's a suggestion with context
                                           (() => {
                                             const { text, context } =
                                               parseMessageWithContext(
@@ -881,13 +890,14 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                         )}
                                         {/* Actions below the bubble */}
                                         {(isResponseComplete ||
-                                          (message.role === 'user' &&
+                                          (normalizeUIRole(message.role) ===
+                                            'user' &&
                                             isLastTextPart)) && (
                                           <div
                                             className={cn(
                                               'mt-1 flex items-center gap-2',
-                                              message.role === 'user' &&
-                                                'justify-end',
+                                              normalizeUIRole(message.role) ===
+                                                'user' && 'justify-end',
                                             )}
                                           >
                                             {message.role === 'assistant' && (
@@ -945,7 +955,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                       </>
                                     )}
                                   </div>
-                                  {message.role === 'user' && (
+                                  {normalizeUIRole(message.role) === 'user' && (
                                     <div className="mt-1 size-6 shrink-0" />
                                   )}
                                 </div>

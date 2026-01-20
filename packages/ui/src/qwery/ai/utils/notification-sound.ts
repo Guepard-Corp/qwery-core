@@ -11,7 +11,9 @@ let audioContext: AudioContext | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioContext = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext)();
   }
   return audioContext;
 }
@@ -19,18 +21,17 @@ function getAudioContext(): AudioContext {
 export function playCompletionSound(): void {
   try {
     const ctx = getAudioContext();
-    
+
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
 
     const now = ctx.currentTime;
     const duration = 0.4; // Longer duration for ethereal effect (400ms)
-    const fadeOutDuration = 0.3;
 
     const oscillators = [
       { freq: 1047, type: 'sine' as OscillatorType, volume: 0.12 }, // C6 - bright
-      { freq: 1319, type: 'sine' as OscillatorType, volume: 0.1 },  // E6 - ethereal
+      { freq: 1319, type: 'sine' as OscillatorType, volume: 0.1 }, // E6 - ethereal
       { freq: 1568, type: 'sine' as OscillatorType, volume: 0.08 }, // G6 - sparkle
       { freq: 2093, type: 'sine' as OscillatorType, volume: 0.06 }, // C7 - shimmer
     ];
@@ -38,15 +39,14 @@ export function playCompletionSound(): void {
     const masterGain = ctx.createGain();
     masterGain.connect(ctx.destination);
 
-    const convolver = ctx.createConvolver();
     const reverbGain = ctx.createGain();
     reverbGain.gain.value = 0.3;
-    
+
     const delay = ctx.createDelay();
     delay.delayTime.value = 0.1;
     const delayGain = ctx.createGain();
     delayGain.gain.value = 0.2;
-    
+
     delay.connect(delayGain);
     delayGain.connect(delay);
     delay.connect(reverbGain);
@@ -57,21 +57,21 @@ export function playCompletionSound(): void {
     oscillators.forEach((oscConfig, index) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      
+
       osc.frequency.value = oscConfig.freq;
       osc.type = oscConfig.type;
-      
+
       osc.connect(gain);
       gain.connect(masterGain);
       gain.connect(delay);
-      
+
       const startTime = now + index * 0.02; // Slight stagger for magical effect
       gain.gain.setValueAtTime(0, startTime);
       gain.gain.linearRampToValueAtTime(oscConfig.volume, startTime + 0.05);
       gain.gain.setValueAtTime(oscConfig.volume, startTime + 0.1);
       // Gentle exponential fade-out
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-      
+
       if (index < 2) {
         const lfo = ctx.createOscillator();
         const lfoGain = ctx.createGain();
@@ -82,7 +82,7 @@ export function playCompletionSound(): void {
         lfo.start(startTime);
         lfo.stop(startTime + duration);
       }
-      
+
       osc.start(startTime);
       osc.stop(startTime + duration);
       oscNodes.push(osc);
@@ -107,14 +107,12 @@ export function playCompletionSound(): void {
         }
       };
     }
-  } catch (error) {
+  } catch {
     // Silently fail if audio is not available or blocked
   }
 }
 
-export function useCompletionSound(
-  status: ChatStatus | undefined,
-): void {
+export function useCompletionSound(status: ChatStatus | undefined): void {
   const prevStatusRef = useRef(status);
 
   useEffect(() => {
