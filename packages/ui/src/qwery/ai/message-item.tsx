@@ -36,6 +36,7 @@ import { ToolPart } from './message-parts';
 import { getUserFriendlyToolName } from './utils/tool-name';
 import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
+import { useToolVariant } from './tool-variant-context';
 
 export interface MessageItemProps {
   message: UIMessage;
@@ -89,6 +90,7 @@ function MessageItemComponent({
   sendMessage,
   onPasteToNotebook,
 }: MessageItemProps) {
+  const { variant } = useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
@@ -127,34 +129,44 @@ function MessageItemComponent({
           })}
         </Sources>
       )}
-      {message.parts.map((part, i: number) => {
-        const isLastTextPart = part.type === 'text' && i === lastTextPartIndex;
-        const isStreaming =
-          isChatStreaming(status) && isLastAssistantMessage && isLastTextPart;
-        const isResponseComplete =
-          !isStreaming && isLastAssistantMessage && isLastTextPart;
-        const statusConfig = getChatStatusConfig(status);
-        switch (part.type) {
+      {(() => {
+        const isAssistantMessage = normalizeUIRole(message.role) === 'assistant';
+        const firstPartIndex = isAssistantMessage ? 0 : -1;
+        const hasAssistantParts = isAssistantMessage && message.parts.length > 0;
+        
+        return (
+          <div className={cn(
+            hasAssistantParts && 'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden mt-4 animate-in fade-in slide-in-from-bottom-4 duration-300'
+          )}>
+            {hasAssistantParts && (
+              <div className="mt-1 shrink-0 pointer-events-none self-start">
+                <BotAvatar size={6} isLoading={false} />
+              </div>
+            )}
+            <div className={cn(
+              hasAssistantParts && 'flex-1 flex flex-col gap-2 min-w-0',
+              !hasAssistantParts && 'w-full'
+            )}>
+              {message.parts.map((part, i: number) => {
+                const isLastTextPart = part.type === 'text' && i === lastTextPartIndex;
+                const isStreaming =
+                  isChatStreaming(status) && isLastAssistantMessage && isLastTextPart;
+                const isResponseComplete =
+                  !isStreaming && isLastAssistantMessage && isLastTextPart;
+                const statusConfig = getChatStatusConfig(status);
+                switch (part.type) {
           case 'text': {
             const isEditing = editingMessageId === message.id;
-            return (
-              <div
-                key={`${message.id}-${i}`}
-                className={cn(
-                  'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                  normalizeUIRole(message.role) === 'user' && 'justify-end',
-                  normalizeUIRole(message.role) === 'assistant' &&
-                    'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                  normalizeUIRole(message.role) === 'user' &&
-                    'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                )}
-              >
-                {normalizeUIRole(message.role) === 'assistant' && (
-                  <div className="mt-1 shrink-0">
-                    <BotAvatar size={6} isLoading={false} />
-                  </div>
-                )}
-                <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+            
+            if (normalizeUIRole(message.role) === 'user') {
+              return (
+                <div
+                  key={`${message.id}-${i}`}
+                  className={cn(
+                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden justify-end animate-in fade-in slide-in-from-bottom-4 duration-300',
+                  )}
+                >
+                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
                   {isEditing &&
                   normalizeUIRole(message.role) === 'user' ? (
                     <>
@@ -277,6 +289,7 @@ function MessageItemComponent({
                                 text={text}
                                 context={context}
                                 messageId={message.id}
+                                messages={messages}
                                 datasources={messageDatasources}
                                 pluginLogoMap={pluginLogoMap}
                               />
@@ -410,8 +423,97 @@ function MessageItemComponent({
                     </>
                   )}
                 </div>
-                {normalizeUIRole(message.role) === 'user' && (
-                  <div className="mt-1 size-6 shrink-0" />
+                  {normalizeUIRole(message.role) === 'user' && (
+                    <div className="mt-1 size-6 shrink-0" />
+                  )}
+                </div>
+              );
+            }
+            return (
+              <div
+                key={`${message.id}-${i}`}
+                className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
+              >
+                {!isStreaming && (
+                  <Message
+                    from={message.role}
+                    className="w-full max-w-full min-w-0"
+                  >
+                    <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                      <StreamdownWithSuggestions
+                        sendMessage={sendMessage}
+                        messages={messages}
+                        currentMessageId={message.id}
+                      >
+                        {part.text}
+                      </StreamdownWithSuggestions>
+                    </MessageContent>
+                  </Message>
+                )}
+                {isStreaming && (
+                  <Message
+                    from={message.role}
+                    className="w-full max-w-full min-w-0"
+                  >
+                    <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                      <StreamdownWithSuggestions
+                        sendMessage={sendMessage}
+                        messages={messages}
+                        currentMessageId={message.id}
+                      >
+                        {part.text}
+                      </StreamdownWithSuggestions>
+                    </MessageContent>
+                  </Message>
+                )}
+                {/* Actions below the bubble */}
+                {isResponseComplete && (
+                  <div className="mt-1 flex items-center gap-2">
+                    {message.role === 'assistant' &&
+                      statusConfig.showRegenerateButton &&
+                      !(
+                        isLastAssistantMessage &&
+                        statusConfig.hideRegenerateOnLastMessage
+                      ) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={onRegenerate}
+                          className="h-7 w-7"
+                          title="Retry"
+                        >
+                          <RefreshCcwIcon className="size-3" />
+                        </Button>
+                      )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={async () => {
+                        const partId = `${message.id}-${i}`;
+                        try {
+                          await navigator.clipboard.writeText(part.text);
+                          onCopyPart(partId);
+                          setTimeout(() => {
+                            onCopyPart('');
+                          }, 2000);
+                        } catch (error) {
+                          console.error('Failed to copy:', error);
+                        }
+                      }}
+                      className="h-7 w-7"
+                      title={
+                        copiedMessagePartId === `${message.id}-${i}`
+                          ? 'Copied!'
+                          : 'Copy'
+                      }
+                    >
+                      {copiedMessagePartId === `${message.id}-${i}` ? (
+                        <CheckIcon className="size-3 text-green-600" />
+                      ) : (
+                        <CopyIcon className="size-3" />
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
             );
@@ -452,43 +554,57 @@ function MessageItemComponent({
                     ? getUserFriendlyToolName(`tool-${toolPart.toolName}`)
                     : getUserFriendlyToolName(toolPart.type);
                 return (
-                  <Tool
+                  <div
                     key={`${message.id}-${i}`}
-                    defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
-                    className={cn(TOOL_UI_CONFIG.MAX_WIDTH, 'mx-auto')}
+                    className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
                   >
-                    <ToolHeader
-                      title={toolName}
-                      type={toolPart.type}
-                      state={toolPart.state}
-                    />
-                    <ToolContent>
-                      {toolPart.input != null ? (
-                        <ToolInput input={toolPart.input} />
-                      ) : null}
-                      <div className="flex items-center justify-center py-8">
-                        <Loader size={20} />
-                      </div>
-                    </ToolContent>
-                  </Tool>
+                    <Tool
+                      defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
+                      variant={variant}
+                      className={cn(TOOL_UI_CONFIG.MAX_WIDTH, 'mx-auto')}
+                    >
+                      <ToolHeader
+                        title={toolName}
+                        type={toolPart.type}
+                        state={toolPart.state}
+                        variant={variant}
+                      />
+                      <ToolContent variant={variant}>
+                        {toolPart.input != null ? (
+                          <ToolInput input={toolPart.input} />
+                        ) : null}
+                        <div className="flex items-center justify-center py-8">
+                          <Loader size={20} />
+                        </div>
+                      </ToolContent>
+                    </Tool>
+                  </div>
                 );
               }
 
               // Use ToolPart component for completed tools (includes visualizers)
               return (
-                <ToolPart
+                <div
                   key={`${message.id}-${i}`}
-                  part={toolPart}
-                  messageId={message.id}
-                  index={i}
-                  onPasteToNotebook={onPasteToNotebook}
-                  notebookContext={notebookContext}
-                />
+                  className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
+                >
+                  <ToolPart
+                    part={toolPart}
+                    messageId={message.id}
+                    index={i}
+                    onPasteToNotebook={onPasteToNotebook}
+                    notebookContext={notebookContext}
+                  />
+                </div>
               );
             }
             return null;
         }
-      })}
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

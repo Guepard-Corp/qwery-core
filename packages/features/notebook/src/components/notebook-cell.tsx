@@ -19,6 +19,7 @@ import {
   AlignLeft,
   ArrowDown,
   ArrowUp,
+  Check,
   Copy,
   DatabaseIcon,
   GripVertical,
@@ -94,6 +95,8 @@ interface NotebookCellProps {
   ) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   dragHandleRef?: (node: HTMLButtonElement | null) => void;
+  footerDragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  footerDragHandleRef?: (node: HTMLDivElement | null) => void;
   isDragging?: boolean;
   result?: DatasourceResultSet | null;
   error?: string;
@@ -108,6 +111,7 @@ interface NotebookCellProps {
   onOpenAiPopup: (cellId: number, position: { x: number; y: number }) => void;
   onCloseAiPopup: () => void;
   isAdvancedMode?: boolean;
+  totalCellCount?: number;
   triggerTitleEdit?: boolean;
 }
 
@@ -121,6 +125,8 @@ function NotebookCellComponent({
   onRunQueryWithAgent,
   dragHandleProps,
   dragHandleRef,
+  footerDragHandleProps,
+  footerDragHandleRef,
   isDragging,
   result,
   error,
@@ -131,6 +137,7 @@ function NotebookCellComponent({
   onFormat,
   onDelete,
   onFullView,
+  totalCellCount = 1,
   activeAiPopup,
   onOpenAiPopup,
   onCloseAiPopup,
@@ -160,6 +167,8 @@ function NotebookCellComponent({
   const showAIPopup = activeAiPopup?.cellId === cell.cellId;
   const [promptDatasourceError, setPromptDatasourceError] = useState(false);
   const isScrollingRef = useRef(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [deleteAnimating, setDeleteAnimating] = useState(false);
   
   // Cell title state - inline editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -629,8 +638,8 @@ function NotebookCellComponent({
       {/* Cell content */}
       <div
         className={cn(
-          'relative flex min-w-0 flex-1 flex-col',
-          isTextCell ? 'min-h-[180px] bg-transparent' : 'bg-background',
+          'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-transparent',
+          isTextCell && 'min-h-[180px]',
           isQueryCell && 'min-h-[220px]',
           isPromptCell && 'min-h-[200px]',
         )}
@@ -658,7 +667,7 @@ function NotebookCellComponent({
                   dropCursor: false,
                   allowMultipleSelections: false,
                 }}
-                className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 h-full w-full [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:h-full [&_.cm-editor]:max-h-[600px] [&_.cm-editor]:bg-transparent [&_.cm-editor]:rounded-none [&_.cm-scroller]:overflow-y-auto [&_.cm-scroller]:overflow-x-hidden [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
+                className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:h-full [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller]:bg-muted/30 [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40"
                 data-test="notebook-sql-editor"
               />
               <div className="pointer-events-none absolute top-4 right-4 z-10">
@@ -847,6 +856,159 @@ function NotebookCellComponent({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Bottom Toolbar - As seen in screenshot */}
+        <div
+          ref={footerDragHandleRef}
+          className={cn(
+            'border-border bg-background flex items-center justify-between border-t px-2 pt-2 pb-2 transition-all duration-200',
+            isTextCell &&
+              markdownView === 'preview' &&
+              'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
+            !isTextCell || markdownView === 'edit' ? 'h-10' : '',
+            footerDragHandleProps && 'cursor-grab active:cursor-grabbing',
+          )}
+          {...(footerDragHandleProps
+            ? {
+                onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') ||
+                    target.closest('[role="combobox"]') ||
+                    target.closest('[role="option"]') ||
+                    target.closest('[role="menu"]')
+                  ) {
+                    return;
+                  }
+                  footerDragHandleProps.onPointerDown?.(e);
+                },
+                onKeyDown: footerDragHandleProps.onKeyDown,
+                onKeyUp: footerDragHandleProps.onKeyUp,
+              }
+            : {})}
+        >
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground h-8 w-8"
+              onClick={onFormat}
+              aria-label="Format cell"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground h-8 w-8 transition-all duration-200"
+              onClick={async () => {
+                await navigator.clipboard.writeText(query);
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 1500);
+              }}
+              aria-label="Copy code"
+            >
+              <div className="relative h-4 w-4">
+                <Copy
+                  className={cn(
+                    'absolute inset-0 h-4 w-4 transition-all duration-200',
+                    copySuccess
+                      ? 'scale-0 rotate-90 opacity-0'
+                      : 'scale-100 rotate-0 opacity-100',
+                  )}
+                />
+                <Check
+                  className={cn(
+                    'absolute inset-0 h-4 w-4 text-green-600 dark:text-green-400 transition-all duration-200',
+                    copySuccess
+                      ? 'scale-100 rotate-0 opacity-100'
+                      : 'scale-0 -rotate-90 opacity-0',
+                  )}
+                />
+              </div>
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn(
+                'text-muted-foreground hover:text-destructive h-8 w-8 transition-all duration-200',
+                deleteAnimating && '[animation:shake_0.4s_ease-in-out]',
+              )}
+              onClick={() => {
+                setDeleteAnimating(true);
+                setTimeout(() => {
+                  setDeleteAnimating(false);
+                  onDelete();
+                }, 200);
+              }}
+              aria-label="Delete cell"
+              disabled={totalCellCount === 1}
+            >
+              <Trash2
+                className={cn(
+                  'h-4 w-4 transition-transform duration-200',
+                  deleteAnimating && 'scale-110',
+                )}
+              />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground h-8 w-8"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={onMoveUp}
+                  disabled={totalCellCount === 1}
+                  className="transition-all duration-200"
+                >
+                  <ArrowUp className="mr-2 h-4 w-4 transition-transform duration-200" />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onMoveDown}
+                  disabled={totalCellCount === 1}
+                  className="transition-all duration-200"
+                >
+                  <ArrowDown className="mr-2 h-4 w-4 transition-transform duration-200" />
+                  Move down
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onFullView}>
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  Full view
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {(isQueryCell || isPromptCell) && (
+              <Select
+                value={selectedDatasource ?? undefined}
+                onValueChange={(value) => onDatasourceChange(value)}
+                disabled={datasources.length === 0}
+              >
+                <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
+                  <DatabaseIcon className="mr-1.5 h-3 w-3" />
+                  <SelectValue placeholder="Select datasource" />
+                </SelectTrigger>
+                <SelectContent>
+                  {datasources.map((ds) => (
+                    <SelectItem key={ds.id} value={ds.id}>
+                      {renderDatasourceOption(ds)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
 
         {/* Results Grid */}

@@ -16,6 +16,10 @@ export function generateSuggestionId(suggestionText: string): string {
   return `suggestion-${hashString}-${slug}`;
 }
 
+export function generateParentConversationId(): string {
+  return `parent-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
 export function cleanSuggestionPatterns(container: HTMLElement): void {
   const walker = document.createTreeWalker(
     container,

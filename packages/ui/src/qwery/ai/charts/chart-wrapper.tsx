@@ -326,9 +326,6 @@ export function ChartWrapper({
             <h3 className="text-foreground text-sm font-semibold tracking-tight">
               {title}
             </h3>
-            <p className="text-muted-foreground text-xs">
-              Generated Visualization
-            </p>
           </div>
         )}
 

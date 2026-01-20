@@ -57,7 +57,7 @@ export const createAgentMarkdownComponents = (): Components => {
   const getContextMessages = (
     messages: UIMessage[] | undefined,
     currentMessageId: string | undefined,
-  ): { lastUserQuestion?: string; lastAssistantResponse?: string } => {
+  ): { lastAssistantResponse?: string; parentConversationId?: string } => {
     if (!messages || !currentMessageId) {
       return {};
     }
@@ -67,33 +67,26 @@ export const createAgentMarkdownComponents = (): Components => {
       return {};
     }
 
-    // Find last user message before current
-    let lastUserQuestion: string | undefined;
-    for (let i = currentIndex - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (msg?.role === 'user') {
-        const textPart = msg.parts.find((p) => p.type === 'text');
-        if (textPart && 'text' in textPart) {
-          lastUserQuestion = textPart.text;
-          break;
-        }
-      }
-    }
-
-    // Find last assistant message before current
+    // Find last assistant message before current (the response to the previous question)
     let lastAssistantResponse: string | undefined;
+    let parentConversationId: string | undefined;
     for (let i = currentIndex - 1; i >= 0; i--) {
       const msg = messages[i];
       if (msg?.role === 'assistant') {
         const textPart = msg.parts.find((p) => p.type === 'text');
-        if (textPart && 'text' in textPart) {
+        if (textPart && 'text' in textPart && textPart.text.trim()) {
           lastAssistantResponse = textPart.text;
+          // Generate parent ID for this question-response pair
+          const previousUserMsg = messages[i - 1];
+          if (previousUserMsg?.role === 'user') {
+            parentConversationId = `parent-${previousUserMsg.id}-${msg.id}`;
+          }
           break;
         }
       }
     }
 
-    return { lastUserQuestion, lastAssistantResponse };
+    return { lastAssistantResponse, parentConversationId };
   };
 
   return {
@@ -173,23 +166,27 @@ export const createAgentMarkdownComponents = (): Components => {
         rel="noreferrer"
       />
     ),
-    ul: ({ className, ...props }) => (
+    ul: ({ className, children, ...props }) => (
       <ul
         {...props}
         className={cn(
           'overflow-wrap-anywhere my-2 min-w-0 list-disc pl-6 text-sm leading-6 break-words',
           className,
         )}
-      />
+      >
+        {children}
+      </ul>
     ),
-    ol: ({ className, ...props }) => (
+    ol: ({ className, children, ...props }) => (
       <ol
         {...props}
         className={cn(
           'overflow-wrap-anywhere my-2 min-w-0 list-decimal pl-6 text-sm leading-6 break-words',
           className,
         )}
-      />
+      >
+        {children}
+      </ol>
     ),
     li: ({ className, children, ...props }) => {
       const LiComponent = () => {
@@ -202,7 +199,7 @@ export const createAgentMarkdownComponents = (): Components => {
 
         if (isSuggestion && markdownContext.sendMessage) {
           const handleClick = () => {
-            const { lastUserQuestion, lastAssistantResponse } =
+            const { lastAssistantResponse, parentConversationId } =
               getContextMessages(
                 markdownContext.messages,
                 markdownContext.currentMessageId,
@@ -211,19 +208,12 @@ export const createAgentMarkdownComponents = (): Components => {
             let messageText = itemText;
 
             // Build context template if we have previous messages
-            if (lastUserQuestion || lastAssistantResponse) {
-              const contextParts: string[] = [];
-              if (lastUserQuestion) {
-                contextParts.push(`Previous question: ${lastUserQuestion}`);
-              }
-              if (lastAssistantResponse) {
-                contextParts.push(
-                  `Previous response: ${lastAssistantResponse}`,
-                );
-              }
-              if (contextParts.length > 0) {
-                messageText = `${contextParts.join('\n\n')}\n\n${itemText}`;
-              }
+            if (lastAssistantResponse || parentConversationId) {
+              const contextData = JSON.stringify({
+                lastAssistantResponse,
+                parentConversationId,
+              });
+              messageText = `__QWERY_CONTEXT__${contextData}__QWERY_CONTEXT_END__${itemText}`;
             }
 
             if (markdownContext.sendMessage) {
@@ -349,7 +339,11 @@ export const createAgentMarkdownComponents = (): Components => {
           );
         }
 
-        return <strong {...props} className={cn('font-semibold', className)} />;
+        return (
+          <strong {...props} className={cn('font-semibold', className)}>
+            {children}
+          </strong>
+        );
       };
       return <StrongComponent />;
     },

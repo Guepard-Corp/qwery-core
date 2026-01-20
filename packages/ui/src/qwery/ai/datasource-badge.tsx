@@ -68,11 +68,6 @@ export function DatasourceBadge({
               <h4 className="truncate text-sm leading-tight font-semibold">
                 {datasource.name}
               </h4>
-              {datasource.slug && (
-                <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                  {datasource.slug}
-                </p>
-              )}
             </div>
           </div>
 
@@ -223,11 +218,6 @@ function DatasourceBadgesHover({
                     <p className="min-w-0 text-xs font-medium break-words">
                       {datasource.name}
                     </p>
-                    {datasource.slug && (
-                      <span className="bg-background border-border text-muted-foreground inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-xs font-medium">
-                        {datasource.slug}
-                      </span>
-                    )}
                     {datasource.datasource_provider && (
                       <span className="bg-muted text-muted-foreground inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium capitalize">
                         {datasource.datasource_provider.replace(/_/g, ' ')}

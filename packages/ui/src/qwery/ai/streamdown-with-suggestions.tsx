@@ -52,8 +52,8 @@ export const StreamdownWithSuggestions = memo(
     return (
       <div
         ref={containerRef}
-        className={cn('max-w-full min-w-0 overflow-hidden', className)}
-        style={{ maxWidth: '100%', overflowX: 'hidden' }}
+        className={cn('w-full max-w-full min-w-0', className)}
+        style={{ maxWidth: '100%' }}
       >
         <MessageResponse>{children}</MessageResponse>
       </div>

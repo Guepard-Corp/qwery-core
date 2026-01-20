@@ -156,7 +156,7 @@ export const VirtuosoMessageList = forwardRef<
         return null;
       },
       Footer: () => {
-        if (error) {
+        if (loadError) {
           return (
             <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
               <BotAvatar size={6} isLoading={false} className="mt-1 shrink-0" />
@@ -166,7 +166,7 @@ export const VirtuosoMessageList = forwardRef<
                     <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
                       <p className="font-medium">Error</p>
                       <p className="text-destructive/80 mt-1">
-                        {error.message ||
+                        {loadError.message ??
                           'Failed to get response from agent. Please try again.'}
                       </p>
                     </div>
@@ -237,6 +237,8 @@ export const VirtuosoMessageList = forwardRef<
   // Scroll to bottom on initial mount if messages exist
   const hasPerformedInitialScrollRef = useRef(false);
   const previousMessagesLengthRef = useRef(messages.length);
+  const previousLastMessageIdRef = useRef<string | undefined>(undefined);
+  
   useEffect(() => {
     if (!hasPerformedInitialScrollRef.current && messages.length > 0) {
       const wasEmpty = previousMessagesLengthRef.current === 0;
@@ -255,11 +257,67 @@ export const VirtuosoMessageList = forwardRef<
           }
         }, 0);
         previousMessagesLengthRef.current = messages.length;
+        if (messages.length > 0) {
+          previousLastMessageIdRef.current = messages[messages.length - 1]?.id;
+        }
         return () => clearTimeout(timeoutId);
       }
     }
     previousMessagesLengthRef.current = messages.length;
   }, [messages.length]);
+
+  // Force scroll when a new assistant message appears (to ensure visibility)
+  useEffect(() => {
+    if (messages.length === 0 || !virtuosoRef.current) return;
+
+    const lastMessage = messages[messages.length - 1];
+    const lastMessageId = lastMessage?.id;
+    const previousLastMessageId = previousLastMessageIdRef.current;
+
+    // Check if a new message was added (different ID) and it's from assistant
+    if (
+      lastMessageId &&
+      lastMessageId !== previousLastMessageId &&
+      lastMessage.role === 'assistant'
+    ) {
+      // Force scroll to show the new assistant message
+      // Use multiple timeouts to ensure DOM is updated and message is rendered
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 0);
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 50);
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 150);
+      });
+    }
+
+    // Update the ref to track the last message ID
+    if (lastMessageId) {
+      previousLastMessageIdRef.current = lastMessageId;
+    }
+  }, [messages]);
 
   const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
   return (

@@ -14,6 +14,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../shadcn/dropdown-menu';
 import {
@@ -984,6 +986,26 @@ export const PromptInputActionMenuItem = ({
   ...props
 }: PromptInputActionMenuItemProps) => (
   <DropdownMenuItem className={cn(className)} {...props} />
+);
+
+export type PromptInputActionMenuLabelProps = ComponentProps<
+  typeof DropdownMenuLabel
+>;
+export const PromptInputActionMenuLabel = ({
+  className,
+  ...props
+}: PromptInputActionMenuLabelProps) => (
+  <DropdownMenuLabel className={cn(className)} {...props} />
+);
+
+export type PromptInputActionMenuSeparatorProps = ComponentProps<
+  typeof DropdownMenuSeparator
+>;
+export const PromptInputActionMenuSeparator = ({
+  className,
+  ...props
+}: PromptInputActionMenuSeparatorProps) => (
+  <DropdownMenuSeparator className={cn(className)} {...props} />
 );
 
 // Note: Actions that perform side-effects (like opening a file dialog)

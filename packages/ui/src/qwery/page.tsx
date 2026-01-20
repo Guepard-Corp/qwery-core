@@ -9,6 +9,8 @@ import {
 // Re-export for external use
 export type { ResizableContentRef };
 
+export type PageBodyVariant = 'default' | 'noPadding' | 'fullscreen';
+
 type PageProps = React.PropsWithChildren<{
   contentContainerClassName?: string;
   className?: string;
@@ -107,7 +109,7 @@ export function AgentSidebar(props: React.PropsWithChildren) {
 export function PageBody(
   props: React.PropsWithChildren<{
     className?: string;
-    variant?: 'default' | 'noPadding' | 'fullscreen';
+    variant?: PageBodyVariant;
   }>,
 ) {
   const className = cn(

@@ -1,25 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Minimize2, ArrowUpLeft } from 'lucide-react';
+import { ArrowUpLeft } from 'lucide-react';
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import { Message, MessageContent } from '../../ai-elements/message';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { agentMarkdownComponents } from './markdown-components';
 import { scrollToElementBySelector } from './scroll-utils';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { cleanContextMarkers } from './utils/message-context';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '../../shadcn/hover-card';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { agentMarkdownComponents } from './markdown-components';
+import { BotAvatar } from '../bot-avatar';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
+import { useState, useEffect, useRef } from 'react';
 
 export interface UserMessageBubbleProps {
   text: string;
   context?: {
-    lastUserQuestion?: string;
     lastAssistantResponse?: string;
     sourceSuggestionId?: string; // ID of the original suggestion element
+    parentConversationId?: string; // ID of the question-response duo parent
   };
   messageId: string;
+  messages?: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>; // Messages array to find user question
   className?: string;
   datasources?: DatasourceItem[];
   pluginLogoMap?: Map<string, string>;
@@ -72,12 +80,6 @@ export function parseMessageWithContext(messageText: string): {
       const parsed = JSON.parse(contextJson);
       if (parsed && typeof parsed === 'object') {
         if (
-          parsed.lastUserQuestion &&
-          typeof parsed.lastUserQuestion === 'string'
-        ) {
-          parsedContext.lastUserQuestion = parsed.lastUserQuestion;
-        }
-        if (
           parsed.lastAssistantResponse &&
           typeof parsed.lastAssistantResponse === 'string'
         ) {
@@ -89,50 +91,32 @@ export function parseMessageWithContext(messageText: string): {
         ) {
           parsedContext.sourceSuggestionId = parsed.sourceSuggestionId;
         }
+        if (
+          parsed.parentConversationId &&
+          typeof parsed.parentConversationId === 'string'
+        ) {
+          parsedContext.parentConversationId = parsed.parentConversationId;
+        }
       }
     } catch {
       // If JSON parsing fails, try to extract fields using a more robust regex
       // Use a safer regex pattern that avoids exponential backtracking
       // Match quoted strings by finding the key, then capturing until the closing quote
       // This pattern uses a non-capturing group with a limited repetition to prevent backtracking
-      const lastUserQuestionRegex =
-        /"lastUserQuestion"\s*:\s*"((?:[^"\\]|\\(?:[\\"nrt]|u[0-9a-fA-F]{4}))*?)"/;
       const lastAssistantResponseRegex =
         /"lastAssistantResponse"\s*:\s*"((?:[^"\\]|\\(?:[\\"nrt]|u[0-9a-fA-F]{4}))*?)"/;
       const sourceSuggestionIdRegex = /"sourceSuggestionId"\s*:\s*"([^"]+)"/;
+      const parentConversationIdRegex = /"parentConversationId"\s*:\s*"([^"]+)"/;
 
-      const lastUserQuestionMatch = contextJson.match(lastUserQuestionRegex);
       const lastAssistantResponseMatch = contextJson.match(
         lastAssistantResponseRegex,
       );
       const sourceSuggestionIdMatch = contextJson.match(
         sourceSuggestionIdRegex,
       );
-
-      if (lastUserQuestionMatch && lastUserQuestionMatch[1]) {
-        let value = lastUserQuestionMatch[1];
-        // Remove nested context markers and suggestion guidance markers
-        value = removeAllContextMarkers(value);
-        // Unescape JSON string - order matters: handle \\ first to avoid double unescaping
-        // Use a single pass with a function to handle all escape sequences correctly
-        value = value.replace(/\\(.)/g, (match, char) => {
-          switch (char) {
-            case 'n':
-              return '\n';
-            case 't':
-              return '\t';
-            case 'r':
-              return '\r';
-            case '"':
-              return '"';
-            case '\\':
-              return '\\';
-            default:
-              return match; // Preserve unknown escape sequences
-          }
-        });
-        parsedContext.lastUserQuestion = value.trim();
-      }
+      const parentConversationIdMatch = contextJson.match(
+        parentConversationIdRegex,
+      );
       if (lastAssistantResponseMatch && lastAssistantResponseMatch[1]) {
         let value = lastAssistantResponseMatch[1];
         // Remove nested context markers and suggestion guidance markers
@@ -159,6 +143,9 @@ export function parseMessageWithContext(messageText: string): {
       }
       if (sourceSuggestionIdMatch && sourceSuggestionIdMatch[1]) {
         parsedContext.sourceSuggestionId = sourceSuggestionIdMatch[1];
+      }
+      if (parentConversationIdMatch && parentConversationIdMatch[1]) {
+        parsedContext.parentConversationId = parentConversationIdMatch[1];
       }
     }
 
@@ -187,11 +174,6 @@ export function parseMessageWithContext(messageText: string): {
     cleanText = cleanText.trim();
 
     // Clean nested markers from context values (final cleanup)
-    if (parsedContext.lastUserQuestion) {
-      parsedContext.lastUserQuestion = removeAllContextMarkers(
-        parsedContext.lastUserQuestion,
-      ).trim();
-    }
     if (parsedContext.lastAssistantResponse) {
       parsedContext.lastAssistantResponse = removeAllContextMarkers(
         parsedContext.lastAssistantResponse,
@@ -199,7 +181,11 @@ export function parseMessageWithContext(messageText: string): {
     }
 
     // Only return context if it has at least one field
-    if (parsedContext.lastUserQuestion || parsedContext.lastAssistantResponse) {
+    if (
+      parsedContext.lastAssistantResponse ||
+      parsedContext.sourceSuggestionId ||
+      parsedContext.parentConversationId
+    ) {
       return { text: cleanText, context: parsedContext };
     }
 
@@ -211,37 +197,239 @@ export function parseMessageWithContext(messageText: string): {
   }
 }
 
+function findSuggestionInResponse(
+  response: string,
+  suggestionText: string,
+): { before: string; suggestion: string; after: string } | null {
+  // Clean the suggestion text for matching (remove markdown, normalize)
+  const cleanSuggestion = suggestionText
+    .trim()
+    .replace(/^[•\-*\d+.)]\s*/, '') // Remove list markers
+    .replace(/\*\*/g, '') // Remove bold markers
+    .replace(/\*/g, '') // Remove italic markers
+    .replace(/`/g, '') // Remove code markers
+    .trim();
+
+  if (!cleanSuggestion) return null;
+
+  // Try to find the suggestion in the response (case-insensitive, flexible matching)
+  const responseLower = response.toLowerCase();
+  const suggestionLower = cleanSuggestion.toLowerCase();
+
+  // Try exact match first
+  let index = responseLower.indexOf(suggestionLower);
+  
+  // If not found, try matching without special characters
+  if (index === -1) {
+    const normalizedResponse = responseLower.replace(/[^\w\s]/g, ' ');
+    const normalizedSuggestion = suggestionLower.replace(/[^\w\s]/g, ' ');
+    index = normalizedResponse.indexOf(normalizedSuggestion);
+    if (index !== -1) {
+      // Find the actual position in original text
+      let charCount = 0;
+      for (let i = 0; i < response.length; i++) {
+        const char = response[i];
+        if (char && /[\w\s]/.test(char)) {
+          if (charCount === index) {
+            index = i;
+            break;
+          }
+          charCount++;
+        }
+      }
+    }
+  }
+
+  if (index === -1) {
+    // If suggestion not found, return null to show truncated response
+    return null;
+  }
+
+  // Extract the actual suggestion text from response (preserve original formatting)
+  const before = response.substring(0, index).trim();
+  const suggestion = response.substring(index, index + cleanSuggestion.length);
+  const after = response.substring(index + cleanSuggestion.length).trim();
+
+  return { before, suggestion, after };
+}
+
+function getPreviewText(
+  response: string,
+  suggestionText: string,
+): { preview: React.ReactNode; fullText: string } {
+  // Always show the suggestion text in bold (mandatory)
+  // Try to find and spotlight the suggestion within the response
+  const spotlight = findSuggestionInResponse(response, suggestionText);
+
+  if (spotlight) {
+    const { before, suggestion, after } = spotlight;
+
+    const preview = (
+      <>
+        {before && <span>{before} </span>}
+        <span className="font-bold">{suggestion}</span>
+        {after && <span> {after}</span>}
+      </>
+    );
+
+    return { preview, fullText: response };
+  }
+
+  // Fallback: if suggestion not found in response, show the suggestion text itself in bold
+  // Then show surrounding text from response
+  const cleanResponse = response
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/\n+/g, ' ')
+    .trim();
+
+  const preview = (
+    <>
+      <span className="font-bold">{suggestionText}</span>
+      {cleanResponse && <span> {cleanResponse}</span>}
+    </>
+  );
+
+  return { preview, fullText: response };
+}
+
+function getUserQuestionFromParentId(
+  parentConversationId: string | undefined,
+  messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }> | undefined,
+  currentMessageId?: string,
+): string | undefined {
+  if (!messages) return undefined;
+
+  // Method 1: Try to extract from parentConversationId
+  if (parentConversationId) {
+    // Extract user message ID from parentConversationId format: "parent-{userMessageId}-{assistantMessageId}"
+    const match = parentConversationId.match(/^parent-([^-]+)-(.+)$/);
+    if (match && match[1]) {
+      const userMessageId = match[1];
+      const userMessage = messages.find((m) => m.id === userMessageId);
+      
+      if (userMessage && normalizeUIRole(userMessage.role) === 'user') {
+        // Extract text from user message parts
+        if (userMessage.parts) {
+          const textParts = userMessage.parts
+            .filter((p) => p.type === 'text' && p.text)
+            .map((p) => p.text)
+            .filter((t): t is string => typeof t === 'string');
+          
+          if (textParts.length > 0) {
+            // Parse to get clean text without context markers
+            const fullText = textParts.join(' ');
+            const { text } = parseMessageWithContext(fullText);
+            const cleaned = text.trim();
+            if (cleaned) return cleaned;
+          }
+        }
+      }
+    }
+  }
+
+  // Method 2: Fallback - Find the user message that precedes the assistant response
+  // Look backwards from current message to find the previous user message
+  if (currentMessageId) {
+    const currentIndex = messages.findIndex((m) => m.id === currentMessageId);
+    if (currentIndex > 0) {
+      // Look backwards from current message to find the previous user message
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg && normalizeUIRole(msg.role) === 'user') {
+          // Extract text from user message parts
+          if (msg.parts) {
+            const textParts = msg.parts
+              .filter((p) => p.type === 'text' && p.text)
+              .map((p) => p.text)
+              .filter((t): t is string => typeof t === 'string');
+            
+            if (textParts.length > 0) {
+              // Parse to get clean text without context markers
+              const fullText = textParts.join(' ');
+              const { text } = parseMessageWithContext(fullText);
+              const cleaned = text.trim();
+              if (cleaned) return cleaned;
+            }
+          }
+          // Found a user message, stop looking
+          break;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function UserMessageBubble({
   text,
   context,
+  messages,
+  messageId,
   className,
   datasources,
   pluginLogoMap,
 }: UserMessageBubbleProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showContext, setShowContext] = useState({
-    previousQuestion: false, // Closed by default
-    previousResponse: false, // Closed by default
-  });
-
-  const hasContext =
-    context && (context.lastUserQuestion || context.lastAssistantResponse);
+  const hasContext = context && context.lastAssistantResponse;
   const hasSourceSuggestion = context?.sourceSuggestionId;
+  const [isHoverCardOpen, setIsHoverCardOpen] = useState(false);
+  const hoverCardContentRef = useRef<HTMLDivElement>(null);
 
   const scrollToSourceSuggestion = () => {
     if (!context?.sourceSuggestionId) return;
 
-    // Use the utility function to scroll to the suggestion
     scrollToElementBySelector(
       `[data-suggestion-id="${context.sourceSuggestionId}"]`,
       {
         behavior: 'smooth',
         block: 'center',
         inline: 'nearest',
-        offset: -20, // Small offset to account for padding
+        offset: -20,
       },
     );
   };
+
+  // Close HoverCard on scroll (only if scrolling outside the popup)
+  useEffect(() => {
+    if (!isHoverCardOpen) return;
+
+    const handleScroll = (event: Event) => {
+      const target = event.target as Node;
+      const hoverCardContent = hoverCardContentRef.current;
+
+      // Don't close if scrolling inside the popup content
+      if (hoverCardContent && hoverCardContent.contains(target)) {
+        return;
+      }
+
+      setIsHoverCardOpen(false);
+    };
+
+    // Listen to scroll events on window and all scrollable containers
+    window.addEventListener('scroll', handleScroll, true);
+    document.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [isHoverCardOpen]);
+
+  const previewData =
+    hasContext && context.lastAssistantResponse
+      ? getPreviewText(context.lastAssistantResponse ?? '', text)
+      : null;
+
+  const userQuestion = getUserQuestionFromParentId(
+    context?.parentConversationId,
+    messages,
+    messageId,
+  );
 
   return (
     <div className="flex flex-col items-end gap-1.5">
@@ -254,145 +442,83 @@ export function UserMessageBubble({
           />
         </div>
       )}
-      <div className="flex max-w-full min-w-0 items-start gap-0.5 overflow-x-hidden">
-        {/* Scroll back button - outside the message bubble, on the left */}
+      {/* Horizontal layout: go to suggestion button - previous response preview - message bubble */}
+      <div className="flex w-full max-w-full min-w-0 items-center gap-2 overflow-x-hidden">
+        {/* Go to suggestion button - on the very left */}
+        {hasSourceSuggestion && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0 opacity-60 hover:opacity-100"
+            onClick={scrollToSourceSuggestion}
+            title="Scroll to original suggestion"
+          >
+            <ArrowUpLeft className="size-4" />
+          </Button>
+        )}
+        {/* Previous response preview - fills available space */}
+        {previewData && (
+          <HoverCard open={isHoverCardOpen} onOpenChange={setIsHoverCardOpen}>
+            <HoverCardTrigger asChild>
+              <div className="text-muted-foreground flex min-w-0 flex-1 cursor-pointer items-center text-xs leading-relaxed transition-colors hover:text-foreground">
+                <span className="line-clamp-2 break-words">
+                  {previewData.preview}
+                </span>
+              </div>
+            </HoverCardTrigger>
+            <HoverCardContent
+              ref={hoverCardContentRef}
+              className="w-96 max-h-[400px] overflow-y-auto"
+              side="top"
+              align="start"
+            >
+              <div className="flex flex-col gap-4">
+                {/* User Question - Right side (originating question) */}
+                {userQuestion && (
+                  <div className="flex items-start justify-end">
+                    <Message
+                      from="user"
+                      className="flex !w-auto min-w-0 max-w-[80%]"
+                    >
+                      <MessageContent className="overflow-wrap-anywhere max-w-full min-w-0 break-words">
+                        <span className="text-sm font-semibold break-words">
+                          {userQuestion}
+                        </span>
+                      </MessageContent>
+                    </Message>
+                  </div>
+                )}
+                {/* Assistant Response - Left side with bot avatar */}
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 shrink-0">
+                    <BotAvatar size={6} isLoading={false} />
+                  </div>
+                  <div className="flex-1 min-w-0 prose prose-sm dark:prose-invert max-w-none [&_ul]:list-disc [&_ul]:list-inside [&_ul]:pl-6 [&_li]:my-1 [&_li]:text-foreground [&_p]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_strong]:not-italic [&_strong]:inline">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={agentMarkdownComponents}
+                    >
+                      {previewData.fullText}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        )}
+        {/* Message bubble - fills remaining space */}
         <Message
           from="user"
           className={cn(
-            'flex !w-auto !max-w-[80%] min-w-0 flex-row items-center gap-2',
+            'flex !w-auto min-w-0 flex-1',
             className,
           )}
         >
-          {hasSourceSuggestion && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mt-1 -ml-1 h-4 w-4 shrink-0 opacity-60 hover:opacity-100"
-              onClick={scrollToSourceSuggestion}
-              title="Scroll to original suggestion"
-            >
-              <ArrowUpLeft className="size-3" />
-            </Button>
-          )}
           <MessageContent
-            className="overflow-wrap-anywhere relative max-w-full min-w-0 overflow-hidden break-words"
+            className="overflow-wrap-anywhere max-w-full min-w-0 break-words"
             style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
           >
-            {!isExpanded ? (
-              // Compact mode - just show the suggestion text
-              <div className="flex min-w-0 items-center justify-between gap-2">
-                <span className="min-w-0 text-sm font-semibold break-words">
-                  {text}
-                </span>
-                {hasContext && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 shrink-0 opacity-60 hover:opacity-100"
-                    onClick={() => setIsExpanded(true)}
-                    title="Expand to see context"
-                  >
-                    <ChevronDown className="size-3" />
-                  </Button>
-                )}
-              </div>
-            ) : (
-              // Expanded mode - show formatted content with context
-              <>
-                {/* Collapse button */}
-                <div className="absolute top-0 right-0 z-10 p-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 p-1.5 opacity-60 hover:opacity-100"
-                    onClick={() => setIsExpanded(false)}
-                    title="Collapse"
-                  >
-                    <Minimize2 className="size-3" />
-                  </Button>
-                </div>
-
-                <div className="min-w-0 space-y-3 pr-16">
-                  {/* Main suggestion text - bold, no bottom margin */}
-                  <div className="mb-0 min-w-0">
-                    <strong className="text-sm font-semibold break-words">
-                      {text}
-                    </strong>
-                  </div>
-
-                  {/* Context sections */}
-                  {hasContext && (
-                    <div className="space-y-2 border-t pt-3">
-                      {context.lastUserQuestion && (
-                        <div className="space-y-1">
-                          <button
-                            onClick={() =>
-                              setShowContext((prev) => ({
-                                ...prev,
-                                previousQuestion: !prev.previousQuestion,
-                              }))
-                            }
-                            className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 text-xs font-semibold transition-colors"
-                          >
-                            {showContext.previousQuestion ? (
-                              <ChevronUp className="size-3" />
-                            ) : (
-                              <ChevronDown className="size-3" />
-                            )}
-                            Previous Question
-                          </button>
-                          {showContext.previousQuestion && (
-                            <div className="w-full min-w-0 overflow-hidden overflow-x-hidden">
-                              <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={agentMarkdownComponents}
-                                >
-                                  {context.lastUserQuestion}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {context.lastAssistantResponse && (
-                        <div className="space-y-1">
-                          <button
-                            onClick={() =>
-                              setShowContext((prev) => ({
-                                ...prev,
-                                previousResponse: !prev.previousResponse,
-                              }))
-                            }
-                            className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 text-xs font-semibold transition-colors"
-                          >
-                            {showContext.previousResponse ? (
-                              <ChevronUp className="size-3" />
-                            ) : (
-                              <ChevronDown className="size-3" />
-                            )}
-                            Previous Response
-                          </button>
-                          {showContext.previousResponse && (
-                            <div className="w-full min-w-0 overflow-hidden">
-                              <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none break-words">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={agentMarkdownComponents}
-                                >
-                                  {context.lastAssistantResponse}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+            <span className="text-sm font-semibold break-words">{text}</span>
           </MessageContent>
         </Message>
       </div>

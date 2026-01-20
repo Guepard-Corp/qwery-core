@@ -3,6 +3,9 @@ import {
   PromptInputActionAddAttachments,
   PromptInputActionMenu,
   PromptInputActionMenuContent,
+  PromptInputActionMenuLabel,
+  PromptInputActionMenuItem,
+  PromptInputActionMenuSeparator,
   PromptInputActionMenuTrigger,
   PromptInputAttachment,
   PromptInputAttachments,
@@ -24,6 +27,18 @@ import { ChatStatus } from 'ai';
 import QweryContext, { QweryContextProps } from './context';
 import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
+import { useToolVariant } from './tool-variant-context';
+import { Switch } from '../../shadcn/switch';
+import { SettingsIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../shadcn/dropdown-menu';
+import { PromptInputButton } from '../../ai-elements/prompt-input';
 
 export interface QweryPromptInputProps {
   onSubmit: (message: PromptInputMessage) => void;
@@ -50,6 +65,7 @@ export interface QweryPromptInputProps {
 function PromptInputContent(props: QweryPromptInputProps) {
   const attachments = usePromptInputAttachments();
   const attachmentsCount = props.attachmentsCount ?? attachments.files.length;
+  const { variant, setVariant } = useToolVariant();
 
   return (
     <>
@@ -100,6 +116,29 @@ function PromptInputContent(props: QweryPromptInputProps) {
               <PromptInputActionAddAttachments />
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <PromptInputButton aria-label="Settings">
+                <SettingsIcon className="size-4" />
+              </PromptInputButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                }}
+                className="flex items-center justify-between gap-3 py-2"
+              >
+                <span className="text-sm">Minimal Tool UI</span>
+                <Switch
+                  checked={variant === 'minimal'}
+                  onCheckedChange={(checked) => {
+                    setVariant(checked ? 'minimal' : 'default');
+                  }}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {props.datasources &&
             props.onDatasourceSelectionChange &&
             props.pluginLogoMap && (

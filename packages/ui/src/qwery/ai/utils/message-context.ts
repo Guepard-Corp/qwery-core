@@ -60,6 +60,7 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
 
       let toolName: string = 'Tool';
 
+      // Try to get tool name from toolName property first
       if (
         'toolName' in toolPart &&
         typeof toolPart.toolName === 'string' &&
@@ -72,11 +73,24 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
         if (formatted && formatted.trim()) {
           toolName = formatted;
         }
-      } else if (part.type && typeof part.type === 'string') {
+      }
+      
+      // Fallback to part.type if toolName is still 'Tool' or empty
+      if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
         const formatted = getUserFriendlyToolName(part.type);
         if (formatted && formatted.trim()) {
           toolName = formatted;
         }
+      }
+
+      // Ensure we always have a valid tool name
+      if (!toolName || toolName.trim() === '') {
+        toolName = part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
+        // Capitalize first letter of each word
+        toolName = toolName
+          .split(' ')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
       }
 
       const status = toolPart.state ? getToolStatusLabel(toolPart.state) : null;
@@ -111,7 +125,7 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
 export function getContextMessages(
   messages: UIMessage[] | undefined,
   currentMessageId: string | undefined,
-): { lastUserQuestion?: string; lastAssistantResponse?: string } {
+): { lastAssistantResponse?: string; parentConversationId?: string } {
   if (!messages || !currentMessageId) {
     return {};
   }
@@ -123,26 +137,42 @@ export function getContextMessages(
 
   const currentMessage = messages[currentIndex];
 
-  let lastUserQuestion: string | undefined;
+  // Find the last assistant message (the response to the previous question)
+  // This forms the question-response duo
+  let lastAssistantResponse: string | undefined;
+  let parentConversationId: string | undefined;
+
+  // Look for the most recent assistant message before the current one
   for (let i = currentIndex - 1; i >= 0; i--) {
     const msg = messages[i];
-    if (msg?.role === 'user') {
-      const textPart = msg.parts.find((p) => p.type === 'text');
-      if (textPart && 'text' in textPart && textPart.text) {
-        const parsed = parseMessageWithContext(textPart.text);
-        lastUserQuestion = parsed.text || cleanContextMarkers(textPart.text);
+    if (msg?.role === 'assistant') {
+      const formatted = formatToolCalls(msg.parts);
+      if (formatted.trim()) {
+        lastAssistantResponse = formatted;
+        // Generate a parent conversation ID for this question-response pair
+        // The parent ID is based on the assistant message ID and the previous user message
+        const previousUserMsg = messages[i - 1];
+        if (previousUserMsg?.role === 'user') {
+          // Use a combination of user and assistant message IDs to create a unique parent ID
+          parentConversationId = `parent-${previousUserMsg.id}-${msg.id}`;
+        }
         break;
       }
     }
   }
 
-  let lastAssistantResponse: string | undefined;
-  if (currentMessage?.role === 'assistant') {
+  // If current message is assistant, it's part of a question-response pair
+  if (currentMessage?.role === 'assistant' && !lastAssistantResponse) {
     const formatted = formatToolCalls(currentMessage.parts);
     if (formatted.trim()) {
       lastAssistantResponse = formatted;
+      // Find the previous user message to create parent ID
+      const previousUserMsg = messages[currentIndex - 1];
+      if (previousUserMsg?.role === 'user') {
+        parentConversationId = `parent-${previousUserMsg.id}-${currentMessage.id}`;
+      }
     }
   }
 
-  return { lastUserQuestion, lastAssistantResponse };
+  return { lastAssistantResponse, parentConversationId };
 }

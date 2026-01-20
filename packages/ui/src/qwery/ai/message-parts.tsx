@@ -48,6 +48,7 @@ import { agentMarkdownComponents, HeadingContext } from './markdown-components';
 import { ToolErrorVisualizer } from './tool-error-visualizer';
 import type { useChat } from '@ai-sdk/react';
 import { getUserFriendlyToolName } from './utils/tool-name';
+import { useToolVariant } from './tool-variant-context';
 
 import { ChartRenderer, type ChartConfig } from './charts/chart-renderer';
 import {
@@ -197,7 +198,11 @@ export function TextPart({
       value={{ sendMessage, messages, currentMessageId: messageId }}
     >
       <HeadingContext.Provider value={headingContextValue}>
-        <Message key={`${messageId}-${index}`} from={messageRole}>
+        <Message 
+          key={`${messageId}-${index}`} 
+          from={messageRole}
+          className={messageRole === 'assistant' ? 'mt-4' : undefined}
+        >
           <MessageContent>
             <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
               <ReactMarkdown
@@ -315,6 +320,7 @@ export function ToolPart({
   onPasteToNotebook,
   notebookContext,
 }: ToolPartProps) {
+  const { variant } = useToolVariant();
   let toolName: string;
   if (
     'toolName' in part &&
@@ -698,19 +704,20 @@ export function ToolPart({
     <Tool
       key={`${messageId}-${index}`}
       defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
+      variant={variant}
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
         TOOL_UI_CONFIG.MAX_WIDTH,
         'mx-auto',
       )}
     >
-      <ToolHeader title={toolName} type={part.type} state={part.state} />
-      <ToolContent className="max-w-full min-w-0 p-0">
-        {showInput ? (
-          <ToolInput input={part.input} className="border-b" />
-        ) : null}
-        <div className="max-w-full min-w-0 overflow-hidden p-4">
-          {renderToolOutput()}
+        <ToolHeader title={toolName} type={part.type} state={part.state} variant={variant} />
+        <ToolContent variant={variant} className="max-w-full min-w-0 p-0">
+          {showInput ? (
+            <ToolInput input={part.input} className="border-b" />
+          ) : null}
+          <div className="max-w-full min-w-0 overflow-hidden p-4">
+            {renderToolOutput()}
         </div>
       </ToolContent>
     </Tool>

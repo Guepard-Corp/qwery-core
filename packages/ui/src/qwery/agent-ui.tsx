@@ -61,6 +61,8 @@ import {
 import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
 import { getUserFriendlyToolName } from './ai/utils/tool-name';
+import { ToolVariantProvider, useToolVariant } from './ai/tool-variant-context';
+import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
@@ -83,19 +85,19 @@ export interface QweryAgentUIProps {
   isLoading?: boolean;
   onPasteToNotebook?: (
     sqlQuery: string,
-    notebookCellType: 'query' | 'prompt',
+    notebookCellType: NotebookCellType,
     datasourceId: string,
     cellId: number,
   ) => void;
   notebookContext?: {
     cellId?: number;
-    notebookCellType?: 'query' | 'prompt';
+    notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
   conversationSlug?: string;
 }
 
-export default function QweryAgentUI(props: QweryAgentUIProps) {
+function QweryAgentUIContent(props: QweryAgentUIProps) {
   const {
     initialMessages,
     transport,
@@ -425,8 +427,20 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
 
     setTimeout(() => {
       regenerate();
+      // Scroll to bottom after regenerating
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 0);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 100);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 300);
+      });
     }, 0);
-  }, [messages, regenerate, setMessages]);
+  }, [messages, regenerate, setMessages, scrollToBottomRef]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -488,10 +502,10 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
 
   return (
     <PromptInputProvider initialInput={state.input}>
-      <div
-        ref={containerRef}
-        className="relative mx-auto flex h-full w-full max-w-4xl min-w-0 flex-col overflow-x-hidden p-6"
-      >
+        <div
+          ref={containerRef}
+          className="relative mx-auto flex h-full w-full max-w-4xl min-w-0 flex-col overflow-x-hidden p-6"
+        >
         <div
           ref={conversationContainerRef}
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden"
@@ -805,6 +819,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                                   text={text}
                                                   context={context}
                                                   messageId={message.id}
+                                                  messages={messages}
                                                   datasources={
                                                     messageDatasources
                                                   }
@@ -835,7 +850,7 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                                   className="w-full max-w-full min-w-0"
                                                 >
                                                   <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                    <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                    <div className="overflow-wrap-anywhere break-words">
                                                       {part.text}
                                                     </div>
                                                   </MessageContent>
@@ -1000,17 +1015,20 @@ export default function QweryAgentUI(props: QweryAgentUIProps) {
                                           `tool-${toolPart.toolName}`,
                                         )
                                       : getUserFriendlyToolName(toolPart.type);
+                                  const { variant } = useToolVariant();
                                   return (
                                     <Tool
                                       key={`${message.id}-${i}`}
                                       defaultOpen={false}
+                                      variant={variant}
                                     >
                                       <ToolHeader
                                         title={toolName}
                                         type={toolPart.type}
                                         state={toolPart.state}
+                                        variant={variant}
                                       />
-                                      <ToolContent>
+                                      <ToolContent variant={variant}>
                                         {toolPart.input != null ? (
                                           <ToolInput input={toolPart.input} />
                                         ) : null}
@@ -1282,5 +1300,13 @@ function PromptInputInner({
       pluginLogoMap={pluginLogoMap}
       datasourcesLoading={datasourcesLoading}
     />
+  );
+}
+
+export default function QweryAgentUI(props: QweryAgentUIProps) {
+  return (
+    <ToolVariantProvider>
+      <QweryAgentUIContent {...props} />
+    </ToolVariantProvider>
   );
 }
