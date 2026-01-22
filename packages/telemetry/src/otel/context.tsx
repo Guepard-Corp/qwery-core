@@ -7,7 +7,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import type { TelemetryManager } from './manager';
+import type { TelemetryManager } from './types';
 import type { WorkspaceContext } from './utils';
 
 export interface OtelTelemetryContextValue {

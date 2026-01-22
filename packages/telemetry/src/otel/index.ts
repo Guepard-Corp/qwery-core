@@ -1,5 +1,13 @@
-export { TelemetryManager, type TelemetryManagerOptions } from './manager';
-export type { OtelTelemetryManagerOptions } from './manager';
+// Browser-safe OpenTelemetry exports
+// For Node.js-only TelemetryManager with full SDK, use '@qwery/telemetry/node'
+
+// Re-export TelemetryManager type for backward compatibility (type-only, no runtime code)
+export type {
+  TelemetryManager,
+  TelemetryManagerOptions,
+  OtelTelemetryManagerOptions,
+} from './types';
+
 export { OtelClientService } from './client-service';
 export { OtelClientService as ClientTelemetryService } from './client-service';
 export {

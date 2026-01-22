@@ -1,4 +1,4 @@
-import type { TelemetryManager } from './manager';
+import type { TelemetryManager } from './types';
 import type { Span } from '@opentelemetry/api';
 import { AGENT_EVENTS } from '../events/agent.events';
 import type {

@@ -1,4 +1,4 @@
-import type { OtelTelemetryManager } from './manager';
+import type { TelemetryManager as OtelTelemetryManager } from './types';
 import type { Span } from '@opentelemetry/api';
 import { CLI_EVENTS } from '../events/cli.events';
 import { WEB_EVENTS } from '../events/web.events';

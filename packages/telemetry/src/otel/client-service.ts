@@ -1,6 +1,6 @@
 // packages/telemetry/src/otel/client-service.ts
 
-import type { OtelTelemetryManager } from './manager';
+import type { TelemetryManager as OtelTelemetryManager } from './types';
 import type { Span } from '@opentelemetry/api';
 import { createNoOpSpan } from './span-utils';
 

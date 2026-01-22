@@ -1,9 +1,3 @@
-/**
- * CLI-specific telemetry utilities
- * These wrap the generic utilities from @qwery/telemetry/opentelemetry
- * with CLI-specific context extraction
- */
-
 import type { CliContainer } from '../container/cli-container';
 import type { TelemetryManager } from '@qwery/telemetry/otel';
 import type { Span } from '@opentelemetry/api';

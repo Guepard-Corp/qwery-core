@@ -1,5 +1,5 @@
-import { OtelTelemetryManager } from '../otel/manager';
-import type { OtelTelemetryManagerOptions } from '../otel/manager';
+import { TelemetryManager as OtelTelemetryManager } from '../otel/node';
+import type { OtelTelemetryManagerOptions } from '../otel/types';
 import type { TelemetryService } from '../types';
 
 /**

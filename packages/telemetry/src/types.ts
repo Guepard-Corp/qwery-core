@@ -40,7 +40,8 @@ interface TelemetryProviderManager {
 }
 
 export interface TelemetryService
-  extends TrackPageView,
+  extends
+    TrackPageView,
     TrackEvent,
     TrackError,
     TrackUsage,
@@ -64,7 +65,8 @@ export interface CreateTelemetryManagerOptions<
 }
 
 export interface TelemetryManager
-  extends TrackPageView,
+  extends
+    TrackPageView,
     TrackEvent,
     Identify,
     TrackError,
