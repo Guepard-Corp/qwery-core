@@ -122,9 +122,20 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
   return result.join('\n\n');
 }
 
+function getTextContentFromMessage(message: UIMessage): string {
+  const textParts: string[] = [];
+  for (const part of message.parts) {
+    if (part.type === 'text' && 'text' in part && part.text?.trim()) {
+      textParts.push(part.text.trim());
+    }
+  }
+  return textParts.join('\n\n').trim();
+}
+
 export function getContextMessages(
   messages: UIMessage[] | undefined,
   currentMessageId: string | undefined,
+  textContent?: string,
 ): { lastAssistantResponse?: string; parentConversationId?: string } {
   if (!messages || !currentMessageId) {
     return {};
@@ -137,39 +148,31 @@ export function getContextMessages(
 
   const currentMessage = messages[currentIndex];
 
-  // Find the last assistant message (the response to the previous question)
-  // This forms the question-response duo
   let lastAssistantResponse: string | undefined;
   let parentConversationId: string | undefined;
 
-  // Look for the most recent assistant message before the current one
-  for (let i = currentIndex - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role === 'assistant') {
-      const formatted = formatToolCalls(msg.parts);
-      if (formatted.trim()) {
-        lastAssistantResponse = formatted;
-        // Generate a parent conversation ID for this question-response pair
-        // The parent ID is based on the assistant message ID and the previous user message
-        const previousUserMsg = messages[i - 1];
-        if (previousUserMsg?.role === 'user') {
-          // Use a combination of user and assistant message IDs to create a unique parent ID
-          parentConversationId = `parent-${previousUserMsg.id}-${msg.id}`;
-        }
-        break;
-      }
-    }
-  }
-
-  // If current message is assistant, it's part of a question-response pair
-  if (currentMessage?.role === 'assistant' && !lastAssistantResponse) {
-    const formatted = formatToolCalls(currentMessage.parts);
-    if (formatted.trim()) {
-      lastAssistantResponse = formatted;
-      // Find the previous user message to create parent ID
+  if (currentMessage?.role === 'assistant') {
+    const textContent = getTextContentFromMessage(currentMessage);
+    if (textContent) {
+      lastAssistantResponse = textContent;
       const previousUserMsg = messages[currentIndex - 1];
       if (previousUserMsg?.role === 'user') {
         parentConversationId = `parent-${previousUserMsg.id}-${currentMessage.id}`;
+      }
+    }
+  } else {
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg?.role === 'assistant') {
+        const textContent = getTextContentFromMessage(msg);
+        if (textContent) {
+          lastAssistantResponse = textContent;
+          const previousUserMsg = messages[i - 1];
+          if (previousUserMsg?.role === 'user') {
+            parentConversationId = `parent-${previousUserMsg.id}-${msg.id}`;
+          }
+          break;
+        }
       }
     }
   }

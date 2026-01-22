@@ -30,8 +30,8 @@ export const StreamdownWithSuggestions = memo(
     const containerRef = useRef<HTMLDivElement>(null);
 
     const contextMessages = useMemo(
-      () => getContextMessages(messages, currentMessageId),
-      [messages, currentMessageId],
+      () => getContextMessages(messages, currentMessageId, children),
+      [messages, currentMessageId, children],
     );
 
     const isStreamdownReady = useStreamdownReady(containerRef);

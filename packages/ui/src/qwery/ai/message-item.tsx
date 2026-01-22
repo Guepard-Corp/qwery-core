@@ -561,7 +561,7 @@ function MessageItemComponent({
                     <Tool
                       defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
                       variant={variant}
-                      className={cn(TOOL_UI_CONFIG.MAX_WIDTH, 'mx-auto')}
+                      className={cn(TOOL_UI_CONFIG.MAX_WIDTH, 'mx-4 sm:mx-6')}
                     >
                       <ToolHeader
                         title={toolName}

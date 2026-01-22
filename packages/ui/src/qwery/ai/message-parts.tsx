@@ -708,7 +708,7 @@ export function ToolPart({
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
         TOOL_UI_CONFIG.MAX_WIDTH,
-        'mx-auto',
+        'mx-4 sm:mx-6',
       )}
     >
         <ToolHeader title={toolName} type={part.type} state={part.state} variant={variant} />

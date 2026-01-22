@@ -73,6 +73,34 @@ function injectHighlightStyles(): void {
       overflow: visible !important;
     }
 
+    [data-suggestion-id].suggestion-highlight-fade-in,
+    li[data-suggestion-id].suggestion-highlight-fade-in,
+    p[data-suggestion-id].suggestion-highlight-fade-in {
+      animation: suggestion-highlight-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+    }
+
+    @keyframes suggestion-highlight-fade-in {
+      0% {
+        background: transparent;
+        border-width: 0px !important;
+        border-color: transparent !important;
+        box-shadow: none;
+      }
+      100% {
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 203, 81, 0.25) 0%,
+          rgba(255, 203, 81, 0.35) 50%,
+          rgba(255, 203, 81, 0.25) 100%
+        );
+        border-width: 1.5px !important;
+        border-color: rgba(255, 255, 255, 0.9) !important;
+        box-shadow: 
+          0 1px 2px rgba(0, 0, 0, 0.1),
+          inset 0 0 2px rgba(255, 203, 81, 0.2);
+      }
+    }
+
     /* Dark mode adjustment for yellow highlighter */
     .dark [data-suggestion-id].suggestion-highlight,
     .dark li[data-suggestion-id].suggestion-highlight,
@@ -84,6 +112,34 @@ function injectHighlightStyles(): void {
         rgba(255, 203, 81, 0.2) 100%
       ) !important;
       border-color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    .dark [data-suggestion-id].suggestion-highlight-fade-in,
+    .dark li[data-suggestion-id].suggestion-highlight-fade-in,
+    .dark p[data-suggestion-id].suggestion-highlight-fade-in {
+      animation: suggestion-highlight-fade-in-dark 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+    }
+
+    @keyframes suggestion-highlight-fade-in-dark {
+      0% {
+        background: transparent;
+        border-width: 0px !important;
+        border-color: transparent !important;
+        box-shadow: none;
+      }
+      100% {
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 203, 81, 0.2) 0%,
+          rgba(255, 203, 81, 0.3) 50%,
+          rgba(255, 203, 81, 0.2) 100%
+        );
+        border-width: 1.5px !important;
+        border-color: rgba(255, 255, 255, 0.7) !important;
+        box-shadow: 
+          0 1px 2px rgba(0, 0, 0, 0.1),
+          inset 0 0 2px rgba(255, 203, 81, 0.2);
+      }
     }
 
     [data-suggestion-id].suggestion-highlight-fade-out,
@@ -135,6 +191,7 @@ function removeAllHighlights(): void {
     activeHighlightElement.classList.remove(
       'suggestion-highlight',
       'suggestion-highlight-fade-out',
+      'suggestion-highlight-fade-in',
     );
     activeHighlightElement = null;
   }
@@ -142,12 +199,13 @@ function removeAllHighlights(): void {
   // Also remove from any other elements that might have the class
   document
     .querySelectorAll(
-      '[data-suggestion-id].suggestion-highlight, [data-suggestion-id].suggestion-highlight-fade-out',
+      '[data-suggestion-id].suggestion-highlight, [data-suggestion-id].suggestion-highlight-fade-out, [data-suggestion-id].suggestion-highlight-fade-in',
     )
     .forEach((el) => {
       el.classList.remove(
         'suggestion-highlight',
         'suggestion-highlight-fade-out',
+        'suggestion-highlight-fade-in',
       );
     });
 }
@@ -171,8 +229,8 @@ function addHighlight(element: HTMLElement, duration: number = 2500): void {
     return;
   }
 
-  // Add highlight class
-  element.classList.add('suggestion-highlight');
+  // Add fade-in class first, then highlight class
+  element.classList.add('suggestion-highlight-fade-in', 'suggestion-highlight');
   activeHighlightElement = element;
 
   // Force a reflow to ensure styles are applied
@@ -184,6 +242,13 @@ function addHighlight(element: HTMLElement, duration: number = 2500): void {
     hasClass: element.classList.contains('suggestion-highlight'),
     computedStyle: window.getComputedStyle(element).border,
   });
+
+  // Remove fade-in class after animation completes
+  setTimeout(() => {
+    if (element && element.classList.contains('suggestion-highlight-fade-in')) {
+      element.classList.remove('suggestion-highlight-fade-in');
+    }
+  }, 500); // Match fade-in animation duration
 
   // Schedule fade-out and removal
   activeHighlightTimeout = setTimeout(() => {
@@ -199,7 +264,7 @@ function addHighlight(element: HTMLElement, duration: number = 2500): void {
         if (activeHighlightElement === element) {
           activeHighlightElement = null;
         }
-      }, 500); // Match fade-out animation duration
+      }, 600); // Match fade-out animation duration
     }
     activeHighlightTimeout = null;
   }, duration);

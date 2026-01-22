@@ -104,7 +104,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     models,
     onOpen,
     usage,
-    emitFinish: _emitFinish,
+    emitFinish,
     datasources,
     selectedDatasources,
     onDatasourceSelectionChange,
@@ -250,6 +250,13 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
   }, [status, setIsProcessing, conversationSlug]);
 
+  useEffect(() => {
+    if (status === 'ready') {
+      emitFinish?.();
+    }
+  }, [status, emitFinish]);
+
+  // Scroll to bottom instantly when loading completes
   useEffect(() => {
     if (previousIsLoadingRef.current && !isLoading && messages.length > 0) {
       requestAnimationFrame(() => {
