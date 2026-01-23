@@ -78,7 +78,8 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
         if (formatted && formatted.trim()) {
           toolName = formatted;
         } else {
-          const formattedFromType = part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
+          const formattedFromType =
+            part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
           toolName = formattedFromType
             .split(' ')
             .map(
