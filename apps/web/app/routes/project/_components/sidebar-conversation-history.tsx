@@ -12,6 +12,7 @@ import {
   Share2,
   Trash2,
   MoreHorizontal,
+  Notebook,
 } from 'lucide-react';
 import { cn, truncateChatTitle } from '@qwery/ui/utils';
 import {
@@ -342,7 +343,7 @@ export function SidebarConversationHistory({
       <SidebarGroup className="overflow-hidden min-w-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-2 -mx-2">
+            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
                 <span>Recent chats</span>
                 <ChevronRight
@@ -354,8 +355,8 @@ export function SidebarConversationHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden">
-            <SidebarGroupContent>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
+            <SidebarGroupContent className="min-h-0">
               <LoadingSkeleton variant="sidebar" count={5} />
             </SidebarGroupContent>
           </CollapsibleContent>
@@ -369,7 +370,7 @@ export function SidebarConversationHistory({
       <SidebarGroup className="overflow-hidden min-w-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-2 -mx-2">
+            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
                 <span>Recent chats</span>
                 <ChevronRight
@@ -381,8 +382,8 @@ export function SidebarConversationHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden">
-            <SidebarGroupContent className="overflow-hidden relative">
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
+            <SidebarGroupContent className="overflow-hidden relative min-h-0">
           {!hasConversations ? (
             <SidebarMenu>
               <SidebarMenuItem>
@@ -793,6 +794,505 @@ export function SidebarConversationHistory({
         description={
           conversationToDelete
             ? `Are you sure you want to delete this chat? This action cannot be undone and will permanently remove the conversation and all its messages.`
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+export interface SidebarNotebookHistoryProps {
+  notebooks?: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    updatedAt: Date;
+  }>;
+  isLoading?: boolean;
+  currentNotebookSlug?: string;
+  searchQuery?: string;
+  onNotebookSelect?: (notebookSlug: string) => void;
+  onNotebookDelete?: (notebookId: string) => void;
+}
+
+export function SidebarNotebookHistory({
+  notebooks = [],
+  isLoading = false,
+  currentNotebookSlug,
+  searchQuery = '',
+  onNotebookSelect,
+  onNotebookDelete,
+}: SidebarNotebookHistoryProps) {
+  const location = useLocation();
+  const params = useParams();
+  
+  // Get project slug from pathname or params
+  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
+  const projectSlug = params.slug || projectSlugMatch?.[1];
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
+  const [isRecentsOpen, setIsRecentsOpen] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [notebookToDelete, setNotebookToDelete] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const previousTitlesRef = useRef<Map<string, string>>(new Map());
+
+  const filteredNotebooks = useMemo(() => {
+    if (!searchQuery.trim()) return notebooks;
+    const query = searchQuery.toLowerCase();
+    return notebooks.filter((notebook) =>
+      notebook.title.toLowerCase().includes(query),
+    );
+  }, [notebooks, searchQuery]);
+
+  const currentNotebook = useMemo(
+    () =>
+      currentNotebookSlug
+        ? filteredNotebooks.find((n) => n.slug === currentNotebookSlug)
+        : null,
+    [filteredNotebooks, currentNotebookSlug],
+  );
+
+  const otherNotebooks = useMemo(
+    () =>
+      filteredNotebooks.filter(
+        (n) => n.slug !== currentNotebookSlug,
+      ),
+    [filteredNotebooks, currentNotebookSlug],
+  );
+
+  // Limit notebooks to 6 items for sidebar display
+  const MAX_SIDEBAR_NOTEBOOKS = 6;
+  const limitedNotebooks = useMemo(
+    () => otherNotebooks.slice(0, MAX_SIDEBAR_NOTEBOOKS),
+    [otherNotebooks],
+  );
+
+  const hasNotebooks = filteredNotebooks.length > 0 || currentNotebook !== null;
+
+  const handleStartEdit = (notebookId: string, currentTitle: string) => {
+    setEditingId(notebookId);
+    setEditValue(currentTitle);
+  };
+
+  const handleEditBlur = (notebookId: string) => {
+    if (editingId === notebookId) {
+      setEditingId(null);
+      setEditValue('');
+    }
+  };
+
+  const handleEditKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    notebookId: string,
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (editValue.trim() && editValue.trim() !== notebooks.find(n => n.id === notebookId)?.title) {
+        // Handle edit - would need onNotebookEdit prop
+      }
+      setEditingId(null);
+      setEditValue('');
+    } else if (e.key === 'Escape') {
+      setEditingId(null);
+      setEditValue('');
+    }
+  };
+
+  const handleCancelEdit = (notebookId: string) => {
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  const handleDeleteClick = (notebookId: string) => {
+    setNotebookToDelete(notebookId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (notebookToDelete && onNotebookDelete) {
+      onNotebookDelete(notebookToDelete);
+    }
+    setDeleteDialogOpen(false);
+    setNotebookToDelete(null);
+  };
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      setTimeout(() => {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }, 0);
+    }
+  }, [editingId]);
+
+  useEffect(() => {
+    filteredNotebooks.forEach((notebook) => {
+      const previousTitle = previousTitlesRef.current.get(notebook.id);
+      const currentTitle = notebook.title;
+
+      if (previousTitle && previousTitle !== currentTitle) {
+        setAnimatingIds((prev) => new Set(prev).add(notebook.id));
+        setTimeout(() => {
+          setAnimatingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(notebook.id);
+            return next;
+          });
+        }, 1000);
+      }
+
+      previousTitlesRef.current.set(notebook.id, currentTitle);
+    });
+  }, [filteredNotebooks]);
+
+  if (isLoading) {
+    return (
+      <SidebarGroup className="overflow-hidden min-w-0">
+        <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
+          <CollapsibleTrigger asChild>
+            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
+              <div className="flex items-center justify-between w-full">
+                <span>Recent notebooks</span>
+                <ChevronRight
+                  className={cn(
+                    'size-4 transition-transform duration-200',
+                    isRecentsOpen && 'rotate-90',
+                  )}
+                />
+              </div>
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+            <SidebarGroupContent>
+              <LoadingSkeleton variant="sidebar" count={5} />
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <>
+      <SidebarGroup className="overflow-hidden min-w-0">
+        <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
+          <CollapsibleTrigger asChild>
+            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
+              <div className="flex items-center justify-between w-full">
+                <span>Recent notebooks</span>
+                <ChevronRight
+                  className={cn(
+                    'size-4 transition-transform duration-200',
+                    isRecentsOpen && 'rotate-90',
+                  )}
+                />
+              </div>
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
+            <SidebarGroupContent className="overflow-hidden relative min-h-0">
+              {!hasNotebooks ? (
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
+                      <div>
+                        <p className="font-medium">No notebooks found</p>
+                        <p className="text-xs">Create a new notebook to get started</p>
+                      </div>
+                    </div>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              ) : (
+                <div className="relative">
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-sidebar to-transparent z-10" />
+                  
+                  <SidebarMenu className="pb-12">
+                    {currentNotebook && (
+                      <SidebarMenuItem>
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
+                            <div className="w-full">
+                              <SidebarMenuButton
+                                asChild
+                                isActive={true}
+                                tooltip={currentNotebook.title}
+                              >
+                                <Link
+                                  to={createPath(
+                                    pathsConfig.app.projectNotebook,
+                                    currentNotebook.slug,
+                                  )}
+                                  className="group flex items-center gap-2 w-full min-w-0"
+                                >
+                                  <Notebook className="size-4 shrink-0" />
+                                  {editingId === currentNotebook.id ? (
+                                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                      <Input
+                                        ref={editInputRef}
+                                        type="text"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onBlur={() => handleEditBlur(currentNotebook.id)}
+                                        onKeyDown={(e) => handleEditKeyDown(e, currentNotebook.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
+                                        placeholder="Notebook title..."
+                                        maxLength={100}
+                                      />
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCancelEdit(currentNotebook.id);
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
+                                        aria-label="Discard changes"
+                                      >
+                                        <X className="size-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span
+                                        className={cn(
+                                          'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
+                                          animatingIds.has(currentNotebook.id) &&
+                                            'animate-in fade-in-0 slide-in-from-left-2',
+                                        )}
+                                        title={currentNotebook.title}
+                                      >
+                                        {truncateChatTitle(currentNotebook.title)}
+                                      </span>
+                                      <div className="relative shrink-0">
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
+                                            >
+                                              <MoreHorizontal className="size-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleStartEdit(
+                                                  currentNotebook.id,
+                                                  currentNotebook.title,
+                                                );
+                                              }}
+                                            >
+                                              <Pencil className="mr-2 size-4" />
+                                              Rename
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteClick(currentNotebook.id);
+                                              }}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="mr-2 size-4" />
+                                              Delete
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    </>
+                                  )}
+                                </Link>
+                              </SidebarMenuButton>
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuItem
+                              onClick={() =>
+                                handleStartEdit(
+                                  currentNotebook.id,
+                                  currentNotebook.title,
+                                )
+                              }
+                            >
+                              <Pencil className="mr-2 size-4" />
+                              Rename
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              onClick={() => handleDeleteClick(currentNotebook.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              Delete
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      </SidebarMenuItem>
+                    )}
+
+                    {limitedNotebooks.map((notebook) => {
+                      const isEditing = editingId === notebook.id;
+                      const notebookPath = createPath(
+                        pathsConfig.app.projectNotebook,
+                        notebook.slug,
+                      );
+
+                      return (
+                        <SidebarMenuItem key={notebook.id}>
+                          <ContextMenu>
+                            <ContextMenuTrigger asChild>
+                              <div className="w-full">
+                                <SidebarMenuButton
+                                  asChild
+                                  tooltip={notebook.title}
+                                >
+                                  <Link
+                                    to={notebookPath}
+                                    className="group flex items-center gap-2 w-full min-w-0"
+                                  >
+                                    <Notebook className="size-4 shrink-0" />
+                                    {isEditing ? (
+                                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                        <Input
+                                          ref={editInputRef}
+                                          type="text"
+                                          value={editValue}
+                                          onChange={(e) => setEditValue(e.target.value)}
+                                          onBlur={() => handleEditBlur(notebook.id)}
+                                          onKeyDown={(e) => handleEditKeyDown(e, notebook.id)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
+                                          placeholder="Notebook title..."
+                                          maxLength={100}
+                                        />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelEdit(notebook.id);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
+                                          aria-label="Discard changes"
+                                        >
+                                          <X className="size-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span
+                                          className={cn(
+                                            'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
+                                            animatingIds.has(notebook.id) &&
+                                              'animate-in fade-in-0 slide-in-from-left-2',
+                                          )}
+                                          title={notebook.title}
+                                        >
+                                          {truncateChatTitle(notebook.title)}
+                                        </span>
+                                        <div className="relative shrink-0">
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <button
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
+                                              >
+                                                <MoreHorizontal className="size-4" />
+                                              </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleStartEdit(
+                                                    notebook.id,
+                                                    notebook.title,
+                                                  );
+                                                }}
+                                              >
+                                                <Pencil className="mr-2 size-4" />
+                                                Rename
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteClick(notebook.id);
+                                                }}
+                                                className="text-destructive focus:text-destructive"
+                                              >
+                                                <Trash2 className="mr-2 size-4" />
+                                                Delete
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </>
+                                    )}
+                                  </Link>
+                                </SidebarMenuButton>
+                              </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                              <ContextMenuItem
+                                onClick={() =>
+                                  handleStartEdit(
+                                    notebook.id,
+                                    notebook.title,
+                                  )
+                                }
+                              >
+                                <Pencil className="mr-2 size-4" />
+                                Rename
+                              </ContextMenuItem>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                onClick={() => handleDeleteClick(notebook.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 size-4" />
+                                Delete
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                  
+                  {/* View all notebooks button */}
+                  {projectSlug && (
+                    <div className="absolute bottom-0 left-0 right-0 z-20 px-2 pb-2 pt-4">
+                      <Link
+                        to={createPath(pathsConfig.app.projectNotebooks, projectSlug)}
+                        className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                      >
+                        <span>View all notebooks</span>
+                        <ArrowRight className="size-4 shrink-0" />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </SidebarGroup>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        itemName="notebook"
+        itemCount={1}
+        description={
+          notebookToDelete
+            ? `Are you sure you want to delete this notebook? This action cannot be undone and will permanently remove the notebook and all its cells.`
             : undefined
         }
       />

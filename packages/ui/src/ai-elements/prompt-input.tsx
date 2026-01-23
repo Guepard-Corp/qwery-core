@@ -45,6 +45,7 @@ import {
   MicIcon,
   PaperclipIcon,
   PlusIcon,
+  Send,
   SquareIcon,
   XIcon,
 } from 'lucide-react';
@@ -1018,29 +1019,49 @@ export type PromptInputSubmitProps = ComponentProps<typeof InputGroupButton> & {
 export const PromptInputSubmit = ({
   className,
   variant = 'default',
-  size = 'icon-sm',
+  size = 'sm',
   status,
   children,
   ...props
 }: PromptInputSubmitProps) => {
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  const isStreaming = status === 'submitted' || status === 'streaming';
+  const isError = status === 'error';
 
-  if (status === 'submitted' || status === 'streaming') {
-    Icon = <SquareIcon className="size-4" />;
-  } else if (status === 'error') {
-    Icon = <XIcon className="size-4" />;
+  let content = children;
+  if (!content) {
+    if (isStreaming) {
+      content = (
+        <>
+          <SquareIcon className="size-4" />
+          <span className="hidden sm:inline">Stop</span>
+        </>
+      );
+    } else if (isError) {
+      content = <XIcon className="size-4" />;
+    } else {
+      content = (
+        <>
+          <Send className="size-4" />
+          <span className="hidden sm:inline">Send</span>
+        </>
+      );
+    }
   }
 
   return (
     <InputGroupButton
-      aria-label="Submit"
-      className={cn('shrink-0', className)}
+      aria-label={isStreaming ? 'Stop' : 'Send'}
+      className={cn(
+        'shrink-0 h-9 px-4 gap-2 rounded-md font-medium transition-colors',
+        !isStreaming && !isError && 'bg-primary text-primary-foreground hover:bg-primary/90',
+        className,
+      )}
       size={size}
       type="submit"
-      variant={variant}
+      variant={isStreaming || isError ? variant : 'default'}
       {...props}
     >
-      {children ?? Icon}
+      {content}
     </InputGroupButton>
   );
 };

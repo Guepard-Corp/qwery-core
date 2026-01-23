@@ -29,7 +29,10 @@ import {
 } from '~/lib/mutations/use-conversation';
 import { toast } from 'sonner';
 import { useAgentStatus } from '@qwery/ui/ai';
-import { SidebarConversationHistory } from './sidebar-conversation-history';
+import { SidebarConversationHistory, SidebarNotebookHistory } from './sidebar-conversation-history';
+import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
+import { useDeleteNotebook } from '~/lib/mutations/use-notebook';
+import type { NotebookOutput } from '@qwery/domain/usecases';
 
 export function ProjectSidebar() {
   const { workspace, repositories } = useWorkspace();
@@ -53,6 +56,17 @@ export function ProjectSidebar() {
   const projectId = workspace.projectId as string | undefined;
   const { data: conversations = [], isLoading: isLoadingConversations } =
     useGetConversationsByProject(repositories.conversation, projectId);
+
+  // Get notebooks
+  const notebooks = useGetNotebooksByProjectId(
+    repositories.notebook,
+    projectId,
+  );
+  const notebooksList = notebooks.data || [];
+  
+  // Get current notebook slug
+  const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
+  const currentNotebookSlug = notebookSlugMatch?.[1];
 
   // Get current conversation slug
   const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
@@ -167,6 +181,43 @@ export function ProjectSidebar() {
     toast.info('Bookmark feature coming soon');
   };
 
+  // Notebook handlers
+  const deleteNotebookMutation = useDeleteNotebook(
+    repositories.notebook,
+    () => {
+      toast.success('Notebook deleted');
+      notebooks.refetch();
+      if (currentNotebookSlug) {
+        navigate(createPath(pathsConfig.app.project, finalSlug || ''));
+      }
+    },
+    (error) => {
+      toast.error(
+        `Failed to delete notebook: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    },
+  );
+
+  const onNotebookDelete = (notebookId: string) => {
+    const notebook = notebooksList.find((n) => n.id === notebookId);
+    if (notebook && projectId) {
+      deleteNotebookMutation.mutate({
+        id: notebook.id,
+        slug: notebook.slug,
+        projectId,
+      });
+    }
+  };
+
+  const mappedNotebooks = useMemo(() => {
+    return notebooksList.map((notebook: NotebookOutput) => ({
+      id: notebook.id,
+      title: notebook.title,
+      slug: notebook.slug,
+      updatedAt: notebook.updatedAt,
+    }));
+  }, [notebooksList]);
+
   const navigationConfig = useMemo(() => {
     if (!finalSlug) return null;
     return createNavigationConfig(finalSlug);
@@ -189,7 +240,7 @@ export function ProjectSidebar() {
                 <Search className="text-muted-foreground absolute left-2 top-1/2 size-4 -translate-y-1/2" />
                 <Input
                   type="text"
-                  placeholder="Search chats..."
+                  placeholder="Search chats and notebooks..."
                   value={searchQuery}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setSearchQuery(e.target.value)
@@ -224,6 +275,15 @@ export function ProjectSidebar() {
           onConversationDuplicate={onConversationDuplicate}
           onConversationShare={onConversationShare}
           onConversationBookmark={onConversationBookmark}
+        />
+
+        {/* Notebook History */}
+        <SidebarNotebookHistory
+          notebooks={mappedNotebooks}
+          isLoading={notebooks.isLoading}
+          currentNotebookSlug={currentNotebookSlug}
+          searchQuery={searchQuery}
+          onNotebookDelete={onNotebookDelete}
         />
       </SidebarContent>
 

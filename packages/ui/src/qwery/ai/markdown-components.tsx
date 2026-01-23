@@ -288,13 +288,13 @@ export const createAgentMarkdownComponents = (): Components => {
         >
           <pre
             className={cn(
-              'bg-muted/50 text-muted-foreground/90 relative my-3 max-w-full rounded-md p-4 text-xs',
+              'bg-muted/50 text-muted-foreground/90 relative my-3 max-w-full rounded-md p-4 text-base',
               className,
             )}
           >
             <code
               {...props}
-              className="max-w-full font-mono leading-5 break-words whitespace-pre-wrap"
+              className="max-w-full font-mono leading-6 break-words whitespace-pre-wrap"
             >
               {children}
             </code>

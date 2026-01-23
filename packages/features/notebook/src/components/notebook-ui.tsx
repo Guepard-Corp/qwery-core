@@ -65,7 +65,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import CodeMirror from '@uiw/react-codemirror';
-import { EditorView } from '@codemirror/view';
+import { EditorView, placeholder } from '@codemirror/view';
 import { useTheme } from 'next-themes';
 import { Textarea } from '@qwery/ui/textarea';
 import { Alert, AlertDescription } from '@qwery/ui/alert';
@@ -435,7 +435,15 @@ function FullViewDialog({
               <CodeMirror
                 value={query}
                 onChange={handleQueryChange}
-                extensions={[sql(), EditorView.lineWrapping]}
+                extensions={[
+                  sql(),
+                  EditorView.lineWrapping,
+                  (() => {
+                    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+                    const modifier = isMac ? '⌘' : 'Ctrl';
+                    return placeholder(`(Press ${modifier}+K to use assistant)`);
+                  })(),
+                ]}
                 theme={isDarkMode ? oneDark : undefined}
                 editable={true}
                 basicSetup={{
@@ -921,7 +929,7 @@ export function NotebookUI({
     const newCell: NotebookCellData = {
       query:
         cellType === 'query'
-          ? '\n'.repeat(9) // 10 lines total (9 newlines + 1 empty line)
+          ? ''
           : cellType === 'text'
             ? '# Markdown Cell\n\nWrite your markdown content here...\n'
             : '', // Prompt cells start empty
@@ -1324,7 +1332,7 @@ export function NotebookUI({
       )}
 
       {/* Cells container */}
-      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pl-16 pr-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pl-16 pr-12 mt-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -1337,10 +1345,6 @@ export function NotebookUI({
             strategy={verticalListSortingStrategy}
           >
             <div className="flex flex-col gap-4">
-              {/* Top divider - to add cell at the very beginning */}
-              <CellDivider
-                onAddCell={(type) => handleAddCell(undefined, type)}
-              />
               {isDuplicating &&
                 duplicateInsertIndex === 0 &&
                 activeCellHeight !== null && (

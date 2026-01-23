@@ -14,7 +14,7 @@ import {
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import CodeMirror from '@uiw/react-codemirror';
-import { EditorView } from '@codemirror/view';
+import { EditorView, placeholder } from '@codemirror/view';
 import {
   AlignLeft,
   ArrowDown,
@@ -113,6 +113,122 @@ interface NotebookCellProps {
   isAdvancedMode?: boolean;
   totalCellCount?: number;
   triggerTitleEdit?: boolean;
+}
+
+const ITEMS_PER_PAGE = 10;
+
+function DatasourceSelectWithPagination({
+  value,
+  onValueChange,
+  datasources,
+  renderDatasourceOption,
+  disabled,
+}: {
+  value?: string;
+  onValueChange: (value: string) => void;
+  datasources: NotebookDatasourceInfo[];
+  renderDatasourceOption: (ds: NotebookDatasourceInfo) => React.ReactNode;
+  disabled?: boolean;
+}) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const selectedDatasource = datasources.find((ds) => ds.id === value);
+
+  const totalPages = Math.ceil(datasources.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedDatasources = datasources.slice(startIndex, endIndex);
+
+  // Reset scroll position to top when page changes and prevent popup repositioning
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = 0;
+        }
+      });
+    }
+  }, [currentPage]);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={(val) => {
+        onValueChange(val);
+        setCurrentPage(1);
+      }}
+      disabled={disabled}
+    >
+      <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
+        {!selectedDatasource && (
+          <DatabaseIcon className="mr-1.5 h-3 w-3" />
+        )}
+        <SelectValue placeholder="Select datasource" />
+      </SelectTrigger>
+      <SelectContent 
+        position="popper"
+        className="w-[200px] h-[240px] overflow-hidden"
+      >
+        <div className="h-full w-full flex flex-col overflow-hidden">
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto overflow-x-hidden min-h-0"
+          >
+            {paginatedDatasources.map((ds) => (
+              <SelectItem key={ds.id} value={ds.id} className="min-h-[32px]">
+                {renderDatasourceOption(ds)}
+              </SelectItem>
+            ))}
+            {/* Spacer to maintain fixed height when fewer items */}
+            {paginatedDatasources.length < ITEMS_PER_PAGE && (
+              <div className="flex-1" />
+            )}
+          </div>
+          {totalPages > 1 && (
+            <>
+              <div className="border-border h-px border-t shrink-0" />
+              <div className="flex items-center justify-center gap-1 px-2 py-1.5 shrink-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentPage((p) => Math.max(1, p - 1));
+                  }}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </Button>
+                <span className="text-muted-foreground text-[10px] font-medium px-1">
+                  {currentPage}/{totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  }}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </SelectContent>
+    </Select>
+  );
 }
 
 function NotebookCellComponent({
@@ -429,7 +545,7 @@ function NotebookCellComponent({
     const initials = displayName.slice(0, 2).toUpperCase();
 
     return (
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 w-full">
         {ds.logo ? (
           <img
             src={ds.logo}
@@ -441,7 +557,7 @@ function NotebookCellComponent({
             {initials}
           </span>
         )}
-        <span className="truncate text-[11px]">{displayName}</span>
+        <span className="truncate text-[11px] min-w-0 flex-1">{displayName}</span>
       </div>
     );
   }, []);
@@ -640,54 +756,67 @@ function NotebookCellComponent({
         className={cn(
           'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-transparent',
           isTextCell && 'min-h-[180px]',
-          isQueryCell && 'min-h-[220px]',
+          isQueryCell && 'min-h-[240px]',
           isPromptCell && 'min-h-[200px]',
         )}
       >
+        {/* Run button - always visible, positioned absolutely relative to cell content container */}
+        {isQueryCell && (
+          <div className="pointer-events-none absolute top-4 right-4 z-20">
+            <div className="pointer-events-auto">
+              <Button
+                size="sm"
+                onClick={handleRunQuery}
+                disabled={!query.trim() || isLoading || !selectedDatasource}
+                className="h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <PlayIcon className="h-3.5 w-3.5 fill-current" />
+                    <span>Run</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
         {/* Editor Area */}
         <div
           ref={editorContainerRef}
           className={cn(
-            'relative max-h-[600px] min-h-[40px] flex-1 rounded-none',
-            isQueryCell ? '' : '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
+            'relative flex-1 rounded-none',
+            isQueryCell ? 'min-h-[240px] max-h-[600px] overflow-y-auto [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent' : 'min-h-[40px] [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
           )}
         >
           {isQueryCell ? (
-            // SQL Query Editor with CodeMirror
-            <div ref={codeMirrorRef} className="relative h-full w-full max-h-[600px]">
-              <CodeMirror
-                value={query}
-                onChange={(value) => handleQueryChange(value)}
-                extensions={[sql(), EditorView.lineWrapping]}
-                theme={isDarkMode ? oneDark : undefined}
-                editable={!isLoading}
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: true,
-                  dropCursor: false,
-                  allowMultipleSelections: false,
-                }}
-                className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:h-full [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller]:bg-muted/30 [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40"
-                data-test="notebook-sql-editor"
-              />
-              <div className="pointer-events-none absolute top-4 right-4 z-10">
-                <div className="pointer-events-auto sticky flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handleRunQuery}
-                    disabled={!query.trim() || isLoading || !selectedDatasource}
-                    className="h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <>
-                        <PlayIcon className="h-3.5 w-3.5 fill-current" />
-                        <span>Run</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+            <>
+              {/* SQL Query Editor with CodeMirror */}
+              <div ref={codeMirrorRef} className="relative w-full min-h-[240px]">
+                <CodeMirror
+                  value={query}
+                  onChange={(value) => handleQueryChange(value)}
+                  extensions={[
+                    sql(),
+                    EditorView.lineWrapping,
+                    (() => {
+                      const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+                      const modifier = isMac ? '⌘' : 'Ctrl';
+                      return placeholder(`Press ${modifier}+K to use AI assistant`);
+                    })(),
+                  ]}
+                  theme={isDarkMode ? oneDark : undefined}
+                  editable={!isLoading}
+                  basicSetup={{
+                    lineNumbers: true,
+                    foldGutter: true,
+                    dropCursor: false,
+                    allowMultipleSelections: false,
+                  }}
+                  className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller]:bg-muted/30 [&_.cm-scroller]:overflow-visible [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40"
+                  data-test="notebook-sql-editor"
+                />
               </div>
               <NotebookCellAiPopup
                 cellId={cell.cellId}
@@ -716,7 +845,7 @@ function NotebookCellComponent({
                 isLoading={isLoading}
                 enableShortcut={isAdvancedMode}
               />
-            </div>
+            </>
           ) : isTextCell ? (
             <div className="relative flex h-full flex-col">
               {markdownView === 'edit' ? (
@@ -862,11 +991,13 @@ function NotebookCellComponent({
         <div
           ref={footerDragHandleRef}
           className={cn(
-            'border-border bg-background flex items-center justify-between border-t px-2 pt-2 pb-2 transition-all duration-200',
+            'border-border bg-background flex items-center justify-between border-t px-2 pt-2 pb-2 rounded-b-xl transition-all duration-200 shrink-0 z-10 shadow-sm',
             isTextCell &&
               markdownView === 'preview' &&
               'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
-            !isTextCell || markdownView === 'edit' ? 'h-10' : '',
+            isPromptCell &&
+              'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
+            !isTextCell && !isPromptCell || (isTextCell && markdownView === 'edit') ? 'h-10' : '',
             footerDragHandleProps && 'cursor-grab active:cursor-grabbing',
           )}
           {...(footerDragHandleProps
@@ -889,6 +1020,28 @@ function NotebookCellComponent({
             : {})}
         >
           <div className="flex items-center gap-1">
+            {isQueryCell && isAdvancedMode && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  'h-8 w-8',
+                  showAIPopup
+                    ? 'bg-accent text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => {
+                  if (showAIPopup) {
+                    onCloseAiPopup();
+                  } else {
+                    onOpenAiPopup(cell.cellId, { x: 0, y: 0 });
+                  }
+                }}
+                aria-label="Toggle AI assistant"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="icon"
               variant="ghost"
@@ -964,6 +1117,30 @@ function NotebookCellComponent({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                {isQueryCell && (!cell.title || cell.title.trim().length === 0) && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTitleValue('');
+                      setIsEditingTitle(true);
+                      setTimeout(() => {
+                        requestAnimationFrame(() => {
+                          setTimeout(() => {
+                            const input = titleInputRef.current;
+                            if (input) {
+                              input.focus();
+                              input.select();
+                            }
+                          }, 100);
+                        });
+                      }, 50);
+                    }}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Add cell title
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={onMoveUp}
                   disabled={totalCellCount === 1}
@@ -990,23 +1167,13 @@ function NotebookCellComponent({
 
           <div className="flex items-center gap-2">
             {(isQueryCell || isPromptCell) && (
-              <Select
+              <DatasourceSelectWithPagination
                 value={selectedDatasource ?? undefined}
                 onValueChange={(value) => onDatasourceChange(value)}
+                datasources={datasources}
+                renderDatasourceOption={renderDatasourceOption}
                 disabled={datasources.length === 0}
-              >
-                <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
-                  <DatabaseIcon className="mr-1.5 h-3 w-3" />
-                  <SelectValue placeholder="Select datasource" />
-                </SelectTrigger>
-                <SelectContent>
-                  {datasources.map((ds) => (
-                    <SelectItem key={ds.id} value={ds.id}>
-                      {renderDatasourceOption(ds)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             )}
           </div>
         </div>
@@ -1036,147 +1203,6 @@ function NotebookCellComponent({
             </Alert>
           </div>
         )}
-      </div>
-
-      {/* Bottom Toolbar - Must be last to have rounded corners */}
-      <div
-        className={cn(
-          'border-border bg-background flex items-center justify-between border-t px-2 pt-2 pb-2 rounded-b-xl transition-all duration-200',
-          isTextCell &&
-            markdownView === 'preview' &&
-            'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
-          isPromptCell &&
-            'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
-          !isTextCell && !isPromptCell || (isTextCell && markdownView === 'edit') ? 'h-10' : '',
-        )}
-      >
-        <div className="flex items-center gap-1">
-          {isQueryCell && isAdvancedMode && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                'h-8 w-8',
-                showAIPopup
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-              onClick={() => {
-                if (showAIPopup) {
-                  onCloseAiPopup();
-                } else {
-                  onOpenAiPopup(cell.cellId, { x: 0, y: 0 });
-                }
-              }}
-              aria-label="Toggle AI assistant"
-            >
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground h-8 w-8"
-            onClick={onFormat}
-            aria-label="Format cell"
-          >
-            <AlignLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground h-8 w-8"
-            onClick={() => {
-              navigator.clipboard.writeText(query);
-            }}
-            aria-label="Copy code"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="text-muted-foreground hover:text-destructive h-8 w-8"
-            onClick={onDelete}
-            aria-label="Delete cell"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-muted-foreground h-8 w-8"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {isQueryCell && (!cell.title || cell.title.trim().length === 0) && (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTitleValue('');
-                    setIsEditingTitle(true);
-                    // Focus the input after state updates and DOM renders
-                    // Use multiple delays to ensure dropdown closes and DOM is ready
-                    setTimeout(() => {
-                      requestAnimationFrame(() => {
-                        setTimeout(() => {
-                          const input = titleInputRef.current;
-                          if (input) {
-                            input.focus();
-                            input.select();
-                          }
-                        }, 100);
-                      });
-                    }, 50);
-                  }}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Add cell title
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={onMoveUp}>
-                <ArrowUp className="mr-2 h-4 w-4" />
-                Move up
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onMoveDown}>
-                <ArrowDown className="mr-2 h-4 w-4" />
-                Move down
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onFullView}>
-                <Maximize2 className="mr-2 h-4 w-4" />
-                Full view
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {(isQueryCell || isPromptCell) && (
-            <Select
-              value={selectedDatasource ?? undefined}
-              onValueChange={(value) => onDatasourceChange(value)}
-              disabled={datasources.length === 0}
-            >
-              <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
-                {!selectedDatasource && <DatabaseIcon className="mr-1.5 h-3 w-3" />}
-                <SelectValue placeholder="Select datasource" />
-              </SelectTrigger>
-              <SelectContent>
-                {datasources.map((ds) => (
-                  <SelectItem key={ds.id} value={ds.id}>
-                    {renderDatasourceOption(ds)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
       </div>
       </div>
     </div>

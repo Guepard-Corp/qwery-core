@@ -109,12 +109,12 @@ export const CodeBlock = ({
       >
         <div className="relative max-w-full min-w-0 overflow-x-auto">
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-sm"
+            className="[&>pre]:bg-background! [&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-sm"
+            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />

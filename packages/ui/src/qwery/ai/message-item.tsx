@@ -308,17 +308,52 @@ function MessageItemComponent({
                                     />
                                   </div>
                                 )}
-                              <Message
-                                key={`${message.id}-${i}`}
-                                from={message.role}
-                                className="w-full max-w-full min-w-0"
-                              >
-                                <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                  <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                    {part.text}
+                              <div className="group w-full max-w-full min-w-0">
+                                <Message
+                                  key={`${message.id}-${i}`}
+                                  from={message.role}
+                                  className="w-full max-w-full min-w-0"
+                                >
+                                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                    <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                      {part.text}
+                                    </div>
+                                  </MessageContent>
+                                </Message>
+                                {/* Copy button for user messages - only visible on hover */}
+                                {normalizeUIRole(message.role) === 'user' && isLastTextPart && (
+                                  <div className="mt-1 flex items-center justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={async () => {
+                                        const partId = `${message.id}-${i}`;
+                                        try {
+                                          await navigator.clipboard.writeText(part.text);
+                                          onCopyPart(partId);
+                                          setTimeout(() => {
+                                            onCopyPart('');
+                                          }, 2000);
+                                        } catch (error) {
+                                          console.error('Failed to copy:', error);
+                                        }
+                                      }}
+                                      className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                      title={
+                                        copiedMessagePartId === `${message.id}-${i}`
+                                          ? 'Copied!'
+                                          : 'Copy'
+                                      }
+                                    >
+                                      {copiedMessagePartId === `${message.id}-${i}` ? (
+                                        <CheckIcon className="size-3 text-green-600" />
+                                      ) : (
+                                        <CopyIcon className="size-3" />
+                                      )}
+                                    </Button>
                                   </div>
-                                </MessageContent>
-                              </Message>
+                                )}
+                              </div>
                             </div>
                           );
                         })()
@@ -363,19 +398,11 @@ function MessageItemComponent({
                           )}
                         </>
                       )}
-                      {/* Actions below the bubble */}
-                      {(isResponseComplete ||
-                        (normalizeUIRole(message.role) === 'user' &&
-                          isLastTextPart)) && (
-                        <div
-                          className={cn(
-                            'mt-1 flex items-center gap-2',
-                            normalizeUIRole(message.role) === 'user' &&
-                              'justify-end',
-                          )}
-                        >
-                          {message.role === 'assistant' &&
-                            statusConfig.showRegenerateButton &&
+                      {/* Actions below the bubble - only for assistant messages */}
+                      {isResponseComplete &&
+                        message.role === 'assistant' && (
+                        <div className="mt-1 flex items-center gap-2">
+                          {statusConfig.showRegenerateButton &&
                             !(
                               isLastAssistantMessage &&
                               statusConfig.hideRegenerateOnLastMessage

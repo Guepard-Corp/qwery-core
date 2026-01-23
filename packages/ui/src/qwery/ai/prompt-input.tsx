@@ -29,7 +29,7 @@ import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 import { useToolVariant } from './tool-variant-context';
 import { Switch } from '../../shadcn/switch';
-import { SettingsIcon } from 'lucide-react';
+import { PlusIcon, SettingsIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,12 +110,12 @@ function PromptInputContent(props: QweryPromptInputProps) {
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu>
+          <PromptInputButton
+            aria-label="Add attachments"
+            onClick={() => attachments.openFileDialog()}
+          >
+            <PlusIcon className="size-4" />
+          </PromptInputButton>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <PromptInputButton aria-label="Settings">
