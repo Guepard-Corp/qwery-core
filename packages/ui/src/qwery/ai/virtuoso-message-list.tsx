@@ -15,6 +15,7 @@ import {
 import type { UIMessage } from 'ai';
 import type { ChatStatus } from 'ai';
 import { MessageItem, type MessageItemProps } from './message-item';
+import { isChatStreaming, isChatSubmitted } from './utils/chat-status';
 import { Loader } from '../../ai-elements/loader';
 import { Button } from '../../shadcn/button';
 import { BotAvatar } from '../bot-avatar';
@@ -72,31 +73,41 @@ export const VirtuosoMessageList = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldFollowOutput, setShouldFollowOutput] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [_isAtTop, setIsAtTop] = useState(false);
+  const wasAtBottomWhenStreamStartedRef = useRef(true);
   const [wasAtBottomWhenStreamStarted, setWasAtBottomWhenStreamStarted] =
     useState(true);
 
-  // Capture scroll position when stream starts
   useEffect(() => {
-    if (status === 'streaming') {
-      setWasAtBottomWhenStreamStarted(shouldFollowOutput);
+    if (isChatStreaming(status)) {
+      const value = shouldFollowOutput;
+      wasAtBottomWhenStreamStartedRef.current = value;
+      setWasAtBottomWhenStreamStarted(value);
     }
   }, [status, shouldFollowOutput]);
 
-  // Use refs to avoid re-creating callback on every message update
-  const messagesRef = useRef(messages);
+  const stableMessageItemProps = useMemo(
+    () => messageItemProps,
+    [
+      messageItemProps.lastAssistantMessage,
+      messageItemProps.editingMessageId,
+      messageItemProps.editText,
+      messageItemProps.copiedMessagePartId,
+      messageItemProps.datasources,
+      messageItemProps.selectedDatasources,
+      messageItemProps.pluginLogoMap,
+      messageItemProps.notebookContext,
+      messageItemProps.onEditSubmit,
+      messageItemProps.onEditCancel,
+      messageItemProps.onEditTextChange,
+      messageItemProps.onRegenerate,
+      messageItemProps.onCopyPart,
+      messageItemProps.sendMessage,
+      messageItemProps.onPasteToNotebook,
+    ],
+  );
 
-  // Update ref in effect to avoid lint error about accessing refs during render
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
-  // Optimized itemContent: message comes from data prop
-  // Using refs prevents re-creating the callback on every message update
-  // This is a key optimization for large conversations
   const itemContent = useCallback(
     (index: number, message: UIMessage) => {
-      // Validate message exists
       if (!message || !message.id) {
         console.warn('Invalid message at index', index);
         return null;
@@ -106,13 +117,13 @@ export const VirtuosoMessageList = forwardRef<
         <MessageItem
           key={message.id}
           message={message}
-          messages={messagesRef.current}
+          messages={messages}
           status={status}
-          {...messageItemProps}
+          {...stableMessageItemProps}
         />
       );
     },
-    [status, messageItemProps],
+    [messages, status, stableMessageItemProps],
   );
 
   const components = useMemo(
@@ -145,9 +156,29 @@ export const VirtuosoMessageList = forwardRef<
         return null;
       },
       Footer: () => {
+        if (loadError) {
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
+              <BotAvatar size={6} isLoading={false} className="mt-1 shrink-0" />
+              <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                <Message from="assistant" className="w-full max-w-full min-w-0">
+                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                    <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
+                      <p className="font-medium">Error</p>
+                      <p className="text-destructive/80 mt-1">
+                        {loadError.message ??
+                          'Failed to get response from agent. Please try again.'}
+                      </p>
+                    </div>
+                  </MessageContent>
+                </Message>
+              </div>
+            </div>
+          );
+        }
         if (
-          status === 'submitted' ||
-          (status === 'streaming' &&
+          isChatSubmitted(status) ||
+          (isChatStreaming(status) &&
             (!lastAssistantHasText || !lastMessageIsAssistant))
         ) {
           return (
@@ -203,10 +234,97 @@ export const VirtuosoMessageList = forwardRef<
     }
   }, [scrollToBottom, scrollToBottomRef]);
 
-  const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
+  // Scroll to bottom on initial mount if messages exist
+  const hasPerformedInitialScrollRef = useRef(false);
+  const previousMessagesLengthRef = useRef(messages.length);
+  const previousLastMessageIdRef = useRef<string | undefined>(undefined);
 
+  useEffect(() => {
+    if (!hasPerformedInitialScrollRef.current && messages.length > 0) {
+      const wasEmpty = previousMessagesLengthRef.current === 0;
+      const isFirstRender =
+        previousMessagesLengthRef.current === messages.length;
+
+      if ((wasEmpty || isFirstRender) && virtuosoRef.current) {
+        const timeoutId = setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+            hasPerformedInitialScrollRef.current = true;
+          }
+        }, 0);
+        previousMessagesLengthRef.current = messages.length;
+        if (messages.length > 0) {
+          previousLastMessageIdRef.current = messages[messages.length - 1]?.id;
+        }
+        return () => clearTimeout(timeoutId);
+      }
+    }
+    previousMessagesLengthRef.current = messages.length;
+  }, [messages.length]);
+
+  // Force scroll when a new assistant message appears (to ensure visibility)
+  useEffect(() => {
+    if (messages.length === 0 || !virtuosoRef.current) return;
+
+    const lastMessage = messages[messages.length - 1];
+    const lastMessageId = lastMessage?.id;
+    const previousLastMessageId = previousLastMessageIdRef.current;
+
+    // Check if a new message was added (different ID) and it's from assistant
+    if (
+      lastMessageId &&
+      lastMessageId !== previousLastMessageId &&
+      lastMessage.role === 'assistant'
+    ) {
+      // Force scroll to show the new assistant message
+      // Use multiple timeouts to ensure DOM is updated and message is rendered
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 0);
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 50);
+        setTimeout(() => {
+          if (virtuosoRef.current) {
+            virtuosoRef.current.scrollToIndex({
+              index: messages.length - 1,
+              behavior: 'auto',
+              align: 'end',
+            });
+          }
+        }, 150);
+      });
+    }
+
+    // Update the ref to track the last message ID
+    if (lastMessageId) {
+      previousLastMessageIdRef.current = lastMessageId;
+    }
+  }, [messages]);
+
+  const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
   return (
-    <div ref={containerRef} className="relative h-full w-full">
+    <div
+      ref={containerRef}
+      className="virtuoso-message-container relative h-full w-full overflow-x-hidden"
+    >
       <Virtuoso
         ref={virtuosoRef}
         data={messages}
@@ -215,11 +333,8 @@ export const VirtuosoMessageList = forwardRef<
         itemContent={itemContent}
         components={components}
         startReached={() => {
-          // Only load if not already loading and there's more to load
-          // This prevents rapid-fire requests when scrolling quickly
           if (!isLoadingOlder && hasMoreOlder && !loadError) {
             onLoadOlder().catch((error) => {
-              // Error is already handled in loadOlderMessages, but catch here to prevent unhandled promise rejection
               console.error('Error in startReached callback:', error);
             });
           }
@@ -231,11 +346,8 @@ export const VirtuosoMessageList = forwardRef<
           setShouldFollowOutput(atBottom);
           setIsAtBottom(atBottom);
         }}
-        atTopStateChange={(_atTop: boolean) => {
-          setIsAtTop(_atTop);
-        }}
         overscan={{
-          main: 500, // Render 500px above/below viewport for smooth scrolling
+          main: 500,
           reverse: 200,
         }}
         increaseViewportBy={{
@@ -243,7 +355,7 @@ export const VirtuosoMessageList = forwardRef<
           bottom: 600,
         }}
         alignToBottom
-        style={{ height: '100%' }}
+        style={{ height: '100%', overflowX: 'hidden' }}
       />
       {renderScrollButton &&
         !isAtBottom &&

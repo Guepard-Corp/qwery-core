@@ -11,129 +11,165 @@ import type { ToolUIPart } from 'ai';
 import { getUserFriendlyToolName } from '../qwery/ai/utils/tool-name';
 import {
   BarChart3Icon,
-  CheckCircleIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
-  CircleIcon,
-  ClockIcon,
-  CodeIcon,
+  ChevronRightIcon,
+  CircleDashedIcon,
+  Code2Icon,
   DatabaseIcon,
   LinkIcon,
-  LoaderIcon,
+  Loader2Icon,
   PlugIcon,
-  SheetIcon,
   TableIcon,
+  TerminalIcon,
   Trash2Icon,
-  WrenchIcon,
+  AlertCircleIcon,
   XCircleIcon,
+  BanIcon,
+  LineChartIcon,
+  PieChartIcon,
+  FileSearchIcon,
+  WorkflowIcon,
+  FileIcon,
+  ListIcon,
+  PlayIcon,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { isValidElement } from 'react';
 import { CodeBlock } from './code-block';
 
-export type ToolProps = ComponentProps<typeof Collapsible>;
+const getStateStyles = (state: ToolUIPart['state']) => {
+  return {
+    border: 'border-white/80 dark:border-white/10',
+  };
+};
 
-export const Tool = ({ className, ...props }: ToolProps) => (
-  <Collapsible
-    className={cn(
-      'not-prose mb-4 flex w-full min-w-0 flex-col overflow-hidden rounded-md border',
-      className,
-    )}
-    style={{ boxSizing: 'border-box' }}
-    {...props}
-  />
-);
+export type ToolVariant = 'default' | 'minimal';
+
+export type ToolProps = ComponentProps<typeof Collapsible> & {
+  state?: ToolUIPart['state'];
+  variant?: ToolVariant;
+};
+
+export const Tool = ({
+  className,
+  state,
+  variant = 'default',
+  ...props
+}: ToolProps) => {
+  const styles = getStateStyles(state || 'input-available');
+  const isMinimal = variant === 'minimal';
+
+  return (
+    <Collapsible
+      className={cn(
+        'group/tool not-prose flex w-full min-w-0 flex-col overflow-hidden transition-all',
+        isMinimal ? 'mb-1' : 'bg-card mb-4 rounded-xl border',
+        !isMinimal && styles.border,
+        !isMinimal && 'hover:border-white dark:hover:border-white/20',
+        className,
+      )}
+      style={{ boxSizing: 'border-box' }}
+      {...props}
+    />
+  );
+};
 
 export type ToolHeaderProps = {
   title?: string;
   type: ToolUIPart['type'];
   state: ToolUIPart['state'];
   className?: string;
+  variant?: ToolVariant;
 };
 
-const getStatusConfig = (status: ToolUIPart['state']) => {
+const getStatusConfig = (
+  status: ToolUIPart['state'],
+  iconSize: 'sm' | 'md' = 'md',
+) => {
+  const iconSizeClass = iconSize === 'sm' ? 'size-3' : 'size-4';
   const configs: Record<
     string,
     {
       label: string;
       icon: ReactNode;
-      variant: 'default' | 'secondary' | 'destructive' | 'outline';
       className: string;
-      loadingText?: string;
+      bgClassName: string;
     }
   > = {
     'input-streaming': {
-      label: 'Pending',
-      icon: <CircleIcon className="size-3" />,
-      variant: 'secondary',
-      className: 'bg-muted text-muted-foreground',
-      loadingText: 'Generating response...',
+      label: 'Initializing',
+      icon: <CircleDashedIcon className={cn(iconSizeClass, 'animate-pulse')} />,
+      className: 'text-muted-foreground',
+      bgClassName: 'bg-muted/50',
     },
     'input-available': {
-      label: 'Processing',
-      icon: <LoaderIcon className="size-3 animate-spin" />,
-      variant: 'default',
-      className: 'bg-primary/10 text-primary border-primary/20',
-      loadingText: 'Generating response...',
+      label: 'Running',
+      icon: <Loader2Icon className={cn(iconSizeClass, 'animate-spin')} />,
+      className: 'text-[#ffcb51] dark:text-[#ffcb51]',
+      bgClassName: 'bg-[#ffcb51]/10 dark:bg-[#ffcb51]/20 backdrop-blur-sm',
     },
     'approval-requested': {
-      label: 'Awaiting Approval',
-      icon: <ClockIcon className="size-3" />,
-      variant: 'outline',
-      className:
-        'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-500 dark:border-yellow-800',
+      label: 'Approval',
+      icon: <AlertCircleIcon className={iconSizeClass} />,
+      className: 'text-amber-600 dark:text-amber-400',
+      bgClassName: 'bg-amber-100 dark:bg-amber-950',
     },
     'approval-responded': {
-      label: 'Responded',
-      icon: <CheckCircleIcon className="size-3" />,
-      variant: 'default',
-      className:
-        'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-500 dark:border-blue-800',
+      label: 'Approved',
+      icon: <CheckCircle2Icon className={iconSizeClass} />,
+      className: 'text-emerald-600 dark:text-emerald-400',
+      bgClassName: 'bg-emerald-100 dark:bg-emerald-950',
     },
     'output-available': {
-      label: 'Completed',
-      icon: <CheckCircleIcon className="size-3" />,
-      variant: 'default',
-      className:
-        'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-500 dark:border-emerald-800',
+      label: 'Complete',
+      icon: <CheckCircle2Icon className={iconSizeClass} />,
+      className: 'text-emerald-600 dark:text-emerald-400',
+      bgClassName: 'bg-emerald-100 dark:bg-emerald-950',
     },
     'output-error': {
-      label: 'Error',
-      icon: <XCircleIcon className="size-3" />,
-      variant: 'destructive',
-      className: 'bg-destructive/10 text-destructive border-destructive/20',
+      label: 'Failed',
+      icon: <XCircleIcon className={iconSizeClass} />,
+      className: 'text-destructive',
+      bgClassName: 'bg-red-100 dark:bg-red-950',
     },
     'output-denied': {
       label: 'Denied',
-      icon: <XCircleIcon className="size-3" />,
-      variant: 'outline',
-      className:
-        'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-500 dark:border-orange-800',
+      icon: <BanIcon className={iconSizeClass} />,
+      className: 'text-orange-600 dark:text-orange-400',
+      bgClassName: 'bg-orange-100 dark:bg-orange-950',
     },
   };
 
   return (
     configs[status] ?? {
       label: status,
-      icon: <CircleIcon className="size-3" />,
-      variant: 'secondary',
-      className: 'bg-muted text-muted-foreground',
+      icon: <CircleDashedIcon className={iconSizeClass} />,
+      className: 'text-muted-foreground',
+      bgClassName: 'bg-muted/50',
     }
   );
 };
 
-const getToolIcon = (type: string) => {
+const getToolIcon = (type: string, size: 'sm' | 'md' = 'md') => {
+  const sizeClass = size === 'sm' ? 'size-4' : 'size-5';
   const iconMap: Record<string, ReactNode> = {
-    'tool-testConnection': <PlugIcon className="size-4" />,
-    'tool-runQuery': <DatabaseIcon className="size-4" />,
-    'tool-getTableSchema': <TableIcon className="size-4" />,
-    'tool-generateChart': <BarChart3Icon className="size-4" />,
-    'tool-selectChartType': <BarChart3Icon className="size-4" />,
-    'tool-deleteSheet': <Trash2Icon className="size-4" />,
-    'tool-readLinkData': <LinkIcon className="size-4" />,
-    'tool-api_call': <CodeIcon className="size-4" />,
+    'tool-testConnection': <PlugIcon className={sizeClass} />,
+    'tool-runQuery': <DatabaseIcon className={sizeClass} />,
+    'tool-getTableSchema': <TableIcon className={sizeClass} />,
+    'tool-getSchema': <FileSearchIcon className={sizeClass} />,
+    'tool-generateChart': <BarChart3Icon className={sizeClass} />,
+    'tool-selectChartType': <PieChartIcon className={sizeClass} />,
+    'tool-deleteSheet': <Trash2Icon className={sizeClass} />,
+    'tool-readLinkData': <LinkIcon className={sizeClass} />,
+    'tool-api_call': <Code2Icon className={sizeClass} />,
+    'tool-listViews': <ListIcon className={sizeClass} />,
+    'tool-generateSql': <TerminalIcon className={sizeClass} />,
+    'tool-startWorkflow': <WorkflowIcon className={sizeClass} />,
+    'tool-viewSheet': <FileIcon className={sizeClass} />,
   };
 
-  return iconMap[type] ?? <WrenchIcon className="size-4" />;
+  return iconMap[type] ?? <TerminalIcon className={sizeClass} />;
 };
 
 export const ToolHeader = ({
@@ -141,79 +177,113 @@ export const ToolHeader = ({
   title,
   type,
   state,
+  variant = 'default',
   ...props
 }: ToolHeaderProps) => {
-  const statusConfig = getStatusConfig(state);
-  const toolIcon = getToolIcon(type);
+  const isMinimal = variant === 'minimal';
+  const statusConfig = getStatusConfig(state, isMinimal ? 'sm' : 'md');
+  const toolIcon = getToolIcon(type, isMinimal ? 'sm' : 'md');
   const toolName = title ?? getUserFriendlyToolName(type);
+
+  if (isMinimal) {
+    return (
+      <CollapsibleTrigger
+        className={cn(
+          'group/header flex w-full cursor-pointer items-center gap-2 py-1.5 text-left',
+          className,
+        )}
+        {...props}
+      >
+        <div className="text-muted-foreground group-hover/header:text-foreground flex size-4 shrink-0 items-center justify-center transition-all duration-200 group-data-[state=open]/tool:rotate-90">
+          <ChevronRightIcon className="size-3.5" />
+        </div>
+
+        <div className="text-primary flex size-4 shrink-0 items-center justify-center transition-opacity duration-200 group-hover/header:opacity-80">
+          {toolIcon}
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="text-muted-foreground group-hover/header:text-foreground truncate text-sm transition-colors duration-200">
+            {toolName}
+          </span>
+          <div
+            className={cn(
+              'flex shrink-0 items-center transition-opacity duration-200 group-hover/header:opacity-80',
+              statusConfig.className,
+            )}
+          >
+            {statusConfig.icon}
+          </div>
+        </div>
+      </CollapsibleTrigger>
+    );
+  }
 
   return (
     <CollapsibleTrigger
       className={cn(
-        'bg-background sticky top-0 z-10 flex w-full max-w-full min-w-0 cursor-pointer items-center justify-between gap-2 border-b p-3',
+        'group/header hover:bg-accent/50 flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition-all',
         className,
       )}
-      style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
       {...props}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-        <span className="shrink-0">{toolIcon}</span>
-        <span className="min-w-0 truncate text-sm font-medium">{toolName}</span>
-        <Badge
-          variant={statusConfig.variant}
-          className={cn(
-            'flex shrink-0 items-center gap-1',
-            statusConfig.className,
-          )}
-        >
-          {statusConfig.icon}
-          <span className="text-xs whitespace-nowrap">
-            {statusConfig.label}
-          </span>
-        </Badge>
+      <div className="from-primary/10 via-primary/5 to-primary/5 text-primary ring-primary/20 flex size-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br shadow-sm ring-1">
+        {toolIcon}
       </div>
-      <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+
+      <div className="flex min-w-0 flex-1">
+        <span className="truncate text-base font-semibold tracking-tight">
+          {toolName}
+        </span>
+      </div>
+
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+          statusConfig.bgClassName,
+          statusConfig.className,
+        )}
+      >
+        {statusConfig.icon}
+        <span className="whitespace-nowrap">{statusConfig.label}</span>
+      </div>
+
+      <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
+        <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+      </div>
     </CollapsibleTrigger>
   );
 };
 
-export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
+export type ToolContentProps = ComponentProps<typeof CollapsibleContent> & {
+  variant?: ToolVariant;
+};
 
-export const ToolContent = ({ className, ...props }: ToolContentProps) => (
-  <CollapsibleContent
-    className={cn(
-      'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground data-[state=closed]:animate-out data-[state=open]:animate-in max-w-full min-w-0 overflow-hidden outline-none',
-      className,
-    )}
-    {...props}
-  />
-);
+export const ToolContent = ({
+  className,
+  variant = 'default',
+  ...props
+}: ToolContentProps) => {
+  const isMinimal = variant === 'minimal';
+
+  return (
+    <CollapsibleContent
+      className={cn(
+        'data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden',
+        isMinimal && 'border-border/50 ml-6 border-l pl-2 text-sm',
+        className,
+      )}
+      {...props}
+    />
+  );
+};
 
 export type ToolInputProps = ComponentProps<'div'> & {
   input: ToolUIPart['input'];
 };
 
-export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <Collapsible
-    className={cn('max-w-full min-w-0 overflow-hidden', className)}
-    defaultOpen={false}
-    {...props}
-  >
-    <CollapsibleTrigger className="group hover:bg-muted/50 flex w-full min-w-0 items-center gap-2 px-4 py-3 text-left transition-colors">
-      <ChevronDownIcon className="text-muted-foreground size-3 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-      <span className="text-muted-foreground truncate text-xs font-medium tracking-wide uppercase">
-        Parameters
-      </span>
-    </CollapsibleTrigger>
-    <CollapsibleContent>
-      <div className="max-w-full min-w-0 px-4 pb-4">
-        <div className="bg-muted/50 max-w-full min-w-0 overflow-hidden rounded-md">
-          <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
-        </div>
-      </div>
-    </CollapsibleContent>
-  </Collapsible>
-);
+export const ToolInput = ({ className, input, ...props }: ToolInputProps) =>
+  null;
 
 export type ToolOutputProps = ComponentProps<'div'> & {
   output: ToolUIPart['output'];
@@ -232,30 +302,55 @@ export const ToolOutput = ({
     return null;
   }
 
-  // Special handling for testConnection tool
   if (isTestConnection && !errorText) {
     const result =
       output === true ||
       output === 'true' ||
       String(output).toLowerCase() === 'true';
     return (
-      <div className={cn('min-w-0 p-5', className)} {...props}>
-        <div className="flex items-center gap-3">
-          {result ? (
-            <>
-              <CheckCircleIcon className="size-5 shrink-0 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-600">
-                Connection successful
-              </span>
-            </>
-          ) : (
-            <>
-              <XCircleIcon className="text-destructive size-5 shrink-0" />
-              <span className="text-destructive text-sm font-medium">
-                Connection failed
-              </span>
-            </>
+      <div className={cn('border-t-2 px-5 py-5', className)} {...props}>
+        <div
+          className={cn(
+            'flex items-center gap-4 rounded-xl px-5 py-4 text-sm font-medium shadow-sm',
+            result
+              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 ring-2 ring-emerald-200 dark:from-emerald-950 dark:to-emerald-900 dark:text-emerald-300 dark:ring-emerald-800'
+              : 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 ring-2 ring-red-200 dark:from-red-950 dark:to-red-900 dark:text-red-300 dark:ring-red-800',
           )}
+        >
+          {result ? (
+            <CheckCircle2Icon className="size-6 shrink-0" />
+          ) : (
+            <XCircleIcon className="size-6 shrink-0" />
+          )}
+          <span>
+            {result
+              ? 'Connection verified successfully'
+              : 'Connection verification failed'}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorText) {
+    return (
+      <div
+        className={cn(
+          'border-t-2 border-red-200 px-5 py-5 dark:border-red-800',
+          className,
+        )}
+        {...props}
+      >
+        <div className="rounded-xl bg-gradient-to-br from-red-50 via-red-50 to-orange-50 p-5 ring-2 ring-red-200 dark:from-red-950 dark:via-red-950 dark:to-orange-950 dark:ring-red-800">
+          <div className="text-destructive mb-3 flex items-center gap-2 text-sm font-bold">
+            <AlertCircleIcon className="size-5" />
+            <span>Execution Error</span>
+          </div>
+          <div className="bg-background/80 rounded-lg p-4 backdrop-blur-sm">
+            <pre className="text-muted-foreground text-xs leading-relaxed whitespace-pre-wrap">
+              {errorText}
+            </pre>
+          </div>
         </div>
       </div>
     );
@@ -271,32 +366,9 @@ export const ToolOutput = ({
     Output = <CodeBlock code={output} language="json" />;
   }
 
-  if (errorText) {
-    return (
-      <div className={cn('min-w-0 space-y-2 p-4', className)} {...props}>
-        <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Error
-        </h4>
-        <div className="bg-destructive/10 border-destructive/20 max-w-full min-w-0 rounded-md border p-4">
-          <div className="flex items-start gap-2">
-            <XCircleIcon className="text-destructive mt-0.5 size-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <pre className="text-destructive m-0 font-sans text-sm wrap-break-word whitespace-pre-wrap">
-                {errorText}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={cn('min-w-0 space-y-2 p-4', className)} {...props}>
-      <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-        Result
-      </h4>
-      <div className="bg-muted/50 max-w-full min-w-0 overflow-hidden rounded-md">
+    <div className={cn('border-t-2 px-5 py-5', className)} {...props}>
+      <div className="ring-border/50 overflow-hidden rounded-xl shadow-inner ring-2">
         {Output}
       </div>
     </div>

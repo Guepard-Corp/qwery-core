@@ -9,6 +9,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '../shadcn/resizable';
+import { cn } from '../lib/utils';
 
 interface ResizableContentProps {
   Content: React.ReactElement | null;
@@ -87,7 +88,10 @@ export const ResizableContent = forwardRef<
       <ResizablePanel
         defaultSize={contentSize}
         minSize={isOpen ? 50 : 100}
-        className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden"
+        className={cn(
+          'flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden',
+          AgentSidebar && 'border-border border-r',
+        )}
       >
         <div className="h-full min-h-0 w-full max-w-full min-w-0 overflow-hidden overflow-x-hidden">
           {Content}
@@ -96,7 +100,7 @@ export const ResizableContent = forwardRef<
       {/* Always render sidebar to keep it mounted, but hide when closed */}
       {AgentSidebar && (
         <>
-          {isOpen && <ResizableHandle withHandle />}
+          <ResizableHandle withHandle />
           <ResizablePanel
             key={isOpen ? 'sidebar-open' : 'sidebar-closed'}
             defaultSize={sidebarSize}

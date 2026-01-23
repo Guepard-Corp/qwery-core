@@ -5,6 +5,9 @@ import * as React from 'react';
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragOverEvent,
+  DragStartEvent,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
@@ -21,16 +24,19 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   BookText,
+  Copy,
   Loader2,
   Pencil,
   Plus,
+  Save,
   Sparkles,
   Trash2,
   Type,
+  X,
 } from 'lucide-react';
 
 import type { DatasourceResultSet, Notebook } from '@qwery/domain/entities';
-import { WorkspaceModeEnum } from '@qwery/domain/enums';
+import { WorkspaceModeEnum, type CellType } from '@qwery/domain/enums';
 import { Button } from '@qwery/ui/button';
 import {
   DropdownMenu,
@@ -58,12 +64,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import CodeMirror from '@uiw/react-codemirror';
-import { EditorView } from '@codemirror/view';
+import { EditorView, placeholder } from '@codemirror/view';
 import { useTheme } from 'next-themes';
 import { Textarea } from '@qwery/ui/textarea';
 import { Alert, AlertDescription } from '@qwery/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
+import { Shortcuts } from '@qwery/ui/shortcuts';
 
 interface NotebookUIProps {
   notebook?: Notebook;
@@ -78,6 +85,7 @@ interface NotebookUIProps {
   ) => void;
   onCellsChange?: (cells: NotebookCellData[]) => void;
   onNotebookChange?: (notebook: Partial<Notebook>) => void;
+  onSave?: () => void;
   cellResults?: Map<number, DatasourceResultSet>;
   cellErrors?: Map<number, string>;
   cellLoadingStates?: Map<number, boolean>;
@@ -85,12 +93,36 @@ interface NotebookUIProps {
   isDeletingNotebook?: boolean;
   workspaceMode?: WorkspaceModeEnum;
   hasUnsavedChanges?: boolean;
+  isNotebookLoading?: boolean;
+}
+
+// Visual indicator for duplication mode
+function DuplicationIndicator({ isVisible }: { isVisible: boolean }) {
+  if (!isVisible) return null;
+
+  return (
+    <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-20 left-1/2 z-[100] -translate-x-1/2">
+      <div className="bg-background/95 text-foreground/80 border-border/60 flex items-center justify-center gap-3 rounded-lg border px-4 py-2 text-sm shadow-lg backdrop-blur">
+        {/* Small \"game cursor\" style indicator */}
+        <span className="relative inline-flex h-5 w-5 items-center justify-center">
+          <span className="border-foreground/40 h-4 w-4 rounded-full border" />
+          <span className="bg-foreground/80 absolute h-1.5 w-1.5 rounded-full" />
+        </span>
+        <Copy className="text-foreground/70 h-4 w-4" />
+        <span className="font-medium tracking-tight">Duplicating cell</span>
+        <kbd className="border-border/60 bg-muted/60 text-foreground/80 rounded-md px-2 py-1 font-mono text-xs">
+          Alt
+        </kbd>
+      </div>
+    </div>
+  );
 }
 
 // Sortable wrapper for cells
 const SortableCell = React.memo(function SortableCellComponent({
   cell,
   onQueryChange,
+  onTitleChange,
   onDatasourceChange,
   onRunQuery,
   onRunQueryWithAgent,
@@ -108,9 +140,13 @@ const SortableCell = React.memo(function SortableCellComponent({
   activeAiPopup,
   onOpenAiPopup,
   onCloseAiPopup,
+  isDuplicating,
+  totalCellCount,
+  isNotebookLoading,
 }: {
   cell: NotebookCellData;
   onQueryChange: (cellId: number, query: string) => void;
+  onTitleChange?: (cellId: number, title: string) => void;
   onDatasourceChange: (cellId: number, datasourceId: string | null) => void;
   onRunQuery?: (cellId: number, query: string, datasourceId: string) => void;
   onRunQueryWithAgent?: (
@@ -132,6 +168,9 @@ const SortableCell = React.memo(function SortableCellComponent({
   activeAiPopup: { cellId: number; position: { x: number; y: number } } | null;
   onOpenAiPopup: (cellId: number, position: { x: number; y: number }) => void;
   onCloseAiPopup: () => void;
+  isDuplicating?: boolean;
+  totalCellCount: number;
+  isNotebookLoading?: boolean;
 }) {
   const {
     attributes,
@@ -145,9 +184,18 @@ const SortableCell = React.memo(function SortableCellComponent({
     id: cell.cellId.toString(),
   });
 
+  const footerDragHandleRefCallback = React.useCallback(
+    (_node: HTMLDivElement | null) => {
+      // Footer drag handle ref - listeners are applied directly to the footer element
+    },
+    [],
+  );
+
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging
+      ? transition
+      : 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease-out',
   };
 
   const handleQueryChange = useCallback(
@@ -155,6 +203,13 @@ const SortableCell = React.memo(function SortableCellComponent({
       onQueryChange(cell.cellId, value);
     },
     [cell.cellId, onQueryChange],
+  );
+
+  const handleTitleChange = useCallback(
+    (title: string) => {
+      onTitleChange?.(cell.cellId, title);
+    },
+    [cell.cellId, onTitleChange],
   );
 
   const handleDatasourceChange = useCallback(
@@ -212,18 +267,24 @@ const SortableCell = React.memo(function SortableCellComponent({
           ? 'transform 0s'
           : 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
-      className="transition-opacity duration-200 ease-out data-[dragging=true]:opacity-80"
+      className={cn(
+        'transition-opacity duration-200 ease-out data-[dragging=true]:opacity-80',
+        isDragging && isDuplicating && 'opacity-30',
+      )}
       data-dragging={isDragging ? 'true' : 'false'}
     >
       <NotebookCell
         cell={cell}
         datasources={datasources}
         onQueryChange={handleQueryChange}
+        onTitleChange={handleTitleChange}
         onDatasourceChange={handleDatasourceChange}
         onRunQuery={handleRunQuery}
         onRunQueryWithAgent={handleRunQueryWithAgent}
         dragHandleProps={listeners}
         dragHandleRef={setActivatorNodeRef}
+        footerDragHandleProps={listeners}
+        footerDragHandleRef={footerDragHandleRefCallback}
         isDragging={isDragging}
         result={result}
         error={error}
@@ -238,6 +299,8 @@ const SortableCell = React.memo(function SortableCellComponent({
         activeAiPopup={activeAiPopup}
         onOpenAiPopup={onOpenAiPopup}
         onCloseAiPopup={onCloseAiPopup}
+        totalCellCount={totalCellCount}
+        isNotebookLoading={isNotebookLoading}
       />
     </div>
   );
@@ -256,7 +319,7 @@ function FullViewDialog({
   cells: NotebookCellData[];
   cellResults: Map<number, DatasourceResultSet>;
   cellErrors: Map<number, string>;
-  allDatasources: Array<{ id: string; name: string }>;
+  allDatasources: NotebookDatasourceInfo[];
   onQueryChange: (cellId: number, query: string) => void;
   onClose: () => void;
 }) {
@@ -290,11 +353,8 @@ function FullViewDialog({
       const cellDatasourceId = cell.datasources[0];
       const found = allDatasources.find((ds) => ds.id === cellDatasourceId);
       if (found) {
-        return cellDatasourceId;
+        return found;
       }
-    }
-    if (allDatasources && allDatasources.length > 0 && allDatasources[0]) {
-      return allDatasources[0].id;
     }
     return undefined;
   }, [cell, allDatasources]);
@@ -322,33 +382,68 @@ function FullViewDialog({
     return null;
   }
 
-  const datasourceName =
-    allDatasources.find((ds) => ds.id === selectedDatasource)?.name ||
-    selectedDatasource;
+  const renderDatasourceDisplay = () => {
+    if (!selectedDatasource || !isQueryCell) return null;
+
+    const displayName = selectedDatasource.name || selectedDatasource.id;
+    const initials = displayName.slice(0, 2).toUpperCase();
+
+    return (
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+        {selectedDatasource.logo ? (
+          <img
+            src={selectedDatasource.logo}
+            alt={`${displayName} logo`}
+            className="h-4 w-4 rounded object-contain"
+          />
+        ) : (
+          <span className="bg-muted inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold uppercase">
+            {initials}
+          </span>
+        )}
+        <span>{displayName}</span>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={cellId !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[95vh] max-w-[95vw] flex-col">
         <DialogHeader>
-          <DialogTitle>
-            {isQueryCell
-              ? `Query Cell${datasourceName ? ` - ${datasourceName}` : ''}`
-              : isTextCell
-                ? 'Text Cell'
-                : 'Prompt Cell'}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {isQueryCell
+                ? 'Query Cell'
+                : isTextCell
+                  ? 'Text Cell'
+                  : 'Prompt Cell'}
+            </DialogTitle>
+            {renderDatasourceDisplay()}
+          </div>
         </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-auto">
           {/* Editor */}
           <div
             ref={codeMirrorContainerRef}
-            className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[50vh] min-h-[200px] flex-1 overflow-auto rounded-md border [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+            className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[50vh] min-h-[200px] flex-1 overflow-auto rounded-md border bg-transparent [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {isQueryCell ? (
               <CodeMirror
                 value={query}
                 onChange={handleQueryChange}
-                extensions={[sql(), EditorView.lineWrapping]}
+                extensions={[
+                  sql(),
+                  EditorView.lineWrapping,
+                  (() => {
+                    const isMac =
+                      typeof navigator !== 'undefined' &&
+                      /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+                    const modifier = isMac ? '⌘' : 'Ctrl';
+                    return placeholder(
+                      `(Press ${modifier}+K to use assistant)`,
+                    );
+                  })(),
+                ]}
                 theme={isDarkMode ? oneDark : undefined}
                 editable={true}
                 basicSetup={{
@@ -357,7 +452,7 @@ function FullViewDialog({
                   dropCursor: false,
                   allowMultipleSelections: false,
                 }}
-                className="h-full [&_.cm-content]:px-4 [&_.cm-content]:py-2 [&_.cm-editor]:h-full [&_.cm-editor]:bg-transparent [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm"
+                className="[&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 h-full [&_.cm-content]:px-4 [&_.cm-content]:py-2 [&_.cm-editor]:h-full [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm"
               />
             ) : (
               <Textarea
@@ -431,7 +526,7 @@ function DeleteNotebookButton({
         <Button
           size="icon"
           variant="ghost"
-          className={`h-7 w-7 transition-opacity ${isHovering ? 'opacity-100' : 'opacity-0'}`}
+          className={`h-7 w-7 transition-all duration-300 ease-in-out ${isHovering ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'}`}
           data-test="notebook-delete-trigger"
           disabled={isDeleting}
           aria-label="Delete notebook"
@@ -486,6 +581,7 @@ export function NotebookUI({
   onRunQueryWithAgent,
   onCellsChange,
   onNotebookChange,
+  onSave,
   cellResults: externalCellResults,
   cellErrors: externalCellErrors,
   cellLoadingStates: externalCellLoadingStates,
@@ -493,6 +589,7 @@ export function NotebookUI({
   isDeletingNotebook,
   workspaceMode,
   hasUnsavedChanges = false,
+  isNotebookLoading = false,
 }: NotebookUIProps) {
   // Initialize cells from notebook or initialCells, default to empty array
   const [cells, setCells] = React.useState<NotebookCellData[]>(() => {
@@ -504,6 +601,7 @@ export function NotebookUI({
         datasources: cell.datasources,
         isActive: cell.isActive,
         runMode: cell.runMode,
+        title: cell.title,
       }));
     }
     if (initialCells) {
@@ -561,6 +659,7 @@ export function NotebookUI({
           datasources: cell.datasources,
           isActive: cell.isActive,
           runMode: cell.runMode,
+          title: cell.title,
         })),
       );
 
@@ -575,16 +674,238 @@ export function NotebookUI({
             datasources: cell.datasources,
             isActive: cell.isActive,
             runMode: cell.runMode,
+            title: cell.title,
           })),
         );
       }
     }
   }, [notebook?.cells]);
 
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [activeCellWidth, setActiveCellWidth] = useState<number | null>(null);
+  const [activeCellHeight, setActiveCellHeight] = useState<number | null>(null);
+  const altKeyStateRef = useRef(false);
+  const [duplicateInsertIndex, setDuplicateInsertIndex] = useState<
+    number | null
+  >(null);
+  const cellsRef = useRef<NotebookCellData[]>(cells);
+  const duplicationDelayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    cellsRef.current = cells;
+  }, [cells]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt' || e.altKey) {
+        altKeyStateRef.current = true;
+        if (activeId) {
+          // Clear any existing timeout
+          if (duplicationDelayTimeoutRef.current) {
+            clearTimeout(duplicationDelayTimeoutRef.current);
+          }
+          // Add delay before showing duplication preview
+          duplicationDelayTimeoutRef.current = setTimeout(() => {
+            setIsDuplicating(true);
+          }, 300);
+        }
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        altKeyStateRef.current = false;
+        // Clear timeout if Alt is released before delay completes
+        if (duplicationDelayTimeoutRef.current) {
+          clearTimeout(duplicationDelayTimeoutRef.current);
+          duplicationDelayTimeoutRef.current = null;
+        }
+        setIsDuplicating(false);
+      }
+    };
+    const handleMouseDown = (e: MouseEvent) => {
+      altKeyStateRef.current = e.altKey;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
+      // Cleanup timeout on unmount
+      if (duplicationDelayTimeoutRef.current) {
+        clearTimeout(duplicationDelayTimeoutRef.current);
+      }
+    };
+  }, [activeId]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    // Clear any existing timeout
+    if (duplicationDelayTimeoutRef.current) {
+      clearTimeout(duplicationDelayTimeoutRef.current);
+      duplicationDelayTimeoutRef.current = null;
+    }
+
+    if (event.activatorEvent instanceof MouseEvent) {
+      const altPressed = event.activatorEvent.altKey;
+      altKeyStateRef.current = altPressed;
+
+      if (altPressed) {
+        // Add delay before showing duplication preview
+        duplicationDelayTimeoutRef.current = setTimeout(() => {
+          setIsDuplicating(true);
+          const activeCellElement = document.querySelector(
+            `[data-cell-id="${event.active.id}"]`,
+          ) as HTMLElement;
+          if (activeCellElement) {
+            setActiveCellWidth(activeCellElement.offsetWidth);
+            setActiveCellHeight(activeCellElement.offsetHeight);
+          }
+        }, 300);
+      } else {
+        setIsDuplicating(false);
+      }
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    // Update isDuplicating state if Alt key is pressed during drag
+    let altPressed = false;
+    if (event.activatorEvent instanceof MouseEvent) {
+      altPressed = event.activatorEvent.altKey;
+      altKeyStateRef.current = altPressed;
+    } else {
+      // Fallback: check global altKey state
+      altPressed = altKeyStateRef.current;
+    }
+
+    // Only update if state changed
+    if (altPressed && !isDuplicating) {
+      // Clear any existing timeout
+      if (duplicationDelayTimeoutRef.current) {
+        clearTimeout(duplicationDelayTimeoutRef.current);
+      }
+      // Add delay before showing duplication preview
+      duplicationDelayTimeoutRef.current = setTimeout(() => {
+        setIsDuplicating(true);
+        const activeCellElement = document.querySelector(
+          `[data-cell-id="${activeId}"]`,
+        ) as HTMLElement;
+        if (activeCellElement && activeId) {
+          setActiveCellWidth(activeCellElement.offsetWidth);
+          setActiveCellHeight(activeCellElement.offsetHeight);
+        }
+      }, 300);
+    } else if (!altPressed && isDuplicating) {
+      // Clear timeout if Alt is released
+      if (duplicationDelayTimeoutRef.current) {
+        clearTimeout(duplicationDelayTimeoutRef.current);
+        duplicationDelayTimeoutRef.current = null;
+      }
+      setIsDuplicating(false);
+    }
+
+    if (!isDuplicating) return;
+
+    const { over, active } = event;
+    if (!over) {
+      setDuplicateInsertIndex(null);
+      return;
+    }
+
+    const currentCells = cellsRef.current;
+    const overId = String(over.id);
+    const overIndex = currentCells.findIndex(
+      (item) => item.cellId.toString() === overId,
+    );
+
+    if (overIndex === -1) {
+      setDuplicateInsertIndex(null);
+      return;
+    }
+
+    const overRect = over.rect;
+    const activeRect =
+      active.rect.current.translated || active.rect.current.initial;
+
+    let insertIndex = overIndex + 1;
+
+    if (overRect && activeRect) {
+      const overMiddleY = overRect.top + overRect.height / 2;
+      const isBefore = activeRect.top < overMiddleY;
+      insertIndex = isBefore ? overIndex : overIndex + 1;
+    }
+
+    // Clamp to [0, cells.length]
+    const clampedIndex = Math.max(
+      0,
+      Math.min(insertIndex, currentCells.length),
+    );
+    setDuplicateInsertIndex(clampedIndex);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const shouldDuplicate =
+      altKeyStateRef.current ||
+      (event.activatorEvent instanceof MouseEvent &&
+        event.activatorEvent.altKey);
 
-    if (over && active.id !== over.id) {
+    // Clear any pending timeout
+    if (duplicationDelayTimeoutRef.current) {
+      clearTimeout(duplicationDelayTimeoutRef.current);
+      duplicationDelayTimeoutRef.current = null;
+    }
+
+    setActiveId(null);
+    setIsDuplicating(false);
+    setActiveCellWidth(null);
+    setActiveCellHeight(null);
+    setDuplicateInsertIndex(null);
+
+    if (shouldDuplicate) {
+      setCells((items) => {
+        const sourceCell = items.find(
+          (item) => item.cellId.toString() === active.id,
+        );
+        if (!sourceCell) return items;
+
+        const maxCellId = Math.max(...items.map((c) => c.cellId), 0);
+        const newCell: NotebookCellData = {
+          ...sourceCell,
+          cellId: maxCellId + 1,
+        };
+
+        const fallbackIndex = (() => {
+          if (over) {
+            const idx = items.findIndex(
+              (item) => item.cellId.toString() === over.id,
+            );
+            if (idx >= 0) return idx + 1;
+          }
+          const sourceIndex = items.findIndex(
+            (item) => item.cellId.toString() === active.id,
+          );
+          if (sourceIndex >= 0) return sourceIndex + 1;
+          return items.length;
+        })();
+
+        const rawIndex =
+          duplicateInsertIndex !== null ? duplicateInsertIndex : fallbackIndex;
+        const insertIndex = Math.max(0, Math.min(rawIndex, items.length));
+
+        const newCells = [
+          ...items.slice(0, insertIndex),
+          newCell,
+          ...items.slice(insertIndex),
+        ];
+        onCellsChange?.(newCells);
+        return newCells;
+      });
+    } else if (!shouldDuplicate && over && active.id !== over.id) {
       setCells((items) => {
         const oldIndex = items.findIndex(
           (item) => item.cellId.toString() === active.id,
@@ -602,17 +923,17 @@ export function NotebookUI({
 
   const handleAddCell = (
     afterCellId?: number,
-    cellType: 'query' | 'text' | 'prompt' = 'query',
-    atBeginning = false,
+    cellType: CellType = 'query',
   ) => {
     const maxCellId =
       cells.length > 0
         ? Math.max(...cells.map((c: NotebookCellData) => c.cellId), 0)
         : 0;
+    const cellNumber = cells.length + 1;
     const newCell: NotebookCellData = {
       query:
         cellType === 'query'
-          ? '\n'.repeat(9) // 10 lines total (9 newlines + 1 empty line)
+          ? ''
           : cellType === 'text'
             ? '# Markdown Cell\n\nWrite your markdown content here...\n'
             : '', // Prompt cells start empty
@@ -621,13 +942,10 @@ export function NotebookUI({
       datasources: [],
       isActive: true,
       runMode: 'default',
+      title: `Cell ${cellNumber}`,
     };
 
-    if (atBeginning) {
-      const newCells = [newCell, ...cells];
-      setCells(newCells);
-      onCellsChange?.(newCells);
-    } else if (afterCellId !== undefined) {
+    if (afterCellId !== undefined) {
       const index = cells.findIndex(
         (c: NotebookCellData) => c.cellId === afterCellId,
       );
@@ -650,6 +968,21 @@ export function NotebookUI({
       setCells((prev) => {
         const newCells = prev.map((cell) =>
           cell.cellId === cellId ? { ...cell, query } : cell,
+        );
+        onCellsChange?.(newCells);
+        return newCells;
+      });
+    },
+    [onCellsChange],
+  );
+
+  const handleTitleChange = useCallback(
+    (cellId: number, title: string) => {
+      setCells((prev) => {
+        const newCells = prev.map((cell) =>
+          cell.cellId === cellId
+            ? { ...cell, title: title || undefined }
+            : cell,
         );
         onCellsChange?.(newCells);
         return newCells;
@@ -739,9 +1072,11 @@ export function NotebookUI({
         if (!cell) return prev;
 
         const maxCellId = Math.max(...prev.map((c) => c.cellId), 0);
+        const cellNumber = prev.length + 1;
         const newCell: NotebookCellData = {
           ...cell,
           cellId: maxCellId + 1,
+          title: cell.title ? `${cell.title} (copy)` : `Cell ${cellNumber}`,
         };
 
         const index = prev.findIndex((c) => c.cellId === cellId);
@@ -815,12 +1150,14 @@ export function NotebookUI({
   // Focus input when editing starts
   React.useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+        titleInputRef.current?.select();
+      }, 0);
     }
   }, [isEditingTitle]);
 
-  const handleTitleSave = () => {
+  const handleTitleSave = React.useCallback(() => {
     const trimmed = titleValue.trim();
     const didChange = Boolean(trimmed) && trimmed !== displayTitle;
 
@@ -832,17 +1169,31 @@ export function NotebookUI({
       setTitleValue(displayTitle);
     }
     setIsEditingTitle(false);
-  };
+  }, [titleValue, displayTitle, onNotebookChange]);
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+  const handleTitleBlur = React.useCallback(() => {
+    // Only save on blur if we're still in edit mode (not cancelled)
+    if (isEditingTitle) {
       handleTitleSave();
-    } else if (e.key === 'Escape') {
-      setTitleValue(displayTitle);
-      setIsEditingTitle(false);
     }
-  };
+  }, [isEditingTitle, handleTitleSave]);
+
+  const handleTitleCancel = React.useCallback(() => {
+    setTitleValue(displayTitle);
+    setIsEditingTitle(false);
+  }, [displayTitle]);
+
+  const handleTitleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleTitleSave();
+      } else if (e.key === 'Escape') {
+        handleTitleCancel();
+      }
+    },
+    [handleTitleSave, handleTitleCancel],
+  );
 
   const allDatasources = useMemo((): NotebookDatasourceInfo[] => {
     const notebookDatasourceIds = notebook?.datasources || [];
@@ -879,18 +1230,29 @@ export function NotebookUI({
           onMouseLeave={() => setIsHoveringTitle(false)}
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 items-center">
+            <div className="flex flex-1 items-center gap-2">
               {isEditingTitle ? (
-                <Input
-                  ref={titleInputRef}
-                  value={titleValue}
-                  onChange={(e) => setTitleValue(e.target.value)}
-                  onBlur={handleTitleSave}
-                  onKeyDown={handleTitleKeyDown}
-                  className="focus-visible:ring-ring h-auto w-full border-0 bg-transparent px-0 py-0 text-2xl font-semibold focus-visible:ring-2"
-                />
+                <>
+                  <Input
+                    ref={titleInputRef}
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={handleTitleKeyDown}
+                    className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={handleTitleCancel}
+                    aria-label="Discard changes"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
               ) : (
-                <div className="group flex items-center gap-2">
+                <>
                   <h1 className="text-2xl font-semibold">{headerTitle}</h1>
                   {hasUnsavedChanges && (
                     <span
@@ -899,10 +1261,24 @@ export function NotebookUI({
                       title="Unsaved changes"
                     />
                   )}
+                  {onSave && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-7 w-7 shrink-0 transition-all duration-300 ease-in-out ${isHoveringTitle ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSave();
+                      }}
+                      aria-label="Save notebook"
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     size="icon"
                     variant="ghost"
-                    className={`h-7 w-7 transition-opacity ${isHoveringTitle ? 'opacity-100' : 'opacity-0'}`}
+                    className={`h-7 w-7 shrink-0 transition-all duration-300 ease-in-out ${isHoveringTitle ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-95 opacity-0'}`}
                     onClick={() => setIsEditingTitle(true)}
                     aria-label="Edit title"
                   >
@@ -913,20 +1289,64 @@ export function NotebookUI({
                     isDeleting={isDeletingNotebook}
                     isHovering={isHoveringTitle}
                   />
-                </div>
+                </>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                onClick={() => {
+                  const isMac =
+                    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                  const event = new KeyboardEvent('keydown', {
+                    key: 'l',
+                    code: 'KeyL',
+                    [isMac ? 'metaKey' : 'ctrlKey']: true,
+                    bubbles: true,
+                    cancelable: true,
+                  });
+                  window.dispatchEvent(event);
+                }}
+                className="cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    const isMac =
+                      navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                    const keyboardEvent = new KeyboardEvent('keydown', {
+                      key: 'l',
+                      code: 'KeyL',
+                      [isMac ? 'metaKey' : 'ctrlKey']: true,
+                      bubbles: true,
+                      cancelable: true,
+                    });
+                    window.dispatchEvent(keyboardEvent);
+                  }
+                }}
+              >
+                <Shortcuts
+                  items={[
+                    {
+                      text: 'Agent',
+                      keys: ['⌘', 'L'],
+                    },
+                  ]}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Cells container */}
-      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 mt-6 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-12 pl-16 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <SortableContext
@@ -934,10 +1354,14 @@ export function NotebookUI({
             strategy={verticalListSortingStrategy}
           >
             <div className="flex flex-col gap-4">
-              {/* Top divider - to add cell at the very beginning */}
-              <CellDivider
-                onAddCell={(type) => handleAddCell(undefined, type, true)}
-              />
+              {isDuplicating &&
+                duplicateInsertIndex === 0 &&
+                activeCellHeight !== null && (
+                  <div
+                    style={{ height: activeCellHeight }}
+                    className="transition-all duration-150"
+                  />
+                )}
               {cells.map((cell, index) => {
                 // Get error for this specific cell only - ensure strict isolation
                 let cellError: string | undefined = undefined;
@@ -957,6 +1381,7 @@ export function NotebookUI({
                     <SortableCell
                       cell={cell}
                       onQueryChange={handleQueryChange}
+                      onTitleChange={handleTitleChange}
                       onDatasourceChange={handleDatasourceChange}
                       onRunQuery={handleRunQuery}
                       onRunQueryWithAgent={handleRunQueryWithAgent}
@@ -974,6 +1399,11 @@ export function NotebookUI({
                       activeAiPopup={activeAiPopup}
                       onOpenAiPopup={handleOpenAiPopup}
                       onCloseAiPopup={handleCloseAiPopup}
+                      totalCellCount={cells.length}
+                      isDuplicating={
+                        isDuplicating && activeId === cell.cellId.toString()
+                      }
+                      isNotebookLoading={isNotebookLoading}
                     />
                     {/* Error Display - Between cells */}
                     {cell.cellType === 'query' && cellError && (
@@ -995,12 +1425,20 @@ export function NotebookUI({
                 );
               })}
               {/* Add cell button at the bottom */}
+              {isDuplicating &&
+                duplicateInsertIndex === cells.length &&
+                activeCellHeight !== null && (
+                  <div
+                    style={{ height: activeCellHeight }}
+                    className="transition-all duration-150"
+                  />
+                )}
               <div className="flex flex-col items-center gap-4 py-8">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="border-border hover:bg-accent/50 group flex h-12 w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
+                      className="border-border hover:bg-accent/50 group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
                     >
                       <Plus className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
                       <span className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition-colors">
@@ -1032,8 +1470,57 @@ export function NotebookUI({
               </div>
             </div>
           </SortableContext>
+          <DragOverlay>
+            {activeId && isDuplicating
+              ? (() => {
+                  const activeCell = cells.find(
+                    (c) => c.cellId.toString() === activeId,
+                  );
+                  if (!activeCell) return null;
+                  return (
+                    <div
+                      className="rotate-2 overflow-hidden opacity-95 shadow-2xl"
+                      style={
+                        activeCellWidth && activeCellHeight
+                          ? {
+                              width: `${activeCellWidth}px`,
+                              height: `${activeCellHeight}px`,
+                            }
+                          : {
+                              width: 'calc(100vw - 6rem)',
+                              minWidth: '600px',
+                            }
+                      }
+                    >
+                      <NotebookCell
+                        cell={activeCell}
+                        datasources={allDatasources}
+                        onQueryChange={() => {}}
+                        onDatasourceChange={() => {}}
+                        dragHandleProps={{}}
+                        isDragging={true}
+                        result={cellResults.get(activeCell.cellId)}
+                        error={undefined}
+                        isLoading={false}
+                        onMoveUp={() => {}}
+                        onMoveDown={() => {}}
+                        onDuplicate={() => {}}
+                        onFormat={() => {}}
+                        onDelete={() => {}}
+                        onFullView={() => {}}
+                        isAdvancedMode={isAdvancedMode}
+                        activeAiPopup={null}
+                        onOpenAiPopup={() => {}}
+                        onCloseAiPopup={() => {}}
+                      />
+                    </div>
+                  );
+                })()
+              : null}
+          </DragOverlay>
         </DndContext>
       </div>
+      <DuplicationIndicator isVisible={isDuplicating && activeId !== null} />
 
       {/* Full View Dialog */}
       <FullViewDialog

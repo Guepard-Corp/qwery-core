@@ -37,6 +37,7 @@ export function useNotebook(
           datasources: cell.datasources,
           isActive: cell.isActive,
           runMode: cell.runMode,
+          title: cell.title,
         })),
         datasources: notebook.datasources,
       };

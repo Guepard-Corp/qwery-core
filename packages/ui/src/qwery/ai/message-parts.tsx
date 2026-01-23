@@ -28,6 +28,7 @@ import { SQLQueryVisualizer } from './sql-query-visualizer';
 
 import { cn } from '../../lib/utils';
 import { SchemaVisualizer } from './schema-visualizer';
+import { Trans } from '../trans';
 import { TOOL_UI_CONFIG } from './tool-ui-config';
 
 import { ViewSheetVisualizer } from './sheets/view-sheet-visualizer';
@@ -40,7 +41,7 @@ import {
   SourcesTrigger,
 } from '../../ai-elements/sources';
 import { useState, createContext, useMemo } from 'react';
-import { CopyIcon, RefreshCcwIcon, CheckIcon } from 'lucide-react';
+import { CopyIcon, RefreshCcwIcon, CheckIcon, Database } from 'lucide-react';
 import { ToolUIPart, UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -48,12 +49,14 @@ import { agentMarkdownComponents, HeadingContext } from './markdown-components';
 import { ToolErrorVisualizer } from './tool-error-visualizer';
 import type { useChat } from '@ai-sdk/react';
 import { getUserFriendlyToolName } from './utils/tool-name';
+import { useToolVariant } from './tool-variant-context';
 
 import { ChartRenderer, type ChartConfig } from './charts/chart-renderer';
 import {
   ChartTypeSelector,
   type ChartTypeSelection,
 } from './charts/chart-type-selector';
+import type { NotebookCellType } from './utils/notebook-cell-type';
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'error';
 
@@ -196,9 +199,16 @@ export function TextPart({
       value={{ sendMessage, messages, currentMessageId: messageId }}
     >
       <HeadingContext.Provider value={headingContextValue}>
-        <Message key={`${messageId}-${index}`} from={messageRole}>
+        <Message
+          key={`${messageId}-${index}`}
+          from={messageRole}
+          className={cn(
+            messageRole === 'assistant' ? 'mt-4' : undefined,
+            messageRole === 'assistant' && 'mx-4 pr-2 sm:mx-6 sm:pr-4',
+          )}
+        >
           <MessageContent>
-            <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
+            <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_div[data-code-block-container]]:w-full [&_div[data-code-block-container]]:max-w-[28rem] [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={agentMarkdownComponents}
@@ -296,13 +306,13 @@ export interface ToolPartProps {
   isRequestInProgress?: boolean;
   onPasteToNotebook?: (
     sqlQuery: string,
-    notebookCellType: 'query' | 'prompt',
+    notebookCellType: NotebookCellType,
     datasourceId: string,
     cellId: number,
   ) => void;
   notebookContext?: {
     cellId?: number;
-    notebookCellType?: 'query' | 'prompt';
+    notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
 }
@@ -314,6 +324,7 @@ export function ToolPart({
   onPasteToNotebook,
   notebookContext,
 }: ToolPartProps) {
+  const { variant } = useToolVariant();
   let toolName: string;
   if (
     'toolName' in part &&
@@ -621,7 +632,46 @@ export function ToolPart({
         };
       } | null;
       if (output?.schema) {
-        return <SchemaVisualizer schema={output.schema} />;
+        return <SchemaVisualizer schema={output.schema} variant={variant} />;
+      } else {
+        // Empty state when no schema data
+        return (
+          <div
+            className={cn(
+              'flex flex-col items-center justify-center p-8 text-center',
+              variant === 'minimal' && 'p-4',
+            )}
+          >
+            <Database
+              className={cn(
+                'text-muted-foreground mb-4 opacity-50',
+                variant === 'minimal' ? 'mb-2 h-8 w-8' : 'h-12 w-12',
+              )}
+            />
+            <h3
+              className={cn(
+                'text-foreground mb-2 font-semibold',
+                variant === 'minimal' ? 'text-xs' : 'text-sm',
+              )}
+            >
+              <Trans
+                i18nKey="common:schema.noSchemaDataAvailable"
+                defaults="No schema data available"
+              />
+            </h3>
+            <p
+              className={cn(
+                'text-muted-foreground',
+                variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+              )}
+            >
+              <Trans
+                i18nKey="common:schema.schemaEmptyOrNotLoaded"
+                defaults="The schema information is empty or could not be loaded."
+              />
+            </p>
+          </div>
+        );
       }
     }
 
@@ -697,14 +747,20 @@ export function ToolPart({
     <Tool
       key={`${messageId}-${index}`}
       defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
+      variant={variant}
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
-        TOOL_UI_CONFIG.MAX_WIDTH,
-        'mx-auto',
+        'max-w-[min(43.2rem,calc(100%-3rem))]',
+        'mx-4 sm:mx-6',
       )}
     >
-      <ToolHeader title={toolName} type={part.type} state={part.state} />
-      <ToolContent className="max-w-full min-w-0 p-0">
+      <ToolHeader
+        title={toolName}
+        type={part.type}
+        state={part.state}
+        variant={variant}
+      />
+      <ToolContent variant={variant} className="max-w-full min-w-0 p-0">
         {showInput ? (
           <ToolInput input={part.input} className="border-b" />
         ) : null}

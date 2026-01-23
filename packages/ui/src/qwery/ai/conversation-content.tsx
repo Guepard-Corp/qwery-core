@@ -1,5 +1,6 @@
 import { UIMessage } from 'ai';
 import { ChatStatus } from 'ai';
+import { isChatSubmitted } from './utils/chat-status';
 import {
   Conversation,
   ConversationContent,
@@ -36,7 +37,7 @@ export function QweryConversationContent({
             sendMessage={sendMessage}
           />
         ))}
-        {status === 'submitted' && <Loader />}
+        {isChatSubmitted(status) && <Loader />}
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>

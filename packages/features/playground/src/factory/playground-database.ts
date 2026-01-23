@@ -9,8 +9,9 @@ export interface PlaygroundDatabase {
   /**
    * Get the connection configuration for the datasource
    * This config will be used to create a datasource record
+   * @param projectId Optional project ID to create unique database names
    */
-  getConnectionConfig(): Record<string, unknown>;
+  getConnectionConfig(projectId?: string): Record<string, unknown>;
 
   /**
    * Seed the database with sample/prefilled data

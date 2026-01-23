@@ -55,6 +55,7 @@ const orgRoutes = layout('routes/organization/layout.tsx', [
 const projectLayout = layout('routes/project/layout.tsx', [
   route('prj/:slug', 'routes/project/index.tsx'),
   route('notebook/:slug', 'routes/project/notebook.tsx'),
+  route('prj/:slug/notebooks', 'routes/project/notebooks/index.tsx'),
   route('prj/:slug/ds', 'routes/project/datasources/index.tsx'),
   route('prj/:slug/ds/new', 'routes/project/datasources/sources.tsx'),
   route('prj/:slug/ds/:id/new', 'routes/project/datasources/new.tsx'),

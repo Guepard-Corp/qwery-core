@@ -12,6 +12,7 @@ import {
   PromptInputTools,
 } from '../../ai-elements/prompt-input';
 import { ChatStatus } from 'ai';
+import { isChatStreaming } from './utils/chat-status';
 import { MessageSquareIcon, Sparkles } from 'lucide-react';
 
 export interface ConversationWelcomeProps {
@@ -79,7 +80,7 @@ export function ConversationWelcome({
             <PromptInputFooter>
               <PromptInputTools />
               <PromptInputSubmit
-                disabled={!input.trim() || status === 'streaming'}
+                disabled={!input.trim() || isChatStreaming(status)}
                 status={status}
               />
             </PromptInputFooter>

@@ -8406,7 +8406,8 @@ var CellSchema = external_exports.object({
   cellId: external_exports.number().int().min(1).describe("The cell identifier"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the cell"),
   isActive: external_exports.boolean().describe("Whether the cell is active"),
-  runMode: external_exports.enum(RunModeSchema.options).describe("The run mode of the cell")
+  runMode: external_exports.enum(RunModeSchema.options).describe("The run mode of the cell"),
+  title: external_exports.string().optional().describe("The optional title of the cell")
 });
 var NotebookSchema = external_exports.object({
   id: external_exports.string().uuid().describe("The unique identifier for the notebook"),
@@ -8445,7 +8446,8 @@ var NotebookEntity = class extends Entity {
           // 10 lines total (9 newlines + 1 empty line)
           datasources: [],
           isActive: true,
-          runMode: "default"
+          runMode: "default",
+          title: "Cell 1"
         }
       ],
       isPublic: false
@@ -9802,181 +9804,10 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
-// packages/extensions-sdk/src/connection-string-utils.ts
-function extractGenericUrl(config, keys) {
-  for (const key of keys) {
-    const value = config[key];
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-function extractPath(config, keys) {
-  return extractGenericUrl(config, keys);
-}
-function buildPostgresConnectionUrl(fields) {
-  const host = fields.host || "localhost";
-  const port = fields.port || 5432;
-  const username = fields.username || fields.user || "";
-  const password = fields.password || "";
-  const database = fields.database || "";
-  const sslmode = fields.sslmode || "prefer";
-  let url = `postgresql://`;
-  if (username || password) {
-    const encodedUser = username ? encodeURIComponent(username) : "";
-    const encodedPass = password ? encodeURIComponent(password) : "";
-    url += `${encodedUser}${encodedPass ? `:${encodedPass}` : ""}@`;
-  }
-  url += `${host}:${port}`;
-  if (database) {
-    url += `/${database}`;
-  }
-  if (sslmode) {
-    url += `?sslmode=${sslmode}`;
-  }
-  return url;
-}
-function buildMysqlConnectionUrl(fields) {
-  const host = fields.host || "localhost";
-  const port = fields.port || 3306;
-  const user = fields.username || fields.user || "root";
-  const password = fields.password || "";
-  const database = fields.database || "";
-  let url = `mysql://`;
-  if (user || password) {
-    const encodedUser = user ? encodeURIComponent(user) : "";
-    const encodedPass = password ? encodeURIComponent(password) : "";
-    url += `${encodedUser}${encodedPass ? `:${encodedPass}` : ""}@`;
-  }
-  url += `${host}:${port}`;
-  if (database) {
-    url += `/${database}`;
-  }
-  return url;
-}
-function buildClickHouseConnectionUrl(fields) {
-  const host = fields.host || "localhost";
-  const port = fields.port || 8123;
-  const username = fields.username || fields.user || "default";
-  const password = fields.password || "";
-  const database = fields.database || "default";
-  let url = `http://${host}:${port}`;
-  if (username || password) {
-    const encodedUser = username ? encodeURIComponent(username) : "";
-    const encodedPass = password ? encodeURIComponent(password) : "";
-    url = `http://${encodedUser}${encodedPass ? `:${encodedPass}` : ""}@${host}:${port}`;
-  }
-  if (database && database !== "default") {
-    url += `?database=${encodeURIComponent(database)}`;
-  }
-  return url;
-}
-function cleanPostgresConnectionUrl(connectionUrl) {
-  try {
-    const url = new URL(connectionUrl);
-    url.searchParams.delete("channel_binding");
-    if (!url.searchParams.has("sslmode")) {
-      url.searchParams.set("sslmode", "prefer");
-    } else if (url.searchParams.get("sslmode") === "disable") {
-      url.searchParams.set("sslmode", "prefer");
-    }
-    return url.toString();
-  } catch {
-    let cleaned = connectionUrl;
-    cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, "");
-    cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, "");
-    cleaned = cleaned.replace(/sslmode=disable/g, "sslmode=prefer");
-    if (!cleaned.includes("sslmode=")) {
-      if (cleaned.includes("?")) {
-        cleaned += "&sslmode=prefer";
-      } else {
-        cleaned += "?sslmode=prefer";
-      }
-    }
-    return cleaned;
-  }
-}
-function extractConnectionUrl(config, providerId) {
-  const connectionUrl = extractGenericUrl(config, [
-    "connectionUrl",
-    "url",
-    "path"
-  ]);
-  if (connectionUrl) {
-    if (providerId === "postgresql" || providerId === "postgres") {
-      return cleanPostgresConnectionUrl(connectionUrl);
-    }
-    return connectionUrl;
-  }
-  const fields = {
-    host: config.host,
-    port: config.port,
-    username: config.username || config.user,
-    user: config.user,
-    password: config.password,
-    database: config.database,
-    ssl: config.ssl,
-    sslmode: config.sslmode
-  };
-  switch (providerId) {
-    case "postgresql":
-    case "postgres":
-      if (!fields.host) {
-        throw new Error(
-          "PostgreSQL datasource requires connectionUrl or host in config"
-        );
-      }
-      return buildPostgresConnectionUrl(fields);
-    case "mysql":
-      if (!fields.host) {
-        throw new Error(
-          "MySQL datasource requires connectionUrl or host in config"
-        );
-      }
-      return buildMysqlConnectionUrl(fields);
-    case "clickhouse-node":
-    case "clickhouse-web":
-    case "clickhouse":
-      if (!fields.host) {
-        throw new Error(
-          "ClickHouse datasource requires connectionUrl or host in config"
-        );
-      }
-      return buildClickHouseConnectionUrl(fields);
-    case "sqlite":
-    case "duckdb": {
-      const path = extractPath(config, ["path", "database", "connectionUrl"]);
-      if (!path) {
-        throw new Error(
-          "SQLite/DuckDB datasource requires path, database, or connectionUrl in config"
-        );
-      }
-      return path;
-    }
-    default:
-      throw new Error(
-        `Unsupported provider for connection string extraction: ${providerId}`
-      );
-  }
-}
-
 // packages/extensions/clickhouse-web/dist/driver.js
 var ConfigSchema = external_exports.object({
-  connectionUrl: external_exports.string().url().optional(),
-  host: external_exports.string().optional(),
-  port: external_exports.number().int().min(1).max(65535).optional(),
-  username: external_exports.string().optional(),
-  user: external_exports.string().optional(),
-  password: external_exports.string().optional(),
-  database: external_exports.string().optional()
-}).refine((data) => data.connectionUrl || data.host, {
-  message: "Either connectionUrl or host must be provided"
+  connectionUrl: external_exports.string().url()
 });
-function buildClickHouseConfigFromFields(fields) {
-  const connectionUrl = extractConnectionUrl(fields, "clickhouse-web");
-  return buildClickHouseConfig(connectionUrl);
-}
 function buildClickHouseConfig(connectionUrl) {
   const url = new URL(connectionUrl);
   const protocol = url.protocol === "clickhouse:" ? "http:" : url.protocol;
@@ -9991,10 +9822,9 @@ function buildClickHouseConfig(connectionUrl) {
 function makeClickHouseDriver(context) {
   const clientMap = /* @__PURE__ */ new Map();
   const getClient = (config) => {
-    const connectionUrl = extractConnectionUrl(config, "clickhouse-web");
-    const key = connectionUrl;
+    const key = config.connectionUrl;
     if (!clientMap.has(key)) {
-      const clientConfig = buildClickHouseConfig(connectionUrl);
+      const clientConfig = buildClickHouseConfig(config.connectionUrl);
       const client = (0, import_client_web.createClient)(clientConfig);
       clientMap.set(key, client);
     }
@@ -10162,7 +9992,6 @@ function makeClickHouseDriver(context) {
 var driverFactory = makeClickHouseDriver;
 var driver_default = driverFactory;
 export {
-  buildClickHouseConfigFromFields,
   driver_default as default,
   driverFactory,
   makeClickHouseDriver

@@ -9,6 +9,7 @@ type Cell = {
   datasources?: string[];
   isActive?: boolean;
   runMode?: RunMode;
+  title?: string;
 };
 
 @Exclude()
@@ -58,6 +59,7 @@ export type CellInput = {
   datasources?: string[];
   isActive?: boolean;
   runMode?: RunMode;
+  title?: string;
 };
 
 export type UpdateNotebookInput = {

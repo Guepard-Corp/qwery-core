@@ -13,8 +13,8 @@ export interface UseSuggestionEnhancementOptions {
   containerRef: React.RefObject<HTMLElement | null>;
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   contextMessages: {
-    lastUserQuestion?: string;
     lastAssistantResponse?: string;
+    parentConversationId?: string;
   };
 }
 
@@ -39,13 +39,17 @@ export function useSuggestionEnhancement({
 
       try {
         let messageText = cleanSuggestionText;
-        const { lastUserQuestion, lastAssistantResponse } = contextMessages;
+        const { lastAssistantResponse, parentConversationId } = contextMessages;
 
-        if (lastUserQuestion || lastAssistantResponse || sourceSuggestionId) {
+        if (
+          lastAssistantResponse ||
+          sourceSuggestionId ||
+          parentConversationId
+        ) {
           const contextData = JSON.stringify({
-            lastUserQuestion,
             lastAssistantResponse,
             sourceSuggestionId,
+            parentConversationId,
           });
           messageText = `__QWERY_CONTEXT__${contextData}__QWERY_CONTEXT_END__${cleanSuggestionText}`;
         }

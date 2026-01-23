@@ -40,9 +40,10 @@ export const generateRandomName = (): string => {
     adjectives[Math.floor(Math.random() * adjectives.length)];
   const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
 
-  // Generate a unique suffix (6 characters of random alphanumeric)
-  const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+  // Generate a unique suffix with timestamp and random string for guaranteed uniqueness
+  const timestamp = Date.now().toString(36);
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
 
   // Format the final name
-  return `play_${randomAdjective}-${randomNoun}-${uniqueSuffix}`;
+  return `play_${randomAdjective}-${randomNoun}-${timestamp}-${randomSuffix}`;
 };

@@ -1,6 +1,8 @@
 import { UIMessage } from 'ai';
 import { ChatStatus } from 'ai';
+import { isChatStreaming } from './utils/chat-status';
 import { memo } from 'react';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import {
   TaskPart,
   TextPart,
@@ -34,7 +36,8 @@ function MessageRendererComponent({
   ) as Array<{ type: 'source-url'; sourceId: string; url?: string }>;
 
   const hasSources =
-    (message.role === 'assistant' || message.role === 'user') &&
+    (normalizeUIRole(message.role) === 'assistant' ||
+      normalizeUIRole(message.role) === 'user') &&
     sourceParts.length > 0;
 
   return (
@@ -76,7 +79,7 @@ function MessageRendererComponent({
                 messageId={message.id}
                 index={i}
                 isStreaming={
-                  status === 'streaming' &&
+                  isChatStreaming(status) &&
                   i === message.parts.length - 1 &&
                   message.id === messages.at(-1)?.id
                 }
@@ -126,7 +129,7 @@ export const MessageRenderer = memo(MessageRendererComponent, (prev, next) => {
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
   if (
     isLastMessage &&
-    (prev.status === 'streaming' || next.status === 'streaming')
+    (isChatStreaming(prev.status) || isChatStreaming(next.status))
   ) {
     return false;
   }

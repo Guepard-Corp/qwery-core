@@ -1,7 +1,12 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { Database, ChevronsUpDown } from 'lucide-react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import {
+  Database,
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 import {
   Command,
@@ -16,12 +21,16 @@ import { Button } from '../../shadcn/button';
 import { Skeleton } from '../../shadcn/skeleton';
 import { Checkbox } from '../../shadcn/checkbox';
 import { cn } from '../../lib/utils';
+import { Trans } from '../trans';
+import { useTranslation } from 'react-i18next';
 
 export interface DatasourceItem {
   id: string;
   name: string;
   slug: string;
   datasource_provider: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface DatasourceSelectorProps {
@@ -33,7 +42,7 @@ export interface DatasourceSelectorProps {
   searchPlaceholder?: string;
 }
 
-const MAX_VISIBLE_ITEMS = 10;
+const ITEMS_PER_PAGE = 10;
 
 export function DatasourceSelector({
   selectedDatasources,
@@ -41,26 +50,54 @@ export function DatasourceSelector({
   datasources,
   pluginLogoMap,
   isLoading = false,
-  searchPlaceholder = 'Search datasources...',
+  searchPlaceholder,
 }: DatasourceSelectorProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredDatasources = useMemo(() => {
-    if (!search.trim()) {
-      return datasources;
+  const placeholderText =
+    searchPlaceholder ||
+    t('common:datasourceSelector.searchDatasources', {
+      defaultValue: 'Search datasources...',
+    });
+
+  const filteredAndSortedDatasources = useMemo(() => {
+    let filtered = datasources;
+
+    if (search.trim()) {
+      const query = search.toLowerCase();
+      filtered = datasources.filter(
+        (ds) =>
+          ds.name.toLowerCase().includes(query) ||
+          ds.slug.toLowerCase().includes(query) ||
+          ds.datasource_provider.toLowerCase().includes(query),
+      );
     }
-    const query = search.toLowerCase();
-    return datasources.filter(
-      (ds) =>
-        ds.name.toLowerCase().includes(query) ||
-        ds.slug.toLowerCase().includes(query) ||
-        ds.datasource_provider.toLowerCase().includes(query),
-    );
+
+    return [...filtered].sort((a, b) => {
+      const aTime = a.updatedAt?.getTime() || a.createdAt?.getTime() || 0;
+      const bTime = b.updatedAt?.getTime() || b.createdAt?.getTime() || 0;
+      return bTime - aTime;
+    });
   }, [datasources, search]);
 
-  const visibleItems = filteredDatasources.slice(0, MAX_VISIBLE_ITEMS);
+  const totalPages = Math.ceil(
+    filteredAndSortedDatasources.length / ITEMS_PER_PAGE,
+  );
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const visibleItems = filteredAndSortedDatasources.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (open || search) {
+      setTimeout(() => {
+        setCurrentPage(1);
+      }, 0);
+    }
+  }, [open, search]);
 
   const handleImageError = useCallback((datasourceId: string) => {
     setFailedImages((prev) => new Set(prev).add(datasourceId));
@@ -82,7 +119,7 @@ export function DatasourceSelector({
     if (selectedDatasources.length === 0) {
       return {
         type: 'empty' as const,
-        label: 'Select datasources',
+        label: 'common:datasourceSelector.selectDatasources',
       };
     }
 
@@ -117,7 +154,12 @@ export function DatasourceSelector({
           {displayInfo.type === 'empty' && (
             <>
               <Database className="text-muted-foreground h-3.5 w-3.5" />
-              <span className="text-muted-foreground">{displayInfo.label}</span>
+              <span className="text-muted-foreground">
+                <Trans
+                  i18nKey={displayInfo.label}
+                  defaults="Select datasources"
+                />
+              </span>
               <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
             </>
           )}
@@ -153,14 +195,17 @@ export function DatasourceSelector({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="z-[101] w-[300px] p-0" align="start">
+      <PopoverContent
+        className="z-[101] w-[300px] overflow-x-hidden p-0"
+        align="start"
+      >
         <Command>
           <CommandInput
-            placeholder={searchPlaceholder}
+            placeholder={placeholderText}
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList>
+          <CommandList className="overflow-x-hidden">
             {isLoading ? (
               <div className="p-2">
                 <Skeleton className="h-8 w-full" />
@@ -171,11 +216,14 @@ export function DatasourceSelector({
               <>
                 <CommandEmpty>
                   <span className="text-muted-foreground text-sm">
-                    No datasources found
+                    <Trans
+                      i18nKey="common:datasourceSelector.noDatasourcesFound"
+                      defaults="No datasources found"
+                    />
                   </span>
                 </CommandEmpty>
                 {visibleItems.length > 0 && (
-                  <CommandGroup>
+                  <CommandGroup className="overflow-x-hidden">
                     {visibleItems.map((datasource) => {
                       const isSelected = selectedDatasources.includes(
                         datasource.id,
@@ -191,7 +239,7 @@ export function DatasourceSelector({
                           key={datasource.id}
                           onSelect={() => handleToggle(datasource.id)}
                           className={cn(
-                            'cursor-pointer',
+                            'cursor-pointer overflow-x-hidden',
                             isSelected && 'bg-accent text-accent-foreground',
                           )}
                         >
@@ -217,17 +265,46 @@ export function DatasourceSelector({
                     })}
                   </CommandGroup>
                 )}
-                {filteredDatasources.length > MAX_VISIBLE_ITEMS && (
-                  <div className="border-t p-2 text-center">
-                    <span className="text-muted-foreground text-xs">
-                      Showing {MAX_VISIBLE_ITEMS} of{' '}
-                      {filteredDatasources.length} datasources
-                    </span>
-                  </div>
-                )}
               </>
             )}
           </CommandList>
+          {totalPages > 1 && (
+            <div className="bg-muted flex items-center justify-between gap-2 border-t p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage((prev) => Math.max(1, prev - 1));
+                }}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <span className="text-muted-foreground text-xs font-medium">
+                <Trans
+                  i18nKey="common:pageOfPages"
+                  defaults="Page {{page}} of {{total}}"
+                  values={{ page: currentPage, total: totalPages }}
+                />
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+                }}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

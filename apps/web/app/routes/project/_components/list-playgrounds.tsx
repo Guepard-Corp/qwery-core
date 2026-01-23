@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-
 import { useNavigate, useParams } from 'react-router';
 
 import {
@@ -7,20 +6,25 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
+import {
+  ArrowRight,
+  Command,
+  Database,
+  InfoIcon,
+  LayoutTemplate,
+  Terminal,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Playground } from '@qwery/domain/entities';
 import { Button } from '@qwery/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@qwery/ui/card';
 import { Input } from '@qwery/ui/input';
-import { Kbd, KbdGroup } from '@qwery/ui/kbd';
-import { Trans } from '@qwery/ui/trans';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@qwery/ui/tooltip';
 import { cn } from '@qwery/ui/utils';
 
 import pathsConfig from '~/config/paths.config';
@@ -29,7 +33,7 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { usePlayground } from '~/lib/mutations/use-playground';
 import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 9;
 
 export function ListPlaygrounds({
   playgrounds,
@@ -42,23 +46,21 @@ export function ListPlaygrounds({
   const { repositories } = useWorkspace();
   const projectRepository = repositories.project;
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const isMac = useMemo(
-    () => navigator.platform.toUpperCase().indexOf('MAC') >= 0,
-    [],
-  );
+
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Load project to get projectId
   const project = useGetProjectBySlug(projectRepository, project_id);
 
-  // Mutation to create playground
   const createPlaygroundMutation = usePlayground(
     repositories.datasource,
     () => {
       toast.success('Playground created successfully');
-      navigate(createPath(pathsConfig.app.projectNotebook, project_id));
+      navigate(createPath(pathsConfig.app.projectDatasources, project_id), {
+        replace: true,
+      });
     },
     (error) => {
       toast.error(
@@ -74,17 +76,14 @@ export function ListPlaygrounds({
     });
   };
 
+  // Keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
-        setShouldAnimate(true);
         searchInputRef.current?.focus();
-
-        setTimeout(() => setShouldAnimate(false), 1000);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -101,7 +100,6 @@ export function ListPlaygrounds({
     });
   }, [playgrounds, searchQuery]);
 
-  // Reset to page 1 when filtered results change
   const effectiveCurrentPage = useMemo(() => {
     const totalPages = Math.ceil(filteredPlaygrounds.length / ITEMS_PER_PAGE);
     return currentPage > totalPages ? 1 : currentPage;
@@ -117,196 +115,250 @@ export function ListPlaygrounds({
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle>
-              <Trans
-                i18nKey="playgrounds:list_title"
-                defaults="Saved Playgrounds"
-              />
-            </CardTitle>
-            <CardDescription>
-              <Trans
-                i18nKey="playgrounds:list_subtitle"
-                defaults="Create prefilled databases to test the product"
-              />
-            </CardDescription>
+    <TooltipProvider>
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+        {/* SECTION 1: HERO & SEARCH 
+        Centered layout for a "Marketplace" feel.
+      */}
+        <div className="mb-12 flex flex-col items-center text-center">
+          <div className="bg-primary/10 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
+            <LayoutTemplate className="h-6 w-6" />
           </div>
-          <div className="relative w-64">
-            <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+
+          <h1 className="text-foreground mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            Start with a Template
+          </h1>
+
+          <p className="text-muted-foreground mb-8 max-w-xl text-lg leading-relaxed">
+            Choose a pre-configured playground to jumpstart your project.
+            Includes schema, sample data, and query examples.
+          </p>
+
+          <div
+            className={cn(
+              'relative w-full max-w-2xl transition-all duration-200 ease-in-out',
+              isSearchFocused ? 'scale-105' : 'scale-100',
+            )}
+          >
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <MagnifyingGlassIcon className="text-muted-foreground h-5 w-5" />
+            </div>
             <Input
               ref={searchInputRef}
-              type="search"
-              placeholder="Search..."
-              className={cn(
-                'pr-20 pl-9 transition-all',
-                shouldAnimate &&
-                  'ring-primary animate-pulse ring-2 ring-offset-2',
-              )}
+              type="text"
+              placeholder="Search templates..."
+              className="bg-background border-muted placeholder:text-muted-foreground/60 focus-visible:border-primary h-14 rounded-lg border-2 pr-4 pl-12 text-base shadow-sm transition-colors focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
             />
-            <div className="absolute top-1/2 right-3 -translate-y-1/2">
-              <KbdGroup>
-                <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
-                <Kbd>F</Kbd>
-              </KbdGroup>
+          </div>
+        </div>
+
+        {/* SECTION 2: GRID CONTENT
+         */}
+        <div className="min-h-[400px]">
+          {filteredPlaygrounds.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="bg-muted mb-4 rounded-lg p-4">
+                <Command className="text-muted-foreground h-8 w-8 opacity-50" />
+              </div>
+              <h3 className="text-foreground text-lg font-medium">
+                No playgrounds found
+              </h3>
+              <p className="text-muted-foreground mt-1 text-sm">
+                We couldn&apos;t find a template matching &quot;{searchQuery}
+                &quot;
+              </p>
+              <Button
+                variant="link"
+                onClick={() => setSearchQuery('')}
+                className="text-primary mt-2"
+              >
+                Clear search
+              </Button>
             </div>
-          </div>
-        </div>
-      </CardHeader>
-      <div className="border-b px-4 pb-2">
-        <div className="flex items-center justify-between gap-4">
-          <div className="text-muted-foreground text-sm">
-            <span className="font-medium">{filteredPlaygrounds.length}</span>
-            {' / '}
-            <span>{playgrounds.length}</span>
-            {' playgrounds'}
-          </div>
-        </div>
-      </div>
-      <CardContent className="p-3">
-        {filteredPlaygrounds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-foreground mb-2 text-base font-medium">
-              No playgrounds found
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {searchQuery
-                ? 'Try adjusting your search query'
-                : 'No playgrounds available'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {paginatedPlaygrounds.map((playground) => {
-                return (
-                  <Card
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedPlaygrounds.map((playground) => (
+                  <div
                     key={playground.id}
-                    className="hover:bg-accent/50 transition-colors"
+                    className="group bg-card hover:border-primary/50 hover:shadow-primary/5 relative flex cursor-pointer flex-col rounded-lg border p-6 text-left transition-all duration-300 hover:shadow-lg"
                   >
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        {playground.logo && (
+                    {/* Card Header */}
+                    <div className="mb-5 flex items-start justify-between">
+                      <div className="bg-muted/30 flex h-14 w-14 items-center justify-center rounded-md border p-2">
+                        {playground.logo ? (
                           <img
                             src={playground.logo}
                             alt={playground.name}
-                            className="h-10 w-10 flex-shrink-0 rounded object-contain"
+                            className="h-full w-full object-contain"
                           />
+                        ) : (
+                          <Terminal className="text-primary h-6 w-6" />
                         )}
-                        <div className="min-w-0 flex-1">
-                          <CardTitle className="truncate text-base">
-                            {playground.name}
-                          </CardTitle>
-                        </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col gap-2">
-                        <p className="text-muted-foreground text-sm">
-                          {playground.description}
-                        </p>
-                      </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleCreate(playground.id)}
-                          disabled={
-                            createPlaygroundMutation.isPending ||
-                            !project.data?.id
-                          }
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <InfoIcon className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          sideOffset={12}
+                          className="bg-popover text-popover-foreground border-border/60 max-w-sm overflow-hidden rounded-lg border-2 p-0 shadow-xl backdrop-blur-sm"
                         >
-                          {createPlaygroundMutation.isPending
-                            ? 'Creating...'
-                            : 'Create'}
-                        </Button>
+                          <div className="bg-primary/5 border-border/50 border-b px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="bg-primary/20 text-primary border-primary/30 flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm">
+                                <Database className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold">
+                                  Available Data
+                                </div>
+                                <div className="text-muted-foreground mt-0.5 text-[10px]">
+                                  3 tables with sample data
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2.5 p-4">
+                            <div className="group/item flex items-start gap-2.5">
+                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                U
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-primary font-mono text-xs font-bold">
+                                    users
+                                  </span>
+                                  <span className="text-muted-foreground/60 text-[10px]">
+                                    • 5 rows
+                                  </span>
+                                </div>
+                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                  User accounts with basic information
+                                </div>
+                              </div>
+                            </div>
+                            <div className="group/item flex items-start gap-2.5">
+                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                P
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-primary font-mono text-xs font-bold">
+                                    products
+                                  </span>
+                                  <span className="text-muted-foreground/60 text-[10px]">
+                                    • 8 rows
+                                  </span>
+                                </div>
+                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                  Product catalog with pricing and inventory
+                                </div>
+                              </div>
+                            </div>
+                            <div className="group/item flex items-start gap-2.5">
+                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                O
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-primary font-mono text-xs font-bold">
+                                    orders
+                                  </span>
+                                  <span className="text-muted-foreground/60 text-[10px]">
+                                    • 8 rows
+                                  </span>
+                                </div>
+                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                  Customer orders with status tracking
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-muted/30 border-border/50 border-t px-4 py-2.5">
+                            <div className="text-muted-foreground flex items-center gap-1.5 text-[10px]">
+                              <div className="bg-primary/40 h-1.5 w-1.5 rounded-full"></div>
+                              <span>
+                                Includes sample data and query examples
+                              </span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="flex-1 space-y-2">
+                      <h3 className="text-foreground text-xl font-semibold tracking-tight">
+                        {playground.name}
+                      </h3>
+                      <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
+                        {playground.description}
+                      </p>
+                    </div>
+
+                    {/* Card Footer / Action */}
+                    <div className="mt-6 flex items-center justify-between pt-4">
+                      <div className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                        Ready to deploy
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-            {totalPages > 1 && (
-              <div className="mt-3 flex items-center justify-between border-t pt-2">
-                <div className="text-muted-foreground text-sm">
-                  Showing {startIndex + 1} to{' '}
-                  {Math.min(endIndex, filteredPlaygrounds.length)} of{' '}
-                  {filteredPlaygrounds.length} playgrounds
-                </div>
-                <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => handleCreate(playground.id)}
+                        disabled={createPlaygroundMutation.isPending}
+                        size="sm"
+                        className="rounded-md px-5 transition-transform active:scale-95"
+                      >
+                        {createPlaygroundMutation.isPending
+                          ? 'Creating...'
+                          : 'Select'}
+                        <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-12 flex items-center justify-center gap-4">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={() => goToPage(effectiveCurrentPage - 1)}
                     disabled={effectiveCurrentPage === 1}
+                    className="border-muted-foreground/20 rounded-md"
                   >
                     <ChevronLeftIcon className="h-4 w-4" />
-                    Previous
                   </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => {
-                        const showPage =
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= effectiveCurrentPage - 1 &&
-                            page <= effectiveCurrentPage + 1);
-
-                        if (!showPage) {
-                          if (
-                            page === effectiveCurrentPage - 2 ||
-                            page === effectiveCurrentPage + 2
-                          ) {
-                            return (
-                              <span
-                                key={page}
-                                className="text-muted-foreground px-2"
-                              >
-                                ...
-                              </span>
-                            );
-                          }
-                          return null;
-                        }
-
-                        return (
-                          <Button
-                            key={page}
-                            variant={
-                              effectiveCurrentPage === page
-                                ? 'default'
-                                : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => goToPage(page)}
-                            className="min-w-[2.5rem]"
-                          >
-                            {page}
-                          </Button>
-                        );
-                      },
-                    )}
-                  </div>
+                  <span className="text-muted-foreground min-w-[100px] text-center text-sm font-medium">
+                    Page {effectiveCurrentPage} of {totalPages}
+                  </span>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={() => goToPage(effectiveCurrentPage + 1)}
                     disabled={effectiveCurrentPage === totalPages}
+                    className="border-muted-foreground/20 rounded-md"
                   >
-                    Next
                     <ChevronRightIcon className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }

@@ -1,5 +1,4 @@
 import type { UIMessage, ToolUIPart } from 'ai';
-import { parseMessageWithContext } from '../user-message-bubble';
 import { getUserFriendlyToolName } from './tool-name';
 
 const CONTEXT_MARKER = '__QWERY_CONTEXT__';
@@ -72,10 +71,22 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
         if (formatted && formatted.trim()) {
           toolName = formatted;
         }
-      } else if (part.type && typeof part.type === 'string') {
+      }
+
+      if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
         const formatted = getUserFriendlyToolName(part.type);
         if (formatted && formatted.trim()) {
           toolName = formatted;
+        } else {
+          const formattedFromType =
+            part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
+          toolName = formattedFromType
+            .split(' ')
+            .map(
+              (word) =>
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+            )
+            .join(' ');
         }
       }
 
@@ -108,10 +119,21 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
   return result.join('\n\n');
 }
 
+function getTextContentFromMessage(message: UIMessage): string {
+  const textParts: string[] = [];
+  for (const part of message.parts) {
+    if (part.type === 'text' && 'text' in part && part.text?.trim()) {
+      textParts.push(part.text.trim());
+    }
+  }
+  return textParts.join('\n\n').trim();
+}
+
 export function getContextMessages(
   messages: UIMessage[] | undefined,
   currentMessageId: string | undefined,
-): { lastUserQuestion?: string; lastAssistantResponse?: string } {
+  _textContent?: string,
+): { lastAssistantResponse?: string; parentConversationId?: string } {
   if (!messages || !currentMessageId) {
     return {};
   }
@@ -123,26 +145,34 @@ export function getContextMessages(
 
   const currentMessage = messages[currentIndex];
 
-  let lastUserQuestion: string | undefined;
-  for (let i = currentIndex - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role === 'user') {
-      const textPart = msg.parts.find((p) => p.type === 'text');
-      if (textPart && 'text' in textPart && textPart.text) {
-        const parsed = parseMessageWithContext(textPart.text);
-        lastUserQuestion = parsed.text || cleanContextMarkers(textPart.text);
-        break;
+  let lastAssistantResponse: string | undefined;
+  let parentConversationId: string | undefined;
+
+  if (currentMessage?.role === 'assistant') {
+    const textContent = getTextContentFromMessage(currentMessage);
+    if (textContent) {
+      lastAssistantResponse = textContent;
+      const previousUserMsg = messages[currentIndex - 1];
+      if (previousUserMsg?.role === 'user') {
+        parentConversationId = `parent-${previousUserMsg.id}-${currentMessage.id}`;
+      }
+    }
+  } else {
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg?.role === 'assistant') {
+        const textContent = getTextContentFromMessage(msg);
+        if (textContent) {
+          lastAssistantResponse = textContent;
+          const previousUserMsg = messages[i - 1];
+          if (previousUserMsg?.role === 'user') {
+            parentConversationId = `parent-${previousUserMsg.id}-${msg.id}`;
+          }
+          break;
+        }
       }
     }
   }
 
-  let lastAssistantResponse: string | undefined;
-  if (currentMessage?.role === 'assistant') {
-    const formatted = formatToolCalls(currentMessage.parts);
-    if (formatted.trim()) {
-      lastAssistantResponse = formatted;
-    }
-  }
-
-  return { lastUserQuestion, lastAssistantResponse };
+  return { lastAssistantResponse, parentConversationId };
 }

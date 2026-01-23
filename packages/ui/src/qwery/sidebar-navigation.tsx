@@ -90,10 +90,10 @@ function SidebarLabelText({
       </span>
       {hasUnsavedChanges && (
         <span
-          className="h-3 w-3 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm"
+          className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm"
           aria-label="Unsaved changes"
           title="Unsaved changes"
-          style={{ minWidth: '12px', minHeight: '12px' }}
+          style={{ minWidth: '8px', minHeight: '8px' }}
         />
       )}
       {suffix ? (

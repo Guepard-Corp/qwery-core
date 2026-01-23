@@ -21,6 +21,7 @@ const CellSchema = z.object({
     .describe('The datasources to use for the cell'),
   isActive: z.boolean().describe('Whether the cell is active'),
   runMode: z.enum(RunModeSchema.options).describe('The run mode of the cell'),
+  title: z.string().optional().describe('The optional title of the cell'),
 });
 
 type Cell = z.infer<typeof CellSchema>;
@@ -126,6 +127,7 @@ export class NotebookEntity extends Entity<string, typeof NotebookSchema> {
           datasources: [],
           isActive: true,
           runMode: 'default',
+          title: 'Cell 1',
         },
       ],
       isPublic: false,

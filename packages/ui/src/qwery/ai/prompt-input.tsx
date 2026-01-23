@@ -1,9 +1,5 @@
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
@@ -22,7 +18,18 @@ import {
 } from '../../ai-elements/prompt-input';
 import { ChatStatus } from 'ai';
 import QweryContext, { QweryContextProps } from './context';
+import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
+import { useToolVariant } from './tool-variant-context';
+import { Switch } from '../../shadcn/switch';
+import { PlusIcon, SettingsIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../shadcn/dropdown-menu';
+import { PromptInputButton } from '../../ai-elements/prompt-input';
 
 export interface QweryPromptInputProps {
   onSubmit: (message: PromptInputMessage) => void;
@@ -49,6 +56,7 @@ export interface QweryPromptInputProps {
 function PromptInputContent(props: QweryPromptInputProps) {
   const attachments = usePromptInputAttachments();
   const attachmentsCount = props.attachmentsCount ?? attachments.files.length;
+  const { variant, setVariant } = useToolVariant();
 
   return (
     <>
@@ -76,10 +84,7 @@ function PromptInputContent(props: QweryPromptInputProps) {
               e.preventDefault();
               e.stopPropagation();
 
-              if (
-                props.status === 'streaming' ||
-                props.status === 'submitted'
-              ) {
+              if (isResponseInProgress(props.status)) {
                 return;
               }
 
@@ -96,12 +101,35 @@ function PromptInputContent(props: QweryPromptInputProps) {
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu>
+          <PromptInputButton
+            aria-label="Add attachments"
+            onClick={() => attachments.openFileDialog()}
+          >
+            <PlusIcon className="size-4" />
+          </PromptInputButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <PromptInputButton aria-label="Settings">
+                <SettingsIcon className="size-4" />
+              </PromptInputButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                }}
+                className="flex items-center justify-between gap-3 py-2"
+              >
+                <span className="text-sm">Minimal Tool UI</span>
+                <Switch
+                  checked={variant === 'minimal'}
+                  onCheckedChange={(checked) => {
+                    setVariant(checked ? 'minimal' : 'default');
+                  }}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {props.datasources &&
             props.onDatasourceSelectionChange &&
             props.pluginLogoMap && (
@@ -151,22 +179,19 @@ function PromptInputContent(props: QweryPromptInputProps) {
           <PromptInputSubmit
             disabled={
               props.stopDisabled ||
-              (props.status !== 'streaming' &&
-                props.status !== 'submitted' &&
+              (!isResponseInProgress(props.status) &&
                 !props.input.trim() &&
                 attachmentsCount === 0)
             }
             status={props.status}
             type={
-              (props.status === 'streaming' || props.status === 'submitted') &&
-              !props.stopDisabled
+              isResponseInProgress(props.status) && !props.stopDisabled
                 ? 'button'
                 : 'submit'
             }
             onClick={async (e) => {
               if (
-                (props.status === 'streaming' ||
-                  props.status === 'submitted') &&
+                isResponseInProgress(props.status) &&
                 !props.stopDisabled &&
                 props.onStop
               ) {

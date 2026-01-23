@@ -2,10 +2,12 @@ import { reactRouter } from '@react-router/dev/vite';
 import { defineConfig, type Plugin } from 'vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import tailwindCssVitePlugin from '@qwery/tailwind-config/vite';
 
-// Plugin to set correct MIME type for WASM files
+// Plugin to set correct MIME type for WASM files and extension drivers
 function wasmMimeTypePlugin(): Plugin {
   return {
     name: 'wasm-mime-type',
@@ -13,6 +15,30 @@ function wasmMimeTypePlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
+
+        if (url.startsWith('/extensions/')) {
+          try {
+            // Resolve public directory relative to the vite config file location
+            const publicDir = path.resolve(process.cwd(), 'apps/web/public');
+            const filePath = path.join(publicDir, url);
+
+            if (url.endsWith('.js')) {
+              res.setHeader('Content-Type', 'application/javascript');
+            } else if (url.endsWith('.wasm')) {
+              res.setHeader('Content-Type', 'application/wasm');
+            } else if (url.endsWith('.data')) {
+              res.setHeader('Content-Type', 'application/octet-stream');
+            } else if (url.endsWith('.json')) {
+              res.setHeader('Content-Type', 'application/json');
+            }
+
+            const fileContent = fs.readFileSync(filePath);
+            res.end(fileContent);
+            return;
+          } catch {
+            // File doesn't exist, was removed, or path resolution failed - continue to next middleware
+          }
+        }
 
         // Handle WASM files with correct MIME type
         if (url.endsWith('.wasm')) {
@@ -65,7 +91,7 @@ export default defineConfig(({ command }) => ({
     ],
   },
   plugins: [
-    wasmMimeTypePlugin(), // Must run early to set MIME types before other plugins
+    wasmMimeTypePlugin(),
     devtoolsJson(),
     reactRouter(),
     tsconfigPaths(),
@@ -84,7 +110,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
-    manifest: true, // Enable manifest generation for React Router
+    manifest: true,
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;
@@ -95,7 +121,6 @@ export default defineConfig(({ command }) => ({
           return true;
         }
         if (id.startsWith('node:')) return true;
-        // Externalize OpenTelemetry packages (Node.js only, not for browser)
         if (id.startsWith('@opentelemetry/')) return true;
         return false;
       },

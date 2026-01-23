@@ -9,6 +9,7 @@ import type { AgentUIWrapperRef } from '../_components/agent-ui-wrapper';
 import { BotAvatar } from '@qwery/ui/bot-avatar';
 import { Button } from '@qwery/ui/button';
 import { FileText } from 'lucide-react';
+import { toast } from 'sonner';
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/paths.config';
 
@@ -23,6 +24,9 @@ export default function ConversationPage() {
     repositories.conversation,
     repositories.message,
     slug as string,
+    {
+      refetchInterval: 2000,
+    },
   );
 
   const getConversation = useGetConversationBySlug(
@@ -30,7 +34,8 @@ export default function ConversationPage() {
     slug as string,
   );
 
-  // Extract notebookId from conversation title if it matches "Notebook - {notebookId}" pattern
+  const isLoading = getMessages.isLoading || getConversation.isLoading;
+
   const notebookId = useMemo(() => {
     const conversation = getConversation.data;
     if (!conversation?.title) return null;
@@ -40,12 +45,10 @@ export default function ConversationPage() {
     return match ? match[1] : null;
   }, [getConversation.data]);
 
-  // Fetch notebook by ID to get its slug
   const notebook = useGetNotebookById(repositories.notebook, notebookId || '', {
     enabled: !!notebookId,
   });
 
-  // Handle navigation to notebook page
   const handleGoToNotebook = () => {
     if (!notebook.data?.slug || !slug) return;
 
@@ -58,32 +61,134 @@ export default function ConversationPage() {
     navigate(url.pathname + url.search);
   };
 
-  // Reset auto-send flag when conversation changes
   useEffect(() => {
     hasAutoSentRef.current = false;
   }, [slug]);
 
-  // Auto-send seedMessage if conversation has no messages but has a seedMessage
   useEffect(() => {
     if (
       !hasAutoSentRef.current &&
       getMessages.data &&
       getConversation.data &&
       getMessages.data.length === 0 &&
-      getConversation.data.seedMessage
+      !isLoading
     ) {
-      hasAutoSentRef.current = true;
-      const seedMessage = getConversation.data.seedMessage;
-      // Small delay to ensure the agent is ready
-      setTimeout(() => {
-        if (seedMessage) {
-          agentRef.current?.sendMessage(seedMessage);
-        }
-      }, 100);
-    }
-  }, [getMessages.data, getConversation.data, slug]);
+      // Check for pending message from dashboard
+      const pendingMessageKey = `pending-message-${slug}`;
+      const pendingMessage = localStorage.getItem(pendingMessageKey);
 
-  const isLoading = getMessages.isLoading || getConversation.isLoading;
+      // Use pending message if available, otherwise use seedMessage
+      const messageToSend = pendingMessage || getConversation.data.seedMessage;
+
+      if (messageToSend) {
+        hasAutoSentRef.current = true;
+
+        // First, set the input field value by finding the textarea in the prompt input
+        const setInputValue = () => {
+          // Try multiple selectors to find the textarea
+          const selectors = [
+            'textarea[data-testid*="prompt"]',
+            'textarea[placeholder*="message"]',
+            'textarea[placeholder*="data"]',
+            'textarea[placeholder*="Type"]',
+            'textarea[placeholder*="Ask"]',
+            'textarea',
+          ];
+
+          let textarea: HTMLTextAreaElement | null = null;
+          for (const selector of selectors) {
+            const found = document.querySelector(
+              selector,
+            ) as HTMLTextAreaElement;
+            if (found && found.offsetParent !== null) {
+              textarea = found;
+              break;
+            }
+          }
+
+          if (textarea) {
+            // Set the value using React's way
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLTextAreaElement.prototype,
+              'value',
+            )?.set;
+            if (nativeInputValueSetter) {
+              nativeInputValueSetter.call(textarea, messageToSend);
+              // Trigger React's onChange handler
+              const inputEvent = new Event('input', { bubbles: true });
+              textarea.dispatchEvent(inputEvent);
+              // Also trigger change event
+              const changeEvent = new Event('change', { bubbles: true });
+              textarea.dispatchEvent(changeEvent);
+            }
+            return true;
+          }
+          return false;
+        };
+
+        // Try to set input immediately, retry if needed
+        let attempts = 0;
+        const maxAttempts = 10;
+        const trySetInput = () => {
+          if (setInputValue() || attempts >= maxAttempts) {
+            // Wait a bit for the input to be set, then send
+            setTimeout(() => {
+              if (messageToSend) {
+                agentRef.current?.sendMessage(messageToSend);
+
+                // Dismiss any pending conversation creation toasts
+                toast.dismiss('creating-conversation');
+                toast.dismiss('creating-playground');
+
+                // Clear the input field after sending
+                setTimeout(() => {
+                  const selectors = [
+                    'textarea[data-testid*="prompt"]',
+                    'textarea[placeholder*="message"]',
+                    'textarea[placeholder*="data"]',
+                    'textarea[placeholder*="Type"]',
+                    'textarea[placeholder*="Ask"]',
+                    'textarea',
+                  ];
+
+                  for (const selector of selectors) {
+                    const textarea = document.querySelector(
+                      selector,
+                    ) as HTMLTextAreaElement;
+                    if (textarea && textarea.offsetParent !== null) {
+                      const nativeInputValueSetter =
+                        Object.getOwnPropertyDescriptor(
+                          window.HTMLTextAreaElement.prototype,
+                          'value',
+                        )?.set;
+                      if (nativeInputValueSetter) {
+                        nativeInputValueSetter.call(textarea, '');
+                        const inputEvent = new Event('input', {
+                          bubbles: true,
+                        });
+                        textarea.dispatchEvent(inputEvent);
+                      }
+                      break;
+                    }
+                  }
+                }, 100);
+
+                // Clean up localStorage
+                if (pendingMessage) {
+                  localStorage.removeItem(pendingMessageKey);
+                }
+              }
+            }, 800);
+          } else {
+            attempts++;
+            setTimeout(trySetInput, 100);
+          }
+        };
+
+        setTimeout(trySetInput, 200);
+      }
+    }
+  }, [getMessages.data, getConversation.data, slug, isLoading]);
 
   if (isLoading) {
     return (

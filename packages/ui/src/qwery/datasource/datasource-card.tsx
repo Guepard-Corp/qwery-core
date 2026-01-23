@@ -1,11 +1,11 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { ArrowRight, Database } from 'lucide-react';
-import { format } from 'date-fns';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../shadcn/card';
 import { Trans } from '../trans';
 import { cn } from '../../lib/utils';
 import { ConnectionLines } from './connection-lines';
+import { formatRelativeTime } from '../ai/utils/conversation-utils';
 
 export interface DatasourceCardProps {
   id: string;
@@ -18,7 +18,7 @@ export interface DatasourceCardProps {
   viewButton?: ReactNode;
   onClick?: () => void;
   className?: string;
-  'data-test'?: string;
+  dataTest?: string;
 }
 
 function formatProviderName(provider?: string): string {
@@ -43,7 +43,7 @@ export function DatasourceCard({
   viewButton,
   onClick,
   className,
-  'data-test': dataTest,
+  dataTest,
 }: DatasourceCardProps) {
   const [logoError, setLogoError] = useState(false);
 
@@ -64,18 +64,14 @@ export function DatasourceCard({
       )}
       data-test={dataTest}
     >
-      {/* Animated Background Container */}
       <div className="absolute inset-0 z-0">
         <ConnectionLines />
       </div>
 
-      {/* Card Inner Wrapper for Blur Effect and Spacing */}
       <div className="bg-background/80 group-hover:bg-background/60 relative z-10 flex h-full flex-col rounded-xl backdrop-blur-[2px] transition-colors duration-500">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0 p-4 pb-3">
           <div className="relative">
-            {/* Glow effect on hover - subtle and refined */}
             <div className="bg-primary absolute inset-0 rounded-lg opacity-0 blur-sm transition-opacity duration-500 group-hover:opacity-15" />
-            {/* Icon container with background */}
             <div className="bg-muted border-border group-hover:border-primary/30 relative flex h-10 w-10 items-center justify-center rounded-lg border transition-colors duration-300">
               {showLogo ? (
                 <img
@@ -90,7 +86,6 @@ export function DatasourceCard({
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            {/* Provider badge */}
             {providerDisplayName && (
               <div className="mb-1 flex items-center gap-2">
                 <span className="text-primary/80 bg-primary/10 border-primary/10 rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase">
@@ -105,14 +100,13 @@ export function DatasourceCard({
         </CardHeader>
 
         <CardContent className="space-y-4 p-4 pt-0">
-          {/* Info Grid */}
           <div className="border-border/50 grid grid-cols-2 gap-x-6 gap-y-3 border-t py-2 pt-4">
             <div className="flex flex-col gap-0.5">
               <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
                 <Trans i18nKey="datasources:card.created" defaults="Created" />
               </span>
               <span className="text-foreground text-xs font-medium">
-                {format(createdAt, 'PP')}
+                {formatRelativeTime(createdAt)}
               </span>
             </div>
             <div className="flex flex-col gap-0.5 text-right">

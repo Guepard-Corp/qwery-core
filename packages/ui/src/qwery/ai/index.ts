@@ -17,6 +17,9 @@ export { QweryConversationInit } from './init-conversation';
 export { type PromptInputMessage } from '../../ai-elements/prompt-input';
 export { type ChatStatus } from 'ai';
 export { AgentTabs } from './agent-tabs';
+export * from './utils/chat-status';
+export * from './utils/notebook-cell-type';
+export * from './utils/notification-sound';
 export { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 export {
   DatasourceBadges,
@@ -25,6 +28,10 @@ export {
   type DatasourceBadgesProps,
 } from './datasource-badge';
 export { AgentStatusProvider, useAgentStatus } from './agent-status-context';
+export {
+  ConversationStateManagerProvider,
+  useConversationStateManager,
+} from './conversation-state-manager';
 
 // Data visualization components
 export * from './data-grid';
@@ -54,8 +61,28 @@ export {
   DEFAULT_MESSAGES_PER_PAGE,
 } from './hooks/use-infinite-messages';
 
+// Conversation utilities and hooks
+export {
+  formatRelativeTime,
+  formatRelativeDate,
+  groupConversationsByTime,
+  sortTimeGroups,
+  type Conversation,
+} from './utils/conversation-utils';
+export {
+  useConversationList,
+  type UseConversationListOptions,
+  type UseConversationListReturn,
+} from './hooks/use-conversation-list';
+
 // Virtuoso message list component
 export {
   VirtuosoMessageList,
   type VirtuosoMessageListRef,
 } from './virtuoso-message-list';
+
+// Confirm delete dialog
+export {
+  ConfirmDeleteDialog,
+  type ConfirmDeleteDialogProps,
+} from '../confirm-delete-dialog';

@@ -60,7 +60,9 @@
     "syncpack:fix": "pnpm dlx syncpack fix-mismatches",
     "env:generate": "turbo gen env",
     "env:validate": "turbo gen validate-env",
-    "check": "pnpm format:fix &&pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test"
+    "check": "pnpm format:fix &&pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "security:react": "ts-node scripts/check-react-vulns.ts",
+    "security:react:audit": "ENABLE_PNPM_AUDIT=true ts-node scripts/check-react-vulns.ts"
   },
   "prettier": "@qwery/prettier-config",
   "packageManager": "pnpm@10.18.1",
@@ -92,11 +94,14 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",
     "@types/node": "catalog:",
+    "@types/semver": "^7.5.8",
     "cross-env": "^10.1.0",
     "esbuild": "^0.27.1",
     "playwright": "^1.56.1",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
+    "semver": "^7.7.1",
+    "ts-node": "^10.9.2",
     "turbo": "^2.6.0",
     "typescript": "catalog:"
   }
