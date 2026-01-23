@@ -22,7 +22,7 @@ function wasmMimeTypePlugin(): Plugin {
             const publicDir = path.resolve(process.cwd(), 'apps/web/public');
             const filePath = path.join(publicDir, url);
 
-            if (fs.existsSync(filePath)) {
+            try {
               const stats = fs.statSync(filePath);
               if (stats.isFile()) {
                 if (url.endsWith('.js')) {
@@ -39,6 +39,8 @@ function wasmMimeTypePlugin(): Plugin {
                 res.end(fileContent);
                 return;
               }
+            } catch {
+              // File doesn't exist or was removed, continue to next middleware
             }
           } catch {
             //continue to next middleware

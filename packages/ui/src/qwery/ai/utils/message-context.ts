@@ -83,7 +83,7 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
       }
 
       // Ensure we always have a valid tool name
-      if (!toolName || toolName.trim() === '') {
+      if (!toolName || !toolName.trim()) {
         toolName = part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
         // Capitalize first letter of each word
         toolName = toolName
