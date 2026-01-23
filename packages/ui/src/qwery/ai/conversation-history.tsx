@@ -58,7 +58,7 @@ export function ConversationHistory({
   conversations = [],
   isLoading: _isLoading = false,
   currentConversationId,
-  isProcessing = false,
+  isProcessing: _isProcessing = false,
   processingConversationSlug,
   onConversationSelect,
   onNewConversation,
@@ -611,7 +611,8 @@ export function ConversationHistory({
                                   <Pencil className="size-3" />
                                 </button>
                               )}
-                              {processingConversationSlug === conversation.slug ? (
+                              {processingConversationSlug ===
+                              conversation.slug ? (
                                 <div className="flex shrink-0 items-center">
                                   <div className="size-2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50" />
                                 </div>

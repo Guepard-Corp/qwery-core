@@ -132,493 +132,531 @@ function MessageItemComponent({
         </Sources>
       )}
       {(() => {
-        const isAssistantMessage = normalizeUIRole(message.role) === 'assistant';
-        const firstPartIndex = isAssistantMessage ? 0 : -1;
-        const hasAssistantParts = isAssistantMessage && message.parts.length > 0;
-        
+        const isAssistantMessage =
+          normalizeUIRole(message.role) === 'assistant';
+        const hasAssistantParts =
+          isAssistantMessage && message.parts.length > 0;
+
         return (
-          <div className={cn(
-            hasAssistantParts && 'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden mt-4 animate-in fade-in slide-in-from-bottom-4 duration-300'
-          )}>
+          <div
+            className={cn(
+              hasAssistantParts &&
+                'animate-in fade-in slide-in-from-bottom-4 mt-4 flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden duration-300',
+            )}
+          >
             {hasAssistantParts && (
-              <div className="mt-1 shrink-0 pointer-events-none self-start">
+              <div className="pointer-events-none mt-1 shrink-0 self-start">
                 <BotAvatar size={6} isLoading={false} />
               </div>
             )}
-            <div className={cn(
-              hasAssistantParts && 'flex-1 flex flex-col gap-2 min-w-0 pr-2 sm:pr-4',
-              !hasAssistantParts && 'w-full'
-            )}>
+            <div
+              className={cn(
+                hasAssistantParts &&
+                  'flex min-w-0 flex-1 flex-col gap-2 pr-2 sm:pr-4',
+                !hasAssistantParts && 'w-full',
+              )}
+            >
               {message.parts.map((part, i: number) => {
-                const isLastTextPart = part.type === 'text' && i === lastTextPartIndex;
+                const isLastTextPart =
+                  part.type === 'text' && i === lastTextPartIndex;
                 const isStreaming =
-                  isChatStreaming(status) && isLastAssistantMessage && isLastTextPart;
+                  isChatStreaming(status) &&
+                  isLastAssistantMessage &&
+                  isLastTextPart;
                 const isResponseComplete =
                   !isStreaming && isLastAssistantMessage && isLastTextPart;
                 const statusConfig = getChatStatusConfig(status);
                 switch (part.type) {
-          case 'text': {
-            const isEditing = editingMessageId === message.id;
-            
-            if (normalizeUIRole(message.role) === 'user') {
-              return (
-                <div
-                  key={`${message.id}-${i}`}
-                  className={cn(
-                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden justify-end animate-in fade-in slide-in-from-bottom-4 duration-300',
-                  )}
-                >
-                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                  {isEditing &&
-                  normalizeUIRole(message.role) === 'user' ? (
-                    <>
-                      <Textarea
-                        value={editText}
-                        onChange={(e) => {
-                          onEditTextChange(e.target.value);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                            e.preventDefault();
-                            onEditSubmit();
-                          } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            onEditCancel();
-                          }
-                        }}
-                        className="min-h-[60px] resize-none"
-                        autoFocus
-                      />
-                      <div className="mt-1 flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={onEditSubmit}
-                          className="h-7 w-7"
-                          title="Save"
-                        >
-                          <CheckIcon className="size-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={onEditCancel}
-                          className="h-7 w-7"
-                          title="Cancel"
-                        >
-                          <XIcon className="size-3" />
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {normalizeUIRole(message.role) === 'user' ? (
-                        (() => {
-                          const { text, context } = parseMessageWithContext(
-                            part.text,
-                          );
-                          const messageDatasources = (() => {
-                            if (
-                              message.metadata &&
-                              typeof message.metadata === 'object'
-                            ) {
-                              const metadata = message.metadata as Record<
-                                string,
-                                unknown
-                              >;
-                              if (
-                                'datasources' in metadata &&
-                                Array.isArray(metadata.datasources)
-                              ) {
-                                const metadataDatasources = (
-                                  metadata.datasources as string[]
-                                )
-                                  .map((dsId) =>
-                                    datasources?.find((ds) => ds.id === dsId),
-                                  )
-                                  .filter(
-                                    (ds): ds is DatasourceItem =>
-                                      ds !== undefined,
-                                  );
-                                if (metadataDatasources.length > 0) {
-                                  return metadataDatasources;
-                                }
-                              }
-                            }
+                  case 'text': {
+                    const isEditing = editingMessageId === message.id;
 
-                            const lastUserMessage = [...messages]
-                              .reverse()
-                              .find(
-                                (msg) =>
-                                  normalizeUIRole(msg.role) === 'user',
-                              );
-
-                            const isLastUserMessage =
-                              lastUserMessage?.id === message.id;
-
-                            if (
-                              isLastUserMessage &&
-                              selectedDatasources &&
-                              selectedDatasources.length > 0
-                            ) {
-                              return selectedDatasources
-                                .map((dsId) =>
-                                  datasources?.find((ds) => ds.id === dsId),
-                                )
-                                .filter(
-                                  (ds): ds is DatasourceItem =>
-                                    ds !== undefined,
-                                );
-                            }
-
-                            return undefined;
-                          })();
-
-                          if (context) {
-                            return (
-                              <UserMessageBubble
-                                key={`${message.id}-${i}`}
-                                text={text}
-                                context={context}
-                                messageId={message.id}
-                                messages={messages}
-                                datasources={messageDatasources}
-                                pluginLogoMap={pluginLogoMap}
-                              />
-                            );
-                          }
-
-                          return (
-                            <div className="flex flex-col items-end gap-1.5">
-                              {messageDatasources &&
-                                messageDatasources.length > 0 && (
-                                  <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
-                                    <DatasourceBadges
-                                      datasources={messageDatasources}
-                                      pluginLogoMap={pluginLogoMap}
-                                    />
-                                  </div>
-                                )}
-                              <div className="group w-full max-w-full min-w-0">
-                                <Message
-                                  key={`${message.id}-${i}`}
-                                  from={message.role}
-                                  className="w-full max-w-full min-w-0"
-                                >
-                                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                    <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                      {part.text}
-                                    </div>
-                                  </MessageContent>
-                                </Message>
-                                {/* Copy button for user messages - only visible on hover */}
-                                {normalizeUIRole(message.role) === 'user' && isLastTextPart && (
-                                  <div className="mt-1 flex items-center justify-end gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={async () => {
-                                        const partId = `${message.id}-${i}`;
-                                        try {
-                                          await navigator.clipboard.writeText(part.text);
-                                          onCopyPart(partId);
-                                          setTimeout(() => {
-                                            onCopyPart('');
-                                          }, 2000);
-                                        } catch (error) {
-                                          console.error('Failed to copy:', error);
-                                        }
-                                      }}
-                                      className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                      title={
-                                        copiedMessagePartId === `${message.id}-${i}`
-                                          ? t('sidebar.copied')
-                                          : t('sidebar.copy')
-                                      }
-                                    >
-                                      {copiedMessagePartId === `${message.id}-${i}` ? (
-                                        <CheckIcon className="size-3 text-green-600" />
-                                      ) : (
-                                        <CopyIcon className="size-3" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        <>
-                          {!isStreaming && (
-                            <Message
-                              from={message.role}
-                              className="w-full max-w-full min-w-0"
-                            >
-                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                  <StreamdownWithSuggestions
-                                    sendMessage={sendMessage}
-                                    messages={messages}
-                                    currentMessageId={message.id}
-                                  >
-                                    {part.text}
-                                  </StreamdownWithSuggestions>
-                                </div>
-                              </MessageContent>
-                            </Message>
+                    if (normalizeUIRole(message.role) === 'user') {
+                      return (
+                        <div
+                          key={`${message.id}-${i}`}
+                          className={cn(
+                            'animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start justify-end gap-3 overflow-x-hidden duration-300',
                           )}
-                          {isStreaming && (
-                            <Message
-                              from={message.role}
-                              className="w-full max-w-full min-w-0"
-                            >
-                              <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                                  <StreamdownWithSuggestions
-                                    sendMessage={sendMessage}
-                                    messages={messages}
-                                    currentMessageId={message.id}
+                        >
+                          <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                            {isEditing &&
+                            normalizeUIRole(message.role) === 'user' ? (
+                              <>
+                                <Textarea
+                                  value={editText}
+                                  onChange={(e) => {
+                                    onEditTextChange(e.target.value);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (
+                                      e.key === 'Enter' &&
+                                      (e.metaKey || e.ctrlKey)
+                                    ) {
+                                      e.preventDefault();
+                                      onEditSubmit();
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      onEditCancel();
+                                    }
+                                  }}
+                                  className="min-h-[60px] resize-none"
+                                  autoFocus
+                                />
+                                <div className="mt-1 flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={onEditSubmit}
+                                    className="h-7 w-7"
+                                    title="Save"
                                   >
-                                    {part.text}
-                                  </StreamdownWithSuggestions>
+                                    <CheckIcon className="size-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={onEditCancel}
+                                    className="h-7 w-7"
+                                    title="Cancel"
+                                  >
+                                    <XIcon className="size-3" />
+                                  </Button>
                                 </div>
-                              </MessageContent>
-                            </Message>
-                          )}
-                        </>
-                      )}
-                      {/* Actions below the bubble - only for assistant messages */}
-                      {isResponseComplete &&
-                        message.role === 'assistant' && (
-                        <div className="mt-1 flex items-center gap-2">
-                          {statusConfig.showRegenerateButton &&
-                            !(
-                              isLastAssistantMessage &&
-                              statusConfig.hideRegenerateOnLastMessage
-                            ) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onRegenerate}
-                                className="h-7 w-7"
-                                title="Retry"
-                              >
-                                <RefreshCcwIcon className="size-3" />
-                              </Button>
-                            )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={async () => {
-                              const partId = `${message.id}-${i}`;
-                              try {
-                                await navigator.clipboard.writeText(part.text);
-                                onCopyPart(partId);
-                                setTimeout(() => {
-                                  onCopyPart('');
-                                }, 2000);
-                              } catch (error) {
-                                console.error('Failed to copy:', error);
-                              }
-                            }}
-                            className="h-7 w-7"
-                            title={
-                              copiedMessagePartId === `${message.id}-${i}`
-                                ? 'Copied!'
-                                : 'Copy'
-                            }
-                          >
-                            {copiedMessagePartId === `${message.id}-${i}` ? (
-                              <CheckIcon className="size-3 text-green-600" />
+                              </>
                             ) : (
-                              <CopyIcon className="size-3" />
+                              <>
+                                {normalizeUIRole(message.role) === 'user' ? (
+                                  (() => {
+                                    const { text, context } =
+                                      parseMessageWithContext(part.text);
+                                    const messageDatasources = (() => {
+                                      if (
+                                        message.metadata &&
+                                        typeof message.metadata === 'object'
+                                      ) {
+                                        const metadata =
+                                          message.metadata as Record<
+                                            string,
+                                            unknown
+                                          >;
+                                        if (
+                                          'datasources' in metadata &&
+                                          Array.isArray(metadata.datasources)
+                                        ) {
+                                          const metadataDatasources = (
+                                            metadata.datasources as string[]
+                                          )
+                                            .map((dsId) =>
+                                              datasources?.find(
+                                                (ds) => ds.id === dsId,
+                                              ),
+                                            )
+                                            .filter(
+                                              (ds): ds is DatasourceItem =>
+                                                ds !== undefined,
+                                            );
+                                          if (metadataDatasources.length > 0) {
+                                            return metadataDatasources;
+                                          }
+                                        }
+                                      }
+
+                                      const lastUserMessage = [...messages]
+                                        .reverse()
+                                        .find(
+                                          (msg) =>
+                                            normalizeUIRole(msg.role) ===
+                                            'user',
+                                        );
+
+                                      const isLastUserMessage =
+                                        lastUserMessage?.id === message.id;
+
+                                      if (
+                                        isLastUserMessage &&
+                                        selectedDatasources &&
+                                        selectedDatasources.length > 0
+                                      ) {
+                                        return selectedDatasources
+                                          .map((dsId) =>
+                                            datasources?.find(
+                                              (ds) => ds.id === dsId,
+                                            ),
+                                          )
+                                          .filter(
+                                            (ds): ds is DatasourceItem =>
+                                              ds !== undefined,
+                                          );
+                                      }
+
+                                      return undefined;
+                                    })();
+
+                                    if (context) {
+                                      return (
+                                        <UserMessageBubble
+                                          key={`${message.id}-${i}`}
+                                          text={text}
+                                          context={context}
+                                          messageId={message.id}
+                                          messages={messages}
+                                          datasources={messageDatasources}
+                                          pluginLogoMap={pluginLogoMap}
+                                        />
+                                      );
+                                    }
+
+                                    return (
+                                      <div className="flex flex-col items-end gap-1.5">
+                                        {messageDatasources &&
+                                          messageDatasources.length > 0 && (
+                                            <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
+                                              <DatasourceBadges
+                                                datasources={messageDatasources}
+                                                pluginLogoMap={pluginLogoMap}
+                                              />
+                                            </div>
+                                          )}
+                                        <div className="group w-full max-w-full min-w-0">
+                                          <Message
+                                            key={`${message.id}-${i}`}
+                                            from={message.role}
+                                            className="w-full max-w-full min-w-0"
+                                          >
+                                            <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                              <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                {part.text}
+                                              </div>
+                                            </MessageContent>
+                                          </Message>
+                                          {/* Copy button for user messages - only visible on hover */}
+                                          {normalizeUIRole(message.role) ===
+                                            'user' &&
+                                            isLastTextPart && (
+                                              <div className="mt-1 flex items-center justify-end gap-2">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={async () => {
+                                                    const partId = `${message.id}-${i}`;
+                                                    try {
+                                                      await navigator.clipboard.writeText(
+                                                        part.text,
+                                                      );
+                                                      onCopyPart(partId);
+                                                      setTimeout(() => {
+                                                        onCopyPart('');
+                                                      }, 2000);
+                                                    } catch (error) {
+                                                      console.error(
+                                                        'Failed to copy:',
+                                                        error,
+                                                      );
+                                                    }
+                                                  }}
+                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                  title={
+                                                    copiedMessagePartId ===
+                                                    `${message.id}-${i}`
+                                                      ? t('sidebar.copied')
+                                                      : t('sidebar.copy')
+                                                  }
+                                                >
+                                                  {copiedMessagePartId ===
+                                                  `${message.id}-${i}` ? (
+                                                    <CheckIcon className="size-3 text-green-600" />
+                                                  ) : (
+                                                    <CopyIcon className="size-3" />
+                                                  )}
+                                                </Button>
+                                              </div>
+                                            )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  <>
+                                    {!isStreaming && (
+                                      <Message
+                                        from={message.role}
+                                        className="w-full max-w-full min-w-0"
+                                      >
+                                        <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                          <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                            <StreamdownWithSuggestions
+                                              sendMessage={sendMessage}
+                                              messages={messages}
+                                              currentMessageId={message.id}
+                                            >
+                                              {part.text}
+                                            </StreamdownWithSuggestions>
+                                          </div>
+                                        </MessageContent>
+                                      </Message>
+                                    )}
+                                    {isStreaming && (
+                                      <Message
+                                        from={message.role}
+                                        className="w-full max-w-full min-w-0"
+                                      >
+                                        <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                                          <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                            <StreamdownWithSuggestions
+                                              sendMessage={sendMessage}
+                                              messages={messages}
+                                              currentMessageId={message.id}
+                                            >
+                                              {part.text}
+                                            </StreamdownWithSuggestions>
+                                          </div>
+                                        </MessageContent>
+                                      </Message>
+                                    )}
+                                  </>
+                                )}
+                                {/* Actions below the bubble - only for assistant messages */}
+                                {isResponseComplete &&
+                                  message.role === 'assistant' && (
+                                    <div className="mt-1 flex items-center gap-2">
+                                      {statusConfig.showRegenerateButton &&
+                                        !(
+                                          isLastAssistantMessage &&
+                                          statusConfig.hideRegenerateOnLastMessage
+                                        ) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={onRegenerate}
+                                            className="h-7 w-7"
+                                            title="Retry"
+                                          >
+                                            <RefreshCcwIcon className="size-3" />
+                                          </Button>
+                                        )}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={async () => {
+                                          const partId = `${message.id}-${i}`;
+                                          try {
+                                            await navigator.clipboard.writeText(
+                                              part.text,
+                                            );
+                                            onCopyPart(partId);
+                                            setTimeout(() => {
+                                              onCopyPart('');
+                                            }, 2000);
+                                          } catch (error) {
+                                            console.error(
+                                              'Failed to copy:',
+                                              error,
+                                            );
+                                          }
+                                        }}
+                                        className="h-7 w-7"
+                                        title={
+                                          copiedMessagePartId ===
+                                          `${message.id}-${i}`
+                                            ? 'Copied!'
+                                            : 'Copy'
+                                        }
+                                      >
+                                        {copiedMessagePartId ===
+                                        `${message.id}-${i}` ? (
+                                          <CheckIcon className="size-3 text-green-600" />
+                                        ) : (
+                                          <CopyIcon className="size-3" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  )}
+                              </>
                             )}
-                          </Button>
+                          </div>
+                          {normalizeUIRole(message.role) === 'user' && (
+                            <div className="mt-1 size-6 shrink-0" />
+                          )}
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                  {normalizeUIRole(message.role) === 'user' && (
-                    <div className="mt-1 size-6 shrink-0" />
-                  )}
-                </div>
-              );
-            }
-            return (
-              <div
-                key={`${message.id}-${i}`}
-                className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden pr-2 sm:pr-4"
-              >
-                {!isStreaming && (
-                  <Message
-                    from={message.role}
-                    className="w-full max-w-full min-w-0"
-                  >
-                    <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                      <StreamdownWithSuggestions
-                        sendMessage={sendMessage}
-                        messages={messages}
-                        currentMessageId={message.id}
+                      );
+                    }
+                    return (
+                      <div
+                        key={`${message.id}-${i}`}
+                        className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden pr-2 sm:pr-4"
                       >
-                        {part.text}
-                      </StreamdownWithSuggestions>
-                    </MessageContent>
-                  </Message>
-                )}
-                {isStreaming && (
-                  <Message
-                    from={message.role}
-                    className="w-full max-w-full min-w-0"
-                  >
-                    <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                      <StreamdownWithSuggestions
-                        sendMessage={sendMessage}
-                        messages={messages}
-                        currentMessageId={message.id}
-                      >
-                        {part.text}
-                      </StreamdownWithSuggestions>
-                    </MessageContent>
-                  </Message>
-                )}
-                {/* Actions below the bubble */}
-                {isResponseComplete && (
-                  <div className="mt-1 flex items-center gap-2">
-                    {message.role === 'assistant' &&
-                      statusConfig.showRegenerateButton &&
-                      !(
-                        isLastAssistantMessage &&
-                        statusConfig.hideRegenerateOnLastMessage
-                      ) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={onRegenerate}
-                          className="h-7 w-7"
-                          title="Retry"
-                        >
-                          <RefreshCcwIcon className="size-3" />
-                        </Button>
-                      )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={async () => {
-                        const partId = `${message.id}-${i}`;
-                        try {
-                          await navigator.clipboard.writeText(part.text);
-                          onCopyPart(partId);
-                          setTimeout(() => {
-                            onCopyPart('');
-                          }, 2000);
-                        } catch (error) {
-                          console.error('Failed to copy:', error);
+                        {!isStreaming && (
+                          <Message
+                            from={message.role}
+                            className="w-full max-w-full min-w-0"
+                          >
+                            <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                              <StreamdownWithSuggestions
+                                sendMessage={sendMessage}
+                                messages={messages}
+                                currentMessageId={message.id}
+                              >
+                                {part.text}
+                              </StreamdownWithSuggestions>
+                            </MessageContent>
+                          </Message>
+                        )}
+                        {isStreaming && (
+                          <Message
+                            from={message.role}
+                            className="w-full max-w-full min-w-0"
+                          >
+                            <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                              <StreamdownWithSuggestions
+                                sendMessage={sendMessage}
+                                messages={messages}
+                                currentMessageId={message.id}
+                              >
+                                {part.text}
+                              </StreamdownWithSuggestions>
+                            </MessageContent>
+                          </Message>
+                        )}
+                        {/* Actions below the bubble */}
+                        {isResponseComplete && (
+                          <div className="mt-1 flex items-center gap-2">
+                            {message.role === 'assistant' &&
+                              statusConfig.showRegenerateButton &&
+                              !(
+                                isLastAssistantMessage &&
+                                statusConfig.hideRegenerateOnLastMessage
+                              ) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={onRegenerate}
+                                  className="h-7 w-7"
+                                  title="Retry"
+                                >
+                                  <RefreshCcwIcon className="size-3" />
+                                </Button>
+                              )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={async () => {
+                                const partId = `${message.id}-${i}`;
+                                try {
+                                  await navigator.clipboard.writeText(
+                                    part.text,
+                                  );
+                                  onCopyPart(partId);
+                                  setTimeout(() => {
+                                    onCopyPart('');
+                                  }, 2000);
+                                } catch (error) {
+                                  console.error('Failed to copy:', error);
+                                }
+                              }}
+                              className="h-7 w-7"
+                              title={
+                                copiedMessagePartId === `${message.id}-${i}`
+                                  ? 'Copied!'
+                                  : 'Copy'
+                              }
+                            >
+                              {copiedMessagePartId === `${message.id}-${i}` ? (
+                                <CheckIcon className="size-3 text-green-600" />
+                              ) : (
+                                <CopyIcon className="size-3" />
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  case 'reasoning':
+                    return (
+                      <ReasoningPart
+                        key={`${message.id}-${i}`}
+                        part={part as { type: 'reasoning'; text: string }}
+                        messageId={message.id}
+                        index={i}
+                        isStreaming={
+                          isChatStreaming(status) &&
+                          i === message.parts.length - 1 &&
+                          message.id === messages.at(-1)?.id
                         }
-                      }}
-                      className="h-7 w-7"
-                      title={
-                        copiedMessagePartId === `${message.id}-${i}`
-                          ? 'Copied!'
-                          : 'Copy'
-                      }
-                    >
-                      {copiedMessagePartId === `${message.id}-${i}` ? (
-                        <CheckIcon className="size-3 text-green-600" />
-                      ) : (
-                        <CopyIcon className="size-3" />
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          }
-          case 'reasoning':
-            return (
-              <ReasoningPart
-                key={`${message.id}-${i}`}
-                part={part as { type: 'reasoning'; text: string }}
-                messageId={message.id}
-                index={i}
-                isStreaming={
-                  isChatStreaming(status) &&
-                  i === message.parts.length - 1 &&
-                  message.id === messages.at(-1)?.id
-                }
-                sendMessage={sendMessage}
-                messages={messages}
-              />
-            );
-          default:
-            if (part.type.startsWith('tool-')) {
-              const toolPart = part as ToolUIPart;
-              const inProgressStates = new Set([
-                'input-streaming',
-                'input-available',
-                'approval-requested',
-              ]);
-              const isToolInProgress = inProgressStates.has(
-                toolPart.state as string,
-              );
-
-              if (isToolInProgress) {
-                const toolName =
-                  'toolName' in toolPart &&
-                  typeof toolPart.toolName === 'string'
-                    ? getUserFriendlyToolName(`tool-${toolPart.toolName}`)
-                    : getUserFriendlyToolName(toolPart.type);
-                return (
-                  <div
-                    key={`${message.id}-${i}`}
-                    className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
-                  >
-                    <Tool
-                      defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
-                      variant={variant}
-                      className={cn(
-                        'max-w-[min(43.2rem,calc(100%-3rem))]',
-                        'mx-4 sm:mx-6',
-                      )}
-                    >
-                      <ToolHeader
-                        title={toolName}
-                        type={toolPart.type}
-                        state={toolPart.state}
-                        variant={variant}
+                        sendMessage={sendMessage}
+                        messages={messages}
                       />
-                      <ToolContent variant={variant}>
-                        {toolPart.input != null ? (
-                          <ToolInput input={toolPart.input} />
-                        ) : null}
-                        <div className="flex items-center justify-center py-8">
-                          <Loader size={20} />
-                        </div>
-                      </ToolContent>
-                    </Tool>
-                  </div>
-                );
-              }
+                    );
+                  default:
+                    if (part.type.startsWith('tool-')) {
+                      const toolPart = part as ToolUIPart;
+                      const inProgressStates = new Set([
+                        'input-streaming',
+                        'input-available',
+                        'approval-requested',
+                      ]);
+                      const isToolInProgress = inProgressStates.has(
+                        toolPart.state as string,
+                      );
 
-              // Use ToolPart component for completed tools (includes visualizers)
-              return (
-                <div
-                  key={`${message.id}-${i}`}
-                  className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
-                >
-                  <ToolPart
-                    part={toolPart}
-                    messageId={message.id}
-                    index={i}
-                    onPasteToNotebook={onPasteToNotebook}
-                    notebookContext={notebookContext}
-                  />
-                </div>
-              );
-            }
-            return null;
-        }
+                      if (isToolInProgress) {
+                        const toolName =
+                          'toolName' in toolPart &&
+                          typeof toolPart.toolName === 'string'
+                            ? getUserFriendlyToolName(
+                                `tool-${toolPart.toolName}`,
+                              )
+                            : getUserFriendlyToolName(toolPart.type);
+                        return (
+                          <div
+                            key={`${message.id}-${i}`}
+                            className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
+                          >
+                            <Tool
+                              defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
+                              variant={variant}
+                              className={cn(
+                                'max-w-[min(43.2rem,calc(100%-3rem))]',
+                                'mx-4 sm:mx-6',
+                              )}
+                            >
+                              <ToolHeader
+                                title={toolName}
+                                type={toolPart.type}
+                                state={toolPart.state}
+                                variant={variant}
+                              />
+                              <ToolContent variant={variant}>
+                                {toolPart.input != null ? (
+                                  <ToolInput input={toolPart.input} />
+                                ) : null}
+                                <div className="flex items-center justify-center py-8">
+                                  <Loader size={20} />
+                                </div>
+                              </ToolContent>
+                            </Tool>
+                          </div>
+                        );
+                      }
+
+                      // Use ToolPart component for completed tools (includes visualizers)
+                      return (
+                        <div
+                          key={`${message.id}-${i}`}
+                          className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
+                        >
+                          <ToolPart
+                            part={toolPart}
+                            messageId={message.id}
+                            index={i}
+                            onPasteToNotebook={onPasteToNotebook}
+                            notebookContext={notebookContext}
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                }
               })}
             </div>
           </div>

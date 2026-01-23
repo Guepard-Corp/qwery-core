@@ -750,7 +750,7 @@ export default function NotebookPage() {
 
     try {
       await saveNotebookMutation.mutateAsync(notebookData);
-      
+
       if (currentNotebookStateRef.current) {
         lastSavedStateRef.current = {
           cells: currentNotebookStateRef.current.cells.map((cell) => ({

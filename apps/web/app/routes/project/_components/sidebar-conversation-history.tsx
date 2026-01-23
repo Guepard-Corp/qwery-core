@@ -7,7 +7,6 @@ import { Trans } from '@qwery/ui/trans';
 import {
   MessageCircle,
   Pencil,
-  Check,
   X,
   Bookmark,
   Copy,
@@ -45,14 +44,10 @@ import {
   DropdownMenuSeparator,
 } from '@qwery/ui/dropdown-menu';
 import { ChevronRight, ArrowRight } from 'lucide-react';
-import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
-import {
-  type Conversation,
-  ConfirmDeleteDialog,
-} from '@qwery/ui/ai';
+import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
 
 export interface SidebarConversationHistoryProps {
@@ -74,10 +69,10 @@ export function SidebarConversationHistory({
   conversations = [],
   isLoading = false,
   currentConversationId,
-  isProcessing = false,
+  isProcessing: _isProcessing = false,
   processingConversationSlug,
   searchQuery = '',
-  onConversationSelect,
+  onConversationSelect: _onConversationSelect,
   onConversationEdit,
   onConversationDelete,
   onConversationDuplicate,
@@ -87,11 +82,11 @@ export function SidebarConversationHistory({
   const { t } = useTranslation('common');
   const location = useLocation();
   const params = useParams();
-  
+
   // Get project slug from pathname or params
   const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
   const projectSlug = params.slug || projectSlugMatch?.[1];
-  
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
@@ -107,9 +102,13 @@ export function SidebarConversationHistory({
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
   const justEnteredEditModeRef = useRef(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
 
-  const [selectionOrderMap, setSelectionOrderMap] = useState<Map<string, number>>(() => {
+  const [selectionOrderMap, setSelectionOrderMap] = useState<
+    Map<string, number>
+  >(() => {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('conversation-selection-order');
@@ -135,30 +134,32 @@ export function SidebarConversationHistory({
   // Update selection order when current conversation changes
   useEffect(() => {
     if (currentConversationId && typeof window !== 'undefined') {
-      setSelectionOrderMap((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(currentConversationId, Date.now());
+      setTimeout(() => {
+        setSelectionOrderMap((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(currentConversationId, Date.now());
 
-        if (newMap.size > 100) {
-          const entries = Array.from(newMap.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 100);
-          newMap.clear();
-          entries.forEach(([id, timestamp]) => newMap.set(id, timestamp));
-        }
+          if (newMap.size > 100) {
+            const entries = Array.from(newMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 100);
+            newMap.clear();
+            entries.forEach(([id, timestamp]) => newMap.set(id, timestamp));
+          }
 
-        try {
-          const serializable = Object.fromEntries(newMap);
-          localStorage.setItem(
-            'conversation-selection-order',
-            JSON.stringify(serializable),
-          );
-        } catch (error) {
-          console.error('Failed to save selection order:', error);
-        }
+          try {
+            const serializable = Object.fromEntries(newMap);
+            localStorage.setItem(
+              'conversation-selection-order',
+              JSON.stringify(serializable),
+            );
+          } catch (error) {
+            console.error('Failed to save selection order:', error);
+          }
 
-        return newMap;
-      });
+          return newMap;
+        });
+      }, 0);
     }
   }, [currentConversationId]);
 
@@ -183,9 +184,9 @@ export function SidebarConversationHistory({
 
   // Get current conversation separately
   const currentConversation = useMemo(() => {
-    return filteredConversations.find(
-      (c) => c.id === currentConversationId,
-    ) || null;
+    return (
+      filteredConversations.find((c) => c.id === currentConversationId) || null
+    );
   }, [filteredConversations, currentConversationId]);
 
   // Sort conversations by selection order: current first, then by selection timestamp, then by updatedAt
@@ -343,11 +344,11 @@ export function SidebarConversationHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="overflow-hidden min-w-0">
+      <SidebarGroup className="min-w-0 overflow-hidden">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-              <div className="flex items-center justify-between w-full">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+              <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
                   className={cn(
@@ -358,7 +359,7 @@ export function SidebarConversationHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
+          <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
             <SidebarGroupContent className="min-h-0">
               <LoadingSkeleton variant="sidebar" count={5} />
             </SidebarGroupContent>
@@ -370,11 +371,11 @@ export function SidebarConversationHistory({
 
   return (
     <>
-      <SidebarGroup className="overflow-hidden min-w-0">
+      <SidebarGroup className="min-w-0 overflow-hidden">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-              <div className="flex items-center justify-between w-full">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+              <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
                   className={cn(
@@ -385,408 +386,471 @@ export function SidebarConversationHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
-            <SidebarGroupContent className="overflow-hidden relative min-h-0">
-          {!hasConversations ? (
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
-                  <div>
-                    <p className="font-medium"><Trans i18nKey="common:sidebar.noChatsFound" /></p>
-                    <p className="text-xs">Start a new chat to get started</p>
-                  </div>
-                </div>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          ) : (
-            <div className="relative">
-              {/* Fade effect at bottom */}
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-sidebar to-transparent z-10" />
-              
-              <SidebarMenu className="pb-12">
-              {/* Current Conversation - Always on top */}
-              {currentConversation && (
-                <SidebarMenuItem>
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                      <div className="w-full">
-                        <SidebarMenuButton
-                          asChild
-                          isActive={true}
-                          tooltip={currentConversation.title}
-                        >
-                          <Link
-                            to={createPath(
-                              pathsConfig.app.conversation,
-                              currentConversation.slug,
-                            )}
-                            className="group flex items-center gap-2 w-full min-w-0"
-                          >
-                            <MessageCircle className="size-4 shrink-0" />
-                            {editingId === currentConversation.id ? (
-                            <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                              <Input
-                                ref={editInputRef}
-                                type="text"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={() => handleEditBlur(currentConversation.id)}
-                                onKeyDown={(e) => handleEditKeyDown(e, currentConversation.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
-                                placeholder="Chat title..."
-                                maxLength={100}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelEdit(currentConversation.id);
-                                }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                aria-label={t('sidebar.discardChanges')}
-                              >
-                                <X className="size-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <span
-                                className={cn(
-                                  'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
-                                  animatingIds.has(currentConversation.id) &&
-                                    'animate-in fade-in-0 slide-in-from-left-2',
-                                )}
-                                title={currentConversation.title}
-                              >
-                                {truncateChatTitle(currentConversation.title)}
-                              </span>
-                              <div className="relative shrink-0">
-                                {processingConversationSlug ===
-                                currentConversation.slug ? (
-                                  <div className="size-2 shrink-0 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 group-hover:opacity-0 transition-opacity absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                ) : (
-                                  <div className="bg-primary size-1.5 shrink-0 rounded-full group-hover:opacity-0 transition-opacity absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                )}
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
-                                    >
-                                      <MoreHorizontal className="size-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartEdit(
-                                        currentConversation.id,
-                                        currentConversation.title,
-                                      );
-                                    }}
-                                  >
-                                    <Pencil className="mr-2 size-4" />
-                                    Rename
-                                  </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleBookmark(currentConversation.id);
-                                            }}
-                                            disabled
-                                            className="opacity-50 cursor-not-allowed"
-                                          >
-                                            <Bookmark
-                                              className={cn(
-                                                'mr-2 size-4',
-                                                bookmarkedIds.has(currentConversation.id) &&
-                                                  'fill-current',
-                                              )}
-                                            />
-                                            {bookmarkedIds.has(currentConversation.id) ? (
-                                              <Trans i18nKey="common:sidebar.unpin" />
-                                            ) : (
-                                              <Trans i18nKey="common:sidebar.pinChat" />
-                                            )}
-                                          </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                          <DropdownMenuItem
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteClick(currentConversation.id);
-                                            }}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <Trash2 className="mr-2 size-4" />
-                                            Delete
-                                          </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              </div>
-                            </>
-                          )}
-                          </Link>
-                        </SidebarMenuButton>
+          <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
+            <SidebarGroupContent className="relative min-h-0 overflow-hidden">
+              {!hasConversations ? (
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
+                      <div>
+                        <p className="font-medium">
+                          <Trans i18nKey="common:sidebar.noChatsFound" />
+                        </p>
+                        <p className="text-xs">
+                          Start a new chat to get started
+                        </p>
                       </div>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem
-                        onClick={() =>
-                          handleStartEdit(
-                            currentConversation.id,
-                            currentConversation.title,
-                          )
-                        }
-                      >
-                        <Pencil className="mr-2 size-4" />
-                        <Trans i18nKey="common:sidebar.rename" />
-                      </ContextMenuItem>
-                      {onConversationBookmark && (
-                        <ContextMenuItem
-                          onClick={() =>
-                            onConversationBookmark(currentConversation.id)
-                          }
-                        >
-                          <Bookmark className="mr-2 size-4" />
-                          <Trans i18nKey="common:sidebar.bookmark" />
-                        </ContextMenuItem>
-                      )}
-                      {onConversationDuplicate && (
-                        <ContextMenuItem
-                          onClick={() =>
-                            onConversationDuplicate(currentConversation.id)
-                          }
-                        >
-                          <Copy className="mr-2 size-4" />
-                          <Trans i18nKey="common:sidebar.duplicate" />
-                        </ContextMenuItem>
-                      )}
-                      {onConversationShare && (
-                        <ContextMenuItem
-                          onClick={() =>
-                            onConversationShare(currentConversation.id)
-                          }
-                        >
-                          <Share2 className="mr-2 size-4" />
-                          <Trans i18nKey="common:sidebar.share" />
-                        </ContextMenuItem>
-                      )}
-                      <ContextMenuSeparator />
-                        <ContextMenuItem
-                          onClick={() => handleDeleteClick(currentConversation.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 size-4" />
-                          <Trans i18nKey="common:sidebar.delete" />
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                </SidebarMenuItem>
-              )}
-
-              {/* Other Conversations - Flat list */}
-              {limitedConversations.map((conversation) => {
-                const isEditing = editingId === conversation.id;
-                const conversationPath = createPath(
-                  pathsConfig.app.conversation,
-                  conversation.slug,
-                );
-
-                return (
-                  <SidebarMenuItem key={conversation.id}>
-                    <ContextMenu>
-                      <ContextMenuTrigger asChild>
-                        <div className="w-full">
-                          <SidebarMenuButton
-                            asChild
-                            tooltip={conversation.title}
-                          >
-                            <Link
-                              to={conversationPath}
-                              className="group flex items-center gap-2 w-full min-w-0"
-                            >
-                              <MessageCircle className="size-4 shrink-0" />
-                              {isEditing ? (
-                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                  <Input
-                                    ref={editInputRef}
-                                    type="text"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    onBlur={() => handleEditBlur(conversation.id)}
-                                    onKeyDown={(e) => handleEditKeyDown(e, conversation.id)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
-                                    placeholder="Chat title..."
-                                    maxLength={100}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelEdit(conversation.id);
-                                    }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                    aria-label={t('sidebar.discardChanges')}
-                                  >
-                                    <X className="size-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <>
-                                  <span
-                                    className={cn(
-                                      'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
-                                      animatingIds.has(conversation.id) &&
-                                        'animate-in fade-in-0 slide-in-from-left-2',
-                                    )}
-                                    title={conversation.title}
-                                  >
-                                    {truncateChatTitle(conversation.title)}
-                                  </span>
-                                  <div className="relative shrink-0">
-                                    {processingConversationSlug ===
-                                    conversation.slug ? (
-                                      <div className="size-2 shrink-0 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 group-hover:opacity-0 transition-opacity absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                    ) : null}
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <button
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
-                                        >
-                                          <MoreHorizontal className="size-4" />
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleStartEdit(
-                                              conversation.id,
-                                              conversation.title,
-                                            );
-                                          }}
-                                        >
-                                          <Pencil className="mr-2 size-4" />
-                                          Rename
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleBookmark(conversation.id);
-                                          }}
-                                          disabled
-                                          className="opacity-50 cursor-not-allowed"
-                                        >
-                                          <Bookmark
-                                            className={cn(
-                                              'mr-2 size-4',
-                                              bookmarkedIds.has(conversation.id) &&
-                                                'fill-current',
-                                            )}
-                                          />
-                                          {bookmarkedIds.has(conversation.id) ? (
-                                            <Trans i18nKey="common:sidebar.unpin" />
-                                          ) : (
-                                            <Trans i18nKey="common:sidebar.pinChat" />
-                                          )}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteClick(conversation.id);
-                                          }}
-                                          className="text-destructive focus:text-destructive"
-                                        >
-                                          <Trash2 className="mr-2 size-4" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </>
-                              )}
-                            </Link>
-                          </SidebarMenuButton>
-                        </div>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem
-                          onClick={() =>
-                            handleStartEdit(
-                              conversation.id,
-                              conversation.title,
-                            )
-                          }
-                        >
-                          <Pencil className="mr-2 size-4" />
-                          Rename
-                        </ContextMenuItem>
-                        {onConversationBookmark && (
-                          <ContextMenuItem
-                            onClick={() =>
-                              onConversationBookmark(conversation.id)
-                            }
-                          >
-                            <Bookmark className="mr-2 size-4" />
-                            Bookmark
-                          </ContextMenuItem>
-                        )}
-                        {onConversationDuplicate && (
-                          <ContextMenuItem
-                            onClick={() =>
-                              onConversationDuplicate(conversation.id)
-                            }
-                          >
-                            <Copy className="mr-2 size-4" />
-                            Duplicate
-                          </ContextMenuItem>
-                        )}
-                        {onConversationShare && (
-                          <ContextMenuItem
-                            onClick={() =>
-                              onConversationShare(conversation.id)
-                            }
-                          >
-                            <Share2 className="mr-2 size-4" />
-                            Share
-                          </ContextMenuItem>
-                        )}
-                        <ContextMenuSeparator />
-                        <ContextMenuItem
-                          onClick={() => handleDeleteClick(conversation.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 size-4" />
-                          <Trans i18nKey="common:sidebar.delete" />
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
+                    </div>
                   </SidebarMenuItem>
-                );
-              })}
-              </SidebarMenu>
-              
-              {/* View all chats button */}
-              {projectSlug && (
-                <div className="absolute bottom-0 left-0 right-0 z-20 px-2 pb-2 pt-4">
-                  <Link
-                    to={createPath(pathsConfig.app.projectConversation, projectSlug)}
-                    className="flex w-full items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground hover:border-border"
-                  >
+                </SidebarMenu>
+              ) : (
+                <div className="relative">
+                  {/* Fade effect at bottom */}
+                  <div className="from-sidebar pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-12 bg-gradient-to-t to-transparent" />
+
+                  <SidebarMenu className="pb-12">
+                    {/* Current Conversation - Always on top */}
+                    {currentConversation && (
+                      <SidebarMenuItem>
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
+                            <div className="w-full">
+                              <SidebarMenuButton
+                                asChild
+                                isActive={true}
+                                tooltip={currentConversation.title}
+                              >
+                                <Link
+                                  to={createPath(
+                                    pathsConfig.app.conversation,
+                                    currentConversation.slug,
+                                  )}
+                                  className="group flex w-full min-w-0 items-center gap-2"
+                                >
+                                  <MessageCircle className="size-4 shrink-0" />
+                                  {editingId === currentConversation.id ? (
+                                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                      <Input
+                                        ref={editInputRef}
+                                        type="text"
+                                        value={editValue}
+                                        onChange={(e) =>
+                                          setEditValue(e.target.value)
+                                        }
+                                        onBlur={() =>
+                                          handleEditBlur(currentConversation.id)
+                                        }
+                                        onKeyDown={(e) =>
+                                          handleEditKeyDown(
+                                            e,
+                                            currentConversation.id,
+                                          )
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
+                                        placeholder="Chat title..."
+                                        maxLength={100}
+                                      />
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCancelEdit(
+                                            currentConversation.id,
+                                          );
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
+                                        aria-label={t('sidebar.discardChanges')}
+                                      >
+                                        <X className="size-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span
+                                        className={cn(
+                                          'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
+                                          animatingIds.has(
+                                            currentConversation.id,
+                                          ) &&
+                                            'animate-in fade-in-0 slide-in-from-left-2',
+                                        )}
+                                        title={currentConversation.title}
+                                      >
+                                        {truncateChatTitle(
+                                          currentConversation.title,
+                                        )}
+                                      </span>
+                                      <div className="relative shrink-0">
+                                        {processingConversationSlug ===
+                                        currentConversation.slug ? (
+                                          <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 transition-opacity group-hover:opacity-0" />
+                                        ) : (
+                                          <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
+                                        )}
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                              className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover:opacity-100"
+                                            >
+                                              <MoreHorizontal className="size-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleStartEdit(
+                                                  currentConversation.id,
+                                                  currentConversation.title,
+                                                );
+                                              }}
+                                            >
+                                              <Pencil className="mr-2 size-4" />
+                                              Rename
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleBookmark(
+                                                  currentConversation.id,
+                                                );
+                                              }}
+                                              disabled
+                                              className="cursor-not-allowed opacity-50"
+                                            >
+                                              <Bookmark
+                                                className={cn(
+                                                  'mr-2 size-4',
+                                                  bookmarkedIds.has(
+                                                    currentConversation.id,
+                                                  ) && 'fill-current',
+                                                )}
+                                              />
+                                              {bookmarkedIds.has(
+                                                currentConversation.id,
+                                              ) ? (
+                                                <Trans i18nKey="common:sidebar.unpin" />
+                                              ) : (
+                                                <Trans i18nKey="common:sidebar.pinChat" />
+                                              )}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteClick(
+                                                  currentConversation.id,
+                                                );
+                                              }}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="mr-2 size-4" />
+                                              Delete
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    </>
+                                  )}
+                                </Link>
+                              </SidebarMenuButton>
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuItem
+                              onClick={() =>
+                                handleStartEdit(
+                                  currentConversation.id,
+                                  currentConversation.title,
+                                )
+                              }
+                            >
+                              <Pencil className="mr-2 size-4" />
+                              <Trans i18nKey="common:sidebar.rename" />
+                            </ContextMenuItem>
+                            {onConversationBookmark && (
+                              <ContextMenuItem
+                                onClick={() =>
+                                  onConversationBookmark(currentConversation.id)
+                                }
+                              >
+                                <Bookmark className="mr-2 size-4" />
+                                <Trans i18nKey="common:sidebar.bookmark" />
+                              </ContextMenuItem>
+                            )}
+                            {onConversationDuplicate && (
+                              <ContextMenuItem
+                                onClick={() =>
+                                  onConversationDuplicate(
+                                    currentConversation.id,
+                                  )
+                                }
+                              >
+                                <Copy className="mr-2 size-4" />
+                                <Trans i18nKey="common:sidebar.duplicate" />
+                              </ContextMenuItem>
+                            )}
+                            {onConversationShare && (
+                              <ContextMenuItem
+                                onClick={() =>
+                                  onConversationShare(currentConversation.id)
+                                }
+                              >
+                                <Share2 className="mr-2 size-4" />
+                                <Trans i18nKey="common:sidebar.share" />
+                              </ContextMenuItem>
+                            )}
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              onClick={() =>
+                                handleDeleteClick(currentConversation.id)
+                              }
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              <Trans i18nKey="common:sidebar.delete" />
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      </SidebarMenuItem>
+                    )}
+
+                    {/* Other Conversations - Flat list */}
+                    {limitedConversations.map((conversation) => {
+                      const isEditing = editingId === conversation.id;
+                      const conversationPath = createPath(
+                        pathsConfig.app.conversation,
+                        conversation.slug,
+                      );
+
+                      return (
+                        <SidebarMenuItem key={conversation.id}>
+                          <ContextMenu>
+                            <ContextMenuTrigger asChild>
+                              <div className="w-full">
+                                <SidebarMenuButton
+                                  asChild
+                                  tooltip={conversation.title}
+                                >
+                                  <Link
+                                    to={conversationPath}
+                                    className="group flex w-full min-w-0 items-center gap-2"
+                                  >
+                                    <MessageCircle className="size-4 shrink-0" />
+                                    {isEditing ? (
+                                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                        <Input
+                                          ref={editInputRef}
+                                          type="text"
+                                          value={editValue}
+                                          onChange={(e) =>
+                                            setEditValue(e.target.value)
+                                          }
+                                          onBlur={() =>
+                                            handleEditBlur(conversation.id)
+                                          }
+                                          onKeyDown={(e) =>
+                                            handleEditKeyDown(
+                                              e,
+                                              conversation.id,
+                                            )
+                                          }
+                                          onClick={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) =>
+                                            e.stopPropagation()
+                                          }
+                                          className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
+                                          placeholder="Chat title..."
+                                          maxLength={100}
+                                        />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelEdit(conversation.id);
+                                          }}
+                                          onMouseDown={(e) =>
+                                            e.stopPropagation()
+                                          }
+                                          className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
+                                          aria-label={t(
+                                            'sidebar.discardChanges',
+                                          )}
+                                        >
+                                          <X className="size-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span
+                                          className={cn(
+                                            'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
+                                            animatingIds.has(conversation.id) &&
+                                              'animate-in fade-in-0 slide-in-from-left-2',
+                                          )}
+                                          title={conversation.title}
+                                        >
+                                          {truncateChatTitle(
+                                            conversation.title,
+                                          )}
+                                        </span>
+                                        <div className="relative shrink-0">
+                                          {processingConversationSlug ===
+                                          conversation.slug ? (
+                                            <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 transition-opacity group-hover:opacity-0" />
+                                          ) : null}
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <button
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover:opacity-100"
+                                              >
+                                                <MoreHorizontal className="size-4" />
+                                              </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleStartEdit(
+                                                    conversation.id,
+                                                    conversation.title,
+                                                  );
+                                                }}
+                                              >
+                                                <Pencil className="mr-2 size-4" />
+                                                Rename
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleBookmark(
+                                                    conversation.id,
+                                                  );
+                                                }}
+                                                disabled
+                                                className="cursor-not-allowed opacity-50"
+                                              >
+                                                <Bookmark
+                                                  className={cn(
+                                                    'mr-2 size-4',
+                                                    bookmarkedIds.has(
+                                                      conversation.id,
+                                                    ) && 'fill-current',
+                                                  )}
+                                                />
+                                                {bookmarkedIds.has(
+                                                  conversation.id,
+                                                ) ? (
+                                                  <Trans i18nKey="common:sidebar.unpin" />
+                                                ) : (
+                                                  <Trans i18nKey="common:sidebar.pinChat" />
+                                                )}
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteClick(
+                                                    conversation.id,
+                                                  );
+                                                }}
+                                                className="text-destructive focus:text-destructive"
+                                              >
+                                                <Trash2 className="mr-2 size-4" />
+                                                Delete
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </>
+                                    )}
+                                  </Link>
+                                </SidebarMenuButton>
+                              </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                              <ContextMenuItem
+                                onClick={() =>
+                                  handleStartEdit(
+                                    conversation.id,
+                                    conversation.title,
+                                  )
+                                }
+                              >
+                                <Pencil className="mr-2 size-4" />
+                                Rename
+                              </ContextMenuItem>
+                              {onConversationBookmark && (
+                                <ContextMenuItem
+                                  onClick={() =>
+                                    onConversationBookmark(conversation.id)
+                                  }
+                                >
+                                  <Bookmark className="mr-2 size-4" />
+                                  Bookmark
+                                </ContextMenuItem>
+                              )}
+                              {onConversationDuplicate && (
+                                <ContextMenuItem
+                                  onClick={() =>
+                                    onConversationDuplicate(conversation.id)
+                                  }
+                                >
+                                  <Copy className="mr-2 size-4" />
+                                  Duplicate
+                                </ContextMenuItem>
+                              )}
+                              {onConversationShare && (
+                                <ContextMenuItem
+                                  onClick={() =>
+                                    onConversationShare(conversation.id)
+                                  }
+                                >
+                                  <Share2 className="mr-2 size-4" />
+                                  Share
+                                </ContextMenuItem>
+                              )}
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                onClick={() =>
+                                  handleDeleteClick(conversation.id)
+                                }
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 size-4" />
+                                <Trans i18nKey="common:sidebar.delete" />
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+
+                  {/* View all chats button */}
+                  {projectSlug && (
+                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
+                      <Link
+                        to={createPath(
+                          pathsConfig.app.projectConversation,
+                          projectSlug,
+                        )}
+                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
+                      >
                         <Trans i18nKey="common:sidebar.viewAllChats" />
-                    <ArrowRight className="size-4 shrink-0" />
-                  </Link>
+                        <ArrowRight className="size-4 shrink-0" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
             </SidebarGroupContent>
           </CollapsibleContent>
         </Collapsible>
@@ -827,17 +891,17 @@ export function SidebarNotebookHistory({
   isLoading = false,
   currentNotebookSlug,
   searchQuery = '',
-  onNotebookSelect,
+  onNotebookSelect: _onNotebookSelect,
   onNotebookDelete,
 }: SidebarNotebookHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
   const params = useParams();
-  
+
   // Get project slug from pathname or params
   const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
   const projectSlug = params.slug || projectSlugMatch?.[1];
-  
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
@@ -864,10 +928,7 @@ export function SidebarNotebookHistory({
   );
 
   const otherNotebooks = useMemo(
-    () =>
-      filteredNotebooks.filter(
-        (n) => n.slug !== currentNotebookSlug,
-      ),
+    () => filteredNotebooks.filter((n) => n.slug !== currentNotebookSlug),
     [filteredNotebooks, currentNotebookSlug],
   );
 
@@ -898,7 +959,10 @@ export function SidebarNotebookHistory({
   ) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (editValue.trim() && editValue.trim() !== notebooks.find(n => n.id === notebookId)?.title) {
+      if (
+        editValue.trim() &&
+        editValue.trim() !== notebooks.find((n) => n.id === notebookId)?.title
+      ) {
         // Handle edit - would need onNotebookEdit prop
       }
       setEditingId(null);
@@ -909,7 +973,7 @@ export function SidebarNotebookHistory({
     }
   };
 
-  const handleCancelEdit = (notebookId: string) => {
+  const handleCancelEdit = (_notebookId: string) => {
     setEditingId(null);
     setEditValue('');
   };
@@ -958,11 +1022,11 @@ export function SidebarNotebookHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="overflow-hidden min-w-0">
+      <SidebarGroup className="min-w-0 overflow-hidden">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-              <div className="flex items-center justify-between w-full">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+              <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
                   className={cn(
@@ -973,7 +1037,7 @@ export function SidebarNotebookHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+          <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
             <SidebarGroupContent>
               <LoadingSkeleton variant="sidebar" count={5} />
             </SidebarGroupContent>
@@ -985,11 +1049,11 @@ export function SidebarNotebookHistory({
 
   return (
     <>
-      <SidebarGroup className="overflow-hidden min-w-0">
+      <SidebarGroup className="min-w-0 overflow-hidden">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-              <div className="flex items-center justify-between w-full">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+              <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
                   className={cn(
@@ -1000,23 +1064,27 @@ export function SidebarNotebookHistory({
               </div>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
-            <SidebarGroupContent className="overflow-hidden relative min-h-0">
+          <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
+            <SidebarGroupContent className="relative min-h-0 overflow-hidden">
               {!hasNotebooks ? (
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
                       <div>
-                        <p className="font-medium"><Trans i18nKey="common:sidebar.noNotebooksFound" /></p>
-                        <p className="text-xs">Create a new notebook to get started</p>
+                        <p className="font-medium">
+                          <Trans i18nKey="common:sidebar.noNotebooksFound" />
+                        </p>
+                        <p className="text-xs">
+                          Create a new notebook to get started
+                        </p>
                       </div>
                     </div>
                   </SidebarMenuItem>
                 </SidebarMenu>
               ) : (
                 <div className="relative">
-                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-sidebar to-transparent z-10" />
-                  
+                  <div className="from-sidebar pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-12 bg-gradient-to-t to-transparent" />
+
                   <SidebarMenu className="pb-12">
                     {currentNotebook && (
                       <SidebarMenuItem>
@@ -1033,7 +1101,7 @@ export function SidebarNotebookHistory({
                                     pathsConfig.app.projectNotebook,
                                     currentNotebook.slug,
                                   )}
-                                  className="group flex items-center gap-2 w-full min-w-0"
+                                  className="group flex w-full min-w-0 items-center gap-2"
                                 >
                                   <Notebook className="size-4 shrink-0" />
                                   {editingId === currentNotebook.id ? (
@@ -1042,12 +1110,21 @@ export function SidebarNotebookHistory({
                                         ref={editInputRef}
                                         type="text"
                                         value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        onBlur={() => handleEditBlur(currentNotebook.id)}
-                                        onKeyDown={(e) => handleEditKeyDown(e, currentNotebook.id)}
+                                        onChange={(e) =>
+                                          setEditValue(e.target.value)
+                                        }
+                                        onBlur={() =>
+                                          handleEditBlur(currentNotebook.id)
+                                        }
+                                        onKeyDown={(e) =>
+                                          handleEditKeyDown(
+                                            e,
+                                            currentNotebook.id,
+                                          )
+                                        }
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
-                                        className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
+                                        className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
                                         placeholder="Notebook title..."
                                         maxLength={100}
                                       />
@@ -1067,20 +1144,26 @@ export function SidebarNotebookHistory({
                                     <>
                                       <span
                                         className={cn(
-                                          'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
-                                          animatingIds.has(currentNotebook.id) &&
+                                          'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
+                                          animatingIds.has(
+                                            currentNotebook.id,
+                                          ) &&
                                             'animate-in fade-in-0 slide-in-from-left-2',
                                         )}
                                         title={currentNotebook.title}
                                       >
-                                        {truncateChatTitle(currentNotebook.title)}
+                                        {truncateChatTitle(
+                                          currentNotebook.title,
+                                        )}
                                       </span>
                                       <div className="relative shrink-0">
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                             <button
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                              className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover:opacity-100"
                                             >
                                               <MoreHorizontal className="size-4" />
                                             </button>
@@ -1102,7 +1185,9 @@ export function SidebarNotebookHistory({
                                             <DropdownMenuItem
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDeleteClick(currentNotebook.id);
+                                                handleDeleteClick(
+                                                  currentNotebook.id,
+                                                );
                                               }}
                                               className="text-destructive focus:text-destructive"
                                             >
@@ -1132,7 +1217,9 @@ export function SidebarNotebookHistory({
                             </ContextMenuItem>
                             <ContextMenuSeparator />
                             <ContextMenuItem
-                              onClick={() => handleDeleteClick(currentNotebook.id)}
+                              onClick={() =>
+                                handleDeleteClick(currentNotebook.id)
+                              }
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 size-4" />
@@ -1161,7 +1248,7 @@ export function SidebarNotebookHistory({
                                 >
                                   <Link
                                     to={notebookPath}
-                                    className="group flex items-center gap-2 w-full min-w-0"
+                                    className="group flex w-full min-w-0 items-center gap-2"
                                   >
                                     <Notebook className="size-4 shrink-0" />
                                     {isEditing ? (
@@ -1170,12 +1257,20 @@ export function SidebarNotebookHistory({
                                           ref={editInputRef}
                                           type="text"
                                           value={editValue}
-                                          onChange={(e) => setEditValue(e.target.value)}
-                                          onBlur={() => handleEditBlur(notebook.id)}
-                                          onKeyDown={(e) => handleEditKeyDown(e, notebook.id)}
+                                          onChange={(e) =>
+                                            setEditValue(e.target.value)
+                                          }
+                                          onBlur={() =>
+                                            handleEditBlur(notebook.id)
+                                          }
+                                          onKeyDown={(e) =>
+                                            handleEditKeyDown(e, notebook.id)
+                                          }
                                           onClick={(e) => e.stopPropagation()}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex-1 h-auto border-0 bg-transparent px-2 py-0 text-sm font-medium focus-visible:ring-0 shadow-none"
+                                          onMouseDown={(e) =>
+                                            e.stopPropagation()
+                                          }
+                                          className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
                                           placeholder="Notebook title..."
                                           maxLength={100}
                                         />
@@ -1184,9 +1279,13 @@ export function SidebarNotebookHistory({
                                             e.stopPropagation();
                                             handleCancelEdit(notebook.id);
                                           }}
-                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) =>
+                                            e.stopPropagation()
+                                          }
                                           className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                          aria-label={t('sidebar.discardChanges')}
+                                          aria-label={t(
+                                            'sidebar.discardChanges',
+                                          )}
                                         >
                                           <X className="size-3.5" />
                                         </button>
@@ -1195,7 +1294,7 @@ export function SidebarNotebookHistory({
                                       <>
                                         <span
                                           className={cn(
-                                            'truncate text-sm font-medium transition-all duration-300 flex-1 min-w-0',
+                                            'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
                                             animatingIds.has(notebook.id) &&
                                               'animate-in fade-in-0 slide-in-from-left-2',
                                           )}
@@ -1207,8 +1306,10 @@ export function SidebarNotebookHistory({
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                               <button
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 opacity-0 transition-all group-hover:opacity-100 cursor-pointer"
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover:opacity-100"
                                               >
                                                 <MoreHorizontal className="size-4" />
                                               </button>
@@ -1230,7 +1331,9 @@ export function SidebarNotebookHistory({
                                               <DropdownMenuItem
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleDeleteClick(notebook.id);
+                                                  handleDeleteClick(
+                                                    notebook.id,
+                                                  );
                                                 }}
                                                 className="text-destructive focus:text-destructive"
                                               >
@@ -1249,10 +1352,7 @@ export function SidebarNotebookHistory({
                             <ContextMenuContent>
                               <ContextMenuItem
                                 onClick={() =>
-                                  handleStartEdit(
-                                    notebook.id,
-                                    notebook.title,
-                                  )
+                                  handleStartEdit(notebook.id, notebook.title)
                                 }
                               >
                                 <Pencil className="mr-2 size-4" />
@@ -1272,13 +1372,16 @@ export function SidebarNotebookHistory({
                       );
                     })}
                   </SidebarMenu>
-                  
+
                   {/* View all notebooks button */}
                   {projectSlug && (
-                    <div className="absolute bottom-0 left-0 right-0 z-20 px-2 pb-2 pt-4">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
                       <Link
-                        to={createPath(pathsConfig.app.projectNotebooks, projectSlug)}
-                        className="flex w-full items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground hover:border-border"
+                        to={createPath(
+                          pathsConfig.app.projectNotebooks,
+                          projectSlug,
+                        )}
+                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
                       >
                         <Trans i18nKey="common:sidebar.viewAllNotebooks" />
                         <ArrowRight className="size-4 shrink-0" />
@@ -1307,4 +1410,3 @@ export function SidebarNotebookHistory({
     </>
   );
 }
-

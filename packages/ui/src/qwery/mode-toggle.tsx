@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -104,12 +103,7 @@ export function SubMenuModeToggle() {
           </span>
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent 
-        side="right" 
-        sideOffset={4} 
-        alignOffset={0}
-        className="z-[100] min-w-[10rem]"
-      >
+      <DropdownMenuSubContent sideOffset={4} className="z-[100] min-w-[10rem]">
         {MenuItems}
       </DropdownMenuSubContent>
     </DropdownMenuSub>

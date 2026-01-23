@@ -60,7 +60,7 @@ export function ProjectSidebar() {
     },
   );
 
-  const handleDeleteNotebook = useCallback(
+  const _handleDeleteNotebook = useCallback(
     async (notebook: NotebookOutput) => {
       if (!workspace.projectId) {
         toast.error('Unable to resolve project context for deletion');
@@ -162,7 +162,7 @@ export function ProjectSidebar() {
     }
   }, [generateNotebookTitle, navigate, notebooks, workspace.projectId]);
 
-  const notebookGroupAction = workspace.projectId ? (
+  const _notebookGroupAction = workspace.projectId ? (
     <span
       className="flex h-full w-full items-center justify-center"
       onClick={(event) => {
@@ -181,12 +181,7 @@ export function ProjectSidebar() {
     </span>
   ) : undefined;
 
-  const navigationConfig = createNavigationConfig(
-    slug,
-    notebooksList,
-    handleDeleteNotebook,
-    notebookGroupAction,
-  );
+  const navigationConfig = createNavigationConfig(slug);
   return (
     <>
       <Sidebar collapsible="none">

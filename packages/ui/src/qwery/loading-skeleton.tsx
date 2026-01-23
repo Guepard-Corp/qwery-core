@@ -54,16 +54,11 @@ export function LoadingSkeleton({
           <Skeleton className={config.icon} />
           <div className={config.text}>
             <Skeleton className={config.textLine} />
-            {variant === 'list' && (
-              <Skeleton className="h-3 w-1/2" />
-            )}
+            {variant === 'list' && <Skeleton className="h-3 w-1/2" />}
           </div>
-          {variant === 'sidebar' && (
-            <Skeleton className="size-4 shrink-0" />
-          )}
+          {variant === 'sidebar' && <Skeleton className="size-4 shrink-0" />}
         </div>
       ))}
     </div>
   );
 }
-

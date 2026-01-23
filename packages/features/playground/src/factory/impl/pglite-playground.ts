@@ -27,8 +27,7 @@ export class PGlitePlayground implements PlaygroundDatabase {
       );
       const count =
         (countResult.rows[0] as { count: number | string })?.count ?? 0;
-      const countNum =
-        typeof count === 'string' ? parseInt(count, 10) : count;
+      const countNum = typeof count === 'string' ? parseInt(count, 10) : count;
 
       if (countNum === 0) {
         await driver.query(table.insertData, config);

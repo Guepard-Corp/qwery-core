@@ -38,7 +38,8 @@ export function ConfirmDeleteDialog({
   cancelLabel = 'Cancel',
 }: ConfirmDeleteDialogProps) {
   const isPlural = itemCount > 1;
-  const defaultTitle = title || `Delete ${isPlural ? `${itemName}s` : itemName}?`;
+  const defaultTitle =
+    title || `Delete ${isPlural ? `${itemName}s` : itemName}?`;
   const defaultDescription = description || (
     <>
       {isPlural ? (
@@ -48,8 +49,8 @@ export function ConfirmDeleteDialog({
         </>
       ) : (
         <>
-          Are you sure you want to delete this {itemName}? This action cannot
-          be undone and will permanently remove the {itemName}.
+          Are you sure you want to delete this {itemName}? This action cannot be
+          undone and will permanently remove the {itemName}.
         </>
       )}
     </>
@@ -89,4 +90,3 @@ export function ConfirmDeleteDialog({
     </AlertDialog>
   );
 }
-

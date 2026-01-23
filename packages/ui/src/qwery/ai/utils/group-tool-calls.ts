@@ -21,7 +21,7 @@ export function groupConsecutiveToolCalls(
   for (let index = 0; index < parts.length; index++) {
     const part = parts[index];
     if (!part) continue;
-    
+
     if (part.type.startsWith('tool-')) {
       const toolPart = part as ToolUIPart;
 
@@ -107,7 +107,7 @@ function getToolGroupName(
     if (lowerName.includes('workflow')) {
       return `Workflow Execution (${count} steps)`;
     }
-    
+
     return `${friendlyName} (${count} steps)`;
   }
 
@@ -121,12 +121,12 @@ function getToolGroupName(
       return friendlyName;
     })
     .join(', ');
-  
+
   const remaining = uniqueToolTypes.size - 2;
   if (remaining > 0) {
     return `${toolNames} +${remaining} more (${count} tools)`;
   }
-  
+
   return `${toolNames} (${count} tools)`;
 }
 
@@ -153,4 +153,3 @@ export function getToolGroupForIndex(
     (group) => index >= group.startIndex && index <= group.endIndex,
   );
 }
-

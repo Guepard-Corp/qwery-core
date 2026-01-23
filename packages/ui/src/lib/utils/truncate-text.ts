@@ -18,4 +18,3 @@ export function truncateText(text: string, maxLength = 50): string {
 export function truncateChatTitle(title: string, maxLength = 40): string {
   return truncateText(title, maxLength);
 }
-

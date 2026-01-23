@@ -88,26 +88,40 @@ export function SchemaVisualizer({
     datasourceNames.length === 0
   ) {
     return (
-      <div className={cn(
-        'flex flex-col items-center justify-center text-center',
-        variant === 'minimal' ? 'p-4' : 'p-8',
-        className
-      )}>
-        <Database className={cn(
-          "text-muted-foreground opacity-50",
-          variant === 'minimal' ? "h-8 w-8 mb-2" : "h-12 w-12 mb-4"
-        )} />
-        <h3 className={cn(
-          "text-foreground mb-2 font-semibold",
-          variant === 'minimal' ? "text-xs" : "text-sm"
-        )}>
-          <Trans i18nKey="common:schema.noSchemaDataAvailable" defaults="No schema data available" />
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center text-center',
+          variant === 'minimal' ? 'p-4' : 'p-8',
+          className,
+        )}
+      >
+        <Database
+          className={cn(
+            'text-muted-foreground opacity-50',
+            variant === 'minimal' ? 'mb-2 h-8 w-8' : 'mb-4 h-12 w-12',
+          )}
+        />
+        <h3
+          className={cn(
+            'text-foreground mb-2 font-semibold',
+            variant === 'minimal' ? 'text-xs' : 'text-sm',
+          )}
+        >
+          <Trans
+            i18nKey="common:schema.noSchemaDataAvailable"
+            defaults="No schema data available"
+          />
         </h3>
-        <p className={cn(
-          "text-muted-foreground",
-          variant === 'minimal' ? "text-[10px]" : "text-xs"
-        )}>
-          <Trans i18nKey="common:schema.schemaEmptyOrNotLoaded" defaults="The schema information is empty or could not be loaded." />
+        <p
+          className={cn(
+            'text-muted-foreground',
+            variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+          )}
+        >
+          <Trans
+            i18nKey="common:schema.schemaEmptyOrNotLoaded"
+            defaults="The schema information is empty or could not be loaded."
+          />
         </p>
       </div>
     );

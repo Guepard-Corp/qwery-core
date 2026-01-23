@@ -39,7 +39,7 @@ export function ProjectBreadcrumb() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
+  const [_unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
     [],
   );
 
@@ -361,13 +361,16 @@ export function ProjectBreadcrumb() {
       }}
       onViewAllNotebooks={() => {
         if (currentProject) {
-          navigate(createPath(pathsConfig.app.projectNotebooks, currentProject.slug));
+          navigate(
+            createPath(pathsConfig.app.projectNotebooks, currentProject.slug),
+          );
         }
       }}
       onNewOrg={handleNewOrg}
       onNewProject={handleNewProject}
       onNewDatasource={handleNewDatasource}
       onNewNotebook={handleNewNotebook}
+      unsavedNotebookSlugs={_unsavedNotebookSlugs}
     />
   );
 }

@@ -27,7 +27,11 @@ export interface UserMessageBubbleProps {
     parentConversationId?: string; // ID of the question-response duo parent
   };
   messageId: string;
-  messages?: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>; // Messages array to find user question
+  messages?: Array<{
+    id: string;
+    role: string;
+    parts?: Array<{ type: string; text?: string }>;
+  }>; // Messages array to find user question
   className?: string;
   datasources?: DatasourceItem[];
   pluginLogoMap?: Map<string, string>;
@@ -106,7 +110,8 @@ export function parseMessageWithContext(messageText: string): {
       const lastAssistantResponseRegex =
         /"lastAssistantResponse"\s*:\s*"((?:[^"\\]|\\(?:[\\"nrt]|u[0-9a-fA-F]{4}))*?)"/;
       const sourceSuggestionIdRegex = /"sourceSuggestionId"\s*:\s*"([^"]+)"/;
-      const parentConversationIdRegex = /"parentConversationId"\s*:\s*"([^"]+)"/;
+      const parentConversationIdRegex =
+        /"parentConversationId"\s*:\s*"([^"]+)"/;
 
       const lastAssistantResponseMatch = contextJson.match(
         lastAssistantResponseRegex,
@@ -218,7 +223,7 @@ function findSuggestionInResponse(
 
   // Try exact match first
   let index = responseLower.indexOf(suggestionLower);
-  
+
   // If not found, try matching without special characters
   if (index === -1) {
     const normalizedResponse = responseLower.replace(/[^\w\s]/g, ' ');
@@ -283,7 +288,7 @@ function getPreviewText(
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/`(.*?)`/g, '$1')
     .replace(/```[\s\S]*?```/g, '')
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/\n+/g, ' ')
     .trim();
 
@@ -299,7 +304,13 @@ function getPreviewText(
 
 function getUserQuestionFromParentId(
   parentConversationId: string | undefined,
-  messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }> | undefined,
+  messages:
+    | Array<{
+        id: string;
+        role: string;
+        parts?: Array<{ type: string; text?: string }>;
+      }>
+    | undefined,
   currentMessageId?: string,
 ): string | undefined {
   if (!messages) return undefined;
@@ -311,7 +322,7 @@ function getUserQuestionFromParentId(
     if (match && match[1]) {
       const userMessageId = match[1];
       const userMessage = messages.find((m) => m.id === userMessageId);
-      
+
       if (userMessage && normalizeUIRole(userMessage.role) === 'user') {
         // Extract text from user message parts
         if (userMessage.parts) {
@@ -319,7 +330,7 @@ function getUserQuestionFromParentId(
             .filter((p) => p.type === 'text' && p.text)
             .map((p) => p.text)
             .filter((t): t is string => typeof t === 'string');
-          
+
           if (textParts.length > 0) {
             // Parse to get clean text without context markers
             const fullText = textParts.join(' ');
@@ -347,7 +358,7 @@ function getUserQuestionFromParentId(
               .filter((p) => p.type === 'text' && p.text)
               .map((p) => p.text)
               .filter((t): t is string => typeof t === 'string');
-            
+
             if (textParts.length > 0) {
               // Parse to get clean text without context markers
               const fullText = textParts.join(' ');
@@ -460,7 +471,7 @@ export function UserMessageBubble({
         {previewData && (
           <HoverCard open={isHoverCardOpen} onOpenChange={setIsHoverCardOpen}>
             <HoverCardTrigger asChild>
-              <div className="text-muted-foreground flex min-w-0 flex-1 cursor-pointer items-center text-xs leading-relaxed transition-colors hover:text-foreground">
+              <div className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 cursor-pointer items-center text-xs leading-relaxed transition-colors">
                 <span className="line-clamp-2 break-words">
                   {previewData.preview}
                 </span>
@@ -468,7 +479,7 @@ export function UserMessageBubble({
             </HoverCardTrigger>
             <HoverCardContent
               ref={hoverCardContentRef}
-              className="w-96 max-h-[400px] overflow-y-auto"
+              className="max-h-[400px] w-96 overflow-y-auto"
               side="top"
               align="start"
             >
@@ -478,7 +489,7 @@ export function UserMessageBubble({
                   <div className="flex items-start justify-end">
                     <Message
                       from="user"
-                      className="flex !w-auto min-w-0 max-w-[80%]"
+                      className="flex !w-auto max-w-[80%] min-w-0"
                     >
                       <MessageContent className="overflow-wrap-anywhere max-w-full min-w-0 break-words">
                         <span className="text-sm font-semibold break-words">
@@ -493,7 +504,7 @@ export function UserMessageBubble({
                   <div className="mt-1 shrink-0">
                     <BotAvatar size={6} isLoading={false} />
                   </div>
-                  <div className="flex-1 min-w-0 prose prose-sm dark:prose-invert max-w-none [&_ul]:list-disc [&_ul]:list-inside [&_ul]:pl-6 [&_li]:my-1 [&_li]:text-foreground [&_p]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_strong]:not-italic [&_strong]:inline">
+                  <div className="prose prose-sm dark:prose-invert [&_li]:text-foreground [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:list-inside [&_ul]:list-disc [&_ul]:pl-6">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={agentMarkdownComponents}
@@ -509,10 +520,7 @@ export function UserMessageBubble({
         {/* Message bubble - fills remaining space */}
         <Message
           from="user"
-          className={cn(
-            'flex !w-auto min-w-0 flex-1',
-            className,
-          )}
+          className={cn('flex !w-auto min-w-0 flex-1', className)}
         >
           <MessageContent
             className="overflow-wrap-anywhere max-w-full min-w-0 break-words"

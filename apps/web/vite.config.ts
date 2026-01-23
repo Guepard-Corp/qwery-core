@@ -21,7 +21,7 @@ function wasmMimeTypePlugin(): Plugin {
             // Resolve public directory relative to the vite config file location
             const publicDir = path.resolve(process.cwd(), 'apps/web/public');
             const filePath = path.join(publicDir, url);
-            
+
             if (fs.existsSync(filePath)) {
               const stats = fs.statSync(filePath);
               if (stats.isFile()) {
@@ -34,13 +34,13 @@ function wasmMimeTypePlugin(): Plugin {
                 } else if (url.endsWith('.json')) {
                   res.setHeader('Content-Type', 'application/json');
                 }
-                
+
                 const fileContent = fs.readFileSync(filePath);
                 res.end(fileContent);
                 return;
               }
             }
-          } catch (error) {
+          } catch {
             //continue to next middleware
           }
         }

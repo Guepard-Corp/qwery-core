@@ -57,9 +57,27 @@ export const PLAYGROUND_TABLES: TableDefinition[] = [
         ('Pen Set', 19.99, 'Stationery', 75)
     `,
     sampleData: [
-      { id: 1, name: 'Laptop', price: '999.99', category: 'Electronics', stock: 15 },
-      { id: 2, name: 'Mouse', price: '29.99', category: 'Electronics', stock: 50 },
-      { id: 3, name: 'Keyboard', price: '79.99', category: 'Electronics', stock: 30 },
+      {
+        id: 1,
+        name: 'Laptop',
+        price: '999.99',
+        category: 'Electronics',
+        stock: 15,
+      },
+      {
+        id: 2,
+        name: 'Mouse',
+        price: '29.99',
+        category: 'Electronics',
+        stock: 50,
+      },
+      {
+        id: 3,
+        name: 'Keyboard',
+        price: '79.99',
+        category: 'Electronics',
+        stock: 30,
+      },
     ],
   },
   {
@@ -107,4 +125,3 @@ export function getAllTablesInfo(): string {
       `Table: ${table.name}${table.description ? ` - ${table.description}` : ''}`,
   ).join('\n');
 }
-

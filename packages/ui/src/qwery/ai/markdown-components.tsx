@@ -7,7 +7,7 @@ import { MarkdownContext } from './message-parts';
 import { SuggestionButton } from './suggestion-button';
 import { UIMessage } from 'ai';
 import { Sparkles } from 'lucide-react';
-import { CHAT_UI_MAX_WIDTH, CHAT_UI_MARGINS } from './chat-ui-config';
+import { CHAT_UI_MARGINS } from './chat-ui-config';
 
 type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
   inline?: boolean;
@@ -283,7 +283,7 @@ export const createAgentMarkdownComponents = (): Components => {
           data-code-block-container="true"
           className={cn(
             'min-w-0 overflow-x-auto',
-            'max-w-[28rem] w-full',
+            'w-full max-w-[28rem]',
             CHAT_UI_MARGINS,
           )}
         >

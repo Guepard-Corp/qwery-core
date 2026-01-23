@@ -1,7 +1,12 @@
 'use client';
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { Database, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Database,
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 import {
   Command,
@@ -52,12 +57,16 @@ export function DatasourceSelector({
   const [search, setSearch] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  
-  const placeholderText = searchPlaceholder || t('common:datasourceSelector.searchDatasources', { defaultValue: 'Search datasources...' });
+
+  const placeholderText =
+    searchPlaceholder ||
+    t('common:datasourceSelector.searchDatasources', {
+      defaultValue: 'Search datasources...',
+    });
 
   const filteredAndSortedDatasources = useMemo(() => {
     let filtered = datasources;
-    
+
     if (search.trim()) {
       const query = search.toLowerCase();
       filtered = datasources.filter(
@@ -67,7 +76,7 @@ export function DatasourceSelector({
           ds.datasource_provider.toLowerCase().includes(query),
       );
     }
-    
+
     return [...filtered].sort((a, b) => {
       const aTime = a.updatedAt?.getTime() || a.createdAt?.getTime() || 0;
       const bTime = b.updatedAt?.getTime() || b.createdAt?.getTime() || 0;
@@ -75,14 +84,18 @@ export function DatasourceSelector({
     });
   }, [datasources, search]);
 
-  const totalPages = Math.ceil(filteredAndSortedDatasources.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(
+    filteredAndSortedDatasources.length / ITEMS_PER_PAGE,
+  );
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const visibleItems = filteredAndSortedDatasources.slice(startIndex, endIndex);
 
   useEffect(() => {
     if (open || search) {
-      setCurrentPage(1);
+      setTimeout(() => {
+        setCurrentPage(1);
+      }, 0);
     }
   }, [open, search]);
 
@@ -142,7 +155,10 @@ export function DatasourceSelector({
             <>
               <Database className="text-muted-foreground h-3.5 w-3.5" />
               <span className="text-muted-foreground">
-                <Trans i18nKey={displayInfo.label} defaults="Select datasources" />
+                <Trans
+                  i18nKey={displayInfo.label}
+                  defaults="Select datasources"
+                />
               </span>
               <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
             </>
@@ -179,7 +195,10 @@ export function DatasourceSelector({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="z-[101] w-[300px] p-0 overflow-x-hidden" align="start">
+      <PopoverContent
+        className="z-[101] w-[300px] overflow-x-hidden p-0"
+        align="start"
+      >
         <Command>
           <CommandInput
             placeholder={placeholderText}
@@ -197,7 +216,10 @@ export function DatasourceSelector({
               <>
                 <CommandEmpty>
                   <span className="text-muted-foreground text-sm">
-                    <Trans i18nKey="common:datasourceSelector.noDatasourcesFound" defaults="No datasources found" />
+                    <Trans
+                      i18nKey="common:datasourceSelector.noDatasourcesFound"
+                      defaults="No datasources found"
+                    />
                   </span>
                 </CommandEmpty>
                 {visibleItems.length > 0 && (
@@ -247,7 +269,7 @@ export function DatasourceSelector({
             )}
           </CommandList>
           {totalPages > 1 && (
-            <div className="border-t bg-muted p-2 flex items-center justify-between gap-2">
+            <div className="bg-muted flex items-center justify-between gap-2 border-t p-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -262,8 +284,8 @@ export function DatasourceSelector({
                 <ChevronLeft className="h-3 w-3" />
               </Button>
               <span className="text-muted-foreground text-xs font-medium">
-                <Trans 
-                  i18nKey="common:pageOfPages" 
+                <Trans
+                  i18nKey="common:pageOfPages"
                   defaults="Page {{page}} of {{total}}"
                   values={{ page: currentPage, total: totalPages }}
                 />

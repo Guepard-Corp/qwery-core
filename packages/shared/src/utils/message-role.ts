@@ -41,4 +41,3 @@ export function isUIMessageRole(value: unknown): value is UIMessageRole {
     UI_MESSAGE_ROLES.includes(value as UIMessageRole)
   );
 }
-

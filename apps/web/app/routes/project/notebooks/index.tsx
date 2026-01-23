@@ -30,19 +30,22 @@ export default function ProjectNotebooksPage() {
     };
 
     updateUnsavedSlugs();
-    
+
     window.addEventListener('storage', updateUnsavedSlugs);
-    
+
     const handleCustomStorage = () => {
       updateUnsavedSlugs();
     };
     window.addEventListener('notebook:unsaved-changed', handleCustomStorage);
-    
+
     const interval = setInterval(updateUnsavedSlugs, 500);
-    
+
     return () => {
       window.removeEventListener('storage', updateUnsavedSlugs);
-      window.removeEventListener('notebook:unsaved-changed', handleCustomStorage);
+      window.removeEventListener(
+        'notebook:unsaved-changed',
+        handleCustomStorage,
+      );
       clearInterval(interval);
     };
   }, []);
@@ -64,4 +67,3 @@ export default function ProjectNotebooksPage() {
     </div>
   );
 }
-

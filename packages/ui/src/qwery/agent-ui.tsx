@@ -61,7 +61,7 @@ import {
 import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
 import { getUserFriendlyToolName } from './ai/utils/tool-name';
-import { ToolVariantProvider, useToolVariant } from './ai/tool-variant-context';
+import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 
 export interface QweryAgentUIProps {
@@ -367,7 +367,6 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
         ) {
           setMessages([]);
         }
-      } else if (!initialMessages && messages.length === 0) {
       }
 
       isInitialMountRef.current = false;
@@ -432,9 +431,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       );
     }
 
-    const lastUserMessage = messages
-      .filter((m) => m.role === 'user')
-      .at(-1);
+    const lastUserMessage = messages.filter((m) => m.role === 'user').at(-1);
 
     if (lastUserMessage) {
       const messageMetadata = (lastUserMessage.metadata || {}) as Record<
@@ -555,10 +552,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
   return (
     <PromptInputProvider initialInput={state.input}>
-        <div
-          ref={containerRef}
-          className="relative mx-auto flex h-full w-full max-w-4xl min-w-0 flex-col overflow-x-hidden p-6"
-        >
+      <div
+        ref={containerRef}
+        className="relative mx-auto flex h-full w-full max-w-4xl min-w-0 flex-col overflow-x-hidden p-6"
+      >
         <div
           ref={conversationContainerRef}
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden"
@@ -713,20 +710,19 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                               return (
                                 <div
                                   key={`${message.id}-${i}`}
-                                    className={cn(
-                                      'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
-                                      normalizeUIRole(message.role) ===
-                                        'user' && 'justify-end',
-                                      normalizeUIRole(message.role) ===
-                                        'assistant' &&
-                                        'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                      normalizeUIRole(message.role) ===
-                                        'user' &&
-                                        'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                                    )}
+                                  className={cn(
+                                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
+                                    normalizeUIRole(message.role) === 'user' &&
+                                      'justify-end',
+                                    normalizeUIRole(message.role) ===
+                                      'assistant' &&
+                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                    normalizeUIRole(message.role) === 'user' &&
+                                      'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                                  )}
                                 >
-                                    {normalizeUIRole(message.role) ===
-                                      'assistant' && (
+                                  {normalizeUIRole(message.role) ===
+                                    'assistant' && (
                                     <div className="mt-1 shrink-0">
                                       <BotAvatar
                                         size={6}
@@ -734,13 +730,15 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                       />
                                     </div>
                                   )}
-                                  <div className={cn(
-                                    "flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden",
-                                    normalizeUIRole(message.role) === 'assistant' && 'mx-4 sm:mx-6'
-                                  )}>
+                                  <div
+                                    className={cn(
+                                      'flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
+                                      normalizeUIRole(message.role) ===
+                                        'assistant' && 'mx-4 sm:mx-6',
+                                    )}
+                                  >
                                     {isEditing &&
-                                    normalizeUIRole(message.role) ===
-                                      'user' ? (
+                                    normalizeUIRole(message.role) === 'user' ? (
                                       <>
                                         <Textarea
                                           value={editText}
@@ -786,7 +784,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                     ) : (
                                       <>
                                         {normalizeUIRole(message.role) ===
-                                          'user' ? (
+                                        'user' ? (
                                           // User messages - check if it's a suggestion with context
                                           (() => {
                                             const { text, context } =
@@ -1071,20 +1069,19 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                           `tool-${toolPart.toolName}`,
                                         )
                                       : getUserFriendlyToolName(toolPart.type);
-                                  const { variant } = useToolVariant();
                                   return (
                                     <Tool
                                       key={`${message.id}-${i}`}
                                       defaultOpen={false}
-                                      variant={variant}
+                                      variant="default"
                                     >
                                       <ToolHeader
                                         title={toolName}
                                         type={toolPart.type}
                                         state={toolPart.state}
-                                        variant={variant}
+                                        variant="default"
                                       />
-                                      <ToolContent variant={variant}>
+                                      <ToolContent variant="default">
                                         {toolPart.input != null ? (
                                           <ToolInput input={toolPart.input} />
                                         ) : null}

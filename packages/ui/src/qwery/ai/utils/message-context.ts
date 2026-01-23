@@ -1,5 +1,4 @@
 import type { UIMessage, ToolUIPart } from 'ai';
-import { parseMessageWithContext } from '../user-message-bubble';
 import { getUserFriendlyToolName } from './tool-name';
 
 const CONTEXT_MARKER = '__QWERY_CONTEXT__';
@@ -74,7 +73,7 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
           toolName = formatted;
         }
       }
-      
+
       // Fallback to part.type if toolName is still 'Tool' or empty
       if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
         const formatted = getUserFriendlyToolName(part.type);
@@ -89,7 +88,10 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
         // Capitalize first letter of each word
         toolName = toolName
           .split(' ')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
           .join(' ');
       }
 
@@ -135,7 +137,7 @@ function getTextContentFromMessage(message: UIMessage): string {
 export function getContextMessages(
   messages: UIMessage[] | undefined,
   currentMessageId: string | undefined,
-  textContent?: string,
+  _textContent?: string,
 ): { lastAssistantResponse?: string; parentConversationId?: string } {
   if (!messages || !currentMessageId) {
     return {};

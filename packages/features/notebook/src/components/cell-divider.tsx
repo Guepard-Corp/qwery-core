@@ -20,7 +20,7 @@ export function CellDivider({ onAddCell, className }: CellDividerProps) {
         className,
       )}
     >
-      <div className="via-border absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+      <div className="via-border via-border absolute inset-x-0 h-px bg-gradient-to-r from-transparent to-transparent" />
 
       <div className="relative z-10 flex translate-y-1 transform items-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
         <Button

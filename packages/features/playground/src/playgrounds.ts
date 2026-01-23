@@ -27,7 +27,7 @@ export const PLAYGROUNDS: Playground[] = [
 ];
 
 export class PlaygroundBuilder {
-  constructor(private readonly datasourceRepository: IDatasourceRepository) { }
+  constructor(private readonly datasourceRepository: IDatasourceRepository) {}
 
   async build(id: string, projectId: string): Promise<Datasource> {
     const selectedPlayground = PLAYGROUNDS.find(
@@ -44,12 +44,11 @@ export class PlaygroundBuilder {
     );
     const connectionConfig = playgroundDatabase.getConnectionConfig(projectId);
 
-    const now = new Date();
     const userId = 'system';
-    
+
     // Generate unique name for each datasource instance
     const uniqueName = generateRandomName();
-    
+
     const datasource: Partial<Datasource> = {
       ...selectedPlayground.datasource,
       name: uniqueName,
@@ -61,10 +60,12 @@ export class PlaygroundBuilder {
       createdBy: userId,
     };
 
-    const createdDatasource =
-      await this.datasourceRepository.create(datasource as Datasource);
+    const createdDatasource = await this.datasourceRepository.create(
+      datasource as Datasource,
+    );
 
-    const datasourceProvider = selectedPlayground.datasource.datasource_provider;
+    const datasourceProvider =
+      selectedPlayground.datasource.datasource_provider;
     const datasourceName = selectedPlayground.datasource.name;
     const datasourceConfig = datasource.config || {};
 
@@ -74,14 +75,9 @@ export class PlaygroundBuilder {
         `Extension not found for datasource ${datasourceProvider}`,
       );
     }
-    const driver = await extension.getDriver(
-      datasourceName,
-      datasourceConfig,
-    );
+    const driver = await extension.getDriver(datasourceName, datasourceConfig);
     if (!driver) {
-      throw new Error(
-        `Driver not found for datasource ${datasourceProvider}`,
-      );
+      throw new Error(`Driver not found for datasource ${datasourceProvider}`);
     }
 
     await playgroundDatabase.seed(driver, datasourceConfig);

@@ -51,17 +51,20 @@ export type ToolProps = ComponentProps<typeof Collapsible> & {
   variant?: ToolVariant;
 };
 
-export const Tool = ({ className, state, variant = 'default', ...props }: ToolProps) => {
+export const Tool = ({
+  className,
+  state,
+  variant = 'default',
+  ...props
+}: ToolProps) => {
   const styles = getStateStyles(state || 'input-available');
   const isMinimal = variant === 'minimal';
-  
+
   return (
     <Collapsible
       className={cn(
         'group/tool not-prose flex w-full min-w-0 flex-col overflow-hidden transition-all',
-        isMinimal 
-          ? 'mb-1' 
-          : 'mb-4 rounded-xl border bg-card',
+        isMinimal ? 'mb-1' : 'bg-card mb-4 rounded-xl border',
         !isMinimal && styles.border,
         !isMinimal && 'hover:border-white dark:hover:border-white/20',
         className,
@@ -80,7 +83,10 @@ export type ToolHeaderProps = {
   variant?: ToolVariant;
 };
 
-const getStatusConfig = (status: ToolUIPart['state'], iconSize: 'sm' | 'md' = 'md') => {
+const getStatusConfig = (
+  status: ToolUIPart['state'],
+  iconSize: 'sm' | 'md' = 'md',
+) => {
   const iconSizeClass = iconSize === 'sm' ? 'size-3' : 'size-4';
   const configs: Record<
     string,
@@ -188,22 +194,24 @@ export const ToolHeader = ({
         )}
         {...props}
       >
-        <div className="flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-all duration-200 group-data-[state=open]/tool:rotate-90 group-hover/header:text-foreground">
+        <div className="text-muted-foreground group-hover/header:text-foreground flex size-4 shrink-0 items-center justify-center transition-all duration-200 group-data-[state=open]/tool:rotate-90">
           <ChevronRightIcon className="size-3.5" />
         </div>
 
-        <div className="flex size-4 shrink-0 items-center justify-center text-primary transition-opacity duration-200 group-hover/header:opacity-80">
+        <div className="text-primary flex size-4 shrink-0 items-center justify-center transition-opacity duration-200 group-hover/header:opacity-80">
           {toolIcon}
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate text-sm text-muted-foreground transition-colors duration-200 group-hover/header:text-foreground">
+          <span className="text-muted-foreground group-hover/header:text-foreground truncate text-sm transition-colors duration-200">
             {toolName}
           </span>
-          <div className={cn(
-            "flex items-center shrink-0 transition-opacity duration-200 group-hover/header:opacity-80",
-            statusConfig.className
-          )}>
+          <div
+            className={cn(
+              'flex shrink-0 items-center transition-opacity duration-200 group-hover/header:opacity-80',
+              statusConfig.className,
+            )}
+          >
             {statusConfig.icon}
           </div>
         </div>
@@ -214,12 +222,12 @@ export const ToolHeader = ({
   return (
     <CollapsibleTrigger
       className={cn(
-        'group/header flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition-all hover:bg-accent/50',
+        'group/header hover:bg-accent/50 flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition-all',
         className,
       )}
       {...props}
     >
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 via-primary/5 to-primary/5 text-primary ring-1 ring-primary/20 shadow-sm">
+      <div className="from-primary/10 via-primary/5 to-primary/5 text-primary ring-primary/20 flex size-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br shadow-sm ring-1">
         {toolIcon}
       </div>
 
@@ -229,17 +237,19 @@ export const ToolHeader = ({
         </span>
       </div>
 
-      <div className={cn(
-        "flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-        statusConfig.bgClassName,
-        statusConfig.className
-      )}>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+          statusConfig.bgClassName,
+          statusConfig.className,
+        )}
+      >
         {statusConfig.icon}
         <span className="whitespace-nowrap">{statusConfig.label}</span>
       </div>
 
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 transition-colors group-hover/header:bg-muted">
-        <ChevronDownIcon className="size-4 text-muted-foreground transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+      <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
+        <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
       </div>
     </CollapsibleTrigger>
   );
@@ -249,14 +259,18 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent> & {
   variant?: ToolVariant;
 };
 
-export const ToolContent = ({ className, variant = 'default', ...props }: ToolContentProps) => {
+export const ToolContent = ({
+  className,
+  variant = 'default',
+  ...props
+}: ToolContentProps) => {
   const isMinimal = variant === 'minimal';
-  
+
   return (
     <CollapsibleContent
       className={cn(
-        'overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down',
-        isMinimal && 'ml-6 text-sm pl-2 border-l border-border/50',
+        'data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden',
+        isMinimal && 'border-border/50 ml-6 border-l pl-2 text-sm',
         className,
       )}
       {...props}
@@ -268,7 +282,8 @@ export type ToolInputProps = ComponentProps<'div'> & {
   input: ToolUIPart['input'];
 };
 
-export const ToolInput = ({ className, input, ...props }: ToolInputProps) => null;
+export const ToolInput = ({ className, input, ...props }: ToolInputProps) =>
+  null;
 
 export type ToolOutputProps = ComponentProps<'div'> & {
   output: ToolUIPart['output'];
@@ -294,18 +309,24 @@ export const ToolOutput = ({
       String(output).toLowerCase() === 'true';
     return (
       <div className={cn('border-t-2 px-5 py-5', className)} {...props}>
-        <div className={cn(
-            "flex items-center gap-4 rounded-xl px-5 py-4 text-sm font-medium shadow-sm",
-            result 
-                ? "bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 ring-2 ring-emerald-200 dark:from-emerald-950 dark:to-emerald-900 dark:text-emerald-300 dark:ring-emerald-800" 
-                : "bg-gradient-to-r from-red-50 to-red-100 text-red-700 ring-2 ring-red-200 dark:from-red-950 dark:to-red-900 dark:text-red-300 dark:ring-red-800"
-        )}>
-            {result ? (
-                <CheckCircle2Icon className="size-6 shrink-0" />
-            ) : (
-                <XCircleIcon className="size-6 shrink-0" />
-            )}
-            <span>{result ? 'Connection verified successfully' : 'Connection verification failed'}</span>
+        <div
+          className={cn(
+            'flex items-center gap-4 rounded-xl px-5 py-4 text-sm font-medium shadow-sm',
+            result
+              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 ring-2 ring-emerald-200 dark:from-emerald-950 dark:to-emerald-900 dark:text-emerald-300 dark:ring-emerald-800'
+              : 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 ring-2 ring-red-200 dark:from-red-950 dark:to-red-900 dark:text-red-300 dark:ring-red-800',
+          )}
+        >
+          {result ? (
+            <CheckCircle2Icon className="size-6 shrink-0" />
+          ) : (
+            <XCircleIcon className="size-6 shrink-0" />
+          )}
+          <span>
+            {result
+              ? 'Connection verified successfully'
+              : 'Connection verification failed'}
+          </span>
         </div>
       </div>
     );
@@ -313,14 +334,22 @@ export const ToolOutput = ({
 
   if (errorText) {
     return (
-      <div className={cn('border-t-2 border-red-200 dark:border-red-800 px-5 py-5', className)} {...props}>
+      <div
+        className={cn(
+          'border-t-2 border-red-200 px-5 py-5 dark:border-red-800',
+          className,
+        )}
+        {...props}
+      >
         <div className="rounded-xl bg-gradient-to-br from-red-50 via-red-50 to-orange-50 p-5 ring-2 ring-red-200 dark:from-red-950 dark:via-red-950 dark:to-orange-950 dark:ring-red-800">
-          <div className="mb-3 flex items-center gap-2 text-sm font-bold text-destructive">
+          <div className="text-destructive mb-3 flex items-center gap-2 text-sm font-bold">
             <AlertCircleIcon className="size-5" />
             <span>Execution Error</span>
           </div>
-          <div className="rounded-lg bg-background/80 p-4 backdrop-blur-sm">
-            <pre className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{errorText}</pre>
+          <div className="bg-background/80 rounded-lg p-4 backdrop-blur-sm">
+            <pre className="text-muted-foreground text-xs leading-relaxed whitespace-pre-wrap">
+              {errorText}
+            </pre>
           </div>
         </div>
       </div>
@@ -339,7 +368,7 @@ export const ToolOutput = ({
 
   return (
     <div className={cn('border-t-2 px-5 py-5', className)} {...props}>
-      <div className="overflow-hidden rounded-xl ring-2 ring-border/50 shadow-inner">
+      <div className="ring-border/50 overflow-hidden rounded-xl shadow-inner ring-2">
         {Output}
       </div>
     </div>

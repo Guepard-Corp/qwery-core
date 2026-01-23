@@ -19,11 +19,13 @@ import { LogoImage } from '~/components/app-logo';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetProjectById } from '~/lib/queries/use-get-projects';
 
-
 function SidebarSkeleton() {
   return (
-    <Sidebar collapsible="none" className="w-[18rem] min-w-[18rem] max-w-[18rem]">
-      <SidebarContent className="p-4 overflow-hidden">
+    <Sidebar
+      collapsible="none"
+      className="w-[18rem] max-w-[18rem] min-w-[18rem]"
+    >
+      <SidebarContent className="overflow-hidden p-4">
         {/* Navigation items skeleton */}
         <SidebarGroup>
           <SidebarGroupContent>
@@ -43,28 +45,31 @@ function SidebarSkeleton() {
         </SidebarGroup>
 
         {/* Conversation History skeleton */}
-        <SidebarGroup className="overflow-hidden min-w-0">
+        <SidebarGroup className="min-w-0 overflow-hidden">
           <Collapsible open={true}>
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-                <div className="flex items-center justify-between w-full">
+              <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+                <div className="flex w-full items-center justify-between">
                   <span>Recent chats</span>
                   <Skeleton className="h-4 w-4 rounded" />
                 </div>
               </SidebarGroupLabel>
             </CollapsibleTrigger>
-            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
-              <SidebarGroupContent className="overflow-hidden relative min-h-0">
+            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
+              <SidebarGroupContent className="relative min-h-0 overflow-hidden">
                 <div className="space-y-1">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md">
-                      <Skeleton className="h-4 w-4 rounded shrink-0" />
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5"
+                    >
+                      <Skeleton className="h-4 w-4 shrink-0 rounded" />
                       <Skeleton className="h-4 flex-1" />
                     </div>
                   ))}
                 </div>
                 <div className="mt-4">
-                  <Skeleton className="h-8 w-full rounded-md border border-border/50" />
+                  <Skeleton className="border-border/50 h-8 w-full rounded-md border" />
                 </div>
               </SidebarGroupContent>
             </CollapsibleContent>
@@ -72,28 +77,31 @@ function SidebarSkeleton() {
         </SidebarGroup>
 
         {/* Notebook History skeleton */}
-        <SidebarGroup className="overflow-hidden min-w-0">
+        <SidebarGroup className="min-w-0 overflow-hidden">
           <Collapsible open={true}>
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
-                <div className="flex items-center justify-between w-full">
+              <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+                <div className="flex w-full items-center justify-between">
                   <span>Recent notebooks</span>
                   <Skeleton className="h-4 w-4 rounded" />
                 </div>
               </SidebarGroupLabel>
             </CollapsibleTrigger>
-            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down data-[state=closed]:duration-200 data-[state=open]:duration-200">
-              <SidebarGroupContent className="overflow-hidden relative min-h-0">
+            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
+              <SidebarGroupContent className="relative min-h-0 overflow-hidden">
                 <div className="space-y-1">
                   {Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md">
-                      <Skeleton className="h-4 w-4 rounded shrink-0" />
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5"
+                    >
+                      <Skeleton className="h-4 w-4 shrink-0 rounded" />
                       <Skeleton className="h-4 flex-1" />
                     </div>
                   ))}
                 </div>
                 <div className="mt-4">
-                  <Skeleton className="h-8 w-full rounded-md border border-border/50" />
+                  <Skeleton className="border-border/50 h-8 w-full rounded-md border" />
                 </div>
               </SidebarGroupContent>
             </CollapsibleContent>
@@ -106,24 +114,24 @@ function SidebarSkeleton() {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-background min-w-0 flex justify-center">
-      <main className="w-full max-w-4xl px-4 sm:px-6 py-12 sm:py-20">
+    <div className="bg-background flex h-full min-w-0 flex-1 justify-center overflow-y-auto">
+      <main className="w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-20">
         {/* HERO SECTION */}
-        <section className="text-center space-y-5 mb-16">
+        <section className="mb-16 space-y-5 text-center">
           {/* Qwery Logo & Brand */}
-          <div className="flex flex-col items-center gap-4 mb-8">
+          <div className="mb-8 flex flex-col items-center gap-4">
             <LogoImage size="2xl" width={256} />
             <Skeleton className="h-10 w-32" />
           </div>
-          
-          <Skeleton className="h-12 w-96 mx-auto mb-4" />
-          <Skeleton className="h-6 w-80 mx-auto" />
+
+          <Skeleton className="mx-auto mb-4 h-12 w-96" />
+          <Skeleton className="mx-auto h-6 w-80" />
         </section>
 
         {/* PRIMARY CHAT INPUT */}
         <section className="mb-12">
-          <div className="bg-card border border-border/60 rounded-lg shadow-sm p-4">
-            <Skeleton className="h-32 w-full mb-3" />
+          <div className="bg-card border-border/60 rounded-lg border p-4 shadow-sm">
+            <Skeleton className="mb-3 h-32 w-full" />
             <div className="flex items-center justify-between">
               <Skeleton className="h-8 w-24" />
               <Skeleton className="h-9 w-20" />
@@ -131,7 +139,7 @@ function DashboardSkeleton() {
           </div>
 
           {/* Example prompts skeleton */}
-          <div className="mt-4 flex flex-wrap gap-2.5 justify-center">
+          <div className="mt-4 flex flex-wrap justify-center gap-2.5">
             <Skeleton className="h-8 w-32 rounded-md" />
             <Skeleton className="h-8 w-40 rounded-md" />
             <Skeleton className="h-8 w-36 rounded-md" />
@@ -141,29 +149,31 @@ function DashboardSkeleton() {
         {/* DIVIDER */}
         <div className="relative my-12">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border/40"></div>
+            <div className="border-border/40 w-full border-t"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground/70">Quick Actions</span>
+            <span className="bg-background text-muted-foreground/70 px-3">
+              Quick Actions
+            </span>
           </div>
         </div>
 
         {/* ACTION CARDS */}
         <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="rounded-2xl border bg-card p-8">
+          <div className="bg-card rounded-2xl border p-8">
             <div className="mb-3 flex items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-lg" />
               <Skeleton className="h-6 w-40" />
             </div>
-            <Skeleton className="h-16 w-full mb-6" />
+            <Skeleton className="mb-6 h-16 w-full" />
             <Skeleton className="h-4 w-32" />
           </div>
-          <div className="rounded-2xl border bg-card p-8">
+          <div className="bg-card rounded-2xl border p-8">
             <div className="mb-3 flex items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-lg" />
               <Skeleton className="h-6 w-40" />
             </div>
-            <Skeleton className="h-16 w-full mb-6" />
+            <Skeleton className="mb-6 h-16 w-full" />
             <Skeleton className="h-4 w-32" />
           </div>
         </section>
@@ -171,16 +181,18 @@ function DashboardSkeleton() {
         {/* DIVIDER */}
         <div className="relative my-12">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border/40"></div>
+            <div className="border-border/40 w-full border-t"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground/70">Sample Data</span>
+            <span className="bg-background text-muted-foreground/70 px-3">
+              Sample Data
+            </span>
           </div>
         </div>
 
         {/* PLAYGROUND SECTION */}
         <section className="space-y-4 pb-12">
-          <div className="overflow-hidden bg-card rounded-lg border p-8">
+          <div className="bg-card overflow-hidden rounded-lg border p-8">
             <Skeleton className="h-24 w-full" />
           </div>
         </section>
@@ -188,7 +200,6 @@ function DashboardSkeleton() {
     </div>
   );
 }
-
 
 export default function IndexPage() {
   const navigate = useNavigate();

@@ -21,8 +21,9 @@ const AgentStatusContext = createContext<AgentStatusContextType | undefined>(
 
 export function AgentStatusProvider({ children }: { children: ReactNode }) {
   const [isProcessing, setIsProcessingState] = useState(false);
-  const [processingConversationSlug, setProcessingConversationSlug] =
-    useState<string | null>(null);
+  const [processingConversationSlug, setProcessingConversationSlug] = useState<
+    string | null
+  >(null);
 
   const setProcessing = useCallback(
     (value: boolean, conversationSlug?: string) => {

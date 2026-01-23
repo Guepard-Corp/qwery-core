@@ -1052,8 +1052,10 @@ export const PromptInputSubmit = ({
     <InputGroupButton
       aria-label={isStreaming ? 'Stop' : 'Send'}
       className={cn(
-        'shrink-0 h-9 px-4 gap-2 rounded-md font-medium transition-colors',
-        !isStreaming && !isError && 'bg-primary text-primary-foreground hover:bg-primary/90',
+        'h-9 shrink-0 gap-2 rounded-md px-4 font-medium transition-colors',
+        !isStreaming &&
+          !isError &&
+          'bg-primary text-primary-foreground hover:bg-primary/90',
         className,
       )}
       size={size}

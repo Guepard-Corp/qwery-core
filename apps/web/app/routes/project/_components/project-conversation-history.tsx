@@ -165,7 +165,9 @@ export function ProjectConversationHistory() {
         .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
         .map((r) => r.reason?.message || 'Unknown error')
         .join(', ');
-      toast.error(`Failed to delete ${failed} conversation${failed !== 1 ? 's' : ''}: ${errors}`);
+      toast.error(
+        `Failed to delete ${failed} conversation${failed !== 1 ? 's' : ''}: ${errors}`,
+      );
     }
 
     if (

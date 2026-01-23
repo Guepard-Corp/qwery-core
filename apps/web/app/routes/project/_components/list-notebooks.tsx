@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import {
   ChevronLeftIcon,
@@ -65,7 +65,6 @@ export function ListNotebooks({
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
-  const params = useParams();
   const { workspace } = useWorkspace();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,7 +193,10 @@ export function ListNotebooks({
             <Input
               ref={searchInputRef}
               type="search"
-              placeholder={t('notebooks:search_placeholder', 'Search notebooks...')}
+              placeholder={t(
+                'notebooks:search_placeholder',
+                'Search notebooks...',
+              )}
               className={cn(
                 'h-11 w-full pr-24 pl-9 transition-all',
                 shouldAnimate &&
@@ -238,9 +240,7 @@ export function ListNotebooks({
                             : 'text-muted-foreground/40',
                         )}
                       />
-                      <span className="text-sm">
-                        {t('grid_view', 'Grid')}
-                      </span>
+                      <span className="text-sm">{t('grid_view', 'Grid')}</span>
                     </div>
                     {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
                   </DropdownMenuItem>
@@ -292,9 +292,7 @@ export function ListNotebooks({
                             : 'text-muted-foreground/40',
                         )}
                       />
-                      <span className="text-sm">
-                        {t('date', 'Date')}
-                      </span>
+                      <span className="text-sm">{t('date', 'Date')}</span>
                     </div>
                     {sortCriterion === 'date' && (
                       <div
@@ -346,9 +344,7 @@ export function ListNotebooks({
                             : 'text-muted-foreground/40',
                         )}
                       />
-                      <span className="text-sm">
-                        {t('name', 'Name')}
-                      </span>
+                      <span className="text-sm">{t('name', 'Name')}</span>
                     </div>
                     {sortCriterion === 'name' && (
                       <div
@@ -405,7 +401,10 @@ export function ListNotebooks({
             </p>
             <p className="text-muted-foreground text-sm">
               {searchQuery
-                ? t('no_notebooks_description', 'Try adjusting your search query')
+                ? t(
+                    'no_notebooks_description',
+                    'Try adjusting your search query',
+                  )
                 : t('no_notebooks_empty', 'No notebooks have been created yet')}
             </p>
           </div>
@@ -421,17 +420,20 @@ export function ListNotebooks({
                   className="bg-card group relative overflow-hidden rounded-xl border transition-all hover:border-[#ffcb51]/50 hover:shadow-lg"
                 >
                   <Link
-                    to={createPath(pathsConfig.app.projectNotebook, notebook.slug)}
+                    to={createPath(
+                      pathsConfig.app.projectNotebook,
+                      notebook.slug,
+                    )}
                     className="flex h-full flex-col p-6"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="bg-muted/50 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border">
                           <Notebook className="h-5 w-5" />
                         </div>
-                        <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex min-w-0 flex-1 flex-col">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold truncate">
+                            <h3 className="truncate text-sm font-semibold">
                               {highlightMatch(notebook.title, searchQuery)}
                             </h3>
                             {hasUnsavedChanges && (
@@ -444,7 +446,7 @@ export function ListNotebooks({
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 ml-2">
+                      <div className="text-muted-foreground ml-2 flex shrink-0 items-center gap-1.5 text-xs">
                         <Clock className="h-3.5 w-3.5" />
                         {new Date(notebook.createdAt).toLocaleString('en-US', {
                           month: 'short',
@@ -505,7 +507,10 @@ export function ListNotebooks({
                       className="group hover:bg-muted/30 cursor-pointer transition-colors"
                       onClick={() =>
                         navigate(
-                          createPath(pathsConfig.app.projectNotebook, notebook.slug),
+                          createPath(
+                            pathsConfig.app.projectNotebook,
+                            notebook.slug,
+                          ),
                         )
                       }
                     >
@@ -514,9 +519,9 @@ export function ListNotebooks({
                           <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
                             <Notebook className="h-5 w-5" />
                           </div>
-                          <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex min-w-0 flex-1 flex-col">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold truncate">
+                              <span className="truncate text-sm font-semibold">
                                 {highlightMatch(notebook.title, searchQuery)}
                               </span>
                               {hasUnsavedChanges && (

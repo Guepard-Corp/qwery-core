@@ -27,17 +27,15 @@ export function ToolCallsGroup({
   if (isMinimal) {
     return (
       <Collapsible defaultOpen={false} className={cn('mb-2', className)}>
-        <CollapsibleTrigger className="group/header flex w-full cursor-pointer items-center gap-2 py-1.5 text-left transition-colors hover:text-foreground">
-          <div className="flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 group-data-[state=open]/tool:rotate-90">
+        <CollapsibleTrigger className="group/header hover:text-foreground flex w-full cursor-pointer items-center gap-2 py-1.5 text-left transition-colors">
+          <div className="text-muted-foreground flex size-4 shrink-0 items-center justify-center transition-transform duration-200 group-data-[state=open]/tool:rotate-90">
             <ChevronRightIcon className="size-3.5" />
           </div>
-          <span className="text-sm text-muted-foreground">
-            {toolCount === 1
-              ? '1 tool call'
-              : `${toolCount} tool calls`}
+          <span className="text-muted-foreground text-sm">
+            {toolCount === 1 ? '1 tool call' : `${toolCount} tool calls`}
           </span>
         </CollapsibleTrigger>
-        <CollapsibleContent className="ml-6 border-l border-border/50 pl-2">
+        <CollapsibleContent className="border-border/50 ml-6 border-l pl-2">
           {children}
         </CollapsibleContent>
       </Collapsible>
@@ -46,12 +44,10 @@ export function ToolCallsGroup({
 
   return (
     <Collapsible defaultOpen={true} className={cn('mb-4', className)}>
-      <CollapsibleTrigger className="group/header flex w-full cursor-pointer items-center gap-2 rounded-lg border bg-card px-4 py-3 text-left transition-all hover:bg-accent/50">
-        <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]/tool:rotate-90" />
+      <CollapsibleTrigger className="group/header bg-card hover:bg-accent/50 flex w-full cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-left transition-all">
+        <ChevronRightIcon className="text-muted-foreground size-4 transition-transform duration-200 group-data-[state=open]/tool:rotate-90" />
         <span className="text-sm font-medium">
-          {toolCount === 1
-            ? '1 tool call'
-            : `${toolCount} tool calls`}
+          {toolCount === 1 ? '1 tool call' : `${toolCount} tool calls`}
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 space-y-2">
@@ -60,4 +56,3 @@ export function ToolCallsGroup({
     </Collapsible>
   );
 }
-

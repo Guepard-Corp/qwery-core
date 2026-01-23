@@ -41,9 +41,9 @@ export function useConversationList({
   }, [conversations, searchQuery]);
 
   const currentConversation = useMemo(() => {
-    return filteredConversations.find(
-      (c) => c.id === currentConversationId,
-    ) || null;
+    return (
+      filteredConversations.find((c) => c.id === currentConversationId) || null
+    );
   }, [filteredConversations, currentConversationId]);
 
   const allConversations = useMemo(() => {
@@ -57,7 +57,10 @@ export function useConversationList({
   }, [allConversations, visibleCount]);
 
   const { groups: groupedConversations } = useMemo(() => {
-    return groupConversationsByTime(visibleConversations, currentConversationId);
+    return groupConversationsByTime(
+      visibleConversations,
+      currentConversationId,
+    );
   }, [visibleConversations, currentConversationId]);
 
   const sortedGroups = useMemo(() => {
@@ -75,4 +78,3 @@ export function useConversationList({
     hasMore,
   };
 }
-

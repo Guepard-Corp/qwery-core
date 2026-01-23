@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from 'react';
 import type { ToolVariant } from '../../ai-elements/tool';
 
 const TOOL_VARIANT_STORAGE_KEY = 'qwery-tool-variant-preference';
@@ -20,7 +26,9 @@ export function ToolVariantProvider({ children }: { children: ReactNode }) {
       return 'default';
     }
     const stored = localStorage.getItem(TOOL_VARIANT_STORAGE_KEY);
-    return (stored === 'minimal' || stored === 'default' ? stored : 'default') as ToolVariant;
+    return (
+      stored === 'minimal' || stored === 'default' ? stored : 'default'
+    ) as ToolVariant;
   });
 
   useEffect(() => {
@@ -45,4 +53,3 @@ export function useToolVariant() {
   }
   return context;
 }
-

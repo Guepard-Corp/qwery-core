@@ -32,8 +32,9 @@ interface ConversationStateManagerContextType {
   getActiveConversations: () => string[];
 }
 
-const ConversationStateManagerContext =
-  createContext<ConversationStateManagerContextType | undefined>(undefined);
+const ConversationStateManagerContext = createContext<
+  ConversationStateManagerContextType | undefined
+>(undefined);
 
 /**
  * Conversation State Manager Provider
@@ -61,25 +62,25 @@ export function ConversationStateManagerProvider({
   }, []);
 
   useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      const oneHourAgo = now - 60 * 60 * 1000;
-      let hasChanges = false;
+    const cleanupInterval = setInterval(
+      () => {
+        const now = Date.now();
+        const oneHourAgo = now - 60 * 60 * 1000;
+        let hasChanges = false;
 
-      for (const [slug, state] of stateMapRef.current.entries()) {
-        if (
-          state.status === 'idle' &&
-          state.lastUpdated < oneHourAgo
-        ) {
-          stateMapRef.current.delete(slug);
-          hasChanges = true;
+        for (const [slug, state] of stateMapRef.current.entries()) {
+          if (state.status === 'idle' && state.lastUpdated < oneHourAgo) {
+            stateMapRef.current.delete(slug);
+            hasChanges = true;
+          }
         }
-      }
 
-      if (hasChanges) {
-        triggerUpdate();
-      }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+        if (hasChanges) {
+          triggerUpdate();
+        }
+      },
+      5 * 60 * 1000,
+    ); // Check every 5 minutes
 
     return () => clearInterval(cleanupInterval);
   }, [triggerUpdate]);
@@ -148,4 +149,3 @@ export function useConversationStateManager() {
   }
   return context;
 }
-

@@ -28,7 +28,6 @@ import {
   MoreVertical,
   Pencil,
   PlayIcon,
-  Plus,
   Sparkles,
   Trash2,
   X,
@@ -162,19 +161,17 @@ function DatasourceSelectWithPagination({
       disabled={disabled}
     >
       <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
-        {!selectedDatasource && (
-          <DatabaseIcon className="mr-1.5 h-3 w-3" />
-        )}
+        {!selectedDatasource && <DatabaseIcon className="mr-1.5 h-3 w-3" />}
         <SelectValue placeholder="Select datasource" />
       </SelectTrigger>
-      <SelectContent 
+      <SelectContent
         position="popper"
-        className="w-[200px] h-[240px] overflow-hidden"
+        className="h-[240px] w-[200px] overflow-hidden"
       >
-        <div className="h-full w-full flex flex-col overflow-hidden">
-          <div 
+        <div className="flex h-full w-full flex-col overflow-hidden">
+          <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden min-h-0"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
           >
             {paginatedDatasources.map((ds) => (
               <SelectItem key={ds.id} value={ds.id} className="min-h-[32px]">
@@ -188,8 +185,8 @@ function DatasourceSelectWithPagination({
           </div>
           {totalPages > 1 && (
             <>
-              <div className="border-border h-px border-t shrink-0" />
-              <div className="flex items-center justify-center gap-1 px-2 py-1.5 shrink-0">
+              <div className="border-border h-px shrink-0 border-t" />
+              <div className="flex shrink-0 items-center justify-center gap-1 px-2 py-1.5">
                 <Button
                   type="button"
                   variant="ghost"
@@ -205,7 +202,7 @@ function DatasourceSelectWithPagination({
                 >
                   <ArrowUp className="h-3 w-3" />
                 </Button>
-                <span className="text-muted-foreground text-[10px] font-medium px-1">
+                <span className="text-muted-foreground px-1 text-[10px] font-medium">
                   {currentPage}/{totalPages}
                 </span>
                 <Button
@@ -288,19 +285,21 @@ function NotebookCellComponent({
   const isScrollingRef = useRef(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [deleteAnimating, setDeleteAnimating] = useState(false);
-  
+
   // Cell title state - inline editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isHoveringTitle, setIsHoveringTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(cell.title || '');
   const titleInputRef = useRef<HTMLInputElement>(null);
   const justEnteredEditModeRef = useRef(false);
-  
+
   // Sync title value when cell.title changes
   useEffect(() => {
-    setTitleValue(cell.title || '');
+    setTimeout(() => {
+      setTitleValue(cell.title || '');
+    }, 0);
   }, [cell.title]);
-  
+
   // Focus input when editing starts
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -322,11 +321,13 @@ function NotebookCellComponent({
   // Trigger edit mode from outside
   useEffect(() => {
     if (triggerTitleEdit && isQueryCell) {
-      setTitleValue(cell.title || '');
-      setIsEditingTitle(true);
+      setTimeout(() => {
+        setTitleValue(cell.title || '');
+        setIsEditingTitle(true);
+      }, 0);
     }
   }, [triggerTitleEdit, isQueryCell, cell.title]);
-  
+
   const handleTitleSave = useCallback(() => {
     const trimmed = titleValue.trim();
     // Allow empty titles - if empty, pass empty string
@@ -344,20 +345,23 @@ function NotebookCellComponent({
       handleTitleSave();
     }
   }, [isEditingTitle, handleTitleSave]);
-  
+
   const handleTitleCancel = useCallback(() => {
     setTitleValue(cell.title || '');
     setIsEditingTitle(false);
   }, [cell.title]);
-  
-  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleTitleSave();
-    } else if (e.key === 'Escape') {
-      handleTitleCancel();
-    }
-  }, [handleTitleSave, handleTitleCancel]);
+
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleTitleSave();
+      } else if (e.key === 'Escape') {
+        handleTitleCancel();
+      }
+    },
+    [handleTitleSave, handleTitleCancel],
+  );
 
   useEffect(() => {
     // Use setTimeout to avoid synchronous setState in effect
@@ -473,12 +477,16 @@ function NotebookCellComponent({
 
   useEffect(() => {
     isEditingRef.current = false;
-    setLocalQuery(persistedQuery);
-  }, [cell.cellId]);
+    setTimeout(() => {
+      setLocalQuery(persistedQuery);
+    }, 0);
+  }, [cell.cellId, persistedQuery]);
 
   useEffect(() => {
     if (!isEditingRef.current) {
-      setLocalQuery(persistedQuery);
+      setTimeout(() => {
+        setLocalQuery(persistedQuery);
+      }, 0);
     }
   }, [persistedQuery]);
 
@@ -557,7 +565,7 @@ function NotebookCellComponent({
     const initials = displayName.slice(0, 2).toUpperCase();
 
     return (
-      <div className="flex min-w-0 items-center gap-2 w-full">
+      <div className="flex w-full min-w-0 items-center gap-2">
         {ds.logo ? (
           <img
             src={ds.logo}
@@ -569,7 +577,9 @@ function NotebookCellComponent({
             {initials}
           </span>
         )}
-        <span className="truncate text-[11px] min-w-0 flex-1">{displayName}</span>
+        <span className="min-w-0 flex-1 truncate text-[11px]">
+          {displayName}
+        </span>
       </div>
     );
   }, []);
@@ -621,7 +631,7 @@ function NotebookCellComponent({
       {/* Drag handle - outside cell, on the left */}
       <button
         type="button"
-        className="text-muted-foreground/30 hover:text-foreground absolute -left-8 top-4 z-20 cursor-grab border-0 bg-transparent p-0 opacity-0 transition-all duration-200 group-hover:opacity-100 active:cursor-grabbing"
+        className="text-muted-foreground/30 hover:text-foreground absolute top-4 -left-8 z-20 cursor-grab border-0 bg-transparent p-0 opacity-0 transition-all duration-200 group-hover:opacity-100 active:cursor-grabbing"
         ref={dragHandleRef}
         {...dragHandleProps}
       >
@@ -631,16 +641,19 @@ function NotebookCellComponent({
         ref={cellContainerRef}
         data-cell-id={cell.cellId}
         className={cn(
-          'group relative flex w-full min-w-0 flex-col rounded-xl border transition-all duration-200 overflow-hidden',
+          'group relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl border transition-all duration-200',
           isDragging && 'opacity-50',
           // Yellow border when editing title
-          isEditingTitle && 'border-yellow-500 border-2',
+          isEditingTitle && 'border-2 border-yellow-500',
           // Cell type specific styling (only apply if not editing title)
-          !isEditingTitle && isTextCell &&
-            'border-border bg-transparent shadow-none border-2 border-dashed hover:border-border',
-          !isEditingTitle && isPromptCell &&
+          !isEditingTitle &&
+            isTextCell &&
+            'border-border hover:border-border border-2 border-dashed bg-transparent shadow-none',
+          !isEditingTitle &&
+            isPromptCell &&
             'border-border/60 bg-muted/20 hover:border-border/70 border-2 border-dashed',
-          !isEditingTitle && isQueryCell &&
+          !isEditingTitle &&
+            isQueryCell &&
             'border-black/20 shadow-sm hover:border-black/30 hover:shadow-md dark:border-white/30 dark:hover:border-white/40',
           !isEditingTitle &&
             !isTextCell &&
@@ -649,38 +662,103 @@ function NotebookCellComponent({
             'hover:border-border/80 hover:shadow-sm',
         )}
       >
-
-      {/* Cell Title Header - Only for query cells, show only if title exists */}
-      {isQueryCell && cell.title && cell.title.trim().length > 0 && (
-        <div
-          className={cn(
-            'border-border bg-transparent flex items-center justify-between border-b px-3 py-2 min-h-[44px] rounded-t-xl',
-            !isEditingTitle && 'cursor-grab active:cursor-grabbing',
-          )}
-          onMouseEnter={() => setIsHoveringTitle(true)}
-          onMouseLeave={() => setIsHoveringTitle(false)}
-          {...(!isEditingTitle && dragHandleProps
-            ? (dragHandleProps as unknown as React.HTMLAttributes<HTMLDivElement>)
-            : {})}
-        >
+        {/* Cell Title Header - Only for query cells, show only if title exists */}
+        {isQueryCell && cell.title && cell.title.trim().length > 0 && (
           <div
-            className="flex-1 flex items-center gap-2"
-            onMouseDown={(e) => {
-              // Allow dragging only if clicking on the span (title text), not on buttons
-              if ((e.target as HTMLElement).closest('button')) {
-                e.stopPropagation();
-              }
-            }}
+            className={cn(
+              'border-border flex min-h-[44px] items-center justify-between rounded-t-xl border-b bg-transparent px-3 py-2',
+              !isEditingTitle && 'cursor-grab active:cursor-grabbing',
+            )}
+            onMouseEnter={() => setIsHoveringTitle(true)}
+            onMouseLeave={() => setIsHoveringTitle(false)}
+            {...(!isEditingTitle && dragHandleProps
+              ? (dragHandleProps as unknown as React.HTMLAttributes<HTMLDivElement>)
+              : {})}
           >
-            {isEditingTitle ? (
-              <>
+            <div
+              className="flex flex-1 items-center gap-2"
+              onMouseDown={(e) => {
+                // Allow dragging only if clicking on the span (title text), not on buttons
+                if ((e.target as HTMLElement).closest('button')) {
+                  e.stopPropagation();
+                }
+              }}
+            >
+              {isEditingTitle ? (
+                <>
+                  <Input
+                    ref={titleInputRef}
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={handleTitleKeyDown}
+                    className="text-foreground h-auto flex-1 border-0 bg-transparent px-2 py-0 text-base leading-normal font-semibold shadow-none focus-visible:ring-0 md:text-base"
+                    placeholder="Cell title..."
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={handleTitleCancel}
+                    aria-label="Discard changes"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-foreground text-base leading-normal font-semibold">
+                    {cell.title}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={`h-6 w-6 shrink-0 transition-opacity ${isHoveringTitle ? 'opacity-100' : 'opacity-0'}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setTitleValue(cell.title || '');
+                      setIsEditingTitle(true);
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    aria-label="Edit title"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Show title section in edit mode even if title is empty */}
+        {isQueryCell &&
+          isEditingTitle &&
+          (!cell.title || cell.title.trim().length === 0) && (
+            <div className="border-border flex min-h-[44px] items-center justify-between rounded-t-xl border-b bg-transparent px-3 py-2">
+              <div
+                className="flex flex-1 items-center gap-2"
+                onMouseDown={(e) => {
+                  if ((e.target as HTMLElement).closest('button')) {
+                    e.stopPropagation();
+                  }
+                }}
+              >
                 <Input
                   ref={titleInputRef}
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
                   onBlur={handleTitleBlur}
                   onKeyDown={handleTitleKeyDown}
-                  className="text-foreground flex-1 h-auto border-0 bg-transparent px-2 py-0 text-base md:text-base font-semibold leading-normal focus-visible:ring-0 shadow-none"
+                  className="text-foreground h-auto flex-1 border-0 bg-transparent px-2 py-0 text-base leading-normal font-semibold shadow-none focus-visible:ring-0 md:text-base"
                   placeholder="Cell title..."
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -695,198 +773,199 @@ function NotebookCellComponent({
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </>
-            ) : (
-              <>
-                <span className="text-foreground text-base font-semibold leading-normal">{cell.title}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className={`h-6 w-6 shrink-0 transition-opacity ${isHoveringTitle ? 'opacity-100' : 'opacity-0'}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setTitleValue(cell.title || '');
-                    setIsEditingTitle(true);
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                  }}
-                  aria-label="Edit title"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-      {/* Show title section in edit mode even if title is empty */}
-      {isQueryCell && isEditingTitle && (!cell.title || cell.title.trim().length === 0) && (
-        <div
-          className="border-border bg-transparent flex items-center justify-between border-b px-3 py-2 min-h-[44px] rounded-t-xl"
-        >
-          <div
-            className="flex-1 flex items-center gap-2"
-            onMouseDown={(e) => {
-              if ((e.target as HTMLElement).closest('button')) {
-                e.stopPropagation();
-              }
-            }}
-          >
-            <Input
-              ref={titleInputRef}
-              value={titleValue}
-              onChange={(e) => setTitleValue(e.target.value)}
-              onBlur={handleTitleBlur}
-              onKeyDown={handleTitleKeyDown}
-              className="text-foreground flex-1 h-auto border-0 bg-transparent px-2 py-0 text-base md:text-base font-semibold leading-normal focus-visible:ring-0 shadow-none"
-              placeholder="Cell title..."
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 shrink-0"
-              onClick={handleTitleCancel}
-              aria-label="Discard changes"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Cell content */}
-      <div
-        className={cn(
-          'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-transparent',
-          isTextCell && 'min-h-[180px]',
-          isQueryCell && 'min-h-[240px]',
-          isPromptCell && 'min-h-[200px]',
-        )}
-      >
-        {isQueryCell && (
-          <div className="pointer-events-none absolute top-4 right-4 z-20">
-            <div className="pointer-events-auto">
-              <Button
-                size="sm"
-                onClick={handleRunQuery}
-                disabled={!query.trim() || isLoading || !selectedDatasource}
-                className="h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <>
-                    <PlayIcon className="h-3.5 w-3.5 fill-current" />
-                    <span>Run</span>
-                  </>
-                )}
-              </Button>
+              </div>
             </div>
-          </div>
-        )}
-        {/* Editor Area */}
+          )}
+
+        {/* Cell content */}
         <div
-          ref={editorContainerRef}
           className={cn(
-            'relative flex-1 rounded-none',
-            isQueryCell ? 'min-h-[240px] max-h-[600px] overflow-y-auto [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent' : 'min-h-[40px] [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
+            'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-transparent',
+            isTextCell && 'min-h-[180px]',
+            isQueryCell && 'min-h-[240px]',
+            isPromptCell && 'min-h-[200px]',
           )}
         >
-          {isQueryCell ? (
-            <>
-              <div ref={codeMirrorRef} className="relative w-full min-h-[240px]">
-                <CodeMirror
-                  value={query}
-                  onChange={(value) => handleQueryChange(value)}
-                  extensions={[
-                    sql(),
-                    EditorView.lineWrapping,
-                    (() => {
-                      const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
-                      const modifier = isMac ? '⌘' : 'Ctrl';
-                      return placeholder(`Press ${modifier}+K to use AI assistant`);
-                    })(),
-                  ]}
-                  theme={isDarkMode ? oneDark : undefined}
-                  editable={!isLoading && !isNotebookLoading}
-                  basicSetup={{
-                    lineNumbers: true,
-                    foldGutter: true,
-                    dropCursor: false,
-                    allowMultipleSelections: false,
-                  }}
-                  className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller]:bg-muted/30 [&_.cm-scroller]:overflow-visible [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40"
-                  data-test="notebook-sql-editor"
-                />
+          {isQueryCell && (
+            <div className="pointer-events-none absolute top-4 right-4 z-20">
+              <div className="pointer-events-auto">
+                <Button
+                  size="sm"
+                  onClick={handleRunQuery}
+                  disabled={!query.trim() || isLoading || !selectedDatasource}
+                  className="h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <PlayIcon className="h-3.5 w-3.5 fill-current" />
+                      <span>Run</span>
+                    </>
+                  )}
+                </Button>
               </div>
-              <NotebookCellAiPopup
-                cellId={cell.cellId}
-                isQueryCell={isQueryCell}
-                isOpen={showAIPopup}
-                aiQuestion={aiQuestion}
-                setAiQuestion={setAiQuestion}
-                aiInputRef={aiInputRef}
-                cellContainerRef={cellContainerRef}
-                codeMirrorRef={codeMirrorRef}
-                textareaRef={textareaRef}
-                editorContainerRef={editorContainerRef}
-                onOpenAiPopup={(cellId) =>
-                  onOpenAiPopup(cellId, { x: 0, y: 0 })
-                }
-                onCloseAiPopup={onCloseAiPopup}
-                onSubmit={handleAISubmit}
-                query={query}
-                selectedDatasource={selectedDatasource}
-                onRunQueryWithAgent={onRunQueryWithAgent}
-                cellType={
-                  cell.cellType === 'query' || cell.cellType === 'prompt'
-                    ? cell.cellType
-                    : undefined
-                }
-                isLoading={isLoading}
-                enableShortcut={isAdvancedMode}
-              />
-            </>
-          ) : isTextCell ? (
-            <div className="relative flex h-full flex-col">
-              {markdownView === 'edit' ? (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  {/* Preview on top when editing */}
-                  <div
-                    ref={markdownPreviewRef}
-                    className="border-border bg-muted/30 markdown-preview-scroll min-h-0 flex-1 flex-shrink-0 overflow-auto border-b px-4 py-4 pr-12"
-                    onScroll={(e) => {
-                      if (isScrollingRef.current) return;
-                      const editor = textareaRef.current;
-                      if (editor) {
-                        isScrollingRef.current = true;
-                        const previewScrollRatio =
-                          e.currentTarget.scrollTop /
-                          Math.max(
-                            1,
-                            e.currentTarget.scrollHeight -
-                              e.currentTarget.clientHeight,
-                          );
-                        editor.scrollTop =
-                          previewScrollRatio *
-                          Math.max(
-                            1,
-                            editor.scrollHeight - editor.clientHeight,
-                          );
-                        requestAnimationFrame(() => {
-                          isScrollingRef.current = false;
-                        });
-                      }
+            </div>
+          )}
+          {/* Editor Area */}
+          <div
+            ref={editorContainerRef}
+            className={cn(
+              'relative flex-1 rounded-none',
+              isQueryCell
+                ? '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[600px] min-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent'
+                : '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 min-h-[40px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
+            )}
+          >
+            {isQueryCell ? (
+              <>
+                <div
+                  ref={codeMirrorRef}
+                  className="relative min-h-[240px] w-full"
+                >
+                  <CodeMirror
+                    value={query}
+                    onChange={(value) => handleQueryChange(value)}
+                    extensions={[
+                      sql(),
+                      EditorView.lineWrapping,
+                      (() => {
+                        const isMac =
+                          typeof navigator !== 'undefined' &&
+                          /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+                        const modifier = isMac ? '⌘' : 'Ctrl';
+                        return placeholder(
+                          `Press ${modifier}+K to use AI assistant`,
+                        );
+                      })(),
+                    ]}
+                    theme={isDarkMode ? oneDark : undefined}
+                    editable={!isLoading && !isNotebookLoading}
+                    basicSetup={{
+                      lineNumbers: true,
+                      foldGutter: true,
+                      dropCursor: false,
+                      allowMultipleSelections: false,
                     }}
+                    className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
+                    data-test="notebook-sql-editor"
+                  />
+                </div>
+                <NotebookCellAiPopup
+                  cellId={cell.cellId}
+                  isQueryCell={isQueryCell}
+                  isOpen={showAIPopup}
+                  aiQuestion={aiQuestion}
+                  setAiQuestion={setAiQuestion}
+                  aiInputRef={aiInputRef}
+                  cellContainerRef={cellContainerRef}
+                  codeMirrorRef={codeMirrorRef}
+                  textareaRef={textareaRef}
+                  editorContainerRef={editorContainerRef}
+                  onOpenAiPopup={(cellId) =>
+                    onOpenAiPopup(cellId, { x: 0, y: 0 })
+                  }
+                  onCloseAiPopup={onCloseAiPopup}
+                  onSubmit={handleAISubmit}
+                  query={query}
+                  selectedDatasource={selectedDatasource}
+                  onRunQueryWithAgent={onRunQueryWithAgent}
+                  cellType={
+                    cell.cellType === 'query' || cell.cellType === 'prompt'
+                      ? cell.cellType
+                      : undefined
+                  }
+                  isLoading={isLoading}
+                  enableShortcut={isAdvancedMode}
+                />
+              </>
+            ) : isTextCell ? (
+              <div className="relative flex h-full flex-col">
+                {markdownView === 'edit' ? (
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    {/* Preview on top when editing */}
+                    <div
+                      ref={markdownPreviewRef}
+                      className="border-border bg-muted/30 markdown-preview-scroll min-h-0 flex-1 flex-shrink-0 overflow-auto border-b px-4 py-4 pr-12"
+                      onScroll={(e) => {
+                        if (isScrollingRef.current) return;
+                        const editor = textareaRef.current;
+                        if (editor) {
+                          isScrollingRef.current = true;
+                          const previewScrollRatio =
+                            e.currentTarget.scrollTop /
+                            Math.max(
+                              1,
+                              e.currentTarget.scrollHeight -
+                                e.currentTarget.clientHeight,
+                            );
+                          editor.scrollTop =
+                            previewScrollRatio *
+                            Math.max(
+                              1,
+                              editor.scrollHeight - editor.clientHeight,
+                            );
+                          requestAnimationFrame(() => {
+                            isScrollingRef.current = false;
+                          });
+                        }
+                      }}
+                    >
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        {query.trim().length > 0 ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={notebookMarkdownComponents}
+                          >
+                            {query}
+                          </ReactMarkdown>
+                        ) : null}
+                      </div>
+                    </div>
+                    {/* Editor below - fills remaining space */}
+                    <div className="bg-muted/5 min-h-0 flex-1 flex-shrink-0 overflow-hidden">
+                      <Textarea
+                        ref={textareaRef}
+                        value={query}
+                        onChange={(e) => handleQueryChange(e.target.value)}
+                        disabled={isLoading || isNotebookLoading}
+                        className="markdown-editor-scroll h-full w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-4 pr-12 text-sm leading-6 focus-visible:ring-0"
+                        onScroll={(e) => {
+                          if (isScrollingRef.current) return;
+                          const preview = markdownPreviewRef.current;
+                          if (preview) {
+                            isScrollingRef.current = true;
+                            const editorScrollRatio =
+                              e.currentTarget.scrollTop /
+                              Math.max(
+                                1,
+                                e.currentTarget.scrollHeight -
+                                  e.currentTarget.clientHeight,
+                              );
+                            preview.scrollTop =
+                              editorScrollRatio *
+                              Math.max(
+                                1,
+                                preview.scrollHeight - preview.clientHeight,
+                              );
+                            requestAnimationFrame(() => {
+                              isScrollingRef.current = false;
+                            });
+                          }
+                        }}
+                        onBlur={handleMarkdownBlur}
+                        spellCheck
+                        placeholder="Write markdown content..."
+                        data-test="notebook-md-editor"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 cursor-pointer overflow-auto px-4 py-4 pr-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+                    onDoubleClick={handleMarkdownDoubleClick}
+                    ref={markdownPreviewRef}
+                    data-test="notebook-md-preview"
                   >
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       {query.trim().length > 0 ? (
@@ -899,321 +978,269 @@ function NotebookCellComponent({
                       ) : null}
                     </div>
                   </div>
-                  {/* Editor below - fills remaining space */}
-                  <div className="bg-muted/5 min-h-0 flex-1 flex-shrink-0 overflow-hidden">
-                    <Textarea
-                      ref={textareaRef}
-                      value={query}
-                      onChange={(e) => handleQueryChange(e.target.value)}
-                      disabled={isLoading || isNotebookLoading}
-                      className="markdown-editor-scroll h-full w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-4 pr-12 text-sm leading-6 focus-visible:ring-0"
-                      onScroll={(e) => {
-                        if (isScrollingRef.current) return;
-                        const preview = markdownPreviewRef.current;
-                        if (preview) {
-                          isScrollingRef.current = true;
-                          const editorScrollRatio =
-                            e.currentTarget.scrollTop /
-                            Math.max(
-                              1,
-                              e.currentTarget.scrollHeight -
-                                e.currentTarget.clientHeight,
-                            );
-                          preview.scrollTop =
-                            editorScrollRatio *
-                            Math.max(
-                              1,
-                              preview.scrollHeight - preview.clientHeight,
-                            );
-                          requestAnimationFrame(() => {
-                            isScrollingRef.current = false;
-                          });
-                        }
-                      }}
-                      onBlur={handleMarkdownBlur}
-                      spellCheck
-                      placeholder="Write markdown content..."
-                      data-test="notebook-md-editor"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className="bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 cursor-pointer overflow-auto px-4 py-4 pr-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
-                  onDoubleClick={handleMarkdownDoubleClick}
-                  ref={markdownPreviewRef}
-                  data-test="notebook-md-preview"
-                >
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    {query.trim().length > 0 ? (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={notebookMarkdownComponents}
-                      >
-                        {query}
-                      </ReactMarkdown>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="relative flex h-full flex-col">
-              <Button
-                size="sm"
-                onClick={handlePromptSubmit}
-                disabled={!query.trim() || isLoading}
-                className="absolute top-3 right-3 z-10 h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <>
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Generate</span>
-                  </>
                 )}
-              </Button>
-              <div className="bg-muted/10 flex-1 px-4 py-4 pr-12">
-                <Textarea
-                  ref={textareaRef}
-                  value={query}
-                  onChange={(e) => {
-                    handleQueryChange(e.target.value);
-                    if (promptDatasourceError) {
-                      setPromptDatasourceError(false);
+              </div>
+            ) : (
+              <div className="relative flex h-full flex-col">
+                <Button
+                  size="sm"
+                  onClick={handlePromptSubmit}
+                  disabled={!query.trim() || isLoading}
+                  className="absolute top-3 right-3 z-10 h-7 gap-1.5 bg-[#ffcb51] px-2 text-xs font-semibold text-black shadow-sm transition-all hover:bg-[#ffcb51]/90 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Generate</span>
+                    </>
+                  )}
+                </Button>
+                <div className="bg-muted/10 flex-1 px-4 py-4 pr-12">
+                  <Textarea
+                    ref={textareaRef}
+                    value={query}
+                    onChange={(e) => {
+                      handleQueryChange(e.target.value);
+                      if (promptDatasourceError) {
+                        setPromptDatasourceError(false);
+                      }
+                    }}
+                    disabled={isLoading || isNotebookLoading}
+                    className={cn(
+                      'min-h-[120px] w-full resize-none border-0 bg-transparent text-sm leading-6 focus-visible:ring-0',
+                      isPromptCell && 'font-mono',
+                    )}
+                    placeholder="Describe what you want the AI to generate..."
+                  />
+                  {renderPromptError()}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Toolbar - As seen in screenshot */}
+          <div
+            ref={footerDragHandleRef}
+            className={cn(
+              'border-border bg-background z-10 flex shrink-0 items-center justify-between rounded-b-xl border-t px-2 pt-2 pb-2 shadow-sm transition-all duration-200',
+              isTextCell &&
+                markdownView === 'preview' &&
+                'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
+              isPromptCell &&
+                'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
+              (!isTextCell && !isPromptCell) ||
+                (isTextCell && markdownView === 'edit')
+                ? 'h-10'
+                : '',
+              footerDragHandleProps && 'cursor-grab active:cursor-grabbing',
+            )}
+            {...(footerDragHandleProps
+              ? {
+                  onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+                    const target = e.target as HTMLElement;
+                    if (
+                      target.closest('button') ||
+                      target.closest('[role="combobox"]') ||
+                      target.closest('[role="option"]') ||
+                      target.closest('[role="menu"]')
+                    ) {
+                      return;
+                    }
+                    footerDragHandleProps.onPointerDown?.(e);
+                  },
+                  onKeyDown: footerDragHandleProps.onKeyDown,
+                  onKeyUp: footerDragHandleProps.onKeyUp,
+                }
+              : {})}
+          >
+            <div className="flex items-center gap-1">
+              {isQueryCell && isAdvancedMode && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={cn(
+                    'h-8 w-8',
+                    showAIPopup
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => {
+                    if (showAIPopup) {
+                      onCloseAiPopup();
+                    } else {
+                      onOpenAiPopup(cell.cellId, { x: 0, y: 0 });
                     }
                   }}
-                  disabled={isLoading || isNotebookLoading}
-                  className={cn(
-                    'min-h-[120px] w-full resize-none border-0 bg-transparent text-sm leading-6 focus-visible:ring-0',
-                    isPromptCell && 'font-mono',
-                  )}
-                  placeholder="Describe what you want the AI to generate..."
-                />
-                {renderPromptError()}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Toolbar - As seen in screenshot */}
-        <div
-          ref={footerDragHandleRef}
-          className={cn(
-            'border-border bg-background flex items-center justify-between border-t px-2 pt-2 pb-2 rounded-b-xl transition-all duration-200 shrink-0 z-10 shadow-sm',
-            isTextCell &&
-              markdownView === 'preview' &&
-              'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
-            isPromptCell &&
-              'h-0 overflow-hidden opacity-0 group-hover:h-10 group-hover:opacity-100',
-            !isTextCell && !isPromptCell || (isTextCell && markdownView === 'edit') ? 'h-10' : '',
-            footerDragHandleProps && 'cursor-grab active:cursor-grabbing',
-          )}
-          {...(footerDragHandleProps
-            ? {
-                onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
-                  const target = e.target as HTMLElement;
-                  if (
-                    target.closest('button') ||
-                    target.closest('[role="combobox"]') ||
-                    target.closest('[role="option"]') ||
-                    target.closest('[role="menu"]')
-                  ) {
-                    return;
-                  }
-                  footerDragHandleProps.onPointerDown?.(e);
-                },
-                onKeyDown: footerDragHandleProps.onKeyDown,
-                onKeyUp: footerDragHandleProps.onKeyUp,
-              }
-            : {})}
-        >
-          <div className="flex items-center gap-1">
-            {isQueryCell && isAdvancedMode && (
+                  aria-label="Toggle AI assistant"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground h-8 w-8"
+                onClick={onFormat}
+                aria-label="Format cell"
+              >
+                <AlignLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground h-8 w-8 transition-all duration-200"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(query);
+                  setCopySuccess(true);
+                  setTimeout(() => setCopySuccess(false), 1500);
+                }}
+                aria-label="Copy code"
+              >
+                <div className="relative h-4 w-4">
+                  <Copy
+                    className={cn(
+                      'absolute inset-0 h-4 w-4 transition-all duration-200',
+                      copySuccess
+                        ? 'scale-0 rotate-90 opacity-0'
+                        : 'scale-100 rotate-0 opacity-100',
+                    )}
+                  />
+                  <Check
+                    className={cn(
+                      'absolute inset-0 h-4 w-4 text-green-600 transition-all duration-200 dark:text-green-400',
+                      copySuccess
+                        ? 'scale-100 rotate-0 opacity-100'
+                        : 'scale-0 -rotate-90 opacity-0',
+                    )}
+                  />
+                </div>
+              </Button>
               <Button
                 size="icon"
                 variant="ghost"
                 className={cn(
-                  'h-8 w-8',
-                  showAIPopup
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
+                  'text-muted-foreground hover:text-destructive h-8 w-8 transition-all duration-200',
+                  deleteAnimating && '[animation:shake_0.4s_ease-in-out]',
                 )}
                 onClick={() => {
-                  if (showAIPopup) {
-                    onCloseAiPopup();
-                  } else {
-                    onOpenAiPopup(cell.cellId, { x: 0, y: 0 });
-                  }
+                  setDeleteAnimating(true);
+                  setTimeout(() => {
+                    setDeleteAnimating(false);
+                    onDelete();
+                  }, 200);
                 }}
-                aria-label="Toggle AI assistant"
+                aria-label="Delete cell"
+                disabled={totalCellCount === 1}
               >
-                <Sparkles className="h-4 w-4" />
+                <Trash2
+                  className={cn(
+                    'h-4 w-4 transition-transform duration-200',
+                    deleteAnimating && 'scale-110',
+                  )}
+                />
               </Button>
-            )}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-muted-foreground hover:text-foreground h-8 w-8"
-              onClick={onFormat}
-              aria-label="Format cell"
-            >
-              <AlignLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-muted-foreground hover:text-foreground h-8 w-8 transition-all duration-200"
-              onClick={async () => {
-                await navigator.clipboard.writeText(query);
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 1500);
-              }}
-              aria-label="Copy code"
-            >
-              <div className="relative h-4 w-4">
-                <Copy
-                  className={cn(
-                    'absolute inset-0 h-4 w-4 transition-all duration-200',
-                    copySuccess
-                      ? 'scale-0 rotate-90 opacity-0'
-                      : 'scale-100 rotate-0 opacity-100',
-                  )}
-                />
-                <Check
-                  className={cn(
-                    'absolute inset-0 h-4 w-4 text-green-600 dark:text-green-400 transition-all duration-200',
-                    copySuccess
-                      ? 'scale-100 rotate-0 opacity-100'
-                      : 'scale-0 -rotate-90 opacity-0',
-                  )}
-                />
-              </div>
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                'text-muted-foreground hover:text-destructive h-8 w-8 transition-all duration-200',
-                deleteAnimating && '[animation:shake_0.4s_ease-in-out]',
-              )}
-              onClick={() => {
-                setDeleteAnimating(true);
-                setTimeout(() => {
-                  setDeleteAnimating(false);
-                  onDelete();
-                }, 200);
-              }}
-              aria-label="Delete cell"
-              disabled={totalCellCount === 1}
-            >
-              <Trash2
-                className={cn(
-                  'h-4 w-4 transition-transform duration-200',
-                  deleteAnimating && 'scale-110',
-                )}
-              />
-            </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-muted-foreground h-8 w-8"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {isQueryCell && (!cell.title || cell.title.trim().length === 0) && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTitleValue('');
-                      setIsEditingTitle(true);
-                      setTimeout(() => {
-                        requestAnimationFrame(() => {
-                          setTimeout(() => {
-                            const input = titleInputRef.current;
-                            if (input) {
-                              input.focus();
-                              input.select();
-                            }
-                          }, 100);
-                        });
-                      }, 50);
-                    }}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground h-8 w-8"
                   >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Add cell title
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {isQueryCell &&
+                    (!cell.title || cell.title.trim().length === 0) && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTitleValue('');
+                          setIsEditingTitle(true);
+                          setTimeout(() => {
+                            requestAnimationFrame(() => {
+                              setTimeout(() => {
+                                const input = titleInputRef.current;
+                                if (input) {
+                                  input.focus();
+                                  input.select();
+                                }
+                              }, 100);
+                            });
+                          }, 50);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Add cell title
+                      </DropdownMenuItem>
+                    )}
+                  <DropdownMenuItem
+                    onClick={onMoveUp}
+                    disabled={totalCellCount === 1}
+                    className="transition-all duration-200"
+                  >
+                    <ArrowUp className="mr-2 h-4 w-4 transition-transform duration-200" />
+                    Move up
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onClick={onMoveUp}
-                  disabled={totalCellCount === 1}
-                  className="transition-all duration-200"
-                >
-                  <ArrowUp className="mr-2 h-4 w-4 transition-transform duration-200" />
-                  Move up
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onMoveDown}
-                  disabled={totalCellCount === 1}
-                  className="transition-all duration-200"
-                >
-                  <ArrowDown className="mr-2 h-4 w-4 transition-transform duration-200" />
-                  Move down
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onFullView}>
-                  <Maximize2 className="mr-2 h-4 w-4" />
-                  Full view
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem
+                    onClick={onMoveDown}
+                    disabled={totalCellCount === 1}
+                    className="transition-all duration-200"
+                  >
+                    <ArrowDown className="mr-2 h-4 w-4 transition-transform duration-200" />
+                    Move down
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onFullView}>
+                    <Maximize2 className="mr-2 h-4 w-4" />
+                    Full view
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {(isQueryCell || isPromptCell) && (
+                <DatasourceSelectWithPagination
+                  value={selectedDatasource ?? undefined}
+                  onValueChange={(value) => onDatasourceChange(value)}
+                  datasources={datasources}
+                  renderDatasourceOption={renderDatasourceOption}
+                  disabled={datasources.length === 0}
+                />
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {(isQueryCell || isPromptCell) && (
-              <DatasourceSelectWithPagination
-                value={selectedDatasource ?? undefined}
-                onValueChange={(value) => onDatasourceChange(value)}
-                datasources={datasources}
-                renderDatasourceOption={renderDatasourceOption}
-                disabled={datasources.length === 0}
+          {/* Results Grid */}
+          {isQueryCell && result && (
+            <div className="border-border max-h-[400px] border-t p-0">
+              <DataGrid
+                columns={result.columns?.map((col) => col.name) ?? []}
+                rows={result.rows ?? []}
+                pageSize={50}
               />
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {isQueryCell && typeof error === 'string' && error.length > 0 && (
+            <div className="border-border border-t">
+              <Alert
+                variant="destructive"
+                className="bg-destructive/10 m-2 rounded-lg border-none"
+              >
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="font-mono text-xs">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
         </div>
-
-        {/* Results Grid */}
-        {isQueryCell && result && (
-          <div className="border-border max-h-[400px] border-t p-0">
-            <DataGrid
-              columns={result.columns?.map((col) => col.name) ?? []}
-              rows={result.rows ?? []}
-              pageSize={50}
-            />
-          </div>
-        )}
-
-        {/* Error Display */}
-        {isQueryCell && typeof error === 'string' && error.length > 0 && (
-          <div className="border-border border-t">
-            <Alert
-              variant="destructive"
-              className="bg-destructive/10 m-2 rounded-lg border-none"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="font-mono text-xs">
-                {error}
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-      </div>
       </div>
     </div>
   );

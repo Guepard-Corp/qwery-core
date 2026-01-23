@@ -447,10 +447,7 @@ export function ListDatasources({
             className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90"
           >
             <Link
-              to={createPath(
-                pathsConfig.app.availableSources,
-                projectSlug,
-              )}
+              to={createPath(pathsConfig.app.availableSources, projectSlug)}
             >
               <Plus className="mr-2 h-4 w-4" />
               New Datasource

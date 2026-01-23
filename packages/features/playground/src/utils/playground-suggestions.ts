@@ -69,18 +69,22 @@ export const PLAYGROUND_SUGGESTIONS: PlaygroundSuggestion[] = [
   },
 ];
 
-export function getRandomizedSuggestions(count: number = 3): PlaygroundSuggestion[] {
+export function getRandomizedSuggestions(
+  count: number = 3,
+): PlaygroundSuggestion[] {
   const shuffled = [...PLAYGROUND_SUGGESTIONS].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, PLAYGROUND_SUGGESTIONS.length));
 }
 
-export function getSuggestionById(id: string): PlaygroundSuggestion | undefined {
+export function getSuggestionById(
+  id: string,
+): PlaygroundSuggestion | undefined {
   return PLAYGROUND_SUGGESTIONS.find((suggestion) => suggestion.id === id);
 }
 
 export function getTableDefinitions(): string {
   return PLAYGROUND_TABLES.map(
-    (table) => `${table.name}${table.description ? ` - ${table.description}` : ''}`,
+    (table) =>
+      `${table.name}${table.description ? ` - ${table.description}` : ''}`,
   ).join(', ');
 }
-

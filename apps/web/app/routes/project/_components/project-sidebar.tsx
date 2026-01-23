@@ -7,7 +7,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarGroup,
   SidebarGroupContent,
 } from '@qwery/ui/shadcn-sidebar';
@@ -29,7 +28,10 @@ import {
 } from '~/lib/mutations/use-conversation';
 import { toast } from 'sonner';
 import { useAgentStatus } from '@qwery/ui/ai';
-import { SidebarConversationHistory, SidebarNotebookHistory } from './sidebar-conversation-history';
+import {
+  SidebarConversationHistory,
+  SidebarNotebookHistory,
+} from './sidebar-conversation-history';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useDeleteNotebook } from '~/lib/mutations/use-notebook';
 import type { NotebookOutput } from '@qwery/domain/usecases';
@@ -63,7 +65,7 @@ export function ProjectSidebar() {
     projectId,
   );
   const notebooksList = notebooks.data || [];
-  
+
   // Get current notebook slug
   const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
   const currentNotebookSlug = notebookSlugMatch?.[1];
@@ -164,12 +166,12 @@ export function ProjectSidebar() {
     });
   };
 
-  const onConversationDuplicate = (conversationId: string) => {
+  const onConversationDuplicate = (_conversationId: string) => {
     toast.info('Duplicate feature coming soon');
   };
 
-  const onConversationShare = (conversationId: string) => {
-    const conversation = conversations.find((c) => c.id === conversationId);
+  const onConversationShare = (_conversationId: string) => {
+    const conversation = conversations.find((c) => c.id === _conversationId);
     if (conversation) {
       const url = `${window.location.origin}${createPath(pathsConfig.app.conversation, conversation.slug)}`;
       navigator.clipboard.writeText(url);
@@ -177,7 +179,7 @@ export function ProjectSidebar() {
     }
   };
 
-  const onConversationBookmark = (conversationId: string) => {
+  const onConversationBookmark = (_conversationId: string) => {
     toast.info('Bookmark feature coming soon');
   };
 
@@ -228,8 +230,11 @@ export function ProjectSidebar() {
   }
 
   return (
-    <Sidebar collapsible="none" className="w-[18rem] min-w-[18rem] max-w-[18rem]">
-      <SidebarContent className="p-4 overflow-hidden">
+    <Sidebar
+      collapsible="none"
+      className="w-[18rem] max-w-[18rem] min-w-[18rem]"
+    >
+      <SidebarContent className="overflow-hidden p-4">
         <SidebarNavigation config={navigationConfig} />
 
         {/* Search Bar */}
@@ -237,7 +242,7 @@ export function ProjectSidebar() {
           <SidebarGroupContent>
             <div className="">
               <div className="relative">
-                <Search className="text-muted-foreground absolute left-2 top-1/2 size-4 -translate-y-1/2" />
+                <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
                 <Input
                   type="text"
                   placeholder="Search chats and notebooks..."
@@ -245,13 +250,13 @@ export function ProjectSidebar() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setSearchQuery(e.target.value)
                   }
-                  className="pl-8 pr-8 border-transparent hover:border-border focus:border-border"
+                  className="hover:border-border focus:border-border border-transparent pr-8 pl-8"
                 />
                 <button
                   type="button"
                   onClick={onNewConversation}
                   disabled={createConversationMutation.isPending}
-                  className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 size-4 -translate-y-1/2 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   title="New conversation"
                 >
                   <Plus className="size-4" />

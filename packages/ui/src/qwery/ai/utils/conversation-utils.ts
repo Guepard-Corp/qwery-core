@@ -123,7 +123,9 @@ function parseDateString(dateStr: string): Date | null {
 /**
  * Sorts time group keys in chronological order (Today, Yesterday, then by date)
  */
-export function sortTimeGroups(groups: Record<string, Conversation[]>): string[] {
+export function sortTimeGroups(
+  groups: Record<string, Conversation[]>,
+): string[] {
   const keys = Object.keys(groups);
   return keys.sort((a, b) => {
     if (a === 'Today') return -1;
@@ -141,4 +143,3 @@ export function sortTimeGroups(groups: Record<string, Conversation[]>): string[]
     return a.localeCompare(b);
   });
 }
-

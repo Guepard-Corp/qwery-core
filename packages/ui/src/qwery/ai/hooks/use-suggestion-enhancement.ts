@@ -3,7 +3,6 @@ import type { useChat } from '@ai-sdk/react';
 import {
   createSuggestionButton,
   generateSuggestionId,
-  generateParentConversationId,
   cleanSuggestionPatterns,
   scrollToConversationBottom,
 } from '../utils/suggestion-enhancement';
@@ -42,7 +41,11 @@ export function useSuggestionEnhancement({
         let messageText = cleanSuggestionText;
         const { lastAssistantResponse, parentConversationId } = contextMessages;
 
-        if (lastAssistantResponse || sourceSuggestionId || parentConversationId) {
+        if (
+          lastAssistantResponse ||
+          sourceSuggestionId ||
+          parentConversationId
+        ) {
           const contextData = JSON.stringify({
             lastAssistantResponse,
             sourceSuggestionId,

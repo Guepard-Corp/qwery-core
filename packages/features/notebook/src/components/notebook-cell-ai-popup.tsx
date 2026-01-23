@@ -435,24 +435,27 @@ export function NotebookCellAiPopup({
     >
       <div
         data-drag-handle
-        className="group flex h-10 shrink-0 cursor-grab select-none items-center justify-between border-b border-border bg-muted/50 px-3 active:cursor-grabbing"
+        className="group border-border bg-muted/50 flex h-10 shrink-0 cursor-grab items-center justify-between border-b px-3 select-none active:cursor-grabbing"
         onMouseDown={(e) => {
           e.stopPropagation();
           handleDragStart(e);
         }}
       >
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-accent text-accent-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+          <div className="bg-accent text-accent-foreground flex h-5 w-5 items-center justify-center rounded-md">
             <Sparkles className="h-3 w-3" />
           </div>
           <span>AI Assistant</span>
         </div>
         <div className="flex items-center gap-2">
-          <GripHorizontal className="text-muted-foreground transition-colors group-hover:text-foreground" size={14} />
-          <div className="h-3 w-px bg-border" />
+          <GripHorizontal
+            className="text-muted-foreground group-hover:text-foreground transition-colors"
+            size={14}
+          />
+          <div className="bg-border h-3 w-px" />
           <button
             type="button"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => {
               onCloseAiPopup();
               setAiQuestion('');
@@ -480,7 +483,7 @@ export function NotebookCellAiPopup({
         className="relative flex min-h-0 flex-1 flex-col"
       >
         {showDatasourceError && !selectedDatasource && (
-          <div className="absolute top-2 right-2 left-2 z-20 animate-in fade-in slide-in-from-top-1">
+          <div className="animate-in fade-in slide-in-from-top-1 absolute top-2 right-2 left-2 z-20">
             <Alert variant="destructive" className="px-3 py-2">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-3.5 w-3.5" />
@@ -502,12 +505,12 @@ export function NotebookCellAiPopup({
             }
           }}
           placeholder="Ask me anything..."
-          className="h-full w-full resize-none border-0 bg-transparent p-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+          className="text-foreground placeholder:text-muted-foreground h-full w-full resize-none border-0 bg-transparent p-4 text-sm focus-visible:ring-0"
           autoFocus
           disabled={isLoading}
         />
 
-        <div className="flex shrink-0 items-center justify-end border-t border-border bg-muted/30 p-2">
+        <div className="border-border bg-muted/30 flex shrink-0 items-center justify-end border-t p-2">
           <Button
             type="submit"
             size="sm"
@@ -529,7 +532,7 @@ export function NotebookCellAiPopup({
         className="absolute right-0 bottom-0 z-20 h-4 w-4 cursor-nwse-resize opacity-0 transition-opacity hover:opacity-100"
         onMouseDown={handleResizeStart}
       >
-        <div className="absolute right-1 bottom-1 h-1.5 w-1.5 rounded-sm bg-muted-foreground/50" />
+        <div className="bg-muted-foreground/50 absolute right-1 bottom-1 h-1.5 w-1.5 rounded-sm" />
       </div>
     </div>
   );

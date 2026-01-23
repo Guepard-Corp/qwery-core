@@ -67,7 +67,7 @@ function BreadcrumbNodeDropdown({
   onNew,
   isNotebook = false,
   unsavedNotebookSlugs = [],
-  maxVisibleItems = 5,
+  maxVisibleItems: _maxVisibleItems = 5,
 }: BreadcrumbNodeProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -305,6 +305,7 @@ export interface QweryBreadcrumbProps {
   onNewProject: () => void;
   onNewDatasource: () => void;
   onNewNotebook: () => void;
+  unsavedNotebookSlugs?: string[];
 }
 
 export function QweryBreadcrumb({

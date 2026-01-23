@@ -25,9 +25,9 @@ export function DatasourceBadge({
   datasource,
   iconUrl,
   className,
-}: DatasourceBadgeProps) {  
+}: DatasourceBadgeProps) {
   const displayName = datasource.name || datasource.slug || datasource.id;
-  
+
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
@@ -51,15 +51,15 @@ export function DatasourceBadge({
           </span>
         </div>
       </HoverCardTrigger>
-      <HoverCardContent 
-        className="max-w-[calc(100vw-2rem)] w-72 p-4" 
+      <HoverCardContent
+        className="w-72 max-w-[calc(100vw-2rem)] p-4"
         side="top"
         align="end"
         sideOffset={8}
       >
-        <div className="flex gap-4 max-w-full min-w-0">
+        <div className="flex max-w-full min-w-0 gap-4">
           {/* Header with icon and name */}
-          <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
               {iconUrl ? (
                 <img
@@ -176,17 +176,19 @@ function DatasourceBadgesHover({
           </span>
         </div>
       </HoverCardTrigger>
-      <HoverCardContent 
-        className="max-w-[calc(100vw-2rem)] w-72 p-4" 
+      <HoverCardContent
+        className="w-72 max-w-[calc(100vw-2rem)] p-4"
         side="top"
         align="end"
         sideOffset={8}
       >
-        <div className="space-y-4 max-w-full min-w-0">
+        <div className="max-w-full min-w-0 space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">Selected Datasources</p>
+              <p className="truncate text-sm font-semibold">
+                Selected Datasources
+              </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {datasources.length}{' '}
                 {datasources.length === 1 ? 'datasource' : 'datasources'}
@@ -205,17 +207,18 @@ function DatasourceBadgesHover({
           <div className="bg-border h-px" />
 
           {/* Datasources List */}
-          <div className="space-y-1.5 max-w-full min-w-0">
+          <div className="max-w-full min-w-0 space-y-1.5">
             {currentItems.map((datasource) => {
               const iconUrl = pluginLogoMap?.get(
                 datasource.datasource_provider,
               );
               // Use semantic name (name field) instead of technical identifier
-              const displayName = datasource.name || datasource.slug || datasource.id;
+              const displayName =
+                datasource.name || datasource.slug || datasource.id;
               return (
                 <div
                   key={datasource.id}
-                  className="bg-muted/50 border-border hover:bg-muted flex items-center gap-2 rounded-md border p-2 transition-colors max-w-full min-w-0"
+                  className="bg-muted/50 border-border hover:bg-muted flex max-w-full min-w-0 items-center gap-2 rounded-md border p-2 transition-colors"
                 >
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center">
                     {iconUrl ? (
@@ -229,11 +232,11 @@ function DatasourceBadgesHover({
                     )}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className="min-w-0 text-xs font-medium break-words truncate">
+                    <p className="min-w-0 truncate text-xs font-medium break-words">
                       {displayName}
                     </p>
                     {datasource.datasource_provider && (
-                      <span className="bg-muted text-muted-foreground inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium capitalize w-fit">
+                      <span className="bg-muted text-muted-foreground inline-flex w-fit shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium capitalize">
                         {datasource.datasource_provider.replace(/_/g, ' ')}
                       </span>
                     )}

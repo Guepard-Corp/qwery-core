@@ -238,7 +238,7 @@ export const VirtuosoMessageList = forwardRef<
   const hasPerformedInitialScrollRef = useRef(false);
   const previousMessagesLengthRef = useRef(messages.length);
   const previousLastMessageIdRef = useRef<string | undefined>(undefined);
-  
+
   useEffect(() => {
     if (!hasPerformedInitialScrollRef.current && messages.length > 0) {
       const wasEmpty = previousMessagesLengthRef.current === 0;

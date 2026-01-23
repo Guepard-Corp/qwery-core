@@ -4,7 +4,6 @@ import {
   IConversationRepository,
 } from '@qwery/domain/repositories';
 import { CreateMessageService } from '@qwery/domain/services';
-import { MessageRole } from '@qwery/domain/entities';
 import { MessageOutput } from '@qwery/domain/usecases';
 import {
   messageRoleToUIRole,
@@ -39,7 +38,6 @@ function convertUIMessageToContent(
     parts: uiMessage.parts,
   };
 }
-
 
 export class MessagePersistenceService {
   constructor(
