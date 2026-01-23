@@ -1,129 +1,762 @@
-import { ReactNode, useMemo, useState } from 'react';
-
-import { useNavigate } from 'react-router';
-
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MagnifyingGlassIcon,
+} from '@radix-ui/react-icons';
+import {
+  LayoutGrid,
+  List,
+  Clock,
+  Settings2,
+  Check,
+  Calendar,
+  CaseSensitive,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { Project } from '@qwery/domain/entities';
-import { Card, CardContent } from '@qwery/ui/card';
+import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
+import { Switch } from '@qwery/ui/switch';
+import { cn } from '@qwery/ui/utils';
+import { formatRelativeTime } from '@qwery/ui/ai';
+import { ProjectCard } from '@qwery/ui/project';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@qwery/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@qwery/ui/table';
+import { ConfirmDeleteDialog } from '@qwery/ui/qwery/confirm-delete-dialog';
+import { Badge } from '@qwery/ui/badge';
 
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { apiPost } from '~/lib/repositories/api-client';
+import { ProjectDialog } from './project-dialog';
+import { ProjectActionBar } from './project-action-bar';
+
+const ITEMS_PER_PAGE = 10;
+
+type SortCriterion = 'date' | 'name';
+type SortOrder = 'asc' | 'desc';
 
 export function ListProjects({
   projects,
   newProjectButton,
+  organizationId,
 }: {
   projects: Project[];
-  newProjectButton?: ReactNode;
+  newProjectButton?: React.ReactNode;
+  organizationId: string;
 }) {
   const navigate = useNavigate();
-  const { t } = useTranslation('organizations');
+  const queryClient = useQueryClient();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isGridView, setIsGridView] = useState(true);
+  const [sortCriterion, setSortCriterion] = useState<SortCriterion>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setShouldAnimate(true);
+        searchInputRef.current?.focus();
+        setTimeout(() => setShouldAnimate(false), 1000);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response: Response = await apiPost('/api/projects/bulk', {
+        operation: 'delete',
+        ids,
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete projects');
+      }
+      return (await response.json()) as { success: boolean; deletedCount: number };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setSelectedIds(new Set());
+      setShowDeleteDialog(false);
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response: Response = await apiPost('/api/projects/bulk', {
+        operation: 'export',
+        ids,
+      });
+      if (!response.ok) {
+        throw new Error('Failed to export projects');
+      }
+      return (await response.json()) as { success: boolean };
+    },
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response: Response = await apiPost('/api/projects/bulk', {
+        operation: 'copy',
+        ids,
+        targetOrganizationId: organizationId,
+      });
+      if (!response.ok) {
+        throw new Error('Failed to copy projects');
+      }
+      return (await response.json()) as { success: boolean; copiedCount: number; projects: unknown[] };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setSelectedIds(new Set());
+    },
+  });
 
   const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return projects;
-    }
+    const filtered = projects.filter((project) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.description &&
+          project.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesSearch;
+    });
 
-    const query = searchQuery.toLowerCase();
-    return projects.filter(
-      (project) =>
-        project.name.toLowerCase().includes(query) ||
-        project.slug.toLowerCase().includes(query),
+    return filtered.sort((a, b) => {
+      if (sortCriterion === 'date') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      } else {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
+        if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      }
+    });
+  }, [projects, searchQuery, sortCriterion, sortOrder]);
+
+  const effectiveCurrentPage = useMemo(() => {
+    const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+    return currentPage > totalPages ? 1 : currentPage;
+  }, [filteredProjects.length, currentPage]);
+
+  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+  const startIndex = (effectiveCurrentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.split(regex).map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span key={index} className="bg-[#ffcb51] text-black">
+          {part}
+        </span>
+      ) : (
+        part
+      ),
     );
-  }, [projects, searchQuery]);
+  };
+
+  const handleSortClick = (criterion: SortCriterion) => {
+    if (sortCriterion === criterion) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCriterion(criterion);
+      setSortOrder('desc');
+    }
+  };
+
+  const handleSortOrderToggle = (checked: boolean) => {
+    setSortOrder(checked ? 'desc' : 'asc');
+  };
+
+  const handleEdit = (project: Project) => {
+    setEditingProject(project);
+    setShowDialog(true);
+  };
+
+  const handleDeleteSingle = (project: Project) => {
+    setSelectedIds(new Set([project.id]));
+    setShowDeleteDialog(true);
+  };
+
+  const handleCreate = () => {
+    setEditingProject(null);
+    setShowDialog(true);
+  };
+
+  const handleDialogSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    setEditingProject(null);
+  };
+
+  const handleConfirmDelete = () => {
+    deleteMutation.mutate(Array.from(selectedIds));
+  };
+
+  const handleExport = () => {
+    exportMutation.mutate(Array.from(selectedIds));
+  };
+
+  const handleCopy = () => {
+    copyMutation.mutate(Array.from(selectedIds));
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">
-          <Trans i18nKey="organizations:projects_title" />
-        </h1>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="relative max-w-md flex-1">
-          <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            placeholder={t('search_project_placeholder')}
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 flex-col gap-6 py-6 pb-4 lg:py-10">
+        <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+          <h1 className="text-3xl font-bold">
+            <Trans i18nKey="organizations:projects_title" />
+          </h1>
         </div>
-        {newProjectButton}
-      </div>
 
-      {filteredProjects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-foreground mb-2 text-base font-medium">
-            <Trans i18nKey="organizations:no_projects" />
-          </p>
-          <p className="text-muted-foreground text-sm">
-            <Trans i18nKey="organizations:no_projects_description" />
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card
-              key={project.id}
-              className="hover:bg-accent/50 cursor-pointer transition-colors"
-              onClick={() => {
-                const path = createPath(pathsConfig.app.project, project.slug);
-                navigate(path);
-              }}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-lg">
-                    <svg
-                      className="text-foreground h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+        <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+          <div className="flex items-center gap-3">
+            <div className="group/search relative flex-1">
+              <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <Input
+                ref={searchInputRef}
+                type="search"
+                placeholder="Search projects..."
+                className={cn(
+                  'h-11 w-full pl-9 transition-all',
+                  shouldAnimate && 'ring-primary animate-pulse ring-2 ring-offset-2',
+                  searchQuery ? 'pr-20' : 'pr-20',
+                )}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-12 -translate-y-1/2 cursor-pointer z-10"
+                >
+                  <span className="text-lg leading-none">×</span>
+                </button>
+              )}
+              <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-hover/search:opacity-100">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-accent/50 h-8 w-8 border-none p-0 focus-visible:ring-0"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="mb-1 truncate text-base font-semibold">
-                      {project.name}
-                    </h3>
-                    <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                      <span
-                        className={`${
-                          project.status === 'active'
-                            ? 'text-green-600'
-                            : project.status === 'inactive'
-                              ? 'text-gray-500'
-                              : 'text-orange-600'
-                        }`}
-                      >
-                        {project.status}
-                      </span>
-                    </div>
-                    {project.description && (
-                      <p className="text-muted-foreground mt-2 line-clamp-2 text-sm">
-                        {project.description}
-                      </p>
+                      <Settings2 className="text-muted-foreground/60 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                    Display Mode
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => setIsGridView(true)}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                      isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <LayoutGrid
+                        className={cn(
+                          'h-4 w-4',
+                          isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
+                        )}
+                      />
+                      <span className="text-sm">Grid</span>
+                    </div>
+                    {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setIsGridView(false)}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                      !isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <List
+                        className={cn(
+                          'h-4 w-4',
+                          !isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
+                        )}
+                      />
+                      <span className="text-sm">Table</span>
+                    </div>
+                    {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                    Sort By
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => handleSortClick('date')}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                      sortCriterion === 'date' &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Calendar
+                        className={cn(
+                          'h-4 w-4',
+                          sortCriterion === 'date'
+                            ? 'text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
+                        )}
+                      />
+                      <span className="text-sm">Date</span>
+                    </div>
+                    {sortCriterion === 'date' && (
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span
+                          className={cn(
+                            'text-[10px]',
+                            sortOrder === 'asc'
+                              ? 'font-bold text-[#ffcb51]'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          ASC
+                        </span>
+                        <Switch
+                          checked={sortOrder === 'desc'}
+                          onCheckedChange={handleSortOrderToggle}
+                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                        />
+                        <span
+                          className={cn(
+                            'text-[10px]',
+                            sortOrder === 'desc'
+                              ? 'font-bold text-[#ffcb51]'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          DESC
+                        </span>
+                      </div>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSortClick('name')}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                      sortCriterion === 'name' &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CaseSensitive
+                        className={cn(
+                          'h-4 w-4',
+                          sortCriterion === 'name'
+                            ? 'text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
+                        )}
+                      />
+                      <span className="text-sm">Name</span>
+                    </div>
+                    {sortCriterion === 'name' && (
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span
+                          className={cn(
+                            'text-[10px]',
+                            sortOrder === 'asc'
+                              ? 'font-bold text-[#ffcb51]'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          ASC
+                        </span>
+                        <Switch
+                          checked={sortOrder === 'desc'}
+                          onCheckedChange={handleSortOrderToggle}
+                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                        />
+                        <span
+                          className={cn(
+                            'text-[10px]',
+                            sortOrder === 'desc'
+                              ? 'font-bold text-[#ffcb51]'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          DESC
+                        </span>
+                      </div>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              </div>
+            </div>
+
+          {newProjectButton || (
+            <Button
+              onClick={handleCreate}
+              className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90 cursor-pointer"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
+            </Button>
+          )}
+        </div>
+        </div>
+      </div>
+
+      <ProjectActionBar
+        selectedCount={selectedIds.size}
+        onDelete={() => {
+          if (selectedIds.size > 0) {
+            setShowDeleteDialog(true);
+          }
+        }}
+        onExport={handleExport}
+        onCopy={handleCopy}
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto py-0">
+        {filteredProjects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-foreground mb-2 text-base font-medium">
+              <Trans i18nKey="organizations:no_projects" />
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {searchQuery
+                ? 'Try adjusting your search query'
+                : 'No projects have been created yet'}
+            </p>
+          </div>
+        ) : isGridView ? (
+          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {paginatedProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                id={project.id}
+                name={project.name}
+                description={project.description}
+                status={project.status}
+                createdAt={project.createdAt}
+                onClick={() => {
+                  const path = createPath(pathsConfig.app.project, project.slug);
+                  navigate(path);
+                }}
+              />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+            <div className="bg-card overflow-hidden rounded-xl border">
+              <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-[50px] pl-6">
+                    <input
+                      type="checkbox"
+                      checked={
+                        paginatedProjects.length > 0 &&
+                        paginatedProjects.every((project) => selectedIds.has(project.id))
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(new Set(paginatedProjects.map((project) => project.id)));
+                        } else {
+                          setSelectedIds(new Set());
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[40%] font-semibold">Name</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSortClick('date')}
+                      className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
+                    >
+                      Created
+                      {sortCriterion === 'date' ? (
+                        sortOrder === 'asc' ? (
+                          <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                        ) : (
+                          <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="pr-6 text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedProjects.map((project) => {
+                  const formattedDateTime = formatRelativeTime(new Date(project.createdAt));
+                  const isSelected = selectedIds.has(project.id);
+                  const statusColor =
+                    project.status === 'active'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                      : project.status === 'inactive'
+                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+
+                  return (
+                    <TableRow
+                      key={project.id}
+                      className={cn(
+                        'group hover:bg-muted/30 cursor-pointer transition-colors',
+                        isSelected && 'bg-muted/50',
+                      )}
+                      onClick={() => {
+                        const path = createPath(pathsConfig.app.project, project.slug);
+                        navigate(path);
+                      }}
+                    >
+                      <TableCell
+                        className="py-4 pl-6"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelection(project.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </TableCell>
+                      <TableCell className="py-4 font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                            <svg
+                              className="text-foreground h-5 w-5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold">
+                              {highlightMatch(project.name, searchQuery)}
+                            </span>
+                            {project.description && (
+                              <span className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
+                                {project.description}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={cn('text-[11px]', statusColor)}>
+                          {project.status || 'active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          {formattedDateTime}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        className="pr-6 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(project)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteSingle(project)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-10 flex shrink-0 items-center justify-center border-t py-6 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(effectiveCurrentPage - 1)}
+              disabled={effectiveCurrentPage === 1}
+              className="h-9 gap-1 px-3"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+              <span>Previous</span>
+            </Button>
+            <div className="flex items-center gap-1 px-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                const showPage =
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= effectiveCurrentPage - 1 && page <= effectiveCurrentPage + 1);
+
+                if (!showPage) {
+                  if (
+                    page === effectiveCurrentPage - 2 ||
+                    page === effectiveCurrentPage + 2
+                  ) {
+                    return (
+                      <span
+                        key={page}
+                        className="text-muted-foreground px-1 select-none"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                }
+
+                return (
+                  <Button
+                    key={page}
+                    variant={effectiveCurrentPage === page ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                    className={cn(
+                      'h-9 w-9 p-0 font-medium',
+                      effectiveCurrentPage === page
+                        ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
+                        : 'hover:bg-accent',
+                    )}
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(effectiveCurrentPage + 1)}
+              disabled={effectiveCurrentPage === totalPages}
+              className="h-9 gap-1 px-3"
+            >
+              <span>Next</span>
+              <ChevronRightIcon className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleConfirmDelete}
+        itemName="project"
+        itemCount={selectedIds.size}
+        isLoading={deleteMutation.isPending}
+      />
+
+      <ProjectDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        project={editingProject}
+        organizationId={organizationId}
+        onSuccess={handleDialogSuccess}
+      />
     </div>
   );
 }

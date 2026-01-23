@@ -6,6 +6,32 @@ import { IProjectRepository } from '@qwery/domain/repositories';
 export class ProjectRepository extends IProjectRepository {
   private projects = new Map<string, Project>();
 
+  async search(
+    query: string,
+    options?: RepositoryFindOptions & { organizationId?: string },
+  ): Promise<Project[]> {
+    const q = query.trim().toLowerCase();
+    const all = Array.from(this.projects.values());
+    const scoped = options?.organizationId
+      ? all.filter((p) => p.organizationId === options.organizationId)
+      : all;
+
+    const filtered = q
+      ? scoped.filter((project) => {
+          const name = project.name?.toLowerCase() ?? '';
+          const slug = project.slug?.toLowerCase() ?? '';
+          const description = project.description?.toLowerCase() ?? '';
+          return (
+            name.includes(q) || slug.includes(q) || description.includes(q)
+          );
+        })
+      : scoped;
+
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    return limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+  }
+
   async findAll(options?: RepositoryFindOptions): Promise<Project[]> {
     const allProjects = Array.from(this.projects.values());
     const offset = options?.offset ?? 0;

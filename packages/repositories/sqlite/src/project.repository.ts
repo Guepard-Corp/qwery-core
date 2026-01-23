@@ -52,6 +52,32 @@ export class ProjectRepository extends IProjectRepository {
     } as Project;
   }
 
+  async search(
+    query: string,
+    options?: RepositoryFindOptions & { organizationId?: string },
+  ): Promise<Project[]> {
+    const q = query.trim().toLowerCase();
+    const all = await this.findAll();
+    const scoped = options?.organizationId
+      ? all.filter((p) => p.organizationId === options.organizationId)
+      : all;
+
+    const filtered = q
+      ? scoped.filter((project) => {
+          const name = project.name?.toLowerCase() ?? '';
+          const slug = project.slug?.toLowerCase() ?? '';
+          const description = project.description?.toLowerCase() ?? '';
+          return (
+            name.includes(q) || slug.includes(q) || description.includes(q)
+          );
+        })
+      : scoped;
+
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    return limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+  }
+
   async findAll(_options?: RepositoryFindOptions): Promise<Project[]> {
     await this.init();
     const stmt = this.db.prepare('SELECT * FROM projects');

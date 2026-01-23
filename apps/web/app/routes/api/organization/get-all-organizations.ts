@@ -1,41 +1,36 @@
-import type { ActionFunctionArgs } from 'react-router';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import {
   CreateOrganizationService,
   GetOrganizationsService,
 } from '@qwery/domain/services';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
-import { DomainException } from '@qwery/domain/exceptions';
+import { handleDomainException, parseLimit, parsePositiveInt } from '../_utils/http';
 
-function handleDomainException(error: unknown): Response {
-  if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
-    return Response.json(
-      {
-        error: error.message,
-        code: error.code,
-        data: error.data,
-      },
-      { status },
-    );
-  }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
-}
-
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
   const repositories = await createRepositories();
   const repository = repositories.organization;
+
+  const url = new URL(request.url);
+  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+  const offset = parsePositiveInt(url.searchParams.get('offset'), 0) ?? 0;
+  const limit = parseLimit(url.searchParams.get('limit'), 0, 200);
 
   try {
     const useCase = new GetOrganizationsService(repository);
     const organizations = await useCase.execute();
-    return Response.json(organizations);
+
+    const filtered = q
+      ? organizations.filter((org) => {
+          const name = org.name?.toLowerCase() ?? '';
+          const slug = org.slug?.toLowerCase() ?? '';
+          return name.includes(q) || slug.includes(q);
+        })
+      : organizations;
+
+    const paginated =
+      limit > 0 ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+
+    return Response.json(paginated);
   } catch (error) {
     console.error('Error in get-all-organizations loader:', error);
     return handleDomainException(error);

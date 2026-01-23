@@ -51,6 +51,25 @@ export class OrganizationRepository extends IOrganizationRepository {
     } as Organization;
   }
 
+  async search(
+    query: string,
+    options?: RepositoryFindOptions,
+  ): Promise<Organization[]> {
+    const q = query.trim().toLowerCase();
+    const all = await this.findAll();
+    const filtered = q
+      ? all.filter((org) => {
+          const name = org.name?.toLowerCase() ?? '';
+          const slug = org.slug?.toLowerCase() ?? '';
+          return name.includes(q) || slug.includes(q);
+        })
+      : all;
+
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    return limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+  }
+
   async findAll(_options?: RepositoryFindOptions): Promise<Organization[]> {
     await this.init();
     const stmt = this.db.prepare('SELECT * FROM organizations');

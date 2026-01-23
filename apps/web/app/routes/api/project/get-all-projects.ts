@@ -1,32 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
-import { DomainException } from '@qwery/domain/exceptions';
 import {
   CreateProjectService,
   GetProjectsByOrganizationIdService,
 } from '@qwery/domain/services';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
-
-function handleDomainException(error: unknown): Response {
-  if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
-    return Response.json(
-      {
-        error: error.message,
-        code: error.code,
-        data: error.data,
-      },
-      { status },
-    );
-  }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
-}
+import { handleDomainException, parseLimit, parsePositiveInt } from '../_utils/http';
 
 export async function loader({
   request,
@@ -36,6 +14,9 @@ export async function loader({
 
   const url = new URL(request.url);
   const orgId = url.searchParams.get('orgId');
+  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+  const offset = parsePositiveInt(url.searchParams.get('offset'), 0) ?? 0;
+  const limit = parseLimit(url.searchParams.get('limit'), 0, 200);
 
   if (!orgId) {
     return Response.json(
@@ -47,7 +28,22 @@ export async function loader({
   try {
     const useCase = new GetProjectsByOrganizationIdService(repository);
     const projects = await useCase.execute(orgId);
-    return Response.json(projects);
+
+    const filtered = q
+      ? projects.filter((project) => {
+          const name = project.name?.toLowerCase() ?? '';
+          const slug = project.slug?.toLowerCase() ?? '';
+          const description = project.description?.toLowerCase() ?? '';
+          return (
+            name.includes(q) || slug.includes(q) || description.includes(q)
+          );
+        })
+      : projects;
+
+    const paginated =
+      limit > 0 ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+
+    return Response.json(paginated);
   } catch (error) {
     console.error('Error in get-all-projects loader:', error);
     return handleDomainException(error);

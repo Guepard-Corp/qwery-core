@@ -163,6 +163,7 @@
     "./mode-toggle": "./src/qwery/mode-toggle.tsx",
     "./oauth-provider-logo-image": "./src/qwery/oauth-provider-logo-image.tsx",
     "./organization": "./src/qwery/organization/index.ts",
+    "./project": "./src/qwery/project/index.ts",
     "./sidebar-navigation": "./src/qwery/sidebar-navigation.tsx",
     "./shortcuts": "./src/qwery/shortcuts.tsx",
     "./agent-ui": "./src/qwery/agent-ui.tsx",
@@ -174,7 +175,8 @@
     "./schema-graph": "./src/qwery/schema-graph/index.ts",
     "./qwery/datasource/tables": "./src/qwery/datasource/tables.tsx",
     "./qwery/datasource/columns": "./src/qwery/datasource/columns.tsx",
-    "./qwery/datasource": "./src/qwery/datasource/index.ts"
+    "./qwery/datasource": "./src/qwery/datasource/index.ts",
+    "./qwery/confirm-delete-dialog": "./src/qwery/confirm-delete-dialog.tsx"
   },
   "typesVersions": {
     "*": {

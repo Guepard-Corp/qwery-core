@@ -23,6 +23,7 @@ describe('OrganizationsPage', () => {
   const mockRepository = {
     findAll: vi.fn().mockResolvedValue([]),
     findAllByOrganizationId: vi.fn().mockResolvedValue([]),
+    search: vi.fn().mockResolvedValue([]),
     findBySlug: vi.fn().mockResolvedValue(null),
     findById: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue(null),

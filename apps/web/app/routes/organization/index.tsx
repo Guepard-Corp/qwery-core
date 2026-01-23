@@ -48,8 +48,11 @@ export default function OrganizationPage() {
   }
 
   return (
-    <div className="p-2 lg:p-4">
-      <ListProjects projects={projects.data ?? []} />
+    <div className="h-full">
+      <ListProjects
+        projects={projects.data ?? []}
+        organizationId={organization.data?.id ?? ''}
+      />
     </div>
   );
 }
