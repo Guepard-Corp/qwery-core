@@ -32,9 +32,6 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
         <PageTopNavigation>
           <LayoutTopBar />
         </PageTopNavigation>
-        <PageNavigation>
-          <LayoutSidebar {...props} />
-        </PageNavigation>
         <PageMobileNavigation className={'flex items-center justify-between'}>
           <LayoutMobileNavigation />
         </PageMobileNavigation>

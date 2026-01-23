@@ -117,6 +117,7 @@
     "./dropdown-menu": "./src/shadcn/dropdown-menu.tsx",
     "./navigation-menu": "./src/shadcn/navigation-menu.tsx",
     "./form": "./src/shadcn/form.tsx",
+    "./hover-card": "./src/shadcn/hover-card.tsx",
     "./input": "./src/shadcn/input.tsx",
     "./label": "./src/shadcn/label.tsx",
     "./popover": "./src/shadcn/popover.tsx",

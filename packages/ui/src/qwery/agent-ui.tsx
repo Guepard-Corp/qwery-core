@@ -432,9 +432,49 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       );
     }
 
+    const lastUserMessage = messages
+      .filter((m) => m.role === 'user')
+      .at(-1);
+
+    if (lastUserMessage) {
+      const messageMetadata = (lastUserMessage.metadata || {}) as Record<
+        string,
+        unknown
+      >;
+      const metadataDatasources = messageMetadata.datasources as
+        | string[]
+        | undefined;
+
+      const datasourcesToUse =
+        metadataDatasources && metadataDatasources.length > 0
+          ? metadataDatasources
+          : selectedDatasources;
+      if (datasourcesToUse && datasourcesToUse.length > 0) {
+        setMessages((prev) => {
+          const lastUserIndex = prev.findLastIndex(
+            (msg) => msg.role === 'user',
+          );
+          if (lastUserIndex >= 0) {
+            const lastUserMsg = prev[lastUserIndex];
+            if (lastUserMsg) {
+              const updated = [...prev];
+              updated[lastUserIndex] = {
+                ...lastUserMsg,
+                metadata: {
+                  ...(lastUserMsg.metadata || {}),
+                  datasources: datasourcesToUse,
+                },
+              };
+              return updated;
+            }
+          }
+          return prev;
+        });
+      }
+    }
+
     setTimeout(() => {
       regenerate();
-      // Scroll to bottom after regenerating
       requestAnimationFrame(() => {
         setTimeout(() => {
           scrollToBottomRef.current?.();
@@ -447,7 +487,13 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
         }, 300);
       });
     }, 0);
-  }, [messages, regenerate, setMessages, scrollToBottomRef]);
+  }, [
+    messages,
+    regenerate,
+    setMessages,
+    scrollToBottomRef,
+    selectedDatasources,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -688,7 +734,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                       />
                                     </div>
                                   )}
-                                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                                  <div className={cn(
+                                    "flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden",
+                                    normalizeUIRole(message.role) === 'assistant' && 'mx-4 sm:mx-6'
+                                  )}>
                                     {isEditing &&
                                     normalizeUIRole(message.role) ===
                                       'user' ? (

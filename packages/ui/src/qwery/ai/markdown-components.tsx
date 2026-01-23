@@ -280,15 +280,16 @@ export const createAgentMarkdownComponents = (): Components => {
       }
       return (
         <div
+          data-code-block-container="true"
           className={cn(
-            'w-full min-w-0 overflow-x-auto',
-            CHAT_UI_MAX_WIDTH,
+            'min-w-0 overflow-x-auto',
+            'max-w-[28rem] w-full',
             CHAT_UI_MARGINS,
           )}
         >
           <pre
             className={cn(
-              'bg-muted/50 text-muted-foreground/90 relative my-3 max-w-full rounded-md p-4 text-base',
+              'bg-muted/50 text-muted-foreground/90 relative my-3 w-full max-w-full rounded-md p-4 text-base',
               className,
             )}
           >

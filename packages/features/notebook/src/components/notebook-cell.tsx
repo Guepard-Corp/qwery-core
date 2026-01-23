@@ -113,6 +113,7 @@ interface NotebookCellProps {
   isAdvancedMode?: boolean;
   totalCellCount?: number;
   triggerTitleEdit?: boolean;
+  isNotebookLoading?: boolean;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -259,6 +260,7 @@ function NotebookCellComponent({
   onCloseAiPopup,
   isAdvancedMode = true,
   triggerTitleEdit = false,
+  isNotebookLoading = false,
 }: NotebookCellProps) {
   const { resolvedTheme } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -270,6 +272,7 @@ function NotebookCellComponent({
   const persistedQuery = cell.query ?? '';
   const [localQuery, setLocalQuery] = useState(persistedQuery);
   const [, startTransition] = useTransition();
+  const isEditingRef = useRef(false);
   const query = localQuery;
   const isQueryCell = cell.cellType === 'query';
   const isTextCell = cell.cellType === 'text';
@@ -469,17 +472,26 @@ function NotebookCellComponent({
   }, [promptDatasourceError, selectedDatasource]);
 
   useEffect(() => {
-    setTimeout(() => {
+    isEditingRef.current = false;
+    setLocalQuery(persistedQuery);
+  }, [cell.cellId]);
+
+  useEffect(() => {
+    if (!isEditingRef.current) {
       setLocalQuery(persistedQuery);
-    }, 0);
-  }, [persistedQuery, cell.cellId]);
+    }
+  }, [persistedQuery]);
 
   const handleQueryChange = useCallback(
     (value: string) => {
+      isEditingRef.current = true;
       setLocalQuery(value);
       startTransition(() => {
         onQueryChange(value);
       });
+      setTimeout(() => {
+        isEditingRef.current = false;
+      }, 200);
     },
     [onQueryChange, startTransition],
   );
@@ -760,7 +772,6 @@ function NotebookCellComponent({
           isPromptCell && 'min-h-[200px]',
         )}
       >
-        {/* Run button - always visible, positioned absolutely relative to cell content container */}
         {isQueryCell && (
           <div className="pointer-events-none absolute top-4 right-4 z-20">
             <div className="pointer-events-auto">
@@ -792,7 +803,6 @@ function NotebookCellComponent({
         >
           {isQueryCell ? (
             <>
-              {/* SQL Query Editor with CodeMirror */}
               <div ref={codeMirrorRef} className="relative w-full min-h-[240px]">
                 <CodeMirror
                   value={query}
@@ -807,7 +817,7 @@ function NotebookCellComponent({
                     })(),
                   ]}
                   theme={isDarkMode ? oneDark : undefined}
-                  editable={!isLoading}
+                  editable={!isLoading && !isNotebookLoading}
                   basicSetup={{
                     lineNumbers: true,
                     foldGutter: true,
@@ -895,7 +905,7 @@ function NotebookCellComponent({
                       ref={textareaRef}
                       value={query}
                       onChange={(e) => handleQueryChange(e.target.value)}
-                      disabled={isLoading}
+                      disabled={isLoading || isNotebookLoading}
                       className="markdown-editor-scroll h-full w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-4 pr-12 text-sm leading-6 focus-visible:ring-0"
                       onScroll={(e) => {
                         if (isScrollingRef.current) return;
@@ -974,7 +984,7 @@ function NotebookCellComponent({
                       setPromptDatasourceError(false);
                     }
                   }}
-                  disabled={isLoading}
+                  disabled={isLoading || isNotebookLoading}
                   className={cn(
                     'min-h-[120px] w-full resize-none border-0 bg-transparent text-sm leading-6 focus-visible:ring-0',
                     isPromptCell && 'font-mono',

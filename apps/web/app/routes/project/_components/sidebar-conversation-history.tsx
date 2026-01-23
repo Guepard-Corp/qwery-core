@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { Trans } from '@qwery/ui/trans';
 import {
   MessageCircle,
   Pencil,
@@ -82,6 +84,7 @@ export function SidebarConversationHistory({
   onConversationShare,
   onConversationBookmark,
 }: SidebarConversationHistoryProps) {
+  const { t } = useTranslation('common');
   const location = useLocation();
   const params = useParams();
   
@@ -345,7 +348,7 @@ export function SidebarConversationHistory({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
-                <span>Recent chats</span>
+                <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
                   className={cn(
                     'size-4 transition-transform duration-200',
@@ -372,7 +375,7 @@ export function SidebarConversationHistory({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
-                <span>Recent chats</span>
+                <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
                   className={cn(
                     'size-4 transition-transform duration-200',
@@ -389,7 +392,7 @@ export function SidebarConversationHistory({
               <SidebarMenuItem>
                 <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
                   <div>
-                    <p className="font-medium">No chats found</p>
+                    <p className="font-medium"><Trans i18nKey="common:sidebar.noChatsFound" /></p>
                     <p className="text-xs">Start a new chat to get started</p>
                   </div>
                 </div>
@@ -442,7 +445,7 @@ export function SidebarConversationHistory({
                                 }}
                                 onMouseDown={(e) => e.stopPropagation()}
                                 className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                aria-label="Discard changes"
+                                aria-label={t('sidebar.discardChanges')}
                               >
                                 <X className="size-3.5" />
                               </button>
@@ -503,9 +506,11 @@ export function SidebarConversationHistory({
                                                   'fill-current',
                                               )}
                                             />
-                                            {bookmarkedIds.has(currentConversation.id)
-                                              ? 'Unpin'
-                                              : 'Pin chat'}
+                                            {bookmarkedIds.has(currentConversation.id) ? (
+                                              <Trans i18nKey="common:sidebar.unpin" />
+                                            ) : (
+                                              <Trans i18nKey="common:sidebar.pinChat" />
+                                            )}
                                           </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                           <DropdownMenuItem
@@ -537,7 +542,7 @@ export function SidebarConversationHistory({
                         }
                       >
                         <Pencil className="mr-2 size-4" />
-                        Rename
+                        <Trans i18nKey="common:sidebar.rename" />
                       </ContextMenuItem>
                       {onConversationBookmark && (
                         <ContextMenuItem
@@ -546,7 +551,7 @@ export function SidebarConversationHistory({
                           }
                         >
                           <Bookmark className="mr-2 size-4" />
-                          Bookmark
+                          <Trans i18nKey="common:sidebar.bookmark" />
                         </ContextMenuItem>
                       )}
                       {onConversationDuplicate && (
@@ -556,7 +561,7 @@ export function SidebarConversationHistory({
                           }
                         >
                           <Copy className="mr-2 size-4" />
-                          Duplicate
+                          <Trans i18nKey="common:sidebar.duplicate" />
                         </ContextMenuItem>
                       )}
                       {onConversationShare && (
@@ -566,7 +571,7 @@ export function SidebarConversationHistory({
                           }
                         >
                           <Share2 className="mr-2 size-4" />
-                          Share
+                          <Trans i18nKey="common:sidebar.share" />
                         </ContextMenuItem>
                       )}
                       <ContextMenuSeparator />
@@ -575,7 +580,7 @@ export function SidebarConversationHistory({
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 size-4" />
-                          Delete
+                          <Trans i18nKey="common:sidebar.delete" />
                         </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
@@ -626,7 +631,7 @@ export function SidebarConversationHistory({
                                     }}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                    aria-label="Discard changes"
+                                    aria-label={t('sidebar.discardChanges')}
                                   >
                                     <X className="size-3.5" />
                                   </button>
@@ -685,9 +690,11 @@ export function SidebarConversationHistory({
                                                 'fill-current',
                                             )}
                                           />
-                                          {bookmarkedIds.has(conversation.id)
-                                            ? 'Unpin'
-                                            : 'Pin chat'}
+                                          {bookmarkedIds.has(conversation.id) ? (
+                                            <Trans i18nKey="common:sidebar.unpin" />
+                                          ) : (
+                                            <Trans i18nKey="common:sidebar.pinChat" />
+                                          )}
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
@@ -757,7 +764,7 @@ export function SidebarConversationHistory({
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 size-4" />
-                          Delete
+                          <Trans i18nKey="common:sidebar.delete" />
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
@@ -771,9 +778,9 @@ export function SidebarConversationHistory({
                 <div className="absolute bottom-0 left-0 right-0 z-20 px-2 pb-2 pt-4">
                   <Link
                     to={createPath(pathsConfig.app.projectConversation, projectSlug)}
-                    className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                    className="flex w-full items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground hover:border-border"
                   >
-                    <span>View all chats</span>
+                        <Trans i18nKey="common:sidebar.viewAllChats" />
                     <ArrowRight className="size-4 shrink-0" />
                   </Link>
                 </div>
@@ -792,9 +799,9 @@ export function SidebarConversationHistory({
         itemName="chat"
         itemCount={1}
         description={
-          conversationToDelete
-            ? `Are you sure you want to delete this chat? This action cannot be undone and will permanently remove the conversation and all its messages.`
-            : undefined
+          conversationToDelete ? (
+            <Trans i18nKey="common:sidebar.deleteChatConfirmation" />
+          ) : undefined
         }
       />
     </>
@@ -823,6 +830,7 @@ export function SidebarNotebookHistory({
   onNotebookSelect,
   onNotebookDelete,
 }: SidebarNotebookHistoryProps) {
+  const { t } = useTranslation('common');
   const location = useLocation();
   const params = useParams();
   
@@ -955,7 +963,7 @@ export function SidebarNotebookHistory({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
-                <span>Recent notebooks</span>
+                <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
                   className={cn(
                     'size-4 transition-transform duration-200',
@@ -982,7 +990,7 @@ export function SidebarNotebookHistory({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1.5 my-1 -mx-2">
               <div className="flex items-center justify-between w-full">
-                <span>Recent notebooks</span>
+                <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
                   className={cn(
                     'size-4 transition-transform duration-200',
@@ -999,7 +1007,7 @@ export function SidebarNotebookHistory({
                   <SidebarMenuItem>
                     <div className="text-muted-foreground flex flex-col items-center gap-2 px-2 py-8 text-center text-sm">
                       <div>
-                        <p className="font-medium">No notebooks found</p>
+                        <p className="font-medium"><Trans i18nKey="common:sidebar.noNotebooksFound" /></p>
                         <p className="text-xs">Create a new notebook to get started</p>
                       </div>
                     </div>
@@ -1050,7 +1058,7 @@ export function SidebarNotebookHistory({
                                         }}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                        aria-label="Discard changes"
+                                        aria-label={t('sidebar.discardChanges')}
                                       >
                                         <X className="size-3.5" />
                                       </button>
@@ -1178,7 +1186,7 @@ export function SidebarNotebookHistory({
                                           }}
                                           onMouseDown={(e) => e.stopPropagation()}
                                           className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-1 transition-colors"
-                                          aria-label="Discard changes"
+                                          aria-label={t('sidebar.discardChanges')}
                                         >
                                           <X className="size-3.5" />
                                         </button>
@@ -1270,9 +1278,9 @@ export function SidebarNotebookHistory({
                     <div className="absolute bottom-0 left-0 right-0 z-20 px-2 pb-2 pt-4">
                       <Link
                         to={createPath(pathsConfig.app.projectNotebooks, projectSlug)}
-                        className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                        className="flex w-full items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground hover:border-border"
                       >
-                        <span>View all notebooks</span>
+                        <Trans i18nKey="common:sidebar.viewAllNotebooks" />
                         <ArrowRight className="size-4 shrink-0" />
                       </Link>
                     </div>
@@ -1291,9 +1299,9 @@ export function SidebarNotebookHistory({
         itemName="notebook"
         itemCount={1}
         description={
-          notebookToDelete
-            ? `Are you sure you want to delete this notebook? This action cannot be undone and will permanently remove the notebook and all its cells.`
-            : undefined
+          notebookToDelete ? (
+            <Trans i18nKey="common:sidebar.deleteNotebookConfirmation" />
+          ) : undefined
         }
       />
     </>

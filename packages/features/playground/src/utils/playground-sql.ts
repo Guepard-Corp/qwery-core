@@ -101,3 +101,10 @@ export function getTableSampleQuery(tableName: string, limit = 3): string {
   return `SELECT * FROM ${tableName} LIMIT ${limit}`;
 }
 
+export function getAllTablesInfo(): string {
+  return PLAYGROUND_TABLES.map(
+    (table) =>
+      `Table: ${table.name}${table.description ? ` - ${table.description}` : ''}`,
+  ).join('\n');
+}
+

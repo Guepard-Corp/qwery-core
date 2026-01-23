@@ -101,6 +101,7 @@ interface NotebookUIProps {
   isDeletingNotebook?: boolean;
   workspaceMode?: WorkspaceModeEnum;
   hasUnsavedChanges?: boolean;
+  isNotebookLoading?: boolean;
 }
 
 // Visual indicator for duplication mode
@@ -149,6 +150,7 @@ const SortableCell = React.memo(function SortableCellComponent({
   onCloseAiPopup,
   isDuplicating,
   totalCellCount,
+  isNotebookLoading,
 }: {
   cell: NotebookCellData;
   onQueryChange: (cellId: number, query: string) => void;
@@ -176,6 +178,7 @@ const SortableCell = React.memo(function SortableCellComponent({
   onCloseAiPopup: () => void;
   isDuplicating?: boolean;
   totalCellCount: number;
+  isNotebookLoading?: boolean;
 }) {
   const {
     attributes,
@@ -305,6 +308,7 @@ const SortableCell = React.memo(function SortableCellComponent({
         onOpenAiPopup={onOpenAiPopup}
         onCloseAiPopup={onCloseAiPopup}
         totalCellCount={totalCellCount}
+        isNotebookLoading={isNotebookLoading}
       />
     </div>
   );
@@ -589,6 +593,7 @@ export function NotebookUI({
   isDeletingNotebook,
   workspaceMode,
   hasUnsavedChanges = false,
+  isNotebookLoading = false,
 }: NotebookUIProps) {
   // Initialize cells from notebook or initialCells, default to empty array
   const [cells, setCells] = React.useState<NotebookCellData[]>(() => {
@@ -1394,6 +1399,7 @@ export function NotebookUI({
                       isDuplicating={
                         isDuplicating && activeId === cell.cellId.toString()
                       }
+                      isNotebookLoading={isNotebookLoading}
                     />
                     {/* Error Display - Between cells */}
                     {cell.cellType === 'query' && cellError && (

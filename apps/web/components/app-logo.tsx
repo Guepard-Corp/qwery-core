@@ -6,17 +6,29 @@ import { cn } from '@qwery/ui/utils';
 export function LogoImage({
   className,
   width = 200,
+  size,
 }: {
   className?: string;
   width?: number;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }) {
   // Generate unique IDs to avoid conflicts if multiple logos are on the page
   const idPrefix = `logo-${useId().replace(/:/g, '-')}`;
 
+  const sizeClasses = {
+    sm: 'w-8 h-8',
+    md: 'w-12 h-12',
+    lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
+    '2xl': 'w-32 h-32 sm:w-40 sm:h-40',
+  };
+
+  const defaultSize = size ? sizeClasses[size] : 'w-[28px] lg:w-[28px]';
+
   return (
     <svg
       width={width}
-      className={cn(`w-[28px] lg:w-[28px]`, className)}
+      className={cn(defaultSize, className)}
       viewBox="0 0 762.83 1023.51"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

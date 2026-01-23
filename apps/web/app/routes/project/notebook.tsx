@@ -702,7 +702,6 @@ export default function NotebookPage() {
     return hasUnsavedChanges() && (isDifferentNotebook || isLeavingNotebook);
   });
 
-  // Handle blocked navigation
   useEffect(() => {
     if (blocker.state === 'blocked') {
       setPendingNavigation(() => blocker.proceed);
@@ -712,21 +711,91 @@ export default function NotebookPage() {
 
   // Handle dialog actions
   const handleSaveAndContinue = useCallback(async () => {
-    handleSave();
-    // Wait a bit for save to initiate, then proceed
-    // In a real scenario, you might want to wait for the mutation to complete
-    setTimeout(() => {
+    if (!normalizedNotebook || !currentNotebookStateRef.current) {
+      return;
+    }
+
+    const now = new Date();
+    const notebookDatasources =
+      normalizedNotebook.datasources?.length > 0
+        ? normalizedNotebook.datasources
+        : savedDatasources.data?.map((ds) => ds.id) || [];
+
+    const description =
+      normalizedNotebook.description &&
+      normalizedNotebook.description.trim().length > 0
+        ? normalizedNotebook.description
+        : undefined;
+
+    const { description: _ignoredDescription, ...notebookWithoutDescription } =
+      normalizedNotebook;
+
+    const notebookData: Notebook = {
+      ...notebookWithoutDescription,
+      createdAt: normalizedNotebook.createdAt ?? now,
+      updatedAt: now,
+      title: currentNotebookStateRef.current.title,
+      datasources: notebookDatasources,
+      ...(description ? { description } : {}),
+      cells: currentNotebookStateRef.current.cells.map((cell) => ({
+        query: cell.query,
+        cellType: cell.cellType,
+        cellId: cell.cellId,
+        datasources: cell.datasources,
+        isActive: cell.isActive ?? true,
+        runMode: cell.runMode ?? 'default',
+        title: cell.title,
+      })),
+    };
+
+    try {
+      await saveNotebookMutation.mutateAsync(notebookData);
+      
+      if (currentNotebookStateRef.current) {
+        lastSavedStateRef.current = {
+          cells: currentNotebookStateRef.current.cells.map((cell) => ({
+            ...cell,
+            datasources: [...cell.datasources],
+            title: cell.title,
+          })),
+          title: currentNotebookStateRef.current.title,
+        };
+      }
+
+      setHasUnsavedChangesState(false);
+      if (normalizedNotebook?.slug) {
+        const storageKey = 'notebook:unsaved';
+        try {
+          const unsavedSlugs = JSON.parse(
+            localStorage.getItem(storageKey) || '[]',
+          ) as string[];
+          const updated = unsavedSlugs.filter(
+            (s) => s !== normalizedNotebook.slug,
+          );
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch (error) {
+          console.error('Failed to clear unsaved notebook state:', error);
+        }
+      }
+
       setShowUnsavedDialog(false);
       if (pendingNavigation) {
         pendingNavigation();
         setPendingNavigation(null);
       }
       toast.success('Notebook saved');
-    }, 100);
-  }, [handleSave, pendingNavigation]);
+    } catch (error) {
+      console.error('Failed to save notebook:', error);
+      toast.error('Failed to save notebook. Please try again.');
+    }
+  }, [
+    normalizedNotebook,
+    savedDatasources.data,
+    saveNotebookMutation,
+    pendingNavigation,
+  ]);
 
   const handleDiscardAndContinue = useCallback(() => {
-    // Clear unsaved state for current notebook
     if (normalizedNotebook?.slug) {
       const storageKey = 'notebook:unsaved';
       try {
@@ -783,15 +852,12 @@ export default function NotebookPage() {
       return;
     }
 
-    // Only reset state when updatedAt actually changes (meaning a save happened)
     const currentUpdatedAt = normalizedNotebook.updatedAt;
     const previousUpdatedAt = previousUpdatedAtRef.current;
 
-    // Check if this is a new save (updatedAt changed)
     const isNewSave =
       previousUpdatedAt !== undefined && previousUpdatedAt !== currentUpdatedAt;
 
-    // Initialize saved state when notebook loads or when a new save happens
     if (
       normalizedNotebook.cells &&
       (previousUpdatedAt === undefined || isNewSave)
@@ -823,7 +889,6 @@ export default function NotebookPage() {
         };
         setHasUnsavedChangesState(false);
       } else if (previousUpdatedAt === undefined) {
-        // Initial load - initialize current state with saved state
         currentNotebookStateRef.current = {
           cells: savedState.cells.map((cell) => ({
             ...cell,
@@ -832,7 +897,6 @@ export default function NotebookPage() {
           })),
           title: savedState.title,
         };
-        // Check if there are unsaved changes from localStorage
         const storageKey = 'notebook:unsaved';
         try {
           const unsavedSlugs = JSON.parse(
@@ -854,7 +918,6 @@ export default function NotebookPage() {
     normalizedNotebook?.slug,
   ]);
 
-  // Register SQL paste handler for chat interface
   useEffect(() => {
     const handleSqlPaste = (
       sqlQuery: string,
@@ -875,12 +938,10 @@ export default function NotebookPage() {
         return;
       }
 
-      // Determine target cell ID (existing or new)
       let targetCellId = cellId;
       const isNewCell = notebookCellType === NOTEBOOK_CELL_TYPE.PROMPT;
 
       if (isNewCell) {
-        // Prompt cell: create new code cell below
         const maxCellId = Math.max(
           ...normalizedNotebook.cells.map((c) => c.cellId),
           0,
@@ -894,7 +955,6 @@ export default function NotebookPage() {
       const runDelay = 400; // Delay after paste before running
 
       if (isNewCell) {
-        // For new cells: create first, then scroll and paste
         console.log(
           '[Notebook] Creating new code cell with SQL:',
           targetCellId,
@@ -909,26 +969,23 @@ export default function NotebookPage() {
         };
         handleCellsChange([...normalizedNotebook.cells, newCodeCell]);
 
-        // Wait for cell to be rendered, then scroll
         setTimeout(() => {
           scrollToElementBySelector(cellSelector, {
             behavior: 'smooth',
             block: 'center',
             inline: 'nearest',
             offset: -20,
-            maxRetries: 5, // More retries for newly created cells
+            maxRetries: 5,
             enableHighlight: true,
             highlightDuration: 2000,
           });
 
-          // Wait for scroll animation, then run query
           setTimeout(() => {
             console.log('[Notebook] Auto-running query on new cell');
             handleRunQuery(targetCellId, sqlQuery, datasourceId);
           }, pasteDelay + runDelay);
         }, scrollDelay);
       } else {
-        // For existing cells: scroll first, then paste
         setTimeout(() => {
           scrollToElementBySelector(cellSelector, {
             behavior: 'smooth',
@@ -940,7 +997,6 @@ export default function NotebookPage() {
             highlightDuration: 2000,
           });
 
-          // Wait for scroll animation, then paste SQL
           setTimeout(() => {
             console.log(
               '[Notebook] Pasting SQL to existing code cell:',
@@ -1026,6 +1082,8 @@ export default function NotebookPage() {
     );
   }
 
+  const isNotebookLoading = notebook.isLoading || savedDatasources.isLoading;
+
   // Convert NotebookUseCaseDto to Notebook format
   return (
     <div className="h-full w-full overflow-hidden">
@@ -1047,6 +1105,7 @@ export default function NotebookPage() {
           isDeletingNotebook={deleteNotebookMutation.isPending}
           workspaceMode={workspace.mode}
           hasUnsavedChanges={hasUnsavedChangesState}
+          isNotebookLoading={isNotebookLoading}
         />
       )}
 

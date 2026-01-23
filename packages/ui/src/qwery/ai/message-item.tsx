@@ -3,6 +3,7 @@
 import { UIMessage } from 'ai';
 import { ChatStatus } from 'ai';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { BotAvatar } from '../bot-avatar';
 import { Button } from '../../shadcn/button';
@@ -90,6 +91,7 @@ function MessageItemComponent({
   sendMessage,
   onPasteToNotebook,
 }: MessageItemProps) {
+  const { t } = useTranslation('common');
   const { variant } = useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
@@ -144,7 +146,7 @@ function MessageItemComponent({
               </div>
             )}
             <div className={cn(
-              hasAssistantParts && 'flex-1 flex flex-col gap-2 min-w-0',
+              hasAssistantParts && 'flex-1 flex flex-col gap-2 min-w-0 pr-2 sm:pr-4',
               !hasAssistantParts && 'w-full'
             )}>
               {message.parts.map((part, i: number) => {
@@ -215,8 +217,6 @@ function MessageItemComponent({
                           const { text, context } = parseMessageWithContext(
                             part.text,
                           );
-
-                          // Extract datasources from message metadata or use selectedDatasources for the last user message
                           const messageDatasources = (() => {
                             if (
                               message.metadata &&
@@ -240,15 +240,12 @@ function MessageItemComponent({
                                     (ds): ds is DatasourceItem =>
                                       ds !== undefined,
                                   );
-                                // Only use metadata datasources if they exist and are valid
                                 if (metadataDatasources.length > 0) {
                                   return metadataDatasources;
                                 }
                               }
                             }
 
-                            // Priority 2: For the last user message (especially during streaming), use selectedDatasources
-                            // This ensures correct datasource is shown immediately, even before metadata is set
                             const lastUserMessage = [...messages]
                               .reverse()
                               .find(
@@ -259,10 +256,6 @@ function MessageItemComponent({
                             const isLastUserMessage =
                               lastUserMessage?.id === message.id;
 
-                            // Use selectedDatasources for the last user message if:
-                            // 1. It's the last user message (most recent)
-                            // 2. We're streaming or the message was just sent (metadata might not be set yet)
-                            // 3. selectedDatasources is available
                             if (
                               isLastUserMessage &&
                               selectedDatasources &&
@@ -282,7 +275,6 @@ function MessageItemComponent({
                           })();
 
                           if (context) {
-                            // Use UserMessageBubble for suggestions with context
                             return (
                               <UserMessageBubble
                                 key={`${message.id}-${i}`}
@@ -296,7 +288,6 @@ function MessageItemComponent({
                             );
                           }
 
-                          // Regular user message with datasources
                           return (
                             <div className="flex flex-col items-end gap-1.5">
                               {messageDatasources &&
@@ -341,8 +332,8 @@ function MessageItemComponent({
                                       className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                                       title={
                                         copiedMessagePartId === `${message.id}-${i}`
-                                          ? 'Copied!'
-                                          : 'Copy'
+                                          ? t('sidebar.copied')
+                                          : t('sidebar.copy')
                                       }
                                     >
                                       {copiedMessagePartId === `${message.id}-${i}` ? (
@@ -358,7 +349,6 @@ function MessageItemComponent({
                           );
                         })()
                       ) : (
-                        // Assistant messages
                         <>
                           {!isStreaming && (
                             <Message
@@ -459,7 +449,7 @@ function MessageItemComponent({
             return (
               <div
                 key={`${message.id}-${i}`}
-                className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden"
+                className="w-full max-w-full min-w-0 flex flex-col justify-start gap-2 overflow-x-hidden pr-2 sm:pr-4"
               >
                 {!isStreaming && (
                   <Message
@@ -573,7 +563,6 @@ function MessageItemComponent({
                 toolPart.state as string,
               );
 
-              // Show loader while tool is in progress
               if (isToolInProgress) {
                 const toolName =
                   'toolName' in toolPart &&
@@ -588,7 +577,10 @@ function MessageItemComponent({
                     <Tool
                       defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
                       variant={variant}
-                      className={cn(TOOL_UI_CONFIG.MAX_WIDTH, 'mx-4 sm:mx-6')}
+                      className={cn(
+                        'max-w-[min(43.2rem,calc(100%-3rem))]',
+                        'mx-4 sm:mx-6',
+                      )}
                     >
                       <ToolHeader
                         title={toolName}
@@ -636,40 +628,31 @@ function MessageItemComponent({
   );
 }
 
-// Memoize MessageItem to prevent unnecessary re-renders
-// Only re-render if message content, parts count, or relevant props change
 export const MessageItem = memo(MessageItemComponent, (prev, next) => {
-  // Re-render if message ID changed (different message)
   if (prev.message.id !== next.message.id) {
     return false;
   }
 
-  // Re-render if message parts count changed
   if (prev.message.parts.length !== next.message.parts.length) {
     return false;
   }
 
-  // Re-render if status changed (affects streaming indicators)
   if (prev.status !== next.status) {
     return false;
   }
 
-  // Re-render if editing state changed
   if (prev.editingMessageId !== next.editingMessageId) {
     return false;
   }
 
-  // Re-render if edit text changed
   if (prev.editText !== next.editText) {
     return false;
   }
 
-  // Re-render if copied part changed
   if (prev.copiedMessagePartId !== next.copiedMessagePartId) {
     return false;
   }
 
-  // Re-render if message is the last message and status is streaming
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
   if (
     isLastMessage &&
@@ -678,22 +661,17 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
     return false;
   }
 
-  // Re-render if messages array length changed (might indicate new messages)
-  // But only if this message is affected
   if (prev.messages.length !== next.messages.length) {
-    // Check if this message is still in the array
     const messageStillExists = next.messages.some(
       (m) => m.id === prev.message.id,
     );
     if (!messageStillExists) {
       return false;
     }
-    // If it's the last message and array length changed, might be new message added
     if (isLastMessage) {
       return false;
     }
   }
 
-  // Don't re-render if nothing relevant changed
   return true;
 });

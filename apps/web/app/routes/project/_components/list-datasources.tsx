@@ -28,6 +28,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import type { Datasource } from '@qwery/domain/entities';
+import { PlaygroundTry } from '@qwery/playground/playground-try';
 import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
@@ -66,6 +67,8 @@ export function ListDatasources({
 }: {
   datasources: Datasource[];
 }) {
+  const params = useParams();
+  const projectSlug = params.slug as string;
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -438,6 +441,7 @@ export function ListDatasources({
               </DropdownMenu>
             </div>
           </div>
+
           <Button
             asChild
             className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90"
@@ -445,7 +449,7 @@ export function ListDatasources({
             <Link
               to={createPath(
                 pathsConfig.app.availableSources,
-                useParams().slug as string,
+                projectSlug,
               )}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -456,6 +460,16 @@ export function ListDatasources({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-10 py-0">
+        {/* Playground Section */}
+        <div className="mb-6">
+          <PlaygroundTry
+            onClick={() => {
+              navigate(
+                createPath(pathsConfig.app.projectPlayground, projectSlug),
+              );
+            }}
+          />
+        </div>
         {filteredDatasources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-foreground mb-2 text-base font-medium">

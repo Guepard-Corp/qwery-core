@@ -47,8 +47,12 @@ export class PlaygroundBuilder {
     const now = new Date();
     const userId = 'system';
     
+    // Generate unique name for each datasource instance
+    const uniqueName = generateRandomName();
+    
     const datasource: Partial<Datasource> = {
       ...selectedPlayground.datasource,
+      name: uniqueName,
       projectId,
       config: {
         ...connectionConfig,

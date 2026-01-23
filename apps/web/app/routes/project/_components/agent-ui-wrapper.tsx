@@ -269,6 +269,8 @@ export const AgentUIWrapper = forwardRef<
       name: ds.name,
       slug: ds.slug,
       datasource_provider: ds.datasource_provider,
+      createdAt: ds.createdAt,
+      updatedAt: ds.updatedAt,
     }));
   }, [datasources.data]);
 

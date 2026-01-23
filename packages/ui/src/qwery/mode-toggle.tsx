@@ -36,7 +36,7 @@ export function ModeToggle(props: { className?: string }) {
           key={mode}
           onClick={() => {
             setTheme(mode);
-            setCookeTheme(mode);
+            setCookieTheme(mode);
           }}
         >
           <Icon theme={mode} />
@@ -80,7 +80,7 @@ export function SubMenuModeToggle() {
             key={mode}
             onClick={() => {
               setTheme(mode);
-              setCookeTheme(mode);
+              setCookieTheme(mode);
             }}
           >
             <Icon theme={mode} />
@@ -95,38 +95,29 @@ export function SubMenuModeToggle() {
   );
 
   return (
-    <>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger
-          className={
-            'hidden w-full items-center justify-between space-x-2 lg:flex'
-          }
-        >
-          <span className={'flex space-x-2'}>
-            <Icon theme={resolvedTheme} />
-
-            <span>
-              <Trans i18nKey={'common:theme'} />
-            </span>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="w-full items-center justify-between space-x-2">
+        <span className="flex space-x-2">
+          <Icon theme={resolvedTheme} />
+          <span>
+            <Trans i18nKey={'common:theme'} />
           </span>
-        </DropdownMenuSubTrigger>
-
-        <DropdownMenuSubContent>{MenuItems}</DropdownMenuSubContent>
-      </DropdownMenuSub>
-
-      <div className={'lg:hidden'}>
-        <DropdownMenuLabel>
-          <Trans i18nKey={'common:theme'} />
-        </DropdownMenuLabel>
-
+        </span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent 
+        side="right" 
+        sideOffset={4} 
+        alignOffset={0}
+        className="z-[100] min-w-[10rem]"
+      >
         {MenuItems}
-      </div>
-    </>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }
 
-function setCookeTheme(theme: string) {
-  document.cookie = `theme=${theme}; path=/; max-age=31536000`;
+function setCookieTheme(theme: string) {
+  document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
 function Icon({ theme }: { theme: string | undefined }) {
@@ -136,6 +127,8 @@ function Icon({ theme }: { theme: string | undefined }) {
     case 'dark':
       return <Moon className="h-4" />;
     case 'system':
+      return <Computer className="h-4" />;
+    default:
       return <Computer className="h-4" />;
   }
 }

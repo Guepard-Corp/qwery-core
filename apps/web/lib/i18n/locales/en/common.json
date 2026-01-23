@@ -32,6 +32,7 @@
   "expandSidebar": "Expand Sidebar",
   "collapseSidebar": "Collapse Sidebar",
   "documentation": "Documentation",
+  "changelog": "Changelog",
   "getStarted": "Get Started",
   "getStartedWithPlan": "Get Started with {{plan}}",
   "retry": "Retry",
@@ -110,5 +111,36 @@
     "newNotebook": "New Notebook",
     "noResults": "No results found",
     "loading": "Loading..."
+  },
+  "datasourceSelector": {
+    "selectDatasources": "Select datasources",
+    "noDatasourcesFound": "No datasources found",
+    "searchDatasources": "Search datasources..."
+  },
+  "schema": {
+    "noSchemaDataAvailable": "No schema data available",
+    "schemaEmptyOrNotLoaded": "The schema information is empty or could not be loaded."
+  },
+  "sidebar": {
+    "recentChats": "Recent chats",
+    "recentNotebooks": "Recent notebooks",
+    "viewAllChats": "View all chats",
+    "viewAllNotebooks": "View all notebooks",
+    "noChats": "No chats yet",
+    "noChatsFound": "No chats found",
+    "noNotebooks": "No notebooks yet",
+    "noNotebooksFound": "No notebooks found",
+    "rename": "Rename",
+    "delete": "Delete",
+    "share": "Share",
+    "duplicate": "Duplicate",
+    "bookmark": "Bookmark",
+    "pinChat": "Pin chat",
+    "unpin": "Unpin",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "discardChanges": "Discard changes",
+    "deleteChatConfirmation": "Are you sure you want to delete this chat? This action cannot be undone and will permanently remove the conversation and all its messages.",
+    "deleteNotebookConfirmation": "Are you sure you want to delete this notebook? This action cannot be undone and will permanently remove the notebook and all its cells."
   }
 }
