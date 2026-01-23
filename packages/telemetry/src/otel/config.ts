@@ -29,7 +29,10 @@ export function getTelemetryConfig(options?: {
     };
   }
 
-  const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  const otlpEndpointRaw = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  const otlpEndpoint = otlpEndpointRaw
+    ? otlpEndpointRaw.trim().replace(/^["']|["']$/g, '')
+    : undefined;
 
   const exportAppTelemetryEnv =
     process.env.QWERY_EXPORT_APP_TELEMETRY !== undefined

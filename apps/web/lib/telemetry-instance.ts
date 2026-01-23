@@ -1,29 +1,40 @@
-// apps/web/lib/telemetry-instance.ts
-import { TelemetryManager } from '@qwery/telemetry/otel';
+import { TelemetryManager } from '@qwery/telemetry/node';
 
-/**
- * Server-side telemetry instance for the web application.
- * Ensures the OpenTelemetry SDK is initialized only once in the Node.js environment.
- */
 let telemetryInstance: TelemetryManager | undefined;
+let initializationFailed = false;
+
+function createDisabledTelemetryManager(): TelemetryManager {
+  const originalEnv = process.env.QWERY_TELEMETRY_ENABLED;
+  try {
+    process.env.QWERY_TELEMETRY_ENABLED = 'false';
+    return new TelemetryManager('qwery-web-server-disabled');
+  } finally {
+    if (originalEnv !== undefined) {
+      process.env.QWERY_TELEMETRY_ENABLED = originalEnv;
+    } else {
+      delete process.env.QWERY_TELEMETRY_ENABLED;
+    }
+  }
+}
 
 export async function getWebTelemetry(): Promise<TelemetryManager> {
   if (telemetryInstance) {
     return telemetryInstance;
   }
 
+  if (initializationFailed) {
+    return createDisabledTelemetryManager();
+  }
+
   console.log('[WebTelemetry] Initializing server-side telemetry...');
 
-  // Use a unique name for the web server to distinguish it from the CLI
-  telemetryInstance = new TelemetryManager('qwery-web-server');
-
   try {
+    telemetryInstance = new TelemetryManager('qwery-web-server');
     await telemetryInstance.init();
     console.log(
       '[WebTelemetry] Server-side telemetry initialized successfully.',
     );
 
-    // Send a heartbeat span to verify export works immediately
     const span = telemetryInstance.startSpan('web.server.heartbeat', {
       timestamp: new Date().toISOString(),
     });
@@ -33,6 +44,9 @@ export async function getWebTelemetry(): Promise<TelemetryManager> {
       '[WebTelemetry] Failed to initialize server-side telemetry:',
       error,
     );
+    initializationFailed = true;
+    telemetryInstance = createDisabledTelemetryManager();
+    console.log('[WebTelemetry] Using disabled telemetry manager as fallback.');
   }
 
   return telemetryInstance;

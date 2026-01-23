@@ -8,13 +8,41 @@ export const telemetry: TelemetryManager = createTelemetryManager({
   },
 });
 
-export { TelemetryProvider } from './components/telemetry-provider';
+export * from './components';
 export { useTelemetry } from './hooks/use-telemetry';
+export { useCaptureException } from './hooks/use-capture-exception';
 export { NOTEBOOK_EVENTS, PROJECT_EVENTS } from './events';
 
-// OpenTelemetry APIs are available via @qwery/telemetry/otel
-// Re-exported for convenience, but Node.js-only code uses dynamic imports
-export * from './otel';
+export {
+  OtelClientService,
+  ClientTelemetryService as OtelClientTelemetryService,
+  FilteringSpanExporter,
+  type FilteringSpanExporterOptions,
+  OtelNullTelemetryService,
+  createOtelNullTelemetryService,
+  withActionSpan,
+  createActionAttributes,
+  parseActionName,
+  recordQueryMetrics,
+  recordTokenUsage,
+  type ActionContext,
+  type WorkspaceContext,
+  OtelTelemetryProvider,
+  useOtelTelemetry,
+  withOtelTelemetryContext,
+  type OtelTelemetryContextValue,
+  type OtelTelemetryProviderProps,
+  createConversationAttributes,
+  createMessageAttributes,
+  createActorAttributes,
+  endMessageSpanWithEvent,
+  endConversationSpanWithEvent,
+  endActorSpanWithEvent,
+  withActorTelemetry,
+} from './otel';
 
-// Telemetry providers for unified manager
-export * from './providers';
+export { createPostHogProvider } from './providers/posthog';
+export {
+  createSentryProvider,
+  type SentryProviderConfig,
+} from './providers/sentry';

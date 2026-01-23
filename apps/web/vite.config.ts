@@ -71,23 +71,12 @@ export default defineConfig(({ command }) => ({
         ? true
         : ['posthog-js', '@posthog/react', 'streamdown'],
     external: [
-      'better-sqlite3',
       '@duckdb/node-api',
       '@duckdb/node-bindings-linux-arm64',
       '@duckdb/node-bindings-linux-x64',
       '@duckdb/node-bindings-darwin-arm64',
       '@duckdb/node-bindings-darwin-x64',
       '@duckdb/node-bindings-win32-x64',
-      // Externalize OpenTelemetry packages (Node.js only, not for browser)
-      '@opentelemetry/api',
-      '@opentelemetry/exporter-metrics-otlp-http',
-      '@opentelemetry/exporter-trace-otlp-http',
-      '@opentelemetry/resources',
-      '@opentelemetry/sdk-metrics',
-      '@opentelemetry/sdk-node',
-      '@opentelemetry/sdk-trace-base',
-      '@opentelemetry/sdk-trace-node',
-      '@opentelemetry/semantic-conventions',
     ],
   },
   plugins: [
@@ -110,11 +99,11 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
-    manifest: true,
+    sourcemap: false, // Disable sourcemaps to avoid resolution errors in monorepo
+    manifest: true, // Enable manifest generation for React Router
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;
-        if (id === 'better-sqlite3') return true;
         if (id === '@duckdb/node-api') return true;
         if (id.startsWith('@duckdb/node-bindings')) return true;
         if (id.includes('@duckdb/node-bindings') && id.endsWith('.node')) {

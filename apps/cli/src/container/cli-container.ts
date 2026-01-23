@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Workspace } from '@qwery/domain/entities';
-import { TelemetryManager } from '@qwery/telemetry/otel';
+import { TelemetryManager } from '@qwery/telemetry/node';
 
 import {
   CreateProjectService,
