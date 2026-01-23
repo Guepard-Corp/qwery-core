@@ -22,28 +22,21 @@ function wasmMimeTypePlugin(): Plugin {
             const publicDir = path.resolve(process.cwd(), 'apps/web/public');
             const filePath = path.join(publicDir, url);
 
-            try {
-              const stats = fs.statSync(filePath);
-              if (stats.isFile()) {
-                if (url.endsWith('.js')) {
-                  res.setHeader('Content-Type', 'application/javascript');
-                } else if (url.endsWith('.wasm')) {
-                  res.setHeader('Content-Type', 'application/wasm');
-                } else if (url.endsWith('.data')) {
-                  res.setHeader('Content-Type', 'application/octet-stream');
-                } else if (url.endsWith('.json')) {
-                  res.setHeader('Content-Type', 'application/json');
-                }
-
-                const fileContent = fs.readFileSync(filePath);
-                res.end(fileContent);
-                return;
-              }
-            } catch {
-              // File doesn't exist or was removed, continue to next middleware
+            if (url.endsWith('.js')) {
+              res.setHeader('Content-Type', 'application/javascript');
+            } else if (url.endsWith('.wasm')) {
+              res.setHeader('Content-Type', 'application/wasm');
+            } else if (url.endsWith('.data')) {
+              res.setHeader('Content-Type', 'application/octet-stream');
+            } else if (url.endsWith('.json')) {
+              res.setHeader('Content-Type', 'application/json');
             }
+
+            const fileContent = fs.readFileSync(filePath);
+            res.end(fileContent);
+            return;
           } catch {
-            //continue to next middleware
+            // File doesn't exist, was removed, or path resolution failed - continue to next middleware
           }
         }
 
@@ -98,7 +91,7 @@ export default defineConfig(({ command }) => ({
     ],
   },
   plugins: [
-    wasmMimeTypePlugin(), // Must run early to set MIME types before other plugins
+    wasmMimeTypePlugin(),
     devtoolsJson(),
     reactRouter(),
     tsconfigPaths(),
@@ -117,7 +110,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
-    manifest: true, // Enable manifest generation for React Router
+    manifest: true,
     rollupOptions: {
       external: (id: string) => {
         if (id === 'fsevents') return true;
@@ -128,7 +121,6 @@ export default defineConfig(({ command }) => ({
           return true;
         }
         if (id.startsWith('node:')) return true;
-        // Externalize OpenTelemetry packages (Node.js only, not for browser)
         if (id.startsWith('@opentelemetry/')) return true;
         return false;
       },

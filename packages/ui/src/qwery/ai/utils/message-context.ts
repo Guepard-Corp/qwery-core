@@ -59,7 +59,6 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
 
       let toolName: string = 'Tool';
 
-      // Try to get tool name from toolName property first
       if (
         'toolName' in toolPart &&
         typeof toolPart.toolName === 'string' &&
@@ -74,25 +73,20 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
         }
       }
 
-      // Fallback to part.type if toolName is still 'Tool' or empty
       if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
         const formatted = getUserFriendlyToolName(part.type);
         if (formatted && formatted.trim()) {
           toolName = formatted;
+        } else {
+          const formattedFromType = part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
+          toolName = formattedFromType
+            .split(' ')
+            .map(
+              (word) =>
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+            )
+            .join(' ');
         }
-      }
-
-      // Ensure we always have a valid tool name
-      if (!toolName || !toolName.trim()) {
-        toolName = part.type.replace(/^tool-/, '').replace(/-/g, ' ') || 'Tool';
-        // Capitalize first letter of each word
-        toolName = toolName
-          .split(' ')
-          .map(
-            (word) =>
-              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-          )
-          .join(' ');
       }
 
       const status = toolPart.state ? getToolStatusLabel(toolPart.state) : null;
