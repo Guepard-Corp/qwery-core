@@ -5,17 +5,17 @@ import { apiPost } from '../repositories/api-client';
 import { getOrganizationsKey } from '../queries/use-get-organizations';
 import { getProjectsByOrganizationIdKey } from '../queries/use-get-projects';
 
-export type BulkOperation = 'delete' | 'export' | 'copy';
+export type BulkOperation = 'delete' | 'export';
 
 export interface BulkOperationRequest {
   operation: BulkOperation;
   ids: string[];
-  targetOrganizationId?: string; // For copy operation
 }
 
 export interface BulkOperationResponse<T> {
   success: boolean;
   deletedCount?: number;
+  failedIds?: string[];
   items?: T[];
 }
 
@@ -37,6 +37,9 @@ export function useBulkOrganizations(
     onSuccess: (response) => {
       queryClient.invalidateQueries({
         queryKey: getOrganizationsKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', 'search'],
       });
       options?.onSuccess?.(response);
     },
@@ -61,17 +64,15 @@ export function useBulkProjects(
         request,
       );
     },
-    onSuccess: (response, variables) => {
+    onSuccess: (response) => {
+      // Always invalidate all project queries after bulk operations
       queryClient.invalidateQueries({
         queryKey: ['projects'],
       });
-      if (variables.targetOrganizationId) {
-        queryClient.invalidateQueries({
-          queryKey: getProjectsByOrganizationIdKey(
-            variables.targetOrganizationId,
-          ),
-        });
-      }
+      // Also invalidate search queries
+      queryClient.invalidateQueries({
+        queryKey: ['projects', 'search'],
+      });
       options?.onSuccess?.(response);
     },
     onError: (error: Error) => {

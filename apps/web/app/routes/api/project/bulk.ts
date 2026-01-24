@@ -50,12 +50,33 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (body.operation === 'delete') {
       const useCase = new DeleteProjectService(repository);
-      await Promise.all(ids.map((id) => useCase.execute(id)));
-      return Response.json({ success: true, deletedCount: ids.length });
+      const results = await Promise.allSettled(
+        ids.map((id) => useCase.execute(id)),
+      );
+
+      const deletedCount = results.filter(
+        (r) => r.status === 'fulfilled',
+      ).length;
+      const failedIds = results
+        .map((r, i) => (r.status === 'rejected' ? ids[i] : null))
+        .filter((id): id is string => id !== null);
+
+      return Response.json({
+        success: deletedCount > 0,
+        deletedCount,
+        failedIds: failedIds.length > 0 ? failedIds : undefined,
+      });
     }
 
     const useCase = new GetProjectService(repository);
-    const items = await Promise.all(ids.map((id) => useCase.execute(id)));
+    const results = await Promise.allSettled(
+      ids.map((id) => useCase.execute(id)),
+    );
+
+    const items = results
+      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof useCase.execute>>> => r.status === 'fulfilled')
+      .map((r) => r.value);
+
     return Response.json({ success: true, items });
   } catch (error) {
     console.error('Error in projects bulk action:', error);
