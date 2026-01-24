@@ -1,7 +1,9 @@
-import { useId } from 'react';
+import { useId, useMemo } from 'react';
 import { Link } from 'react-router';
 
 import { cn } from '@qwery/ui/utils';
+import { getWorkspaceFromLocalStorage } from '~/lib/workspace/workspace-helper';
+import pathsConfig from '~/config/paths.config';
 
 export function LogoImage({
   className,
@@ -27,12 +29,12 @@ export function LogoImage({
 
   return (
     <svg
-      width={width}
       className={cn(defaultSize, className)}
       viewBox="0 0 762.83 1023.51"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
+      preserveAspectRatio="xMidYMid meet"
     >
       <defs>
         <style>
@@ -130,10 +132,23 @@ export function AppLogo({
   className?: string;
   label?: string;
 }) {
+  const logoHref = useMemo(() => {
+    if (href) return href;
+    
+    // Check localStorage for org and proj values
+    const workspace = getWorkspaceFromLocalStorage();
+    if (workspace.organizationId && workspace.projectId) {
+      // If both exist, navigate to dashboard (home page which redirects to project)
+      return pathsConfig.app.home;
+    }
+    // Otherwise, redirect to organizations page
+    return pathsConfig.app.organizations;
+  }, [href]);
+
   return (
     <Link
       aria-label={label ?? 'Home Page'}
-      to={href ?? '/'}
+      to={logoHref}
       prefetch={'viewport'}
     >
       <LogoImage className={className} />

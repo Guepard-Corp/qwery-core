@@ -1,55 +1,51 @@
-import { Trash2, Download, Copy } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 
 import { Button } from '@qwery/ui/button';
 import { Trans } from '@qwery/ui/trans';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@qwery/ui/dropdown-menu';
+import { cn } from '@qwery/ui/utils';
 
 export function ActionBar({
   selectedCount,
   onDelete,
-  onExport,
-  onCopy,
-  showCopy = false,
+  onClearSelection,
 }: {
   selectedCount: number;
   onDelete: () => void;
-  onExport: () => void;
-  onCopy?: () => void;
-  showCopy?: boolean;
+  onClearSelection?: () => void;
 }) {
   if (selectedCount === 0) {
     return null;
   }
 
   return (
-    <div className="bg-muted/50 border-b flex items-center justify-between px-4 py-2">
-      <div className="text-sm font-medium">
-        <Trans
-          i18nKey="organizations:selected_count"
-          values={{ count: selectedCount }}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        {showCopy && onCopy && (
-          <Button variant="outline" size="sm" onClick={onCopy}>
-            <Copy className="mr-2 h-4 w-4" />
-            <Trans i18nKey="organizations:copy" />
+    <div className="bg-background/95 supports-backdrop-filter:bg-background/60 border-b flex items-center justify-between px-6 py-3 backdrop-blur-sm">
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-muted-foreground">
+          <Trans
+            i18nKey="organizations:selected_count"
+            values={{ count: selectedCount }}
+          />
+        </span>
+        {onClearSelection && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearSelection}
+            className="h-7 px-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={onExport}>
-          <Download className="mr-2 h-4 w-4" />
-          <Trans i18nKey="organizations:export" />
-        </Button>
-        <Button variant="destructive" size="sm" onClick={onDelete}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          <Trans i18nKey="organizations:delete" />
-        </Button>
       </div>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={onDelete}
+        className="h-8 px-4"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        <Trans i18nKey="organizations:delete" />
+      </Button>
     </div>
   );
 }

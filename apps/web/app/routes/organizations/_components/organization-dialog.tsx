@@ -1,20 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Building2, Loader2, Sparkles } from 'lucide-react';
 
 import type { Organization } from '@qwery/domain/entities';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@qwery/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@qwery/ui/dialog';
 import { Button } from '@qwery/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
-import { Label } from '@qwery/ui/label';
-import { Textarea } from '@qwery/ui/textarea';
 import { Trans } from '@qwery/ui/trans';
+import { cn } from '@qwery/ui/utils';
+// eslint-disable-next-line no-restricted-imports
+import { useTranslation } from 'react-i18next';
 
-import { apiPost, apiPut } from '~/lib/repositories/api-client';
+import {
+  useCreateOrganization,
+  useUpdateOrganization,
+} from '~/lib/mutations/use-organization';
 import { useWorkspace } from '~/lib/context/workspace-context';
 
 const organizationSchema = z.object({
@@ -36,16 +57,35 @@ export function OrganizationDialog({
   organization,
   onSuccess,
 }: OrganizationDialogProps) {
-  const { workspace } = useWorkspace();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation();
+  const { workspace, repositories } = useWorkspace();
   const isEditing = !!organization;
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<OrganizationFormData>({
+  const createMutation = useCreateOrganization(repositories.organization, {
+    onSuccess: () => {
+      toast.success('Organization created successfully');
+      onOpenChange(false);
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create organization');
+    },
+  });
+
+  const updateMutation = useUpdateOrganization(repositories.organization, {
+    onSuccess: () => {
+      toast.success('Organization updated successfully');
+      onOpenChange(false);
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update organization');
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const form = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       name: organization?.name || '',
@@ -54,100 +94,124 @@ export function OrganizationDialog({
 
   useEffect(() => {
     if (open) {
-      reset({
+      form.reset({
         name: organization?.name || '',
       });
     }
-  }, [open, organization, reset]);
+  }, [open, organization, form]);
 
-  const onSubmit = async (data: OrganizationFormData) => {
-    setIsSubmitting(true);
-    try {
-      if (isEditing && organization) {
-        const response: Response = await apiPut(`/api/organizations/${organization.id}`, {
-          name: data.name,
-          updatedBy: workspace.userId || 'system',
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to update organization');
-        }
-
-        toast.success('Organization updated successfully');
-      } else {
-        const response: Response = await apiPost('/api/organizations', {
-          name: data.name,
-          userId: workspace.userId || 'system',
-          createdBy: workspace.userId || 'system',
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create organization');
-        }
-
-        toast.success('Organization created successfully');
-      }
-
-      onOpenChange(false);
-      onSuccess?.();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'An error occurred';
-      toast.error(message);
-    } finally {
-      setIsSubmitting(false);
+  const onSubmit = (data: OrganizationFormData) => {
+    if (isEditing && organization) {
+      updateMutation.mutate({
+        id: organization.id,
+        name: data.name,
+        updatedBy: workspace.userId || 'system',
+      });
+    } else {
+      createMutation.mutate({
+        name: data.name,
+        userId: workspace.userId || 'system',
+        createdBy: workspace.userId || 'system',
+      });
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? (
-              <Trans i18nKey="organizations:edit_organization" />
-            ) : (
-              <Trans i18nKey="organizations:create_organization" />
-            )}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              <Trans i18nKey="organizations:name" />
-            </Label>
-            <Input
-              id="name"
-              {...register('name')}
-              placeholder={isEditing ? 'Organization name' : 'Enter organization name'}
-              disabled={isSubmitting}
-            />
-            {errors.name && (
-              <p className="text-destructive text-sm">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              <Trans i18nKey="common:cancel" />
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <Trans i18nKey="common:saving" />
-              ) : isEditing ? (
-                <Trans i18nKey="common:update" />
+      <DialogContent className="sm:max-w-[540px]">
+        <DialogHeader className="space-y-4 pb-1">
+          <div className="flex items-start gap-4">
+            <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 text-primary ring-primary/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 transition-all duration-200 group-hover:scale-105">
+              {isEditing ? (
+                <Building2 className="h-6 w-6" />
               ) : (
-                <Trans i18nKey="common:create" />
+                <Sparkles className="h-6 w-6" />
               )}
-            </Button>
+            </div>
+            <div className="flex-1 space-y-1.5 pt-0.5">
+              <DialogTitle className="text-2xl font-semibold tracking-tight">
+                {isEditing ? (
+                  <Trans i18nKey="organizations:edit_organization" />
+                ) : (
+                  <Trans i18nKey="organizations:create_organization" />
+                )}
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
+                <Trans
+                  i18nKey={
+                    isEditing
+                      ? 'organizations:edit_organization_description'
+                      : 'organizations:create_organization_description'
+                  }
+                />
+              </DialogDescription>
+            </div>
           </div>
-        </form>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="space-y-2.5">
+                  <FormLabel className="text-sm font-medium">
+                    <Trans i18nKey="organizations:name" />
+                    <span className="text-destructive ml-1.5">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder={t('organizations:name_placeholder')}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'h-11 transition-all duration-200',
+                        form.formState.errors.name &&
+                          'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
+                      )}
+                      autoFocus
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs text-muted-foreground/80">
+                    {isEditing
+                      ? 'This will update the organization name across all projects.'
+                      : 'Choose a unique name for your organization.'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter className="gap-3 pt-4 sm:gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+                className="h-11 min-w-[100px]"
+              >
+                <Trans i18nKey="common:cancel" />
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-11 min-w-[120px] bg-[#ffcb51] text-black shadow-sm hover:bg-[#ffcb51]/90 hover:shadow-md font-semibold transition-all duration-200"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Trans i18nKey="common:saving" />
+                  </>
+                ) : isEditing ? (
+                  <Trans i18nKey="common:update" />
+                ) : (
+                  <Trans i18nKey="common:create" />
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

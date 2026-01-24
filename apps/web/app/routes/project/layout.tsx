@@ -1,4 +1,4 @@
-import { Outlet, useSearchParams, useLocation } from 'react-router';
+import { Outlet, useSearchParams, useLocation, useParams } from 'react-router';
 import { useEffect, useRef, useState, useMemo } from 'react';
 
 import {
@@ -26,6 +26,14 @@ import {
   NotebookSidebarProvider,
   useNotebookSidebar,
 } from '~/lib/context/notebook-sidebar-context';
+import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
+import {
+  getWorkspaceFromLocalStorage,
+  setWorkspaceInLocalStorage,
+} from '~/lib/workspace/workspace-helper';
+import { useQueryClient } from '@tanstack/react-query';
+import { getWorkspaceQueryKey } from '~/lib/hooks/use-workspace-mode';
+import { getNotebooksByProjectIdKey } from '~/lib/queries/use-get-notebook';
 
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
@@ -44,12 +52,62 @@ function SidebarLayoutInner(
   const { layoutState } = props.loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const { repositories } = useWorkspace();
+  const params = useParams();
+  const { workspace, repositories } = useWorkspace();
+  const queryClient = useQueryClient();
   const sidebarRef = useRef<ResizableContentRef>(null);
   const { registerSidebarControl } = useNotebookSidebar();
   const [persistedConversationSlug, setPersistedConversationSlug] = useState<
     string | null
   >(null);
+
+  // Extract project slug from URL
+  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
+  const projectSlug = projectSlugMatch?.[1];
+
+  // Fetch project by slug to get the project ID
+  const projectBySlug = useGetProjectBySlug(
+    repositories.project,
+    projectSlug || '',
+  );
+
+  // Update workspace when project changes
+  useEffect(() => {
+    if (
+      projectBySlug.data?.id &&
+      projectBySlug.data.id !== workspace.projectId
+    ) {
+      const currentWorkspace = getWorkspaceFromLocalStorage();
+      const updatedWorkspace = {
+        ...currentWorkspace,
+        projectId: projectBySlug.data.id,
+        organizationId:
+          projectBySlug.data.organizationId || currentWorkspace.organizationId,
+      };
+      setWorkspaceInLocalStorage(updatedWorkspace);
+      // Dispatch custom event to notify workspace provider
+      window.dispatchEvent(new Event('workspace-updated'));
+      // Invalidate workspace query to trigger re-initialization
+      queryClient.invalidateQueries({
+        queryKey: getWorkspaceQueryKey(updatedWorkspace),
+      });
+      // Invalidate notebooks query to ensure fresh data for the new project
+      // Invalidate both old and new project notebooks
+      if (workspace.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: getNotebooksByProjectIdKey(workspace.projectId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: getNotebooksByProjectIdKey(projectBySlug.data.id),
+      });
+    }
+  }, [
+    projectBySlug.data?.id,
+    workspace.projectId,
+    queryClient,
+    projectBySlug.data?.organizationId,
+  ]);
 
   // Only enable notebook sidebar behavior on notebook pages
   const isNotebookPage = location.pathname.startsWith('/notebook/');

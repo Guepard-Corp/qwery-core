@@ -8,7 +8,7 @@ import {
 import type { Route } from '~/types/app/routes/organization/+types/layout';
 
 import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
-import { LayoutTopBar } from '../layout/_components/layout-topbar';
+import { OrgLayoutTopBar } from './_components/org-topbar';
 
 export async function loader(_args: Route.LoaderArgs) {
   return {
@@ -22,7 +22,7 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
     <Page>
       <PageTopNavigation>
-        <LayoutTopBar />
+        <OrgLayoutTopBar />
       </PageTopNavigation>
       <PageMobileNavigation className={'flex items-center justify-between'}>
         <LayoutMobileNavigation />

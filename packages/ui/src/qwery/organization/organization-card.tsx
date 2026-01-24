@@ -1,8 +1,5 @@
-import { ArrowRight, Building2, User, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../shadcn/card';
-import { Trans } from '../trans';
-import { cn } from '../../lib/utils';
-import { formatRelativeTime } from '../ai/utils/conversation-utils';
+import { Building2 } from 'lucide-react';
+import { EntityCard, type EntityCardProps } from '../entity-card/entity-card';
 import type { ReactNode } from 'react';
 
 export interface OrganizationCardProps {
@@ -11,76 +8,28 @@ export interface OrganizationCardProps {
   slug?: string;
   createdAt?: Date;
   createdBy?: string;
+  status?: string;
   viewButton?: ReactNode;
   onClick?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   className?: string;
   dataTest?: string;
 }
 
 export function OrganizationCard({
-  id,
-  name,
-  slug,
-  createdAt,
-  createdBy,
-  viewButton,
-  onClick,
-  className,
-  dataTest,
+  onEdit,
+  onDelete,
+  ...props
 }: OrganizationCardProps) {
   return (
-    <Card
-      className={cn(
-        'group bg-card hover:border-primary hover:shadow-primary/5 relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl',
-        'cursor-pointer',
-        className,
-      )}
-      onClick={onClick}
-      data-test={dataTest || `organization-card-${id}`}
-    >
-      <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-6">
-        <div className="bg-muted group-hover:bg-primary group-hover:text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all duration-300">
-          <Building2 className="h-6 w-6 transition-colors" />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 pt-1">
-          <CardTitle className="text-foreground text-lg font-bold tracking-tight transition-colors">
-            {name}
-          </CardTitle>
-          {slug && (
-            <p className="text-muted-foreground truncate text-xs font-medium font-mono">
-              {slug}
-            </p>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="mt-auto flex flex-col gap-6 p-6 pt-0">
-        <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground/80">
-          {createdAt && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5" />
-              <span>{formatRelativeTime(createdAt)}</span>
-            </div>
-          )}
-          {createdBy && (
-            <div className="flex items-center gap-2">
-              <User className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[120px]">{createdBy}</span>
-            </div>
-          )}
-        </div>
-
-        {viewButton ? (
-          <div className="text-primary mt-2 flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
-            {viewButton}
-          </div>
-        ) : (
-          <div className="text-primary mt-2 flex items-center gap-2 text-xs font-bold tracking-tight uppercase opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            View Organization{' '}
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <EntityCard
+      {...props}
+      icon={Building2}
+      variant="organization"
+      dataTest={props.dataTest || `organization-card-${props.id}`}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
   );
 }

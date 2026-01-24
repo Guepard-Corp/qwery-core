@@ -7,10 +7,14 @@ import {
   GetOrganizationBySlugService,
 } from '@qwery/domain/services';
 
+export function getOrganizationsKey() {
+  return ['organizations'];
+}
+
 export function useGetOrganizations(repository: IOrganizationRepository) {
   const useCase = new GetOrganizationsService(repository);
   return useQuery({
-    queryKey: ['organizations'],
+    queryKey: getOrganizationsKey(),
     queryFn: () => useCase.execute(),
     staleTime: 30 * 1000,
   });

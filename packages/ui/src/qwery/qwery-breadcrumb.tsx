@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronRight, ChevronsUpDown, Notebook } from 'lucide-react';
+import { ChevronRight, ChevronsUpDown, Notebook, Check } from 'lucide-react';
 
 import {
   Command,
@@ -139,31 +139,36 @@ function BreadcrumbNodeDropdown({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex h-auto cursor-pointer items-center gap-1 p-0 font-normal hover:bg-transparent"
-        >
-          {currentIcon && (
-            <img
-              src={currentIcon}
-              alt={currentLabel}
-              className="h-4 w-4 shrink-0 object-contain"
-            />
-          )}
-          <BreadcrumbPage>{currentLabel}</BreadcrumbPage>
-          <ChevronsUpDown className="h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="z-[101] w-[300px] p-0" align="start">
-        <Command>
+    <div className="group/breadcrumb-item relative flex items-center">
+      <div className="flex items-center gap-1.5">
+        {currentIcon && (
+          <img
+            src={currentIcon}
+            alt={currentLabel}
+            className="h-4 w-4 shrink-0 object-contain rounded"
+          />
+        )}
+        <BreadcrumbPage className="text-sm font-semibold">{currentLabel}</BreadcrumbPage>
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground/60" />
+          </Button>
+        </PopoverTrigger>
+      <PopoverContent className="z-[101] w-[340px] p-0 shadow-lg border-border/50" align="start">
+        <Command className="rounded-lg">
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
+            className="h-10 border-b"
           />
-          <div className="flex max-h-[300px] flex-col">
+          <div className="flex max-h-[360px] flex-col">
             {/* Scrollable items list */}
             <CommandList className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
@@ -200,24 +205,27 @@ function BreadcrumbNodeDropdown({
                             }
                             onSelect={() => handleSelect(item)}
                             className={cn(
-                              'cursor-pointer',
-                              isCurrent && 'bg-accent text-accent-foreground',
+                              'cursor-pointer transition-colors',
+                              isCurrent && 'bg-primary/10 text-primary font-medium',
                             )}
                           >
-                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
                               {/* Show notebook icon for notebooks, or custom icon if provided */}
                               {isNotebook ? (
-                                <Notebook className="h-4 w-4 shrink-0" />
+                                <Notebook className="h-4 w-4 shrink-0 text-muted-foreground" />
                               ) : item.icon ? (
                                 <img
                                   src={item.icon}
                                   alt={item.name}
-                                  className="h-4 w-4 shrink-0 object-contain"
+                                  className="h-4 w-4 shrink-0 object-contain rounded"
                                 />
                               ) : null}
-                              <span className="truncate">{item.name}</span>
+                              <span className="truncate text-sm">{item.name}</span>
                               {hasUnsavedChanges && (
                                 <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
+                              )}
+                              {isCurrent && (
+                                <Check className="h-4 w-4 shrink-0 text-primary ml-auto" />
                               )}
                             </div>
                           </CommandItem>
@@ -230,20 +238,24 @@ function BreadcrumbNodeDropdown({
             </CommandList>
             {/* Fixed footer with View All and New options */}
             {!isLoading && (
-              <div className="shrink-0 border-t">
+              <div className="shrink-0 border-t bg-muted/10">
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
                     onSelect={handleViewAll}
-                    className="cursor-pointer"
+                    className="cursor-pointer font-medium hover:bg-accent"
                   >
-                    {viewAllLabel}
+                    <span>{viewAllLabel}</span>
                   </CommandItem>
                 </CommandGroup>
                 <CommandSeparator />
                 <CommandGroup>
-                  <CommandItem onSelect={handleNew} className="cursor-pointer">
-                    {newLabel}
+                  <CommandItem 
+                    onSelect={handleNew} 
+                    className="cursor-pointer font-medium hover:bg-accent text-primary"
+                  >
+                    <span className="mr-2 text-lg">+</span>
+                    <span>{newLabel}</span>
                   </CommandItem>
                 </CommandGroup>
               </div>
@@ -252,6 +264,7 @@ function BreadcrumbNodeDropdown({
         </Command>
       </PopoverContent>
     </Popover>
+    </div>
   );
 }
 
@@ -328,8 +341,38 @@ export function QweryBreadcrumb({
   onNewNotebook,
   unsavedNotebookSlugs = [],
 }: QweryBreadcrumbProps) {
-  if (!organization?.current || !project?.current) {
+  // Support organization-only mode (for organization pages)
+  if (!organization?.current) {
     return null;
+  }
+  
+  // If no project, show only organization breadcrumb
+  if (!project?.current) {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            {organization.current ? (
+              <BreadcrumbNodeDropdown
+                items={organization.items}
+                isLoading={organization.isLoading}
+                currentLabel={organization.current.name}
+                currentSlug={organization.current.slug}
+                searchPlaceholder={labels.searchOrgs}
+                viewAllLabel={labels.viewAllOrgs}
+                viewAllPath={paths.viewAllOrgs}
+                newLabel={labels.newOrg}
+                onSelect={onOrganizationSelect}
+                onViewAll={onViewAllOrgs}
+                onNew={onNewOrg}
+              />
+            ) : (
+              <BreadcrumbPage>{labels.loading}</BreadcrumbPage>
+            )}
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
   }
 
   return (

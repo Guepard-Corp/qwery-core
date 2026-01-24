@@ -1,6 +1,9 @@
-import type { ActionFunctionArgs } from 'react-router';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { DomainException } from '@qwery/domain/exceptions';
-import { CreateNotebookService } from '@qwery/domain/services';
+import {
+  CreateNotebookService,
+  GetNotebooksByProjectIdService,
+} from '@qwery/domain/services';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,12 +29,22 @@ function handleDomainException(error: unknown): Response {
   return Response.json({ error: errorMessage }, { status: 500 });
 }
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
   const repositories = await createRepositories();
   const repository = repositories.notebook;
 
   try {
-    // GET /api/notebooks - Get all notebooks
+    const url = new URL(request.url);
+    const projectId = url.searchParams.get('projectId');
+
+    // If projectId is provided, filter notebooks by project
+    if (projectId) {
+      const useCase = new GetNotebooksByProjectIdService(repository);
+      const notebooks = await useCase.execute(projectId);
+      return Response.json(notebooks || []);
+    }
+
+    // GET /api/notebooks - Get all notebooks (fallback for backward compatibility)
     // TODO: Create GetNotebooksService use case
     const notebooks = await repository.findAll();
     return Response.json(notebooks);

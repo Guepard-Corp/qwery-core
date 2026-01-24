@@ -21,13 +21,14 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import type { Organization } from '@qwery/domain/entities';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
+import { Checkbox } from '@qwery/ui/checkbox';
 import { cn } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai';
 import {
@@ -50,7 +51,7 @@ import { ConfirmDeleteDialog } from '@qwery/ui/qwery/confirm-delete-dialog';
 import { OrganizationCard } from '@qwery/ui/organization';
 
 import pathsConfig, { createPath } from '~/config/paths.config';
-import { apiPost } from '~/lib/repositories/api-client';
+import { useBulkOrganizations } from '~/lib/mutations/use-bulk-operations';
 import { OrganizationDialog } from './organization-dialog';
 import { ActionBar } from './action-bar';
 
@@ -65,7 +66,6 @@ export function ListOrganizations({
   organizations: Organization[];
 }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,34 +92,17 @@ export function ListOrganizations({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const response: Response = await apiPost('/api/organizations/bulk', {
-        operation: 'delete',
-        ids,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete organizations');
-      }
-      return (await response.json()) as { success: boolean; deletedCount: number };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+  const bulkDeleteMutation = useBulkOrganizations({
+    onSuccess: (response) => {
+      const deletedCount = response.deletedCount ?? selectedIds.size;
       setSelectedIds(new Set());
       setShowDeleteDialog(false);
+      toast.success(
+        `Deleted ${deletedCount} organization${deletedCount !== 1 ? 's' : ''}`,
+      );
     },
-  });
-
-  const exportMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const response: Response = await apiPost('/api/organizations/bulk', {
-        operation: 'export',
-        ids,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to export organizations');
-      }
-      return (await response.json()) as { success: boolean };
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete organizations');
     },
   });
 
@@ -204,17 +187,16 @@ export function ListOrganizations({
   };
 
   const handleDialogSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['organizations'] });
     setEditingOrganization(null);
   };
 
   const handleConfirmDelete = () => {
-    deleteMutation.mutate(Array.from(selectedIds));
+    bulkDeleteMutation.mutate({
+      operation: 'delete',
+      ids: Array.from(selectedIds),
+    });
   };
 
-  const handleExport = () => {
-    exportMutation.mutate(Array.from(selectedIds));
-  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -231,8 +213,8 @@ export function ListOrganizations({
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 flex-col gap-6 py-6 pb-4 lg:py-10">
-        <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
-          <h1 className="text-3xl font-bold">
+        <div className="mx-auto w-full max-w-7xl px-48 lg:px-32 my-4">
+          <h1 className="text-5xl font-bold">
             <Trans i18nKey="organizations:title" />
           </h1>
         </div>
@@ -433,7 +415,7 @@ export function ListOrganizations({
             className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90 cursor-pointer"
           >
             <Plus className="mr-2 h-4 w-4" />
-            New Organization
+            <Trans i18nKey="organizations:new_organization" />
           </Button>
         </div>
         </div>
@@ -446,7 +428,7 @@ export function ListOrganizations({
             setShowDeleteDialog(true);
           }
         }}
-        onExport={handleExport}
+        onClearSelection={() => setSelectedIds(new Set())}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto py-0">
@@ -474,6 +456,8 @@ export function ListOrganizations({
                   const path = createPath(pathsConfig.app.organizationView, org.slug);
                   navigate(path);
                 }}
+                onEdit={() => handleEdit(org)}
+                onDelete={() => handleDeleteSingle(org)}
               />
               ))}
             </div>
@@ -484,24 +468,24 @@ export function ListOrganizations({
               <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[50px] pl-6">
-                    <input
-                      type="checkbox"
-                      checked={
-                        paginatedOrganizations.length > 0 &&
-                        paginatedOrganizations.every((org) => selectedIds.has(org.id))
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds(
-                            new Set(paginatedOrganizations.map((org) => org.id)),
-                          );
-                        } else {
-                          setSelectedIds(new Set());
+                  <TableHead className="w-[50px]">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={
+                          paginatedOrganizations.length > 0 &&
+                          paginatedOrganizations.every((org) => selectedIds.has(org.id))
                         }
-                      }}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIds(
+                              new Set(paginatedOrganizations.map((org) => org.id)),
+                            );
+                          } else {
+                            setSelectedIds(new Set());
+                          }
+                        }}
+                      />
+                    </div>
                   </TableHead>
                   <TableHead className="w-[40%] font-semibold">Name</TableHead>
                   <TableHead className="font-semibold">
@@ -544,15 +528,15 @@ export function ListOrganizations({
                       }}
                     >
                       <TableCell
-                        className="py-4 pl-6"
+                        className="py-4"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelection(org.id)}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelection(org.id)}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="py-4 font-medium">
                         <div className="flex items-center gap-3">
@@ -601,7 +585,7 @@ export function ListOrganizations({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEdit(org)}>
                               <Pencil className="mr-2 h-4 w-4" />
-                              Edit
+                              <Trans i18nKey="common:update" />
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -609,7 +593,7 @@ export function ListOrganizations({
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+                              <Trans i18nKey="organizations:delete" />
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -699,7 +683,8 @@ export function ListOrganizations({
         onConfirm={handleConfirmDelete}
         itemName="organization"
         itemCount={selectedIds.size}
-        isLoading={deleteMutation.isPending}
+        isLoading={bulkDeleteMutation.isPending}
+        confirmationText={selectedIds.size === 1 ? 'delete organization' : 'delete organizations'}
       />
 
       <OrganizationDialog

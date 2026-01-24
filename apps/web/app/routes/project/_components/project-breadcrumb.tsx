@@ -20,6 +20,8 @@ import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
+import { ProjectDialog } from '../../organization/_components/project-dialog';
 
 function toBreadcrumbNodeItem<
   T extends { id: string; slug: string; name?: string; title?: string },
@@ -42,6 +44,8 @@ export function ProjectBreadcrumb() {
   const [_unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
     [],
   );
+  const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
+  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
 
   useEffect(() => {
     const updateUnsavedSlugs = () => {
@@ -193,46 +197,34 @@ export function ProjectBreadcrumb() {
     navigate(path);
   };
 
-  const handleNewOrg = async () => {
-    try {
-      const response = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'New Organization',
-          is_owner: true,
-          createdBy: workspace.username || 'system',
-        }),
-      });
-      if (response.ok) {
-        const org: Organization = await response.json();
-        await organizations.refetch();
-        handleOrgSelect(toBreadcrumbNodeItem(org));
+  const handleNewOrg = () => {
+    setShowCreateOrgDialog(true);
+  };
+
+  const handleNewProject = () => {
+    if (!workspace.organizationId) return;
+    setShowCreateProjectDialog(true);
+  };
+
+  const handleOrgDialogSuccess = async () => {
+    await organizations.refetch();
+    // Find the newly created org (last one in the list) and navigate to it
+    if (organizations.data && organizations.data.length > 0) {
+      const latestOrg = organizations.data[organizations.data.length - 1];
+      if (latestOrg) {
+        handleOrgSelect(toBreadcrumbNodeItem(latestOrg));
       }
-    } catch (error) {
-      console.error('Failed to create organization:', error);
     }
   };
 
-  const handleNewProject = async () => {
-    if (!workspace.organizationId) return;
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId: workspace.organizationId,
-          name: 'New Project',
-          createdBy: workspace.username || 'system',
-        }),
-      });
-      if (response.ok) {
-        const project: Project = await response.json();
-        await projects.refetch();
-        handleProjectSelect(toBreadcrumbNodeItem(project));
+  const handleProjectDialogSuccess = async () => {
+    await projects.refetch();
+    // Find the newly created project (last one in the list) and navigate to it
+    if (projects.data && projects.data.length > 0) {
+      const latestProject = projects.data[projects.data.length - 1];
+      if (latestProject) {
+        handleProjectSelect(toBreadcrumbNodeItem(latestProject));
       }
-    } catch (error) {
-      console.error('Failed to create project:', error);
     }
   };
 
@@ -272,6 +264,7 @@ export function ProjectBreadcrumb() {
   }
 
   return (
+    <>
     <QweryBreadcrumb
       organization={{
         items: (organizations.data || []).map((org) =>
@@ -372,5 +365,21 @@ export function ProjectBreadcrumb() {
       onNewNotebook={handleNewNotebook}
       unsavedNotebookSlugs={_unsavedNotebookSlugs}
     />
+      <OrganizationDialog
+        open={showCreateOrgDialog}
+        onOpenChange={setShowCreateOrgDialog}
+        organization={null}
+        onSuccess={handleOrgDialogSuccess}
+      />
+      {workspace.organizationId && (
+        <ProjectDialog
+          open={showCreateProjectDialog}
+          onOpenChange={setShowCreateProjectDialog}
+          project={null}
+          organizationId={workspace.organizationId}
+          onSuccess={handleProjectDialogSuccess}
+        />
+      )}
+    </>
   );
 }

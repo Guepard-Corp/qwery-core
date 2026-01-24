@@ -28,6 +28,7 @@ import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
+import { Checkbox } from '@qwery/ui/checkbox';
 import { cn } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai';
 import { ProjectCard } from '@qwery/ui/project';
@@ -111,37 +112,6 @@ export function ListProjects({
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setSelectedIds(new Set());
       setShowDeleteDialog(false);
-    },
-  });
-
-  const exportMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const response: Response = await apiPost('/api/projects/bulk', {
-        operation: 'export',
-        ids,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to export projects');
-      }
-      return (await response.json()) as { success: boolean };
-    },
-  });
-
-  const copyMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const response: Response = await apiPost('/api/projects/bulk', {
-        operation: 'copy',
-        ids,
-        targetOrganizationId: organizationId,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to copy projects');
-      }
-      return (await response.json()) as { success: boolean; copiedCount: number; projects: unknown[] };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setSelectedIds(new Set());
     },
   });
 
@@ -236,13 +206,6 @@ export function ListProjects({
     deleteMutation.mutate(Array.from(selectedIds));
   };
 
-  const handleExport = () => {
-    exportMutation.mutate(Array.from(selectedIds));
-  };
-
-  const handleCopy = () => {
-    copyMutation.mutate(Array.from(selectedIds));
-  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -259,8 +222,8 @@ export function ListProjects({
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 flex-col gap-6 py-6 pb-4 lg:py-10">
-        <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
-          <h1 className="text-3xl font-bold">
+        <div className="mx-auto w-full max-w-7xl px-48 lg:px-32 my-4">
+          <h1 className="text-5xl font-bold">
             <Trans i18nKey="organizations:projects_title" />
           </h1>
         </div>
@@ -301,171 +264,171 @@ export function ListProjects({
                       <Settings2 className="text-muted-foreground/60 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Display Mode
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(true)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <LayoutGrid
-                        className={cn(
-                          'h-4 w-4',
-                          isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Grid</span>
-                    </div>
-                    {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(false)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      !isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <List
-                        className={cn(
-                          'h-4 w-4',
-                          !isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Table</span>
-                    </div>
-                    {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="my-1" />
-
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Sort By
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('date')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'date' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Calendar
-                        className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'date'
-                            ? 'text-[#ffcb51]'
-                            : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Date</span>
-                    </div>
-                    {sortCriterion === 'date' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <span
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                      Display Mode
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => setIsGridView(true)}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                        isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <LayoutGrid
                           className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
+                            'h-4 w-4',
+                            isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
                           )}
-                        >
-                          ASC
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
                         />
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          DESC
-                        </span>
+                        <span className="text-sm">Grid</span>
                       </div>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('name')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'name' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CaseSensitive
-                        className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'name'
-                            ? 'text-[#ffcb51]'
-                            : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Name</span>
-                    </div>
-                    {sortCriterion === 'name' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <span
+                      {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setIsGridView(false)}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                        !isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <List
                           className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
+                            'h-4 w-4',
+                            !isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
                           )}
-                        >
-                          ASC
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
                         />
-                        <span
+                        <span className="text-sm">Table</span>
+                      </div>
+                      {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                      Sort By
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => handleSortClick('date')}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                        sortCriterion === 'date' &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Calendar
                           className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
+                            'h-4 w-4',
+                            sortCriterion === 'date'
+                              ? 'text-[#ffcb51]'
                               : 'text-muted-foreground/40',
                           )}
-                        >
-                          DESC
-                        </span>
+                        />
+                        <span className="text-sm">Date</span>
                       </div>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      {sortCriterion === 'date' && (
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span
+                            className={cn(
+                              'text-[10px]',
+                              sortOrder === 'asc'
+                                ? 'font-bold text-[#ffcb51]'
+                                : 'text-muted-foreground/40',
+                            )}
+                          >
+                            ASC
+                          </span>
+                          <Switch
+                            checked={sortOrder === 'desc'}
+                            onCheckedChange={handleSortOrderToggle}
+                            className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                          />
+                          <span
+                            className={cn(
+                              'text-[10px]',
+                              sortOrder === 'desc'
+                                ? 'font-bold text-[#ffcb51]'
+                                : 'text-muted-foreground/40',
+                            )}
+                          >
+                            DESC
+                          </span>
+                        </div>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleSortClick('name')}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                        sortCriterion === 'name' &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <CaseSensitive
+                          className={cn(
+                            'h-4 w-4',
+                            sortCriterion === 'name'
+                              ? 'text-[#ffcb51]'
+                              : 'text-muted-foreground/40',
+                          )}
+                        />
+                        <span className="text-sm">Name</span>
+                      </div>
+                      {sortCriterion === 'name' && (
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span
+                            className={cn(
+                              'text-[10px]',
+                              sortOrder === 'asc'
+                                ? 'font-bold text-[#ffcb51]'
+                                : 'text-muted-foreground/40',
+                            )}
+                          >
+                            ASC
+                          </span>
+                          <Switch
+                            checked={sortOrder === 'desc'}
+                            onCheckedChange={handleSortOrderToggle}
+                            className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                          />
+                          <span
+                            className={cn(
+                              'text-[10px]',
+                              sortOrder === 'desc'
+                                ? 'font-bold text-[#ffcb51]'
+                                : 'text-muted-foreground/40',
+                            )}
+                          >
+                            DESC
+                          </span>
+                        </div>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-          {newProjectButton || (
-            <Button
-              onClick={handleCreate}
-              className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90 cursor-pointer"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-          )}
-        </div>
+            {newProjectButton || (
+              <Button
+                onClick={handleCreate}
+                className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90 cursor-pointer"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                <Trans i18nKey="organizations:new_project" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -476,8 +439,7 @@ export function ListProjects({
             setShowDeleteDialog(true);
           }
         }}
-        onExport={handleExport}
-        onCopy={handleCopy}
+        onClearSelection={() => setSelectedIds(new Set())}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto py-0">
@@ -496,18 +458,20 @@ export function ListProjects({
           <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {paginatedProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                id={project.id}
-                name={project.name}
-                description={project.description}
-                status={project.status}
-                createdAt={project.createdAt}
-                onClick={() => {
-                  const path = createPath(pathsConfig.app.project, project.slug);
-                  navigate(path);
-                }}
-              />
+                <ProjectCard
+                  key={project.id}
+                  id={project.id}
+                  name={project.name}
+                  description={project.description}
+                  status={project.status}
+                  createdAt={project.createdAt}
+                  onClick={() => {
+                    const path = createPath(pathsConfig.app.project, project.slug);
+                    navigate(path);
+                  }}
+                  onEdit={() => handleEdit(project)}
+                  onDelete={() => handleDeleteSingle(project)}
+                />
               ))}
             </div>
           </div>
@@ -515,158 +479,158 @@ export function ListProjects({
           <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
             <div className="bg-card overflow-hidden rounded-xl border">
               <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[50px] pl-6">
-                    <input
-                      type="checkbox"
-                      checked={
-                        paginatedProjects.length > 0 &&
-                        paginatedProjects.every((project) => selectedIds.has(project.id))
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds(new Set(paginatedProjects.map((project) => project.id)));
-                        } else {
-                          setSelectedIds(new Set());
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[40%] font-semibold">Name</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSortClick('date')}
-                      className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
-                    >
-                      Created
-                      {sortCriterion === 'date' ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        ) : (
-                          <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="pr-6 text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedProjects.map((project) => {
-                  const formattedDateTime = formatRelativeTime(new Date(project.createdAt));
-                  const isSelected = selectedIds.has(project.id);
-                  const statusColor =
-                    project.status === 'active'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                      : project.status === 'inactive'
-                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
-                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-
-                  return (
-                    <TableRow
-                      key={project.id}
-                      className={cn(
-                        'group hover:bg-muted/30 cursor-pointer transition-colors',
-                        isSelected && 'bg-muted/50',
-                      )}
-                      onClick={() => {
-                        const path = createPath(pathsConfig.app.project, project.slug);
-                        navigate(path);
-                      }}
-                    >
-                      <TableCell
-                        className="py-4 pl-6"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelection(project.id)}
-                          className="h-4 w-4 rounded border-gray-300"
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[50px]">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={
+                            paginatedProjects.length > 0 &&
+                            paginatedProjects.every((project) => selectedIds.has(project.id))
+                          }
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedIds(new Set(paginatedProjects.map((project) => project.id)));
+                            } else {
+                              setSelectedIds(new Set());
+                            }
+                          }}
                         />
-                      </TableCell>
-                      <TableCell className="py-4 font-medium">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
-                            <svg
-                              className="text-foreground h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold">
-                              {highlightMatch(project.name, searchQuery)}
-                            </span>
-                            {project.description && (
-                              <span className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
-                                {project.description}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={cn('text-[11px]', statusColor)}>
-                          {project.status || 'active'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formattedDateTime}
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className="pr-6 text-right"
-                        onClick={(e) => e.stopPropagation()}
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[40%] font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSortClick('date')}
+                        className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
                       >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(project)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteSingle(project)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        Created
+                        {sortCriterion === 'date' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedProjects.map((project) => {
+                    const formattedDateTime = formatRelativeTime(new Date(project.createdAt));
+                    const isSelected = selectedIds.has(project.id);
+                    const statusColor =
+                      project.status === 'active'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                        : project.status === 'inactive'
+                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+                          : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+
+                    return (
+                      <TableRow
+                        key={project.id}
+                        className={cn(
+                          'group hover:bg-muted/30 cursor-pointer transition-colors',
+                          isSelected && 'bg-muted/50',
+                        )}
+                        onClick={() => {
+                          const path = createPath(pathsConfig.app.project, project.slug);
+                          navigate(path);
+                        }}
+                      >
+                        <TableCell
+                          className="py-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelection(project.id)}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                              <svg
+                                className="text-foreground h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold">
+                                {highlightMatch(project.name, searchQuery)}
+                              </span>
+                              {project.description && (
+                                <span className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
+                                  {project.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={cn('h-5 px-2 text-[10px] uppercase tracking-wider font-bold border shrink-0', statusColor)}>
+                            {project.status || 'active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formattedDateTime}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="pr-6 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(project)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <Trans i18nKey="common:update" />
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteSingle(project)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <Trans i18nKey="organizations:delete" />
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
@@ -748,6 +712,7 @@ export function ListProjects({
         itemName="project"
         itemCount={selectedIds.size}
         isLoading={deleteMutation.isPending}
+        confirmationText={selectedIds.size === 1 ? 'delete project' : 'delete projects'}
       />
 
       <ProjectDialog
