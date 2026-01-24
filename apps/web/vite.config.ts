@@ -130,6 +130,15 @@ export default defineConfig(({ command }) => ({
       'tokenlens',
       '@dqbd/tiktoken',
     ],
+    include: [
+      '@codemirror/state',
+      '@codemirror/view',
+      '@codemirror/commands',
+      '@codemirror/language',
+      '@codemirror/lang-sql',
+      '@codemirror/theme-one-dark',
+      '@uiw/react-codemirror',
+    ],
     entries: [
       './app/root.tsx',
       './app/entry.server.tsx',
