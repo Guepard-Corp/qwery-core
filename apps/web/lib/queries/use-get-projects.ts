@@ -27,6 +27,7 @@ export function useGetProjectById(repository: IProjectRepository, id: string) {
     queryKey: ['project', id],
     queryFn: () => useCase.execute(id),
     staleTime: 30 * 1000,
+    enabled: !!id,
   });
 }
 

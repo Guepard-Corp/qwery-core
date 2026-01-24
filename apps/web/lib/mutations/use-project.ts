@@ -35,7 +35,10 @@ export function useCreateProject(
       queryClient.invalidateQueries({
         queryKey: getProjectsByOrganizationIdKey(output.organizationId),
       });
-      options?.onSuccess?.(output as unknown as Project);
+      queryClient.invalidateQueries({
+        queryKey: ['projects', 'search'],
+      });
+      options?.onSuccess?.(output as Project);
     },
     onError: (error: Error) => {
       options?.onError?.(error);
@@ -67,7 +70,12 @@ export function useUpdateProject(
       queryClient.invalidateQueries({
         queryKey: ['project', output.slug],
       });
-      options?.onSuccess?.(output as unknown as Project);
+      queryClient.invalidateQueries({
+        queryKey: ['projects', 'search'],
+      });
+      // ProjectOutput is structurally compatible with Project
+      // Both have the same fields (id, organizationId, name, slug, description, status, timestamps, etc.)
+      options?.onSuccess?.(output as Project);
     },
     onError: (error: Error) => {
       options?.onError?.(error);
@@ -86,12 +94,37 @@ export function useDeleteProject(
 
   return useMutation({
     mutationFn: async (projectId: string) => {
+      // Fetch project before deletion to get organizationId for cache invalidation
+      const project = await repository.findById(projectId);
       const service = new DeleteProjectService(repository);
-      return await service.execute(projectId);
+      await service.execute(projectId);
+      return project;
     },
-    onSuccess: () => {
+    onSuccess: (project) => {
+      // Invalidate organization-scoped project queries if we have the project
+      if (project?.organizationId) {
+        queryClient.invalidateQueries({
+          queryKey: getProjectsByOrganizationIdKey(project.organizationId),
+        });
+      }
+      // Broad invalidation as fallback
       queryClient.invalidateQueries({
         queryKey: ['projects'],
+      });
+      // Invalidate individual project queries
+      if (project?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['project', project.id],
+        });
+      }
+      if (project?.slug) {
+        queryClient.invalidateQueries({
+          queryKey: ['project', project.slug],
+        });
+      }
+      // Invalidate search queries
+      queryClient.invalidateQueries({
+        queryKey: ['projects', 'search'],
       });
       options?.onSuccess?.();
     },

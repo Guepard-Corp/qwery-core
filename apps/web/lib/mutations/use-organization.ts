@@ -15,10 +15,6 @@ import type {
 
 import { getOrganizationsKey } from '../queries/use-get-organizations';
 
-export function getOrganizationsQueryKey() {
-  return ['organizations'];
-}
-
 export function useCreateOrganization(
   repository: IOrganizationRepository,
   options?: {
@@ -35,9 +31,12 @@ export function useCreateOrganization(
     },
     onSuccess: (output: OrganizationOutput) => {
       queryClient.invalidateQueries({
-        queryKey: getOrganizationsQueryKey(),
+        queryKey: getOrganizationsKey(),
       });
-      options?.onSuccess?.(output as unknown as Organization);
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', 'search'],
+      });
+      options?.onSuccess?.(output as Organization);
     },
     onError: (error: Error) => {
       options?.onError?.(error);
@@ -61,7 +60,7 @@ export function useUpdateOrganization(
     },
     onSuccess: (output: OrganizationOutput) => {
       queryClient.invalidateQueries({
-        queryKey: getOrganizationsQueryKey(),
+        queryKey: getOrganizationsKey(),
       });
       queryClient.invalidateQueries({
         queryKey: ['organization', output.id],
@@ -69,7 +68,12 @@ export function useUpdateOrganization(
       queryClient.invalidateQueries({
         queryKey: ['organization', output.slug],
       });
-      options?.onSuccess?.(output as unknown as Organization);
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', 'search'],
+      });
+      // OrganizationOutput is structurally compatible with Organization
+      // Both have the same fields (id, name, slug, userId, timestamps, etc.)
+      options?.onSuccess?.(output as Organization);
     },
     onError: (error: Error) => {
       options?.onError?.(error);
@@ -93,7 +97,10 @@ export function useDeleteOrganization(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: getOrganizationsQueryKey(),
+        queryKey: getOrganizationsKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', 'search'],
       });
       options?.onSuccess?.();
     },

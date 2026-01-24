@@ -60,7 +60,7 @@ export function useSearchOrganizations(
 
       return result ?? { results: [], total: 0 };
     },
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && debouncedQuery.length > 0,
     staleTime: 10 * 1000,
   });
 }
