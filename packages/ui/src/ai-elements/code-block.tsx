@@ -98,6 +98,8 @@ export const CodeBlock = ({
     };
   }, [code, language, showLineNumbers]);
 
+  const isSQL = language === 'sql';
+  
   return (
     <CodeBlockContext.Provider value={{ code }}>
       <div
@@ -109,17 +111,23 @@ export const CodeBlock = ({
       >
         <div className="relative max-w-full min-w-0 overflow-x-auto">
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
+            className={cn(
+              '[&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base',
+              isSQL ? '[&>pre]:bg-muted/80!' : '[&>pre]:bg-background!'
+            )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
+            className={cn(
+              '[&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base',
+              isSQL ? '[&>pre]:bg-muted/90!' : '[&>pre]:bg-background!'
+            )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
-            <div className="absolute top-2 right-2 flex items-center gap-2">
+            <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               {children}
             </div>
           )}
