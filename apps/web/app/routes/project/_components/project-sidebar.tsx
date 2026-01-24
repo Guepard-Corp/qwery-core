@@ -232,7 +232,7 @@ export function ProjectSidebar() {
   return (
     <Sidebar
       collapsible="none"
-      className="w-[18rem] max-w-[18rem] min-w-[18rem]"
+      className="w-[18rem] max-w-[18rem] min-w-[18rem] border-r"
     >
       <SidebarContent className="overflow-hidden p-4">
         <SidebarNavigation config={navigationConfig} />
@@ -265,31 +265,32 @@ export function ProjectSidebar() {
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
+        <div className="flex flex-col">
+          {/* Conversation History */}
+          <SidebarConversationHistory
+            conversations={mappedConversations}
+            isLoading={isLoadingConversations}
+            currentConversationId={currentConversationId}
+            isProcessing={isProcessing}
+            processingConversationSlug={processingConversationSlug || undefined}
+            searchQuery={searchQuery}
+            onConversationSelect={onConversationSelect}
+            onConversationEdit={onConversationEdit}
+            onConversationDelete={onConversationDelete}
+            onConversationDuplicate={onConversationDuplicate}
+            onConversationShare={onConversationShare}
+            onConversationBookmark={onConversationBookmark}
+          />
 
-        {/* Conversation History */}
-        <SidebarConversationHistory
-          conversations={mappedConversations}
-          isLoading={isLoadingConversations}
-          currentConversationId={currentConversationId}
-          isProcessing={isProcessing}
-          processingConversationSlug={processingConversationSlug || undefined}
-          searchQuery={searchQuery}
-          onConversationSelect={onConversationSelect}
-          onConversationEdit={onConversationEdit}
-          onConversationDelete={onConversationDelete}
-          onConversationDuplicate={onConversationDuplicate}
-          onConversationShare={onConversationShare}
-          onConversationBookmark={onConversationBookmark}
-        />
-
-        {/* Notebook History */}
-        <SidebarNotebookHistory
-          notebooks={mappedNotebooks}
-          isLoading={notebooks.isLoading}
-          currentNotebookSlug={currentNotebookSlug}
-          searchQuery={searchQuery}
-          onNotebookDelete={onNotebookDelete}
-        />
+          {/* Notebook History */}
+          <SidebarNotebookHistory
+            notebooks={mappedNotebooks}
+            isLoading={notebooks.isLoading}
+            currentNotebookSlug={currentNotebookSlug}
+            searchQuery={searchQuery}
+            onNotebookDelete={onNotebookDelete}
+          />
+        </div>
       </SidebarContent>
 
       <SidebarFooter>

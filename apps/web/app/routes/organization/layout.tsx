@@ -20,15 +20,15 @@ export async function loader(_args: Route.LoaderArgs) {
 
 function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
-    <Page>
-      <PageTopNavigation>
+      <Page>
+        <PageTopNavigation>
         <OrgLayoutTopBar />
-      </PageTopNavigation>
-      <PageMobileNavigation className={'flex items-center justify-between'}>
-        <LayoutMobileNavigation />
-      </PageMobileNavigation>
-      {props.children}
-    </Page>
+        </PageTopNavigation>
+        <PageMobileNavigation className={'flex items-center justify-between'}>
+          <LayoutMobileNavigation />
+        </PageMobileNavigation>
+        {props.children}
+      </Page>
   );
 }
 

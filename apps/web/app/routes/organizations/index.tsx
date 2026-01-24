@@ -17,9 +17,9 @@ export default function OrganizationsPage() {
           <Skeleton className="h-10 w-full" />
         </div>
       )}
-      {!organizations.isLoading && (
-        <ListOrganizations organizations={organizations.data ?? []} />
-      )}
+        {!organizations.isLoading && (
+          <ListOrganizations organizations={organizations.data ?? []} />
+        )}
     </div>
   );
 }

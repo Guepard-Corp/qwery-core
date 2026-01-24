@@ -36,7 +36,7 @@ const AppConfigSchema = z
     theme: z.enum(['light', 'dark', 'system']).default('light'),
     production: z.boolean(),
     themeColor: z.string().default('#ffffff'),
-    themeColorDark: z.string().default('#0a0a0a'),
+    themeColorDark: z.string().default('#1c1c1c'),
   })
   .refine(
     (schema) => {
