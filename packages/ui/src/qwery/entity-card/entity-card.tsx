@@ -65,7 +65,7 @@ export function EntityCard({
   const cardContent = (
     <Card
       className={cn(
-        'group bg-card hover:border-primary hover:shadow-primary/5 relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl',
+        'group hover:!bg-sidebar hover:border-primary hover:shadow-primary/5 relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl',
         'cursor-pointer',
         className,
       )}

@@ -129,7 +129,7 @@ export function ProjectDialog({
       <DialogContent className="sm:max-w-[540px]">
         <DialogHeader className="space-y-4 pb-1">
           <div className="flex items-start gap-4">
-            <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 text-primary ring-primary/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 transition-all duration-200 group-hover:scale-105">
+            <div className="bg-primary/20 text-primary ring-primary/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 transition-all duration-200 group-hover:scale-105">
               {isEditing ? (
                 <FolderKanban className="h-6 w-6" />
               ) : (
