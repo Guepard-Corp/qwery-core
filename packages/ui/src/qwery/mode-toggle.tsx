@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import * as React from 'react';
 
 import { Computer, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -65,6 +66,7 @@ export function ModeToggle(props: { className?: string }) {
 
 export function SubMenuModeToggle() {
   const { setTheme, theme, resolvedTheme } = useTheme();
+  const [submenuOpen, setSubmenuOpen] = React.useState(false);
 
   const MenuItems = useMemo(
     () =>
@@ -78,8 +80,9 @@ export function SubMenuModeToggle() {
             })}
             key={mode}
             onClick={() => {
-              setTheme(mode);
+              setTheme?.(mode);
               setCookieTheme(mode);
+              setSubmenuOpen(false);
             }}
           >
             <Icon theme={mode} />
@@ -94,16 +97,32 @@ export function SubMenuModeToggle() {
   );
 
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger className="w-full items-center justify-between space-x-2">
-        <span className="flex space-x-2">
-          <Icon theme={resolvedTheme} />
+    <DropdownMenuSub open={submenuOpen} onOpenChange={setSubmenuOpen}>
+      <DropdownMenuSubTrigger 
+        className="flex w-full items-center justify-between"
+        onPointerEnter={() => setSubmenuOpen(true)}
+        onPointerLeave={(e) => {
+          const relatedTarget = e.relatedTarget as HTMLElement;
+          if (!relatedTarget?.closest('[role="menu"]')) {
+            setSubmenuOpen(false);
+          }
+        }}
+      >
+        <span className="flex items-center space-x-2">
+          <Icon theme={resolvedTheme || theme || 'system'} />
           <span>
             <Trans i18nKey={'common:theme'} />
           </span>
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent sideOffset={4} className="z-[100] min-w-[10rem]">
+      <DropdownMenuSubContent 
+        side="right"
+        sideOffset={4} 
+        align="start"
+        className="min-w-[10rem]"
+        onPointerEnter={() => setSubmenuOpen(true)}
+        onPointerLeave={() => setSubmenuOpen(false)}
+      >
         {MenuItems}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
