@@ -21,7 +21,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import type { Project } from '@qwery/domain/entities';
 import { Button } from '@qwery/ui/button';
@@ -52,7 +52,7 @@ import { ConfirmDeleteDialog } from '@qwery/ui/qwery/confirm-delete-dialog';
 import { Badge } from '@qwery/ui/badge';
 
 import pathsConfig, { createPath } from '~/config/paths.config';
-import { apiPost } from '~/lib/repositories/api-client';
+import { useBulkProjects } from '~/lib/mutations/use-bulk-operations';
 import { ProjectDialog } from './project-dialog';
 import { ProjectActionBar } from './project-action-bar';
 
@@ -71,7 +71,6 @@ export function ListProjects({
   organizationId: string;
 }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +82,7 @@ export function ListProjects({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,21 +97,17 @@ export function ListProjects({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const response: Response = await apiPost('/api/projects/bulk', {
-        operation: 'delete',
-        ids,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete projects');
-      }
-      return (await response.json()) as { success: boolean; deletedCount: number };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+  const bulkDeleteMutation = useBulkProjects({
+    onSuccess: (response) => {
+      const deletedCount = response.deletedCount ?? selectedIds.size;
       setSelectedIds(new Set());
       setShowDeleteDialog(false);
+      toast.success(
+        `Deleted ${deletedCount} project${deletedCount !== 1 ? 's' : ''}`,
+      );
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete projects');
     },
   });
 
@@ -189,6 +185,7 @@ export function ListProjects({
 
   const handleDeleteSingle = (project: Project) => {
     setSelectedIds(new Set([project.id]));
+    setDeletingProject(project);
     setShowDeleteDialog(true);
   };
 
@@ -198,12 +195,15 @@ export function ListProjects({
   };
 
   const handleDialogSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
     setEditingProject(null);
   };
 
   const handleConfirmDelete = () => {
-    deleteMutation.mutate(Array.from(selectedIds));
+    bulkDeleteMutation.mutate({
+      operation: 'delete',
+      ids: Array.from(selectedIds),
+    });
+    setDeletingProject(null);
   };
 
 
@@ -253,7 +253,12 @@ export function ListProjects({
                   <span className="text-lg leading-none">×</span>
                 </button>
               )}
-              <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-hover/search:opacity-100">
+              <div className={cn(
+                "absolute top-1/2 right-2 -translate-y-1/2 transition-opacity duration-200",
+                searchQuery 
+                  ? "opacity-100" 
+                  : "opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
+              )}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -707,12 +712,21 @@ export function ListProjects({
 
       <ConfirmDeleteDialog
         open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
+        onOpenChange={(open: boolean) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setDeletingProject(null);
+          }
+        }}
         onConfirm={handleConfirmDelete}
         itemName="project"
         itemCount={selectedIds.size}
-        isLoading={deleteMutation.isPending}
-        confirmationText={selectedIds.size === 1 ? 'delete project' : 'delete projects'}
+        isLoading={bulkDeleteMutation.isPending}
+        confirmationText={
+          selectedIds.size === 1 && deletingProject
+            ? `delete project ${deletingProject.name}`
+            : 'delete projects'
+        }
       />
 
       <ProjectDialog

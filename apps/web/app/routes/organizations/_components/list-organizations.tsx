@@ -244,7 +244,12 @@ export function ListOrganizations({
                   <span className="text-lg leading-none">×</span>
                 </button>
               )}
-              <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-hover/search:opacity-100">
+              <div className={cn(
+                "absolute top-1/2 right-2 -translate-y-1/2 transition-opacity duration-200",
+                searchQuery 
+                  ? "opacity-100" 
+                  : "opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
+              )}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
