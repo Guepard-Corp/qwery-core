@@ -13,7 +13,7 @@ export default function ProjectDatasourcesPage({
   const { pluginDatasources } = loaderData;
 
   return (
-    <div className="p-6 lg:p-10">
+    <div className="bg-background flex h-full flex-col">
       <NewDatasource datasources={pluginDatasources} />
     </div>
   );

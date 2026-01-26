@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, MessageCircle, Notebook } from 'lucide-react';
 
 import {
   Sidebar,
@@ -12,11 +12,17 @@ import {
 } from '@qwery/ui/shadcn-sidebar';
 import { SidebarNavigation } from '@qwery/ui/sidebar-navigation';
 import { Input } from '@qwery/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@qwery/ui/dropdown-menu';
 
 import { AccountDropdownContainer } from '~/components/account-dropdown-container';
 import { createNavigationConfig } from '~/config/project.navigation.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetProjectById } from '~/lib/queries/use-get-projects';
+import { useProject } from '~/lib/context/project-context';
 import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
 import { Conversation } from '@qwery/domain/entities';
 import pathsConfig from '~/config/paths.config';
@@ -38,31 +44,21 @@ import type { NotebookOutput } from '@qwery/domain/usecases';
 
 export function ProjectSidebar() {
   const { workspace, repositories } = useWorkspace();
+  const { projectId, projectSlug, isLoading: isProjectLoading } = useProject();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const { isProcessing, processingConversationSlug } = useAgentStatus();
 
-  // Get project slug from project data (works for all routes including notebook pages)
-  const project = useGetProjectById(
-    repositories.project,
-    workspace.projectId || '',
-  );
-  const slug = project.data?.slug;
-
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const slugFromPath = projectSlugMatch?.[1];
-  const finalSlug = slug || slugFromPath;
-
-  // Get conversations
-  const projectId = workspace.projectId as string | undefined;
+  // Get conversations using the project ID derived from URL
   const { data: conversations = [], isLoading: isLoadingConversations } =
     useGetConversationsByProject(repositories.conversation, projectId);
 
-  // Get notebooks
+  // Get notebooks using the project ID from context
   const notebooks = useGetNotebooksByProjectId(
     repositories.notebook,
     projectId,
+    { enabled: !!projectId },
   );
   const notebooksList = useMemo(() => notebooks.data || [], [notebooks.data]);
 
@@ -88,7 +84,7 @@ export function ProjectSidebar() {
         `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     },
-    workspace.projectId as string | undefined,
+    projectId,
   );
 
   const updateConversationMutation = useUpdateConversation(
@@ -155,7 +151,7 @@ export function ProjectSidebar() {
       onSuccess: () => {
         toast.success('Conversation deleted');
         if (conversationId === currentConversationId) {
-          navigate(createPath(pathsConfig.app.project, finalSlug || ''));
+          navigate(createPath(pathsConfig.app.project, projectSlug || ''));
         }
       },
       onError: (error) => {
@@ -183,6 +179,35 @@ export function ProjectSidebar() {
     toast.info('Bookmark feature coming soon');
   };
 
+  const onNewNotebook = async () => {
+    if (!projectId) {
+      toast.error('Project not found');
+      return;
+    }
+    try {
+      const response = await fetch('/api/notebooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          title: 'New Notebook',
+          createdBy: workspace.userId,
+        }),
+      });
+      if (response.ok) {
+        const notebook = await response.json();
+        notebooks.refetch();
+        navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
+      } else {
+        toast.error('Failed to create notebook');
+      }
+    } catch (error) {
+      toast.error(
+        `Failed to create notebook: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  };
+
   // Notebook handlers
   const deleteNotebookMutation = useDeleteNotebook(
     repositories.notebook,
@@ -190,7 +215,7 @@ export function ProjectSidebar() {
       toast.success('Notebook deleted');
       notebooks.refetch();
       if (currentNotebookSlug) {
-        navigate(createPath(pathsConfig.app.project, finalSlug || ''));
+        navigate(createPath(pathsConfig.app.project, projectSlug || ''));
       }
     },
     (error) => {
@@ -221,11 +246,11 @@ export function ProjectSidebar() {
   }, [notebooksList]);
 
   const navigationConfig = useMemo(() => {
-    if (!finalSlug) return null;
-    return createNavigationConfig(finalSlug);
-  }, [finalSlug]);
+    if (!projectSlug) return null;
+    return createNavigationConfig(projectSlug);
+  }, [projectSlug]);
 
-  if (!finalSlug || !navigationConfig) {
+  if (!projectSlug || !navigationConfig) {
     return null;
   }
 
@@ -240,28 +265,41 @@ export function ProjectSidebar() {
         {/* Search Bar */}
         <SidebarGroup>
           <SidebarGroupContent>
-            <div className="">
-              <div className="relative">
-                <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
-                <Input
-                  type="text"
-                  placeholder="Search chats and notebooks..."
-                  value={searchQuery}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setSearchQuery(e.target.value)
-                  }
-                  className="hover:border-border focus:border-border border-transparent pr-8 pl-8"
-                />
-                <button
-                  type="button"
-                  onClick={onNewConversation}
-                  disabled={createConversationMutation.isPending}
-                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  title="New conversation"
-                >
-                  <Plus className="size-4" />
-                </button>
-              </div>
+            <div className="relative">
+              <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Search chats and notebooks..."
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(e.target.value)
+                }
+                className="hover:border-border focus:border-border border-transparent pr-8 pl-8"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded transition-colors"
+                    title="New chat or notebook"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    onClick={onNewConversation}
+                    disabled={createConversationMutation.isPending}
+                  >
+                    <MessageCircle className="mr-2 size-4" />
+                    New Chat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onNewNotebook}>
+                    <Notebook className="mr-2 size-4" />
+                    New Notebook
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -269,7 +307,7 @@ export function ProjectSidebar() {
           {/* Conversation History */}
           <SidebarConversationHistory
             conversations={mappedConversations}
-            isLoading={isLoadingConversations}
+            isLoading={isProjectLoading || isLoadingConversations}
             currentConversationId={currentConversationId}
             isProcessing={isProcessing}
             processingConversationSlug={processingConversationSlug || undefined}
@@ -285,7 +323,7 @@ export function ProjectSidebar() {
           {/* Notebook History */}
           <SidebarNotebookHistory
             notebooks={mappedNotebooks}
-            isLoading={notebooks.isLoading}
+            isLoading={isProjectLoading || notebooks.isLoading}
             currentNotebookSlug={currentNotebookSlug}
             searchQuery={searchQuery}
             onNotebookDelete={onNotebookDelete}

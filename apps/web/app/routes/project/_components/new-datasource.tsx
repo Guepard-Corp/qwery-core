@@ -7,32 +7,23 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
-import { Database } from 'lucide-react';
+import { Database, ArrowRight, Sparkles, X } from 'lucide-react';
 
-import { Badge } from '@qwery/ui/badge';
 import { Button } from '@qwery/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@qwery/ui/card';
 import { Input } from '@qwery/ui/input';
-import { Kbd, KbdGroup } from '@qwery/ui/kbd';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 
 import { createDatasourcePath } from '~/config/project.navigation.config';
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 24;
 
 type PluginMetadata = {
   id: string;
   name: string;
   description: string;
   logo: string;
-  tags?: string[];
+  tags: string[];
 };
 
 export function NewDatasource({
@@ -43,10 +34,6 @@ export function NewDatasource({
   const params = useParams();
   const project_id = params.slug as string;
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const isMac = useMemo(
-    () => navigator.platform.toUpperCase().indexOf('MAC') >= 0,
-    [],
-  );
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(
     new Set(),
   );
@@ -55,7 +42,7 @@ export function NewDatasource({
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [failedLogos, setFailedLogos] = useState<Set<string>>(new Set());
 
-  const filterTags = ['SQL', 'NoSQL', 'SaaS', 'Files'];
+  const filterTags = ['SQL', 'Files', 'SaaS'];
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -84,6 +71,11 @@ export function NewDatasource({
     });
   };
 
+  const clearSearch = () => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  };
+
   const filteredDatasources = useMemo(() => {
     return datasources.filter((datasource) => {
       const matchesSearch =
@@ -92,14 +84,12 @@ export function NewDatasource({
 
       const matchesFilter =
         selectedFilters.size === 0 ||
-        (datasource.tags &&
-          datasource.tags.some((tag) => selectedFilters.has(tag)));
+        datasource.tags.some((tag) => selectedFilters.has(tag));
 
       return matchesSearch && matchesFilter;
     });
   }, [datasources, searchQuery, selectedFilters]);
 
-  // Reset to page 1 when filtered results change
   const effectiveCurrentPage = useMemo(() => {
     const totalPages = Math.ceil(filteredDatasources.length / ITEMS_PER_PAGE);
     return currentPage > totalPages ? 1 : currentPage;
@@ -118,135 +108,154 @@ export function NewDatasource({
     setFailedLogos((prev) => new Set(prev).add(datasourceId));
   }, []);
 
+  const isJsonDatasource = (id: string) => id.toLowerCase().includes('json');
+
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle>
-              <Trans i18nKey="datasources:new_pageTitle" />
-            </CardTitle>
-            <CardDescription>
-              <Trans i18nKey="datasources:new_pageSubtitle" />
-            </CardDescription>
-          </div>
-          <div className="relative w-64">
-            <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              ref={searchInputRef}
-              type="search"
-              placeholder="Search..."
+    <div className="flex h-full flex-col">
+      <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
+        <div className="px-8 py-6">
+          <div className="flex flex-col gap-5">
+            <div>
+              <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+                <Trans i18nKey="datasources:new_pageTitle" />
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm">
+                <Trans i18nKey="datasources:new_pageSubtitle" />
+              </p>
+            </div>
+
+            <div
               className={cn(
-                'pr-20 pl-9 transition-all',
-                shouldAnimate &&
-                  'ring-primary animate-pulse ring-2 ring-offset-2',
+                'bg-muted/30 border-border/50 focus-within:border-border flex h-12 w-full items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
+                shouldAnimate && 'ring-2 ring-[#ffcb51] ring-offset-2',
               )}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <div className="absolute top-1/2 right-3 -translate-y-1/2">
-              <KbdGroup>
-                <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
-                <Kbd>F</Kbd>
-              </KbdGroup>
+            >
+              <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search datasources..."
+                className="h-full flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full p-1 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <div className="bg-border/50 mx-2 h-6 w-px" />
+              <div className="flex items-center gap-2">
+                {filterTags.map((tag) => {
+                  const isSelected = selectedFilters.has(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggleFilter(tag)}
+                      className={cn(
+                        'relative cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-all duration-200',
+                        isSelected
+                          ? 'bg-[#ffcb51] text-black shadow-sm'
+                          : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )}
+                    >
+                      {tag}
+                      {isSelected && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition-transform hover:scale-110">
+                          <X className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </CardHeader>
-      <div className="border-b px-4 pb-2">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            {filterTags.map((tag) => {
-              const isSelected = selectedFilters.has(tag);
-              return (
-                <Badge
-                  key={tag}
-                  variant={isSelected ? 'default' : 'outline'}
-                  className={cn(
-                    'cursor-pointer transition-colors',
-                    isSelected && 'hover:bg-primary/90',
-                  )}
-                  onClick={() => toggleFilter(tag)}
-                >
-                  {tag}
-                </Badge>
-              );
-            })}
-          </div>
-          <div className="text-muted-foreground text-sm">
-            <span className="font-medium">{filteredDatasources.length}</span>
-            {' / '}
-            <span>{datasources.length}</span>
-          </div>
-        </div>
       </div>
-      <CardContent className="p-3">
+
+      <div className="flex-1 overflow-y-auto px-8 py-6">
         {filteredDatasources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-foreground mb-2 text-base font-medium">
-              You don&apos;t find a datasource
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="bg-muted/30 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
+              <Database className="text-muted-foreground/50 h-8 w-8" />
+            </div>
+            <h3 className="text-foreground mb-2 text-lg font-medium">
+              No datasources found
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-sm text-sm">
+              We couldn&apos;t find any datasources matching your criteria. Try
+              adjusting your filters or search.
             </p>
-            <p className="text-muted-foreground text-sm">
-              <a
-                href="https://github.com/guepard/qwery-studio/issues/new"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:text-primary/80 font-medium underline underline-offset-4 transition-colors"
-              >
-                Make a feature request here
-              </a>
-            </p>
+            <a
+              href="https://github.com/guepard/qwery-studio/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#ffcb51] transition-colors hover:text-[#ffcb51]/80"
+            >
+              <Sparkles className="h-4 w-4" />
+              Request a new datasource
+              <ArrowRight className="h-3 w-3" />
+            </a>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {paginatedDatasources.map((datasource) => {
                 const hasFailed = failedLogos.has(datasource.id);
                 const showLogo = datasource.logo && !hasFailed;
+                const shouldInvert = isJsonDatasource(datasource.id);
 
                 return (
                   <Link
                     key={datasource.id}
                     to={createDatasourcePath(project_id, datasource.id)}
-                    className="hover:bg-accent/50 group flex cursor-pointer flex-col items-center gap-2 rounded-lg p-3 transition-all"
+                    className="group relative flex cursor-pointer flex-col items-center rounded-xl p-5 transition-all duration-200 hover:bg-[#ffcb51]/5"
                   >
-                    {showLogo ? (
-                      <img
-                        src={datasource.logo}
-                        alt={datasource.name}
-                        className="h-14 w-14 rounded object-contain transition-transform group-hover:scale-105"
-                        onError={() => handleLogoError(datasource.id)}
-                      />
-                    ) : (
-                      <div className="bg-muted flex h-14 w-14 items-center justify-center rounded transition-transform group-hover:scale-105">
-                        <Database className="text-muted-foreground h-7 w-7" />
-                      </div>
-                    )}
-                    <h3 className="text-center text-sm leading-tight font-medium">
+                    <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
+                      {showLogo ? (
+                        <img
+                          src={datasource.logo}
+                          alt={datasource.name}
+                          className={cn(
+                            'h-12 w-12 object-contain',
+                            shouldInvert && 'dark:invert',
+                          )}
+                          onError={() => handleLogoError(datasource.id)}
+                        />
+                      ) : (
+                        <Database className="text-muted-foreground/60 h-9 w-9" />
+                      )}
+                    </div>
+                    <span className="text-foreground text-center text-base leading-tight font-medium">
                       {datasource.name}
-                    </h3>
+                    </span>
+                    <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
+                      <span>Connect</span>
+                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                    </div>
                   </Link>
                 );
               })}
             </div>
+
             {totalPages > 1 && (
-              <div className="mt-3 flex items-center justify-between border-t pt-2">
-                <div className="text-muted-foreground text-sm">
-                  Showing {startIndex + 1} to{' '}
-                  {Math.min(endIndex, filteredDatasources.length)} of{' '}
-                  {filteredDatasources.length} datasources
-                </div>
+              <div className="border-border/40 mt-8 flex items-center justify-center border-t pt-6">
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => goToPage(effectiveCurrentPage - 1)}
                     disabled={effectiveCurrentPage === 1}
+                    className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
                   >
                     <ChevronLeftIcon className="h-4 w-4" />
-                    Previous
+                    <span className="hidden sm:inline">Previous</span>
                   </Button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 px-2">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                       (page) => {
                         const showPage =
@@ -263,7 +272,7 @@ export function NewDatasource({
                             return (
                               <span
                                 key={page}
-                                className="text-muted-foreground px-2"
+                                className="text-muted-foreground/40 px-1"
                               >
                                 ...
                               </span>
@@ -275,14 +284,15 @@ export function NewDatasource({
                         return (
                           <Button
                             key={page}
-                            variant={
-                              effectiveCurrentPage === page
-                                ? 'default'
-                                : 'outline'
-                            }
+                            variant="ghost"
                             size="sm"
                             onClick={() => goToPage(page)}
-                            className="min-w-[2.5rem]"
+                            className={cn(
+                              'h-9 w-9 cursor-pointer p-0 font-medium',
+                              effectiveCurrentPage === page
+                                ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
+                                : 'hover:bg-muted',
+                            )}
                           >
                             {page}
                           </Button>
@@ -291,12 +301,13 @@ export function NewDatasource({
                     )}
                   </div>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => goToPage(effectiveCurrentPage + 1)}
                     disabled={effectiveCurrentPage === totalPages}
+                    className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
                   >
-                    Next
+                    <span className="hidden sm:inline">Next</span>
                     <ChevronRightIcon className="h-4 w-4" />
                   </Button>
                 </div>
@@ -304,7 +315,7 @@ export function NewDatasource({
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

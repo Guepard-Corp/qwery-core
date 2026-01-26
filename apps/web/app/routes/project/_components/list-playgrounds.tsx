@@ -13,6 +13,7 @@ import {
   InfoIcon,
   LayoutTemplate,
   Terminal,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -136,23 +137,29 @@ export function ListPlaygrounds({
 
           <div
             className={cn(
-              'relative w-full max-w-2xl transition-all duration-200 ease-in-out',
-              isSearchFocused ? 'scale-105' : 'scale-100',
+              'bg-muted/30 border-border/50 focus-within:border-border flex h-14 w-full max-w-2xl items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
+              isSearchFocused && 'ring-2 ring-[#ffcb51] ring-offset-2',
             )}
           >
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-              <MagnifyingGlassIcon className="text-muted-foreground h-5 w-5" />
-            </div>
+            <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
             <Input
               ref={searchInputRef}
               type="text"
               placeholder="Search templates..."
-              className="bg-background border-muted placeholder:text-muted-foreground/60 focus-visible:border-primary h-14 rounded-lg border-2 pr-4 pl-12 text-base shadow-sm transition-colors focus-visible:ring-0"
+              className="h-full flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full p-1 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -185,145 +192,138 @@ export function ListPlaygrounds({
                 {paginatedPlaygrounds.map((playground) => (
                   <div
                     key={playground.id}
-                    className="group bg-card hover:border-primary/50 hover:shadow-primary/5 relative flex cursor-pointer flex-col rounded-lg border p-6 text-left transition-all duration-300 hover:shadow-lg"
+                    onClick={() => handleCreate(playground.id)}
+                    className="group hover:!bg-sidebar hover:border-primary hover:shadow-primary/5 relative flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl"
                   >
-                    {/* Card Header */}
-                    <div className="mb-5 flex items-start justify-between">
-                      <div className="bg-muted/30 flex h-14 w-14 items-center justify-center rounded-md border p-2">
+                    <div className="flex flex-row items-start gap-4 p-6">
+                      <div className="bg-muted group-hover:bg-primary group-hover:text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all duration-300">
                         {playground.logo ? (
                           <img
                             src={playground.logo}
                             alt={playground.name}
-                            className="h-full w-full object-contain"
+                            className="h-6 w-6 object-contain"
                           />
                         ) : (
-                          <Terminal className="text-primary h-6 w-6" />
+                          <Terminal className="h-6 w-6 transition-colors" />
                         )}
                       </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <InfoIcon className="h-4 w-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          sideOffset={12}
-                          className="bg-popover text-popover-foreground border-border/60 max-w-sm overflow-hidden rounded-lg border-2 p-0 shadow-xl backdrop-blur-sm"
-                        >
-                          <div className="bg-primary/5 border-border/50 border-b px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="bg-primary/20 text-primary border-primary/30 flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm">
-                                <Database className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <div className="text-sm font-semibold">
-                                  Available Data
-                                </div>
-                                <div className="text-muted-foreground mt-0.5 text-[10px]">
-                                  3 tables with sample data
-                                </div>
-                              </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div className="text-foreground truncate text-lg font-bold tracking-tight transition-colors">
+                              {playground.name}
                             </div>
+                            <p className="text-muted-foreground/80 line-clamp-2 text-sm leading-relaxed">
+                              {playground.description}
+                            </p>
                           </div>
-                          <div className="space-y-2.5 p-4">
-                            <div className="group/item flex items-start gap-2.5">
-                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                U
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-primary font-mono text-xs font-bold">
-                                    users
-                                  </span>
-                                  <span className="text-muted-foreground/60 text-[10px]">
-                                    • 5 rows
-                                  </span>
-                                </div>
-                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                  User accounts with basic information
-                                </div>
-                              </div>
-                            </div>
-                            <div className="group/item flex items-start gap-2.5">
-                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                P
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-primary font-mono text-xs font-bold">
-                                    products
-                                  </span>
-                                  <span className="text-muted-foreground/60 text-[10px]">
-                                    • 8 rows
-                                  </span>
-                                </div>
-                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                  Product catalog with pricing and inventory
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <InfoIcon className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="right"
+                              sideOffset={12}
+                              className="bg-popover text-popover-foreground border-border/60 max-w-sm overflow-hidden rounded-lg border-2 p-0 shadow-xl backdrop-blur-sm"
+                            >
+                              <div className="bg-primary/5 border-border/50 border-b px-4 py-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="bg-primary/20 text-primary border-primary/30 flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm">
+                                    <Database className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-semibold">
+                                      Available Data
+                                    </div>
+                                    <div className="text-muted-foreground mt-0.5 text-[10px]">
+                                      3 tables with sample data
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="group/item flex items-start gap-2.5">
-                              <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                O
+                              <div className="space-y-2.5 p-4">
+                                <div className="group/item flex items-start gap-2.5">
+                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                    U
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-primary font-mono text-xs font-bold">
+                                        users
+                                      </span>
+                                      <span className="text-muted-foreground/60 text-[10px]">
+                                        • 5 rows
+                                      </span>
+                                    </div>
+                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                      User accounts with basic information
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="group/item flex items-start gap-2.5">
+                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                    P
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-primary font-mono text-xs font-bold">
+                                        products
+                                      </span>
+                                      <span className="text-muted-foreground/60 text-[10px]">
+                                        • 8 rows
+                                      </span>
+                                    </div>
+                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                      Product catalog with pricing and inventory
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="group/item flex items-start gap-2.5">
+                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
+                                    O
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-primary font-mono text-xs font-bold">
+                                        orders
+                                      </span>
+                                      <span className="text-muted-foreground/60 text-[10px]">
+                                        • 8 rows
+                                      </span>
+                                    </div>
+                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                      Customer orders with status tracking
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-primary font-mono text-xs font-bold">
-                                    orders
-                                  </span>
-                                  <span className="text-muted-foreground/60 text-[10px]">
-                                    • 8 rows
+                              <div className="bg-muted/30 border-border/50 border-t px-4 py-2.5">
+                                <div className="text-muted-foreground flex items-center gap-1.5 text-[10px]">
+                                  <div className="bg-primary/40 h-1.5 w-1.5 rounded-full"></div>
+                                  <span>
+                                    Includes sample data and query examples
                                   </span>
                                 </div>
-                                <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                  Customer orders with status tracking
-                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <div className="bg-muted/30 border-border/50 border-t px-4 py-2.5">
-                            <div className="text-muted-foreground flex items-center gap-1.5 text-[10px]">
-                              <div className="bg-primary/40 h-1.5 w-1.5 rounded-full"></div>
-                              <span>
-                                Includes sample data and query examples
-                              </span>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Card Content */}
-                    <div className="flex-1 space-y-2">
-                      <h3 className="text-foreground text-xl font-semibold tracking-tight">
-                        {playground.name}
-                      </h3>
-                      <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
-                        {playground.description}
-                      </p>
-                    </div>
-
-                    {/* Card Footer / Action */}
-                    <div className="mt-6 flex items-center justify-between pt-4">
-                      <div className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                    <div className="flex items-center justify-between p-6 pt-0">
+                      <div className="text-muted-foreground/70 text-[10px] font-medium">
                         Ready to deploy
                       </div>
-                      <Button
-                        onClick={() => handleCreate(playground.id)}
-                        disabled={createPlaygroundMutation.isPending}
-                        size="sm"
-                        className="rounded-md px-5 transition-transform active:scale-95"
-                      >
-                        {createPlaygroundMutation.isPending
-                          ? 'Creating...'
-                          : 'Select'}
-                        <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                      </Button>
+                      <div className="text-primary flex items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Layers,
   Plus,
+  X,
+  Play,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -81,6 +83,7 @@ export function ListDatasources({
   const [sortCriterion, setSortCriterion] = useState<SortCriterion>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [showPlayground, setShowPlayground] = useState(true);
 
   // Fetch all plugin metadata to get logos
   const { data: pluginMetadata = [] } = useQuery({
@@ -222,224 +225,241 @@ export function ListDatasources({
         </h1>
 
         <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <div
+            className={cn(
+              'bg-muted/30 border-border/50 focus-within:border-border flex h-12 flex-1 items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
+              shouldAnimate && 'ring-2 ring-[#ffcb51] ring-offset-2',
+            )}
+          >
+            <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
             <Input
               ref={searchInputRef}
-              type="search"
+              type="text"
               placeholder="Search datasources..."
-              className={cn(
-                'h-11 w-full pr-24 pl-9 transition-all',
-                shouldAnimate &&
-                  'ring-primary animate-pulse ring-2 ring-offset-2',
-              )}
+              className="h-full flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <div className="absolute top-1/2 right-1 -translate-y-1/2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hover:bg-accent/50 h-9 gap-2 border-none px-3 focus-visible:ring-0"
-                  >
-                    <Settings2 className="text-muted-foreground/60 h-4 w-4" />
-                    <span className="text-muted-foreground/60 text-xs font-medium">
-                      Options
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Display Mode
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(true)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <LayoutGrid
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full p-1 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <div className="bg-border/50 mx-1 h-6 w-px" />
+            <button
+              onClick={() => setShowPlayground(!showPlayground)}
+              className={cn(
+                'flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md p-1 text-xs font-medium transition-all',
+                showPlayground
+                  ? 'bg-[#ffcb51] text-black'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <Play className="h-3.5 w-3.5" />
+            </button>
+            <div className="bg-border/50 mx-1 h-6 w-px" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hover:bg-muted h-8 shrink-0 gap-2 border-none px-2 focus-visible:ring-0"
+                >
+                  <Settings2 className="text-muted-foreground/60 h-4 w-4" />
+                  <span className="text-muted-foreground/60 text-xs font-medium">
+                    Options
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                  Display Mode
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => setIsGridView(true)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <LayoutGrid
+                      className={cn(
+                        'h-4 w-4',
+                        isGridView
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">Grid</span>
+                  </div>
+                  {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsGridView(false)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    !isGridView &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <List
+                      className={cn(
+                        'h-4 w-4',
+                        !isGridView
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">Table</span>
+                  </div>
+                  {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                  Group By
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => setGroupByProvider(!groupByProvider)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    groupByProvider &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Layers
+                      className={cn(
+                        'h-4 w-4',
+                        groupByProvider
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">Provider</span>
+                  </div>
+                  {groupByProvider && (
+                    <Check className="h-4 w-4 text-[#ffcb51]" />
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                  Sort By
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleSortClick('date')}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    sortCriterion === 'date' &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Calendar
+                      className={cn(
+                        'h-4 w-4',
+                        sortCriterion === 'date'
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">Date</span>
+                  </div>
+                  {sortCriterion === 'date' && (
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          isGridView
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'asc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
-                      />
-                      <span className="text-sm">Grid</span>
-                    </div>
-                    {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(false)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      !isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <List
-                        className={cn(
-                          'h-4 w-4',
-                          !isGridView
-                            ? 'text-[#ffcb51]'
-                            : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Table</span>
-                    </div>
-                    {!isGridView && (
-                      <Check className="h-4 w-4 text-[#ffcb51]" />
-                    )}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="my-1" />
-
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Group By
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setGroupByProvider(!groupByProvider)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      groupByProvider &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Layers
-                        className={cn(
-                          'h-4 w-4',
-                          groupByProvider
-                            ? 'text-[#ffcb51]'
-                            : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Provider</span>
-                    </div>
-                    {groupByProvider && (
-                      <Check className="h-4 w-4 text-[#ffcb51]" />
-                    )}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="my-1" />
-
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Sort By
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('date')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'date' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Calendar
-                        className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'date'
-                            ? 'text-[#ffcb51]'
-                            : 'text-muted-foreground/40',
-                        )}
-                      />
-                      <span className="text-sm">Date</span>
-                    </div>
-                    {sortCriterion === 'date' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          ASC
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
-                        />
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          DESC
-                        </span>
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('name')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'name' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CaseSensitive
+                        ASC
+                      </span>
+                      <Switch
+                        checked={sortOrder === 'desc'}
+                        onCheckedChange={handleSortOrderToggle}
+                        className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                      />
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'name'
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'desc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
-                      />
-                      <span className="text-sm">Name</span>
-                    </div>
-                    {sortCriterion === 'name' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          ASC
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
-                        />
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          DESC
-                        </span>
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                        DESC
+                      </span>
+                    </div>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleSortClick('name')}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    sortCriterion === 'name' &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CaseSensitive
+                      className={cn(
+                        'h-4 w-4',
+                        sortCriterion === 'name'
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">Name</span>
+                  </div>
+                  {sortCriterion === 'name' && (
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
+                        className={cn(
+                          'text-[10px]',
+                          sortOrder === 'asc'
+                            ? 'font-bold text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
+                        )}
+                      >
+                        ASC
+                      </span>
+                      <Switch
+                        checked={sortOrder === 'desc'}
+                        onCheckedChange={handleSortOrderToggle}
+                        className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                      />
+                      <span
+                        className={cn(
+                          'text-[10px]',
+                          sortOrder === 'desc'
+                            ? 'font-bold text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
+                        )}
+                      >
+                        DESC
+                      </span>
+                    </div>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Button
@@ -457,15 +477,34 @@ export function ListDatasources({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-10 py-0">
-        {/* Playground Section */}
-        <div className="mb-6">
-          <PlaygroundTry
-            onClick={() => {
-              navigate(
-                createPath(pathsConfig.app.projectPlayground, projectSlug),
-              );
-            }}
-          />
+        <div
+          className={cn(
+            'grid transition-all duration-300 ease-in-out',
+            showPlayground
+              ? 'mb-6 grid-rows-[1fr] opacity-100'
+              : 'grid-rows-[0fr] opacity-0',
+          )}
+        >
+          <div className="overflow-hidden pt-3 pr-3">
+            <div className="relative">
+              <PlaygroundTry
+                onClick={() => {
+                  navigate(
+                    createPath(pathsConfig.app.projectPlayground, projectSlug),
+                  );
+                }}
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPlayground(false);
+                }}
+                className="bg-background border-border hover:bg-muted absolute -top-2 -right-2 z-10 cursor-pointer rounded-full border p-1.5 shadow-md transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
         {filteredDatasources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -514,7 +553,7 @@ export function ListDatasources({
 
                   {!isCollapsed &&
                     (isGridView ? (
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {items.map((datasource) => {
                           const logo = datasource.datasource_provider
                             ? pluginLogoMap.get(datasource.datasource_provider)
@@ -655,7 +694,7 @@ export function ListDatasources({
             })}
           </div>
         ) : isGridView ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {paginatedDatasources.map((datasource: Datasource) => {
               const logo = datasource.datasource_provider
                 ? pluginLogoMap.get(datasource.datasource_provider)

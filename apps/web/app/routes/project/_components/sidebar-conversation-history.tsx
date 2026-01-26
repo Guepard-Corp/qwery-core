@@ -5,7 +5,6 @@ import { Link, useLocation, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Trans } from '@qwery/ui/trans';
 import {
-  MessageCircle,
   Pencil,
   X,
   Bookmark,
@@ -13,7 +12,6 @@ import {
   Share2,
   Trash2,
   MoreHorizontal,
-  Notebook,
 } from 'lucide-react';
 import { cn, truncateChatTitle } from '@qwery/ui/utils';
 import {
@@ -344,10 +342,10 @@ export function SidebarConversationHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
@@ -371,10 +369,10 @@ export function SidebarConversationHistory({
 
   return (
     <>
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
@@ -427,7 +425,6 @@ export function SidebarConversationHistory({
                                   )}
                                   className="group flex w-full min-w-0 items-center gap-2"
                                 >
-                                  <MessageCircle className="size-4 shrink-0" />
                                   {editingId === currentConversation.id ? (
                                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                       <Input
@@ -641,7 +638,6 @@ export function SidebarConversationHistory({
                                     to={conversationPath}
                                     className="group flex w-full min-w-0 items-center gap-2"
                                   >
-                                    <MessageCircle className="size-4 shrink-0" />
                                     {isEditing ? (
                                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                         <Input
@@ -836,16 +832,16 @@ export function SidebarConversationHistory({
 
                   {/* View all chats button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-2 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectConversation,
                           projectSlug,
                         )}
-                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
+                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
                       >
                         <Trans i18nKey="common:sidebar.viewAllChats" />
-                        <ArrowRight className="size-4 shrink-0" />
+                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </div>
                   )}
@@ -1022,10 +1018,10 @@ export function SidebarNotebookHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
@@ -1049,10 +1045,10 @@ export function SidebarNotebookHistory({
 
   return (
     <>
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
@@ -1103,7 +1099,6 @@ export function SidebarNotebookHistory({
                                   )}
                                   className="group flex w-full min-w-0 items-center gap-2"
                                 >
-                                  <Notebook className="size-4 shrink-0" />
                                   {editingId === currentNotebook.id ? (
                                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                       <Input
@@ -1250,7 +1245,6 @@ export function SidebarNotebookHistory({
                                     to={notebookPath}
                                     className="group flex w-full min-w-0 items-center gap-2"
                                   >
-                                    <Notebook className="size-4 shrink-0" />
                                     {isEditing ? (
                                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                         <Input
@@ -1375,16 +1369,16 @@ export function SidebarNotebookHistory({
 
                   {/* View all notebooks button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-2 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectNotebooks,
                           projectSlug,
                         )}
-                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
+                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
                       >
                         <Trans i18nKey="common:sidebar.viewAllNotebooks" />
-                        <ArrowRight className="size-4 shrink-0" />
+                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </div>
                   )}

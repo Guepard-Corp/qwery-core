@@ -30,7 +30,7 @@ export function ProjectLayoutTopBar() {
   return (
     <PageTopBar>
       <div className="flex items-center space-x-4">
-        <AppLogo className="w-7 h-7" />
+        <AppLogo className="h-7 w-7" />
         {workspace.mode === WorkspaceModeEnum.SIMPLE ? null : (
           <SidebarTrigger className="lg:hidden" />
         )}
