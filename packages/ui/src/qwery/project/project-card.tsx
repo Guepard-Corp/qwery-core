@@ -14,6 +14,7 @@ export interface ProjectCardProps {
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPause?: () => void;
   className?: string;
   dataTest?: string;
 }
@@ -21,6 +22,7 @@ export interface ProjectCardProps {
 export function ProjectCard({
   onEdit,
   onDelete,
+  onPause,
   ...props
 }: ProjectCardProps) {
   return (
@@ -31,6 +33,7 @@ export function ProjectCard({
       dataTest={props.dataTest || `project-card-${props.id}`}
       onEdit={onEdit}
       onDelete={onDelete}
+      onPause={onPause}
     />
   );
 }

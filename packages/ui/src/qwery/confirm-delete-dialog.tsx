@@ -63,8 +63,11 @@ export function ConfirmDeleteDialog({
     </>
   );
 
-  const requiredText = confirmationText || `delete ${isPlural ? `${itemName}s` : itemName}`;
-  const isConfirmationValid = confirmationInput.toLowerCase().trim() === requiredText.toLowerCase().trim();
+  const requiredText =
+    confirmationText || `delete ${isPlural ? `${itemName}s` : itemName}`;
+  const isConfirmationValid =
+    confirmationInput.toLowerCase().trim() ===
+    requiredText.toLowerCase().trim();
 
   React.useEffect(() => {
     if (!open) {
@@ -96,13 +99,17 @@ export function ConfirmDeleteDialog({
         {confirmationText && (
           <div className="space-y-2 py-4">
             <Label htmlFor="confirmation-input" className="text-sm font-medium">
-              Type <span className="font-mono text-destructive">{requiredText}</span> to confirm:
+              Type{' '}
+              <span className="text-destructive font-mono">{requiredText}</span>{' '}
+              to confirm:
             </Label>
             <Input
               id="confirmation-input"
               value={confirmationInput}
               onChange={(e) => setConfirmationInput(e.target.value)}
-              placeholder={confirmationPlaceholder || `Type "${requiredText}" to confirm`}
+              placeholder={
+                confirmationPlaceholder || `Type "${requiredText}" to confirm`
+              }
               disabled={isLoading}
               className="font-mono"
               onKeyDown={(e) => {
@@ -114,12 +121,17 @@ export function ConfirmDeleteDialog({
           </div>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading} onClick={() => setConfirmationInput('')}>
+          <AlertDialogCancel
+            disabled={isLoading}
+            onClick={() => setConfirmationInput('')}
+          >
             {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={isLoading || (confirmationText ? !isConfirmationValid : false)}
+            disabled={
+              isLoading || (confirmationText ? !isConfirmationValid : false)
+            }
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isLoading ? 'Deleting...' : confirmLabel}

@@ -134,7 +134,7 @@ export function AppLogo({
 }) {
   const logoHref = useMemo(() => {
     if (href) return href;
-    
+
     // Check localStorage for org and proj values
     const workspace = getWorkspaceFromLocalStorage();
     if (workspace.organizationId && workspace.projectId) {
@@ -146,11 +146,7 @@ export function AppLogo({
   }, [href]);
 
   return (
-    <Link
-      aria-label={label ?? 'Home Page'}
-      to={logoHref}
-      prefetch={'viewport'}
-    >
+    <Link aria-label={label ?? 'Home Page'} to={logoHref} prefetch={'viewport'}>
       <LogoImage className={className} />
     </Link>
   );

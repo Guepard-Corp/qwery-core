@@ -1,4 +1,11 @@
-import { ArrowRight, Pencil, Trash2, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  Pause,
+  Pencil,
+  Play,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react';
 import { Card, CardContent } from '../../shadcn/card';
 import { cn } from '../../lib/utils';
 import { formatRelativeTime } from '../ai/utils/conversation-utils';
@@ -27,6 +34,7 @@ export interface EntityCardProps {
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPause?: () => void;
   className?: string;
   dataTest?: string;
   variant?: 'project' | 'organization' | 'datasource';
@@ -46,6 +54,7 @@ export function EntityCard({
   onClick,
   onEdit,
   onDelete,
+  onPause,
   className,
   dataTest,
   variant = 'project',
@@ -55,13 +64,18 @@ export function EntityCard({
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
       : status === 'inactive'
         ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
-        : status
-          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
-          : '';
+        : status === 'paused'
+          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+          : status
+            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
+            : '';
 
-  const displayIcon = iconElement || (Icon ? <Icon className="h-6 w-6 transition-colors" /> : null);
+  const displayIcon =
+    iconElement ||
+    (Icon ? <Icon className="h-6 w-6 transition-colors" /> : null);
 
-  const hasActions = onEdit || onDelete;
+  const isPaused = status === 'paused';
+  const hasActions = onEdit || onDelete || onPause;
 
   const cardContent = (
     <Card
@@ -84,7 +98,7 @@ export function EntityCard({
                 {name}
               </div>
               {slug && (
-                <p className="text-muted-foreground truncate text-xs font-medium font-mono">
+                <p className="text-muted-foreground truncate font-mono text-xs font-medium">
                   {slug}
                 </p>
               )}
@@ -97,7 +111,10 @@ export function EntityCard({
             {status && (
               <Badge
                 variant="secondary"
-                className={cn('h-5 px-2 text-[10px] uppercase tracking-wider font-bold border shrink-0', statusColor)}
+                className={cn(
+                  'h-5 shrink-0 border px-2 text-[10px] font-bold tracking-wider uppercase',
+                  statusColor,
+                )}
               >
                 {status}
               </Badge>
@@ -128,20 +145,41 @@ export function EntityCard({
   if (hasActions) {
     return (
       <ContextMenu>
-        <ContextMenuTrigger asChild>
-          {cardContent}
-        </ContextMenuTrigger>
+        <ContextMenuTrigger asChild>{cardContent}</ContextMenuTrigger>
         <ContextMenuContent className="w-48">
           {onEdit && (
-            <ContextMenuItem onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}>
+            <ContextMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </ContextMenuItem>
           )}
-          {onEdit && onDelete && <ContextMenuSeparator />}
+          {onPause && (
+            <ContextMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onPause();
+              }}
+              className={isPaused ? 'text-green-600' : 'text-yellow-600'}
+            >
+              {isPaused ? (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="mr-2 h-4 w-4" />
+                  Pause
+                </>
+              )}
+            </ContextMenuItem>
+          )}
+          {(onEdit || onPause) && onDelete && <ContextMenuSeparator />}
           {onDelete && (
             <ContextMenuItem
               onClick={(e) => {
@@ -161,4 +199,3 @@ export function EntityCard({
 
   return cardContent;
 }
-

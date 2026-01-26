@@ -98,7 +98,7 @@ export function SubMenuModeToggle() {
 
   return (
     <DropdownMenuSub open={submenuOpen} onOpenChange={setSubmenuOpen}>
-      <DropdownMenuSubTrigger 
+      <DropdownMenuSubTrigger
         className="flex w-full items-center justify-between"
         onPointerEnter={() => setSubmenuOpen(true)}
         onPointerLeave={(e) => {
@@ -115,9 +115,9 @@ export function SubMenuModeToggle() {
           </span>
         </span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent 
+      <DropdownMenuSubContent
         side="right"
-        sideOffset={4} 
+        sideOffset={4}
         align="start"
         className="min-w-[10rem]"
         onPointerEnter={() => setSubmenuOpen(true)}

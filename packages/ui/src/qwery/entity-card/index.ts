@@ -1,2 +1,1 @@
 export * from './entity-card';
-
