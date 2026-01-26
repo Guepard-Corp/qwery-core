@@ -215,18 +215,18 @@ export function DataGrid({
   }
 
   return (
-    <div className={cn('flex h-full flex-col space-y-3', className)}>
+    <div className={cn('flex h-full flex-col', className)}>
       {/* Data Grid */}
-      <div className="bg-muted/50 max-w-full min-w-0 flex-1 overflow-hidden rounded-md">
+      <div className="max-w-full min-w-0 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-muted/30 border-b">
+                <tr className="bg-muted/20 border-border/30 border-b">
                   {normalizedColumns.map((column) => (
                     <th
                       key={column.name}
-                      className="text-muted-foreground px-4 py-2 text-left text-xs font-medium whitespace-nowrap"
+                      className="text-muted-foreground px-4 py-2.5 text-left text-xs font-semibold whitespace-nowrap"
                     >
                       {column.displayName}
                     </th>
@@ -234,49 +234,72 @@ export function DataGrid({
                 </tr>
               </thead>
               <tbody>
-                {currentRows.map((row, rowIndex) => (
-                  <tr
-                    key={startIndex + rowIndex}
-                    className="hover:bg-muted/20 border-b transition-colors"
-                  >
-                    {normalizedColumns.map((column) => {
-                      const value = row[column.name];
-                      const formattedValue = formatCellValue(value, column);
-                      const isNull = value === null || value === undefined;
-                      const isDateColumn = isDateTimeColumn(column);
+                {currentRows.map((row, rowIndex) => {
+                  const isLastRow = rowIndex === currentRows.length - 1;
+                  const hasEmptyRows =
+                    totalPages > 1 && currentRows.length < pageSize;
+                  return (
+                    <tr
+                      key={startIndex + rowIndex}
+                      className={cn(
+                        'hover:bg-muted/10 transition-colors',
+                        !(isLastRow && hasEmptyRows) &&
+                          'border-border/20 border-b',
+                      )}
+                    >
+                      {normalizedColumns.map((column) => {
+                        const value = row[column.name];
+                        const formattedValue = formatCellValue(value, column);
+                        const isNull = value === null || value === undefined;
+                        const isDateColumn = isDateTimeColumn(column);
 
-                      return (
-                        <td
-                          key={column.name}
-                          className={cn(
-                            'px-4 py-2 text-sm',
-                            isDateColumn
-                              ? 'whitespace-nowrap'
-                              : 'whitespace-normal',
-                            isNull && 'text-muted-foreground italic',
-                          )}
-                          title={isNull ? 'null' : formattedValue}
-                        >
-                          {isNull ? (
-                            <span className="text-muted-foreground italic">
-                              null
-                            </span>
-                          ) : (
-                            <div
-                              className={cn(
-                                isDateColumn
-                                  ? 'whitespace-nowrap'
-                                  : 'break-words',
-                              )}
-                            >
-                              {formattedValue}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                        return (
+                          <td
+                            key={column.name}
+                            className={cn(
+                              'px-4 py-2 text-sm',
+                              isDateColumn
+                                ? 'whitespace-nowrap'
+                                : 'whitespace-normal',
+                              isNull && 'text-muted-foreground italic',
+                            )}
+                            title={isNull ? 'null' : formattedValue}
+                          >
+                            {isNull ? (
+                              <span className="text-muted-foreground italic">
+                                null
+                              </span>
+                            ) : (
+                              <div
+                                className={cn(
+                                  isDateColumn
+                                    ? 'whitespace-nowrap'
+                                    : 'break-words',
+                                )}
+                              >
+                                {formattedValue}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+                {/* Empty placeholder rows to maintain consistent height */}
+                {totalPages > 1 &&
+                  currentRows.length < pageSize &&
+                  Array.from({ length: pageSize - currentRows.length }).map(
+                    (_, i) => (
+                      <tr key={`empty-${i}`}>
+                        {normalizedColumns.map((column) => (
+                          <td key={column.name} className="px-4 py-2 text-sm">
+                            &nbsp;
+                          </td>
+                        ))}
+                      </tr>
+                    ),
+                  )}
               </tbody>
             </table>
           </div>
@@ -293,36 +316,28 @@ export function DataGrid({
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-4 px-2">
-          <div className="text-muted-foreground text-xs">
-            Showing {startIndex + 1} to {Math.min(endIndex, rows.length)} of{' '}
-            {rows.length} rows
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="h-7 gap-1"
-            >
-              <ChevronLeft className="h-3 w-3" />
-              <span className="text-xs">Previous</span>
-            </Button>
-            <div className="text-muted-foreground min-w-[80px] text-center text-xs">
-              Page {page} of {totalPages}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="h-7 gap-1"
-            >
-              <span className="text-xs">Next</span>
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-          </div>
+        <div className="flex items-center justify-center gap-1 py-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-7 w-7 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-muted-foreground min-w-[60px] text-center text-xs tabular-nums">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="h-7 w-7 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       )}
     </div>

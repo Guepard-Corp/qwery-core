@@ -367,10 +367,11 @@ export const ToolOutput = ({
   }
 
   return (
-    <div className={cn('border-t-2 px-5 py-5', className)} {...props}>
-      <div className="ring-border/50 overflow-hidden rounded-xl shadow-inner ring-2">
-        {Output}
-      </div>
+    <div
+      className={cn('border-border/30 border-t px-4 py-4', className)}
+      {...props}
+    >
+      {Output}
     </div>
   );
 };

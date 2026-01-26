@@ -8,7 +8,12 @@ import { SuggestionButton } from './suggestion-button';
 import { UIMessage } from 'ai';
 import { Sparkles, Copy, Download } from 'lucide-react';
 import { CHAT_UI_MARGINS } from './chat-ui-config';
-import { detectCodeLanguage, getLanguageLabel, getLanguageExtension, isSQL } from './code-language-utils';
+import {
+  detectCodeLanguage,
+  getLanguageLabel,
+  getLanguageExtension,
+  isSQL,
+} from './code-language-utils';
 
 type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
   inline?: boolean;
@@ -279,18 +284,22 @@ export const createAgentMarkdownComponents = (): Components => {
           </code>
         );
       }
-      
-      const codeText = typeof children === 'string' 
-        ? children 
-        : Array.isArray(children)
-          ? children.map(c => typeof c === 'string' ? c : '').join('')
-          : '';
-      
-      const detectedLanguage = detectCodeLanguage(codeText, className || undefined);
+
+      const codeText =
+        typeof children === 'string'
+          ? children
+          : Array.isArray(children)
+            ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
+            : '';
+
+      const detectedLanguage = detectCodeLanguage(
+        codeText,
+        className || undefined,
+      );
       const languageLabel = getLanguageLabel(detectedLanguage);
       const languageExtension = getLanguageExtension(detectedLanguage);
       const codeIsSQL = isSQL(detectedLanguage);
-      
+
       const handleCopy = async () => {
         try {
           await navigator.clipboard.writeText(codeText);
@@ -298,7 +307,7 @@ export const createAgentMarkdownComponents = (): Components => {
           console.error('Failed to copy code:', err);
         }
       };
-      
+
       const handleDownload = () => {
         const blob = new Blob([codeText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -310,7 +319,7 @@ export const createAgentMarkdownComponents = (): Components => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       };
-      
+
       return (
         <div
           data-code-block-container="true"
@@ -320,18 +329,18 @@ export const createAgentMarkdownComponents = (): Components => {
             CHAT_UI_MARGINS,
           )}
         >
-            <div 
-             className={cn(
-               'px-3 py-2 rounded-t-md bg-[hsl(0_0%_2%)] dark:bg-[hsl(0_0%_2%)] code-block-header'
-             )}
-             style={{ backgroundColor: 'hsl(0, 0%, 2%)' }}
-             data-code-block-header="true"
-            >
+          <div
+            className={cn(
+              'code-block-header rounded-t-md bg-[hsl(0_0%_2%)] px-3 py-2 dark:bg-[hsl(0_0%_2%)]',
+            )}
+            style={{ backgroundColor: 'hsl(0, 0%, 2%)' }}
+            data-code-block-header="true"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">
+              <span className="text-foreground text-xs font-medium">
                 {languageLabel}
               </span>
-              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
                   onClick={handleCopy}
                   className="bg-background/80 hover:bg-background border-border text-foreground hover:text-foreground flex h-6 w-6 items-center justify-center rounded border transition-colors"
@@ -353,23 +362,31 @@ export const createAgentMarkdownComponents = (): Components => {
           </div>
           <pre
             className={cn(
-              'text-foreground relative my-0 w-full max-w-full rounded-b-md rounded-t-none p-4 text-base overflow-x-auto',
-              codeIsSQL 
-                ? 'bg-[hsl(0_0%_2%)] dark:bg-[hsl(0_0%_2%)] [&_code]:!bg-transparent [&_span]:!bg-transparent [&_*]:!bg-transparent' 
+              'text-foreground relative my-0 w-full max-w-full overflow-x-auto rounded-t-none rounded-b-md p-4 text-base',
+              codeIsSQL
+                ? 'bg-[hsl(0_0%_2%)] dark:bg-[hsl(0_0%_2%)] [&_*]:!bg-transparent [&_code]:!bg-transparent [&_span]:!bg-transparent'
                 : 'bg-muted/80 dark:bg-muted/90',
               className,
             )}
-            style={codeIsSQL ? { 
-              backgroundColor: 'hsl(0, 0%, 2%)',
-            } : undefined}
+            style={
+              codeIsSQL
+                ? {
+                    backgroundColor: 'hsl(0, 0%, 2%)',
+                  }
+                : undefined
+            }
           >
             <code
               {...props}
               className="max-w-full font-mono leading-6 break-words whitespace-pre-wrap"
-              style={codeIsSQL ? { 
-                backgroundColor: 'transparent !important',
-                color: 'inherit'
-              } : undefined}
+              style={
+                codeIsSQL
+                  ? {
+                      backgroundColor: 'transparent !important',
+                      color: 'inherit',
+                    }
+                  : undefined
+              }
             >
               {children}
             </code>

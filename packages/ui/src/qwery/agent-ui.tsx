@@ -35,9 +35,20 @@ import {
   CheckIcon,
   XIcon,
   ArrowDownIcon,
+  PencilIcon,
 } from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { Textarea } from '../shadcn/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../shadcn/alert-dialog';
 import {
   Source,
   Sources,
@@ -60,6 +71,7 @@ import {
 } from './ai';
 import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
+import { DatasourceSelector } from './ai/datasource-selector';
 import { getUserFriendlyToolName } from './ai/utils/tool-name';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
@@ -76,7 +88,7 @@ export interface QweryAgentUIProps {
   onDatasourceSelectionChange?: (datasourceIds: string[]) => void;
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
-  onMessageUpdate?: (messageId: string, content: string) => Promise<void>;
+  onMessageUpdate?: (messageId: string, content: string, datasourceIds?: string[]) => Promise<void>;
   onSendMessageReady?: (
     sendMessage: ReturnType<typeof useChat>['sendMessage'],
     model: string,
@@ -388,46 +400,160 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   const viewSheetRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
+  const [editDatasources, setEditDatasources] = useState<string[]>([]);
   const [copiedMessagePartId, setCopiedMessagePartId] = useState<string | null>(
     null,
   );
+  const [editWarningDialog, setEditWarningDialog] = useState<{
+    open: boolean;
+    messageId: string;
+    messageText: string;
+  }>({ open: false, messageId: '', messageText: '' });
   const previousIsLoadingRef = useRef(isLoading);
 
   const handleEditCancel = useCallback(() => {
     setEditingMessageId(null);
     setEditText('');
+    setEditDatasources([]);
   }, []);
 
-  const handleEditSubmit = useCallback(async () => {
+  const handleEditStart = useCallback(
+    (messageId: string, text: string, datasourceIds: string[]) => {
+      setEditingMessageId(messageId);
+      setEditText(text);
+      setEditDatasources(datasourceIds);
+    },
+    [],
+  );
+
+  const handleEditConfirmWithWarning = useCallback(() => {
     if (!editingMessageId || !editText.trim()) return;
 
     const updatedText = editText.trim();
+    const messageIndex = messages.findIndex((m) => m.id === editingMessageId);
 
-    setMessages((prev) =>
-      prev.map((msg) => {
+    setMessages((prev) => {
+      let updatedMessages = prev.slice(0, messageIndex + 1);
+      updatedMessages = updatedMessages.map((msg) => {
         if (msg.id === editingMessageId) {
           return {
             ...msg,
             parts: msg.parts.map((p) =>
               p.type === 'text' ? { ...p, text: updatedText } : p,
             ),
+            metadata: {
+              ...(msg.metadata || {}),
+              datasources: editDatasources.length > 0 ? editDatasources : undefined,
+            },
           };
         }
         return msg;
-      }),
-    );
+      });
+      return updatedMessages;
+    });
 
     setEditingMessageId(null);
     setEditText('');
+    setEditDatasources([]);
+    setEditWarningDialog({ open: false, messageId: '', messageText: '' });
+
+    if (onMessageUpdate) {
+      onMessageUpdate(editingMessageId, updatedText, editDatasources.length > 0 ? editDatasources : undefined).catch((error) => {
+        console.error('Failed to persist message edit:', error);
+      });
+    }
+
+    setTimeout(() => {
+      regenerate();
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 0);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 100);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 300);
+      });
+    }, 0);
+  }, [editingMessageId, editText, editDatasources, messages, setMessages, onMessageUpdate, regenerate, scrollToBottomRef]);
+
+  const handleEditSubmit = useCallback(async () => {
+    if (!editingMessageId || !editText.trim()) return;
+
+    const userMessages = messages.filter((m) => m.role === 'user');
+    const lastUserMessage = userMessages.at(-1);
+    const isLastUserMessage = lastUserMessage?.id === editingMessageId;
+
+    if (!isLastUserMessage) {
+      setEditWarningDialog({
+        open: true,
+        messageId: editingMessageId,
+        messageText: editText.trim(),
+      });
+      return;
+    }
+
+    const updatedText = editText.trim();
+
+    const lastAssistantMessage = messages
+      .filter((m) => m.role === 'assistant')
+      .at(-1);
+
+    setMessages((prev) => {
+      let updatedMessages = prev.map((msg) => {
+        if (msg.id === editingMessageId) {
+          return {
+            ...msg,
+            parts: msg.parts.map((p) =>
+              p.type === 'text' ? { ...p, text: updatedText } : p,
+            ),
+            metadata: {
+              ...(msg.metadata || {}),
+              datasources: editDatasources.length > 0 ? editDatasources : undefined,
+            },
+          };
+        }
+        return msg;
+      });
+
+      if (lastAssistantMessage) {
+        updatedMessages = updatedMessages.filter(
+          (msg) => msg.id !== lastAssistantMessage.id,
+        );
+      }
+
+      return updatedMessages;
+    });
+
+    setEditingMessageId(null);
+    setEditText('');
+    setEditDatasources([]);
 
     if (onMessageUpdate) {
       try {
-        await onMessageUpdate(editingMessageId, updatedText);
+        await onMessageUpdate(editingMessageId, updatedText, editDatasources.length > 0 ? editDatasources : undefined);
       } catch (error) {
         console.error('Failed to persist message edit:', error);
       }
     }
-  }, [editingMessageId, editText, setMessages, onMessageUpdate]);
+
+    setTimeout(() => {
+      regenerate();
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 0);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 100);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 300);
+      });
+    }, 0);
+  }, [editingMessageId, editText, editDatasources, setMessages, onMessageUpdate, messages, regenerate, scrollToBottomRef]);
 
   const handleRegenerate = useCallback(async () => {
     const lastAssistantMessage = messages
@@ -607,14 +733,17 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     lastAssistantMessage={lastAssistantMessage}
                     editingMessageId={editingMessageId}
                     editText={editText}
+                    editDatasources={editDatasources}
                     copiedMessagePartId={copiedMessagePartId}
                     datasources={datasources}
                     selectedDatasources={selectedDatasources}
                     pluginLogoMap={pluginLogoMap}
                     notebookContext={currentNotebookContext}
+                    onEditStart={handleEditStart}
                     onEditSubmit={handleEditSubmit}
                     onEditCancel={handleEditCancel}
                     onEditTextChange={setEditText}
+                    onEditDatasourcesChange={setEditDatasources}
                     onRegenerate={handleRegenerate}
                     onCopyPart={setCopiedMessagePartId}
                     sendMessage={sendMessage}
@@ -716,6 +845,68 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                           switch (part.type) {
                             case 'text': {
                               const isEditing = editingMessageId === message.id;
+                              const messageDatasources =
+                                normalizeUIRole(message.role) === 'user'
+                                  ? (() => {
+                                      if (
+                                        message.metadata &&
+                                        typeof message.metadata === 'object'
+                                      ) {
+                                        const metadata =
+                                          message.metadata as Record<
+                                            string,
+                                            unknown
+                                          >;
+                                        if (
+                                          'datasources' in metadata &&
+                                          Array.isArray(metadata.datasources)
+                                        ) {
+                                          const metadataDatasources = (
+                                            metadata.datasources as string[]
+                                          )
+                                            .map((dsId) =>
+                                              datasources?.find(
+                                                (ds) => ds.id === dsId,
+                                              ),
+                                            )
+                                            .filter(
+                                              (ds): ds is DatasourceItem =>
+                                                ds !== undefined,
+                                            );
+                                          if (metadataDatasources.length > 0) {
+                                            return metadataDatasources;
+                                          }
+                                        }
+                                      }
+
+                                      const lastUserMessage = [...messages]
+                                        .reverse()
+                                        .find((msg) => msg.role === 'user');
+
+                                      const isLastUserMessage =
+                                        lastUserMessage?.id === message.id;
+
+                                      if (
+                                        isLastUserMessage &&
+                                        selectedDatasources &&
+                                        selectedDatasources.length > 0
+                                      ) {
+                                        return selectedDatasources
+                                          .map((dsId) =>
+                                            datasources?.find(
+                                              (ds) => ds.id === dsId,
+                                            ),
+                                          )
+                                          .filter(
+                                            (ds): ds is DatasourceItem =>
+                                              ds !== undefined,
+                                          );
+                                      }
+
+                                      return undefined;
+                                    })()
+                                  : undefined;
+
                               return (
                                 <div
                                   key={`${message.id}-${i}`}
@@ -741,139 +932,123 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                   )}
                                   <div
                                     className={cn(
-                                      'flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
+                                      'flex-end flex w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
                                       normalizeUIRole(message.role) ===
                                         'assistant' && 'mx-4 sm:mx-6',
+                                      normalizeUIRole(message.role) === 'user' &&
+                                        isEditing
+                                        ? 'max-w-full'
+                                        : 'max-w-[80%]',
                                     )}
                                   >
                                     {isEditing &&
                                     normalizeUIRole(message.role) === 'user' ? (
-                                      <>
-                                        <Textarea
-                                          value={editText}
-                                          onChange={(e) =>
-                                            setEditText(e.target.value)
-                                          }
-                                          className="min-h-[60px] resize-none"
-                                          onKeyDown={(e) => {
-                                            if (
-                                              e.key === 'Enter' &&
-                                              (e.metaKey || e.ctrlKey)
-                                            ) {
-                                              e.preventDefault();
-                                              handleEditSubmit();
-                                            } else if (e.key === 'Escape') {
-                                              e.preventDefault();
-                                              handleEditCancel();
-                                            }
-                                          }}
-                                          autoFocus
-                                        />
-                                        <div className="mt-1 flex items-center justify-end gap-2">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={handleEditSubmit}
-                                            className="h-7 w-7"
-                                            title="Save"
-                                          >
-                                            <CheckIcon className="size-3" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={handleEditCancel}
-                                            className="h-7 w-7"
-                                            title="Cancel"
-                                          >
-                                            <XIcon className="size-3" />
-                                          </Button>
-                                        </div>
-                                      </>
+                                      (() => {
+                                        const {
+                                          text: cleanText,
+                                          context: editContext,
+                                        } = parseMessageWithContext(part.text);
+                                        const hasContext =
+                                          editContext?.lastAssistantResponse;
+
+                                        return (
+                                          <>
+                                            {(hasContext ||
+                                              (datasources && pluginLogoMap)) && (
+                                              <div className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 overflow-x-hidden">
+                                                {hasContext ? (
+                                                  <div className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-xs">
+                                                    <span className="font-medium">
+                                                      Context:{' '}
+                                                    </span>
+                                                    {editContext.lastAssistantResponse?.substring(
+                                                      0,
+                                                      100,
+                                                    )}
+                                                    {(editContext
+                                                      .lastAssistantResponse
+                                                      ?.length ?? 0) > 100 &&
+                                                      '...'}
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex-1" />
+                                                )}
+                                                {datasources && pluginLogoMap && (
+                                                  <DatasourceSelector
+                                                    selectedDatasources={
+                                                      editDatasources
+                                                    }
+                                                    onSelectionChange={
+                                                      setEditDatasources
+                                                    }
+                                                    datasources={datasources}
+                                                    pluginLogoMap={pluginLogoMap}
+                                                    variant="badge"
+                                                  />
+                                                )}
+                                              </div>
+                                            )}
+                                            <div className="group w-full max-w-full min-w-0">
+                                              <Message
+                                                from={message.role}
+                                                className="w-full max-w-full min-w-0"
+                                              >
+                                                <Textarea
+                                                  value={editText}
+                                                  onChange={(e) =>
+                                                    setEditText(e.target.value)
+                                                  }
+                                                  className="bg-muted/50 text-foreground min-h-[60px] w-full resize-none rounded-lg border-2 border-primary/30 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                                                  onKeyDown={(e) => {
+                                                    if (
+                                                      e.key === 'Enter' &&
+                                                      (e.metaKey || e.ctrlKey)
+                                                    ) {
+                                                      e.preventDefault();
+                                                      handleEditSubmit();
+                                                    } else if (
+                                                      e.key === 'Escape'
+                                                    ) {
+                                                      e.preventDefault();
+                                                      handleEditCancel();
+                                                    }
+                                                  }}
+                                                  autoFocus
+                                                />
+                                              </Message>
+                                              <div className="mt-2 flex items-center justify-end gap-2">
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={handleEditCancel}
+                                                  className="h-8 px-3"
+                                                >
+                                                  <XIcon className="mr-1 size-3" />
+                                                  Cancel
+                                                </Button>
+                                                <Button
+                                                  variant="default"
+                                                  size="sm"
+                                                  onClick={handleEditSubmit}
+                                                  className="h-8 px-3"
+                                                >
+                                                  <CheckIcon className="mr-1 size-3" />
+                                                  Save & Regenerate
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          </>
+                                        );
+                                      })()
                                     ) : (
                                       <>
                                         {normalizeUIRole(message.role) ===
                                         'user' ? (
-                                          // User messages - check if it's a suggestion with context
                                           (() => {
                                             const { text, context } =
                                               parseMessageWithContext(
                                                 part.text,
                                               );
-
-                                            const messageDatasources = (() => {
-                                              if (
-                                                message.metadata &&
-                                                typeof message.metadata ===
-                                                  'object'
-                                              ) {
-                                                const metadata =
-                                                  message.metadata as Record<
-                                                    string,
-                                                    unknown
-                                                  >;
-                                                if (
-                                                  'datasources' in metadata &&
-                                                  Array.isArray(
-                                                    metadata.datasources,
-                                                  )
-                                                ) {
-                                                  const metadataDatasources = (
-                                                    metadata.datasources as string[]
-                                                  )
-                                                    .map((dsId) =>
-                                                      datasources?.find(
-                                                        (ds) => ds.id === dsId,
-                                                      ),
-                                                    )
-                                                    .filter(
-                                                      (
-                                                        ds,
-                                                      ): ds is DatasourceItem =>
-                                                        ds !== undefined,
-                                                    );
-                                                  if (
-                                                    metadataDatasources.length >
-                                                    0
-                                                  ) {
-                                                    return metadataDatasources;
-                                                  }
-                                                }
-                                              }
-
-                                              const lastUserMessage = [
-                                                ...messages,
-                                              ]
-                                                .reverse()
-                                                .find(
-                                                  (msg) => msg.role === 'user',
-                                                );
-
-                                              const isLastUserMessage =
-                                                lastUserMessage?.id ===
-                                                message.id;
-
-                                              if (
-                                                isLastUserMessage &&
-                                                selectedDatasources &&
-                                                selectedDatasources.length > 0
-                                              ) {
-                                                return selectedDatasources
-                                                  .map((dsId) =>
-                                                    datasources?.find(
-                                                      (ds) => ds.id === dsId,
-                                                    ),
-                                                  )
-                                                  .filter(
-                                                    (
-                                                      ds,
-                                                    ): ds is DatasourceItem =>
-                                                      ds !== undefined,
-                                                  );
-                                              }
-
-                                              return undefined;
-                                            })();
 
                                             if (context) {
                                               return (
@@ -987,6 +1162,30 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 title="Retry"
                                               >
                                                 <RefreshCcwIcon className="size-3" />
+                                              </Button>
+                                            )}
+                                            {normalizeUIRole(message.role) ===
+                                              'user' && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                  const { text: cleanText } =
+                                                    parseMessageWithContext(
+                                                      part.text,
+                                                    );
+                                                  handleEditStart(
+                                                    message.id,
+                                                    cleanText,
+                                                    messageDatasources?.map(
+                                                      (ds) => ds.id,
+                                                    ) ?? [],
+                                                  );
+                                                }}
+                                                className="h-7 w-7"
+                                                title="Edit"
+                                              >
+                                                <PencilIcon className="size-3" />
                                               </Button>
                                             )}
                                             <Button
@@ -1174,6 +1373,30 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
           />
         </div>
       </div>
+
+      <AlertDialog
+        open={editWarningDialog.open}
+        onOpenChange={(open) =>
+          setEditWarningDialog((prev) => ({ ...prev, open }))
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit this message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Editing this message will delete all subsequent messages in the
+              conversation. The AI will generate a new response based on your
+              edited message.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEditConfirmWithWarning}>
+              Edit and regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PromptInputProvider>
   );
 }
