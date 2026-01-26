@@ -3,6 +3,7 @@ import { Card, CardContent } from '../../shadcn/card';
 import { cn } from '../../lib/utils';
 import { formatRelativeTime } from '../ai/utils/conversation-utils';
 import { Badge } from '../../shadcn/badge';
+import { Trans } from '../trans';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -87,10 +88,10 @@ export function EntityCard({
                   {slug}
                 </p>
               )}
-              {createdAt && (
-                <div className="text-muted-foreground/70 text-[10px] font-medium">
-                  {formatRelativeTime(createdAt)}
-                </div>
+              {description && (
+                <p className="text-muted-foreground/80 line-clamp-2 text-sm leading-relaxed">
+                  {description}
+                </p>
               )}
             </div>
             {status && (
@@ -102,15 +103,15 @@ export function EntityCard({
               </Badge>
             )}
           </div>
-          {description && (
-            <p className="text-muted-foreground/80 line-clamp-2 text-sm leading-relaxed">
-              {description}
-            </p>
-          )}
         </div>
       </CardContent>
 
-      <CardContent className="relative flex items-center justify-end p-6 pt-0">
+      <CardContent className="relative flex items-center justify-between p-6 pt-0">
+        {createdAt && (
+          <div className="text-muted-foreground/70 text-[10px] font-medium">
+            {formatRelativeTime(createdAt)}
+          </div>
+        )}
         {viewButton ? (
           <div className="text-primary flex items-center gap-2 text-xs font-bold tracking-tight uppercase">
             {viewButton}
@@ -150,7 +151,7 @@ export function EntityCard({
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              <Trans i18nKey="organizations:Delete" defaults="Delete" />
             </ContextMenuItem>
           )}
         </ContextMenuContent>

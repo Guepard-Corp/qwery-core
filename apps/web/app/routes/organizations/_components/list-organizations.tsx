@@ -53,9 +53,10 @@ import { OrganizationCard } from '@qwery/ui/organization';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import { useBulkOrganizations } from '~/lib/mutations/use-bulk-operations';
 import { OrganizationDialog } from './organization-dialog';
-import { ActionBar } from './action-bar';
+import { BulkActionBar } from '../../_components/bulk-action-bar';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_GRID = 9;
+const ITEMS_PER_PAGE_TABLE = 10;
 
 type SortCriterion = 'date' | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -74,6 +75,12 @@ export function ListOrganizations({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (isGridView) {
+      setSelectedIds(new Set());
+    }
+  }, [isGridView]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
@@ -130,14 +137,16 @@ export function ListOrganizations({
     });
   }, [organizations, searchQuery, sortCriterion, sortOrder]);
 
-  const effectiveCurrentPage = useMemo(() => {
-    const totalPages = Math.ceil(filteredOrganizations.length / ITEMS_PER_PAGE);
-    return currentPage > totalPages ? 1 : currentPage;
-  }, [filteredOrganizations.length, currentPage]);
+  const itemsPerPage = isGridView ? ITEMS_PER_PAGE_GRID : ITEMS_PER_PAGE_TABLE;
 
-  const totalPages = Math.ceil(filteredOrganizations.length / ITEMS_PER_PAGE);
-  const startIndex = (effectiveCurrentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const effectiveCurrentPage = useMemo(() => {
+    const totalPages = Math.ceil(filteredOrganizations.length / itemsPerPage);
+    return currentPage > totalPages ? 1 : currentPage;
+  }, [filteredOrganizations.length, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredOrganizations.length / itemsPerPage);
+  const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
   const paginatedOrganizations = filteredOrganizations.slice(startIndex, endIndex);
 
   const goToPage = (page: number) => {
@@ -212,7 +221,10 @@ export function ListOrganizations({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-col gap-6 py-6 pb-4 lg:py-10">
+      <div className={cn(
+        "flex shrink-0 flex-col gap-6 py-6 lg:py-10",
+        !isGridView && selectedIds.size > 0 ? "pb-0" : "pb-4"
+      )}>
         <div className="mx-auto w-full max-w-7xl px-48 lg:px-32 my-4">
           <h1 className="text-5xl font-bold">
             <Trans i18nKey="organizations:title" />
@@ -426,16 +438,6 @@ export function ListOrganizations({
         </div>
       </div>
 
-      <ActionBar
-        selectedCount={selectedIds.size}
-        onDelete={() => {
-          if (selectedIds.size > 0) {
-            setShowDeleteDialog(true);
-          }
-        }}
-        onClearSelection={() => setSelectedIds(new Set())}
-      />
-
       <div className="min-h-0 flex-1 overflow-y-auto py-0">
         {filteredOrganizations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -449,7 +451,7 @@ export function ListOrganizations({
             </p>
           </div>
         ) : isGridView ? (
-          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32 pb-8">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {paginatedOrganizations.map((org) => (
               <OrganizationCard
@@ -469,10 +471,22 @@ export function ListOrganizations({
           </div>
         ) : (
           <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
-            <div className="bg-card overflow-hidden rounded-xl border">
+            {!isGridView && (
+              <BulkActionBar
+                selectedCount={selectedIds.size}
+                entityType="Organization"
+                onDelete={() => {
+                  if (selectedIds.size > 0) {
+                    setShowDeleteDialog(true);
+                  }
+                }}
+                onClearSelection={() => setSelectedIds(new Set())}
+              />
+            )}
+            <div className="bg-card overflow-hidden rounded-xl border mb-8">
               <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHeader className="sticky top-0 z-10">
+                <TableRow className="bg-sidebar/80 hover:bg-sidebar/80 backdrop-blur-sm">
                   <TableHead className="w-[50px]">
                     <div className="flex items-center justify-center">
                       <Checkbox
@@ -582,7 +596,8 @@ export function ListOrganizations({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                              disabled={selectedIds.size > 0}
+                              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
@@ -598,7 +613,7 @@ export function ListOrganizations({
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              <Trans i18nKey="organizations:delete" />
+                              <Trans i18nKey="organizations:Delete" defaults="Delete" />
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -684,12 +699,16 @@ export function ListOrganizations({
 
       <ConfirmDeleteDialog
         open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
+        onOpenChange={(open: boolean) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setSelectedIds(new Set());
+          }
+        }}
         onConfirm={handleConfirmDelete}
         itemName="organization"
         itemCount={selectedIds.size}
         isLoading={bulkDeleteMutation.isPending}
-        confirmationText={selectedIds.size === 1 ? 'delete organization' : 'delete organizations'}
       />
 
       <OrganizationDialog
