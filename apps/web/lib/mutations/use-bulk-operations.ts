@@ -19,12 +19,10 @@ export interface BulkOperationResponse<T> {
   items?: T[];
 }
 
-export function useBulkOrganizations(
-  options?: {
-    onSuccess?: (response: BulkOperationResponse<OrganizationOutput>) => void;
-    onError?: (error: Error) => void;
-  },
-) {
+export function useBulkOrganizations(options?: {
+  onSuccess?: (response: BulkOperationResponse<OrganizationOutput>) => void;
+  onError?: (error: Error) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -49,12 +47,10 @@ export function useBulkOrganizations(
   });
 }
 
-export function useBulkProjects(
-  options?: {
-    onSuccess?: (response: BulkOperationResponse<ProjectOutput>) => void;
-    onError?: (error: Error) => void;
-  },
-) {
+export function useBulkProjects(options?: {
+  onSuccess?: (response: BulkOperationResponse<ProjectOutput>) => void;
+  onError?: (error: Error) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -80,4 +76,3 @@ export function useBulkProjects(
     },
   });
 }
-

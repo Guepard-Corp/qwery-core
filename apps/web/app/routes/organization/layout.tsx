@@ -1,10 +1,6 @@
 import { Outlet } from 'react-router';
 
-import {
-  Page,
-  PageMobileNavigation,
-  PageTopNavigation,
-} from '@qwery/ui/page';
+import { Page, PageMobileNavigation, PageTopNavigation } from '@qwery/ui/page';
 import type { Route } from '~/types/app/routes/organization/+types/layout';
 
 import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
@@ -20,15 +16,15 @@ export async function loader(_args: Route.LoaderArgs) {
 
 function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
-      <Page>
-        <PageTopNavigation>
+    <Page>
+      <PageTopNavigation>
         <OrgLayoutTopBar />
-        </PageTopNavigation>
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <LayoutMobileNavigation />
-        </PageMobileNavigation>
-        {props.children}
-      </Page>
+      </PageTopNavigation>
+      <PageMobileNavigation className={'flex items-center justify-between'}>
+        <LayoutMobileNavigation />
+      </PageMobileNavigation>
+      {props.children}
+    </Page>
   );
 }
 

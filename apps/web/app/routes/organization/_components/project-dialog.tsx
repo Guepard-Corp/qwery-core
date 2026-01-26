@@ -31,7 +31,7 @@ import { Input } from '@qwery/ui/input';
 import { Textarea } from '@qwery/ui/textarea';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
-// eslint-disable-next-line no-restricted-imports
+
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -80,25 +80,28 @@ export function ProjectDialog({
     },
     onError: (error: unknown) => {
       let displayMessage = 'Failed to create project';
-      
+
       if (error instanceof Error) {
         const errorMessage = error.message;
-        
+
         try {
           const parsed = JSON.parse(errorMessage);
-          
+
           if (Array.isArray(parsed)) {
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
             if (parsed.message) {
               displayMessage = parsed.message;
@@ -106,7 +109,9 @@ export function ProjectDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
-                .map((e: any) => (typeof e === 'string' ? e : e?.message || String(e)))
+                .map((e: any) =>
+                  typeof e === 'string' ? e : e?.message || String(e),
+                )
                 .filter(Boolean)
                 .join(', ');
             }
@@ -121,16 +126,20 @@ export function ProjectDialog({
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
-            displayMessage = parsed.message || parsed.error || 'Failed to create project';
+            displayMessage =
+              parsed.message || parsed.error || 'Failed to create project';
           } else {
             displayMessage = error;
           }
@@ -138,7 +147,7 @@ export function ProjectDialog({
           displayMessage = error;
         }
       }
-      
+
       toast.error(displayMessage);
     },
   });
@@ -151,25 +160,28 @@ export function ProjectDialog({
     },
     onError: (error: unknown) => {
       let displayMessage = 'Failed to update project';
-      
+
       if (error instanceof Error) {
         const errorMessage = error.message;
-        
+
         try {
           const parsed = JSON.parse(errorMessage);
-          
+
           if (Array.isArray(parsed)) {
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
             if (parsed.message) {
               displayMessage = parsed.message;
@@ -177,7 +189,9 @@ export function ProjectDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
-                .map((e: any) => (typeof e === 'string' ? e : e?.message || String(e)))
+                .map((e: any) =>
+                  typeof e === 'string' ? e : e?.message || String(e),
+                )
                 .filter(Boolean)
                 .join(', ');
             }
@@ -192,16 +206,20 @@ export function ProjectDialog({
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
-            displayMessage = parsed.message || parsed.error || 'Failed to update project';
+            displayMessage =
+              parsed.message || parsed.error || 'Failed to update project';
           } else {
             displayMessage = error;
           }
@@ -209,7 +227,7 @@ export function ProjectDialog({
           displayMessage = error;
         }
       }
-      
+
       toast.error(displayMessage);
     },
   });
@@ -250,7 +268,6 @@ export function ProjectDialog({
       });
     }
   };
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -304,7 +321,7 @@ export function ProjectDialog({
                       className={cn(
                         'h-11 transition-all duration-200',
                         form.formState.errors.name &&
-                        'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
+                          'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
                       )}
                       autoFocus
                     />
@@ -331,7 +348,7 @@ export function ProjectDialog({
                       className={cn(
                         'resize-none transition-all duration-200',
                         form.formState.errors.description &&
-                        'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
+                          'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
                       )}
                     />
                   </FormControl>
@@ -353,7 +370,7 @@ export function ProjectDialog({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="h-11 min-w-[120px] bg-[#ffcb51] text-black shadow-sm hover:bg-[#ffcb51]/90 hover:shadow-md font-semibold transition-all duration-200"
+                className="h-11 min-w-[120px] bg-[#ffcb51] font-semibold text-black shadow-sm transition-all duration-200 hover:bg-[#ffcb51]/90 hover:shadow-md"
               >
                 {isSubmitting ? (
                   <>
@@ -373,4 +390,3 @@ export function ProjectDialog({
     </Dialog>
   );
 }
-

@@ -14,7 +14,7 @@ export function OrgLayoutTopBar() {
   return (
     <PageTopBar>
       <div className="flex items-center space-x-4">
-        <AppLogo className="w-7 h-7" />
+        <AppLogo className="h-7 w-7" />
         <OrgBreadcrumb />
       </div>
       <div className="flex items-center space-x-4">
@@ -32,4 +32,3 @@ export function OrgLayoutTopBar() {
     </PageTopBar>
   );
 }
-

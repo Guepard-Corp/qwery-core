@@ -13,13 +13,13 @@ export default function OrganizationsPage() {
   return (
     <div className="h-full">
       {organizations.isLoading && (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex h-full items-center justify-center">
           <Skeleton className="h-10 w-full" />
         </div>
       )}
-        {!organizations.isLoading && (
-          <ListOrganizations organizations={organizations.data ?? []} />
-        )}
+      {!organizations.isLoading && (
+        <ListOrganizations organizations={organizations.data ?? []} />
+      )}
     </div>
   );
 }

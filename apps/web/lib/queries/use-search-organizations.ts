@@ -26,10 +26,7 @@ export function useSearchOrganizations(
     debounceMs?: number;
   },
 ) {
-  const debouncedQuery = useDebounce(
-    params.query,
-    options?.debounceMs ?? 300,
-  );
+  const debouncedQuery = useDebounce(params.query, options?.debounceMs ?? 300);
 
   const searchParams = useMemo(
     () => ({
@@ -80,4 +77,3 @@ function useDebounce<T>(value: T, delay: number): T {
 
   return debouncedValue;
 }
-

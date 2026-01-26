@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -83,7 +84,8 @@ export function ListOrganizations({
   }, [isGridView]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
+  const [editingOrganization, setEditingOrganization] =
+    useState<Organization | null>(null);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -147,7 +149,10 @@ export function ListOrganizations({
   const totalPages = Math.ceil(filteredOrganizations.length / itemsPerPage);
   const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedOrganizations = filteredOrganizations.slice(startIndex, endIndex);
+  const paginatedOrganizations = filteredOrganizations.slice(
+    startIndex,
+    endIndex,
+  );
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -206,7 +211,6 @@ export function ListOrganizations({
     });
   };
 
-
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -221,11 +225,13 @@ export function ListOrganizations({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={cn(
-        "flex shrink-0 flex-col gap-6 py-6 lg:py-10",
-        !isGridView && selectedIds.size > 0 ? "pb-0" : "pb-4"
-      )}>
-        <div className="mx-auto w-full max-w-7xl px-48 lg:px-32 my-4">
+      <div
+        className={cn(
+          'flex shrink-0 flex-col gap-6 py-6 lg:py-10',
+          !isGridView && selectedIds.size > 0 ? 'pb-0' : 'pb-4',
+        )}
+      >
+        <div className="mx-auto my-4 w-full max-w-7xl px-48 lg:px-32">
           <h1 className="text-5xl font-bold">
             <Trans i18nKey="organizations:title" />
           </h1>
@@ -233,45 +239,43 @@ export function ListOrganizations({
 
         <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
           <div className="flex items-center gap-3">
-            <div className="group/search relative flex-1">
-              <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <div
+              className={cn(
+                'bg-muted/30 border-border/50 focus-within:border-border flex h-12 flex-1 items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
+                shouldAnimate && 'ring-2 ring-[#ffcb51] ring-offset-2',
+              )}
+            >
+              <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
               <Input
                 ref={searchInputRef}
-                type="search"
+                type="text"
                 placeholder="Search organizations..."
-                className={cn(
-                  'h-11 w-full pl-9 transition-all',
-                  shouldAnimate && 'ring-primary animate-pulse ring-2 ring-offset-2',
-                  searchQuery ? 'pr-20' : 'pr-20',
-                )}
+                className="h-full flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               {searchQuery && (
                 <button
-                  type="button"
                   onClick={() => setSearchQuery('')}
-                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-12 -translate-y-1/2 cursor-pointer z-10"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full p-1 transition-colors"
                 >
-                  <span className="text-lg leading-none">×</span>
+                  <X className="h-4 w-4" />
                 </button>
               )}
-              <div className={cn(
-                "absolute top-1/2 right-2 -translate-y-1/2 transition-opacity duration-200",
-                searchQuery 
-                  ? "opacity-100" 
-                  : "opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
-              )}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-accent/50 h-8 w-8 border-none p-0 focus-visible:ring-0"
-                    >
-                      <Settings2 className="text-muted-foreground/60 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+              <div className="bg-border/50 mx-1 h-6 w-px" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-muted h-8 shrink-0 gap-2 border-none px-2 focus-visible:ring-0"
+                  >
+                    <Settings2 className="text-muted-foreground/60 h-4 w-4" />
+                    <span className="text-muted-foreground/60 text-xs font-medium">
+                      Options
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
                   <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
                     Display Mode
@@ -280,14 +284,17 @@ export function ListOrganizations({
                     onClick={() => setIsGridView(true)}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                      isGridView &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
                       <LayoutGrid
                         className={cn(
                           'h-4 w-4',
-                          isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
+                          isGridView
+                            ? 'text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
                         )}
                       />
                       <span className="text-sm">Grid</span>
@@ -298,19 +305,24 @@ export function ListOrganizations({
                     onClick={() => setIsGridView(false)}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      !isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                      !isGridView &&
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
                       <List
                         className={cn(
                           'h-4 w-4',
-                          !isGridView ? 'text-[#ffcb51]' : 'text-muted-foreground/40',
+                          !isGridView
+                            ? 'text-[#ffcb51]'
+                            : 'text-muted-foreground/40',
                         )}
                       />
                       <span className="text-sm">Table</span>
                     </div>
-                    {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                    {!isGridView && (
+                      <Check className="h-4 w-4 text-[#ffcb51]" />
+                    )}
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator className="my-1" />
@@ -424,17 +436,16 @@ export function ListOrganizations({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              </div>
             </div>
 
-          <Button
-            onClick={handleCreate}
-            className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90 cursor-pointer"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            <Trans i18nKey="organizations:new_organization" />
-          </Button>
-        </div>
+            <Button
+              onClick={handleCreate}
+              className="h-11 cursor-pointer bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              <Trans i18nKey="organizations:new_organization" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -451,21 +462,24 @@ export function ListOrganizations({
             </p>
           </div>
         ) : isGridView ? (
-          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32 pb-8">
+          <div className="mx-auto w-full max-w-7xl px-24 pb-8 lg:px-32">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {paginatedOrganizations.map((org) => (
-              <OrganizationCard
-                key={org.id}
-                id={org.id}
-                name={org.name}
-                createdAt={org.createdAt}
-                onClick={() => {
-                  const path = createPath(pathsConfig.app.organizationView, org.slug);
-                  navigate(path);
-                }}
-                onEdit={() => handleEdit(org)}
-                onDelete={() => handleDeleteSingle(org)}
-              />
+                <OrganizationCard
+                  key={org.id}
+                  id={org.id}
+                  name={org.name}
+                  createdAt={org.createdAt}
+                  onClick={() => {
+                    const path = createPath(
+                      pathsConfig.app.organizationView,
+                      org.slug,
+                    );
+                    navigate(path);
+                  }}
+                  onEdit={() => handleEdit(org)}
+                  onDelete={() => handleDeleteSingle(org)}
+                />
               ))}
             </div>
           </div>
@@ -483,146 +497,162 @@ export function ListOrganizations({
                 onClearSelection={() => setSelectedIds(new Set())}
               />
             )}
-            <div className="bg-card overflow-hidden rounded-xl border mb-8">
+            <div className="bg-card mb-8 overflow-hidden rounded-xl border">
               <Table>
-              <TableHeader className="sticky top-0 z-10">
-                <TableRow className="bg-sidebar/80 hover:bg-sidebar/80 backdrop-blur-sm">
-                  <TableHead className="w-[50px]">
-                    <div className="flex items-center justify-center">
-                      <Checkbox
-                        checked={
-                          paginatedOrganizations.length > 0 &&
-                          paginatedOrganizations.every((org) => selectedIds.has(org.id))
-                        }
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedIds(
-                              new Set(paginatedOrganizations.map((org) => org.id)),
-                            );
-                          } else {
-                            setSelectedIds(new Set());
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow className="bg-sidebar/80 hover:bg-sidebar/80 backdrop-blur-sm">
+                    <TableHead className="w-[50px]">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={
+                            paginatedOrganizations.length > 0 &&
+                            paginatedOrganizations.every((org) =>
+                              selectedIds.has(org.id),
+                            )
                           }
-                        }}
-                      />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[40%] font-semibold">Name</TableHead>
-                  <TableHead className="font-semibold">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSortClick('date')}
-                      className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
-                    >
-                      Created
-                      {sortCriterion === 'date' ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedIds(
+                                new Set(
+                                  paginatedOrganizations.map((org) => org.id),
+                                ),
+                              );
+                            } else {
+                              setSelectedIds(new Set());
+                            }
+                          }}
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[40%] font-semibold">
+                      Name
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSortClick('date')}
+                        className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
+                      >
+                        Created
+                        {sortCriterion === 'date' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          )
                         ) : (
-                          <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="pr-6 text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedOrganizations.map((org) => {
-                  const formattedDateTime = formatRelativeTime(new Date(org.createdAt));
-                  const isSelected = selectedIds.has(org.id);
+                          <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedOrganizations.map((org) => {
+                    const formattedDateTime = formatRelativeTime(
+                      new Date(org.createdAt),
+                    );
+                    const isSelected = selectedIds.has(org.id);
 
-                  return (
-                    <TableRow
-                      key={org.id}
-                      className={cn(
-                        'group hover:bg-muted/30 cursor-pointer transition-colors',
-                        isSelected && 'bg-muted/50',
-                      )}
-                      onClick={() => {
-                        const path = createPath(pathsConfig.app.organizationView, org.slug);
-                        navigate(path);
-                      }}
-                    >
-                      <TableCell
-                        className="py-4"
-                        onClick={(e) => e.stopPropagation()}
+                    return (
+                      <TableRow
+                        key={org.id}
+                        className={cn(
+                          'group hover:bg-muted/30 cursor-pointer transition-colors',
+                          isSelected && 'bg-muted/50',
+                        )}
+                        onClick={() => {
+                          const path = createPath(
+                            pathsConfig.app.organizationView,
+                            org.slug,
+                          );
+                          navigate(path);
+                        }}
                       >
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleSelection(org.id)}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 font-medium">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
-                            <svg
-                              className="text-foreground h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                              />
-                            </svg>
+                        <TableCell
+                          className="py-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelection(org.id)}
+                            />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold">
-                              {highlightMatch(org.name, searchQuery)}
-                            </span>
+                        </TableCell>
+                        <TableCell className="py-4 font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                              <svg
+                                className="text-foreground h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                                />
+                              </svg>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold">
+                                {highlightMatch(org.name, searchQuery)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formattedDateTime}
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className="pr-6 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={selectedIds.size > 0}
-                              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(org)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              <Trans i18nKey="common:update" />
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteSingle(org)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <Trans i18nKey="organizations:Delete" defaults="Delete" />
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formattedDateTime}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="pr-6 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={selectedIds.size > 0}
+                                className="text-muted-foreground hover:text-foreground h-8 w-8 p-0 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(org)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <Trans i18nKey="common:update" />
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteSingle(org)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <Trans
+                                  i18nKey="organizations:Delete"
+                                  defaults="Delete"
+                                />
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
@@ -642,46 +672,51 @@ export function ListOrganizations({
               <span>Previous</span>
             </Button>
             <div className="flex items-center gap-1 px-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                const showPage =
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= effectiveCurrentPage - 1 && page <= effectiveCurrentPage + 1);
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => {
+                  const showPage =
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= effectiveCurrentPage - 1 &&
+                      page <= effectiveCurrentPage + 1);
 
-                if (!showPage) {
-                  if (
-                    page === effectiveCurrentPage - 2 ||
-                    page === effectiveCurrentPage + 2
-                  ) {
-                    return (
-                      <span
-                        key={page}
-                        className="text-muted-foreground px-1 select-none"
-                      >
-                        ...
-                      </span>
-                    );
+                  if (!showPage) {
+                    if (
+                      page === effectiveCurrentPage - 2 ||
+                      page === effectiveCurrentPage + 2
+                    ) {
+                      return (
+                        <span
+                          key={page}
+                          className="text-muted-foreground px-1 select-none"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
                   }
-                  return null;
-                }
 
-                return (
-                  <Button
-                    key={page}
-                    variant={effectiveCurrentPage === page ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => goToPage(page)}
-                    className={cn(
-                      'h-9 w-9 p-0 font-medium',
-                      effectiveCurrentPage === page
-                        ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
-                        : 'hover:bg-accent',
-                    )}
-                  >
-                    {page}
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={page}
+                      variant={
+                        effectiveCurrentPage === page ? 'default' : 'ghost'
+                      }
+                      size="sm"
+                      onClick={() => goToPage(page)}
+                      className={cn(
+                        'h-9 w-9 p-0 font-medium',
+                        effectiveCurrentPage === page
+                          ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
+                          : 'hover:bg-accent',
+                      )}
+                    >
+                      {page}
+                    </Button>
+                  );
+                },
+              )}
             </div>
             <Button
               variant="outline"

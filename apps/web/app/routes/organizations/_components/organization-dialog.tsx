@@ -30,7 +30,7 @@ import {
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
-// eslint-disable-next-line no-restricted-imports
+
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -70,31 +70,37 @@ export function OrganizationDialog({
       onOpenChange(false);
       onSuccess?.();
       if (createdOrganization?.slug) {
-        const path = createPath(pathsConfig.app.organizationView, createdOrganization.slug);
+        const path = createPath(
+          pathsConfig.app.organizationView,
+          createdOrganization.slug,
+        );
         navigate(path);
       }
     },
     onError: (error: unknown) => {
       let displayMessage = 'Failed to create organization';
-      
+
       if (error instanceof Error) {
         const errorMessage = error.message;
-        
+
         try {
           const parsed = JSON.parse(errorMessage);
-          
+
           if (Array.isArray(parsed)) {
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
             if (parsed.message) {
               displayMessage = parsed.message;
@@ -102,7 +108,9 @@ export function OrganizationDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
-                .map((e: any) => (typeof e === 'string' ? e : e?.message || String(e)))
+                .map((e: any) =>
+                  typeof e === 'string' ? e : e?.message || String(e),
+                )
                 .filter(Boolean)
                 .join(', ');
             }
@@ -117,16 +125,20 @@ export function OrganizationDialog({
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
-            displayMessage = parsed.message || parsed.error || 'Failed to create organization';
+            displayMessage =
+              parsed.message || parsed.error || 'Failed to create organization';
           } else {
             displayMessage = error;
           }
@@ -134,7 +146,7 @@ export function OrganizationDialog({
           displayMessage = error;
         }
       }
-      
+
       toast.error(displayMessage);
     },
   });
@@ -147,25 +159,28 @@ export function OrganizationDialog({
     },
     onError: (error: unknown) => {
       let displayMessage = 'Failed to update organization';
-      
+
       if (error instanceof Error) {
         const errorMessage = error.message;
-        
+
         try {
           const parsed = JSON.parse(errorMessage);
-          
+
           if (Array.isArray(parsed)) {
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
             if (parsed.message) {
               displayMessage = parsed.message;
@@ -173,7 +188,9 @@ export function OrganizationDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
-                .map((e: any) => (typeof e === 'string' ? e : e?.message || String(e)))
+                .map((e: any) =>
+                  typeof e === 'string' ? e : e?.message || String(e),
+                )
                 .filter(Boolean)
                 .join(', ');
             }
@@ -188,16 +205,20 @@ export function OrganizationDialog({
             const messages = parsed
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path) ? e.path.join('.') : e.path || 'field';
+                  const field = Array.isArray(e.path)
+                    ? e.path.join('.')
+                    : e.path || 'field';
                   const message = e.message || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
               })
               .filter(Boolean);
-            displayMessage = messages.length > 0 ? messages.join('. ') : 'Validation failed';
+            displayMessage =
+              messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
-            displayMessage = parsed.message || parsed.error || 'Failed to update organization';
+            displayMessage =
+              parsed.message || parsed.error || 'Failed to update organization';
           } else {
             displayMessage = error;
           }
@@ -205,7 +226,7 @@ export function OrganizationDialog({
           displayMessage = error;
         }
       }
-      
+
       toast.error(displayMessage);
     },
   });
@@ -242,7 +263,6 @@ export function OrganizationDialog({
       });
     }
   };
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -319,7 +339,7 @@ export function OrganizationDialog({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="h-11 min-w-[120px] bg-[#ffcb51] text-black shadow-sm hover:bg-[#ffcb51]/90 hover:shadow-md font-semibold transition-all duration-200"
+                className="h-11 min-w-[120px] bg-[#ffcb51] font-semibold text-black shadow-sm transition-all duration-200 hover:bg-[#ffcb51]/90 hover:shadow-md"
               >
                 {isSubmitting ? (
                   <>
@@ -339,4 +359,3 @@ export function OrganizationDialog({
     </Dialog>
   );
 }
-

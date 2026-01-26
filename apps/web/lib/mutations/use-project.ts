@@ -13,9 +13,7 @@ import type {
   ProjectOutput,
 } from '@qwery/domain/usecases';
 
-import {
-  getProjectsByOrganizationIdKey,
-} from '../queries/use-get-projects';
+import { getProjectsByOrganizationIdKey } from '../queries/use-get-projects';
 
 export function useCreateProject(
   repository: IProjectRepository,
@@ -133,4 +131,3 @@ export function useDeleteProject(
     },
   });
 }
-
