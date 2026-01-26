@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronRight, ChevronsUpDown, Check, Plus } from 'lucide-react';
 
 import {
   Command,
@@ -57,7 +57,8 @@ interface NodeDropdownProps {
 function NodeDropdown({
   config,
   loadingLabel = 'Loading...',
-}: NodeDropdownProps) {
+  noResultsLabel = 'No results found',
+}: NodeDropdownProps & { noResultsLabel?: string }) {
   const {
     items,
     current,
@@ -136,12 +137,24 @@ function NodeDropdown({
           align="start"
         >
           <Command className="rounded-lg">
-            <CommandInput
-              placeholder={labels.search}
-              value={search}
-              onValueChange={setSearch}
-              className="h-10 border-b"
-            />
+            <div className="relative flex items-center border-b">
+              <CommandInput
+                placeholder={labels.search}
+                value={search}
+                onValueChange={setSearch}
+                className="h-10 border-b-0 pr-10"
+              />
+              {onNew && (
+                <button
+                  type="button"
+                  onClick={handleNew}
+                  className="text-muted-foreground hover:text-primary hover:bg-accent absolute right-2 flex size-6 cursor-pointer items-center justify-center rounded-md transition-colors"
+                  title={labels.new}
+                >
+                  <Plus className="size-4" />
+                </button>
+              )}
+            </div>
             <div className="flex max-h-[360px] flex-col">
               <CommandList className="min-h-0 flex-1 overflow-y-auto">
                 {isLoading ? (
@@ -154,7 +167,7 @@ function NodeDropdown({
                   <>
                     <CommandEmpty>
                       <span className="text-muted-foreground text-sm">
-                        No results found
+                        {noResultsLabel}
                       </span>
                     </CommandEmpty>
                     {filteredItems.length > 0 && (
@@ -201,35 +214,17 @@ function NodeDropdown({
                   </>
                 )}
               </CommandList>
-              {!isLoading && (onViewAll || onNew) && (
+              {!isLoading && onViewAll && (
                 <div className="bg-muted/10 shrink-0 border-t">
-                  {onViewAll && (
-                    <>
-                      <CommandSeparator />
-                      <CommandGroup>
-                        <CommandItem
-                          onSelect={handleViewAll}
-                          className="hover:bg-accent cursor-pointer font-medium"
-                        >
-                          <span>{labels.viewAll}</span>
-                        </CommandItem>
-                      </CommandGroup>
-                    </>
-                  )}
-                  {onNew && (
-                    <>
-                      <CommandSeparator />
-                      <CommandGroup>
-                        <CommandItem
-                          onSelect={handleNew}
-                          className="hover:bg-accent text-primary cursor-pointer font-medium"
-                        >
-                          <span className="mr-2 text-lg">+</span>
-                          <span>{labels.new}</span>
-                        </CommandItem>
-                      </CommandGroup>
-                    </>
-                  )}
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={handleViewAll}
+                      className="hover:bg-accent cursor-pointer font-medium"
+                    >
+                      <span>{labels.viewAll}</span>
+                    </CommandItem>
+                  </CommandGroup>
                 </div>
               )}
             </div>
@@ -242,11 +237,13 @@ function NodeDropdown({
 export interface GenericBreadcrumbProps {
   nodes: BreadcrumbNodeConfig[];
   loadingLabel?: string;
+  noResultsLabel?: string;
 }
 
 export function GenericBreadcrumb({
   nodes,
   loadingLabel,
+  noResultsLabel,
 }: GenericBreadcrumbProps) {
   const visibleNodes = nodes.filter((node) => node.current !== null);
 
@@ -264,7 +261,11 @@ export function GenericBreadcrumb({
                 <ChevronRight className="h-4 w-4" />
               </BreadcrumbSeparator>
             )}
-            <NodeDropdown config={node} loadingLabel={loadingLabel} />
+            <NodeDropdown
+              config={node}
+              loadingLabel={loadingLabel}
+              noResultsLabel={noResultsLabel}
+            />
           </BreadcrumbItem>
         ))}
       </BreadcrumbList>
@@ -400,7 +401,11 @@ export function QweryBreadcrumb({
   }
 
   return (
-    <GenericBreadcrumb nodes={nodes} loadingLabel={t('breadcrumb.loading')} />
+    <GenericBreadcrumb
+      nodes={nodes}
+      loadingLabel={t('breadcrumb.loading')}
+      noResultsLabel={t('breadcrumb.noResults')}
+    />
   );
 }
 

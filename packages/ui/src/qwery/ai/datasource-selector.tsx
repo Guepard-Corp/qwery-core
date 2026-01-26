@@ -154,10 +154,7 @@ export function DatasourceSelector({
         <>
           <Database className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <span className="text-muted-foreground min-w-0 truncate text-xs font-medium">
-            <Trans
-              i18nKey={displayInfo.label}
-              defaults="Select datasources"
-            />
+            <Trans i18nKey={displayInfo.label} defaults="Select datasources" />
           </span>
           <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />
         </>
@@ -273,7 +270,7 @@ export function DatasourceSelector({
                         >
                           <Checkbox
                             checked={isSelected}
-                            className="mr-2 pointer-events-none"
+                            className="pointer-events-none mr-2"
                           />
                           {showIcon ? (
                             <img

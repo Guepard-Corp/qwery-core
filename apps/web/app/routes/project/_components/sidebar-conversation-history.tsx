@@ -85,6 +85,10 @@ export function SidebarConversationHistory({
   const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
   const projectSlug = params.slug || projectSlugMatch?.[1];
 
+  // Get current conversation slug directly from URL for reliable active state
+  const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
+  const currentSlugFromUrl = conversationSlugMatch?.[1];
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
@@ -161,7 +165,7 @@ export function SidebarConversationHistory({
     }
   }, [currentConversationId]);
 
-  // Filter conversations by search query and sort by bookmarked first
+  // Filter conversations by search query and sort by bookmarked first, then createdAt (newest first)
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
     if (searchQuery.trim()) {
@@ -170,27 +174,28 @@ export function SidebarConversationHistory({
         conv.title.toLowerCase().includes(query),
       );
     }
-    // Sort: bookmarked first, then by updatedAt
+    // Sort: bookmarked first, then by createdAt (newest first)
     return [...filtered].sort((a, b) => {
       const aBookmarked = bookmarkedIds.has(a.id);
       const bBookmarked = bookmarkedIds.has(b.id);
       if (aBookmarked && !bBookmarked) return -1;
       if (!aBookmarked && bBookmarked) return 1;
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
   }, [conversations, searchQuery, bookmarkedIds]);
 
-  // Get current conversation separately
+  // Get current conversation separately using URL slug for reliable matching
   const currentConversation = useMemo(() => {
+    if (!currentSlugFromUrl) return null;
     return (
-      filteredConversations.find((c) => c.id === currentConversationId) || null
+      filteredConversations.find((c) => c.slug === currentSlugFromUrl) || null
     );
-  }, [filteredConversations, currentConversationId]);
+  }, [filteredConversations, currentSlugFromUrl]);
 
-  // Sort conversations by selection order: current first, then by selection timestamp, then by updatedAt
+  // Sort conversations by selection order: current first, then by selection timestamp, then by createdAt
   const otherConversations = useMemo(() => {
     const others = filteredConversations.filter(
-      (c) => c.id !== currentConversationId,
+      (c) => c.slug !== currentSlugFromUrl,
     );
 
     return others.sort((a, b) => {
@@ -205,10 +210,10 @@ export function SidebarConversationHistory({
       if (aTimestamp !== undefined) return -1;
       // Only b has timestamp: b comes first
       if (bTimestamp !== undefined) return 1;
-      // Neither has timestamp: sort by updatedAt
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
+      // Neither has timestamp: sort by createdAt (newest first)
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
-  }, [filteredConversations, currentConversationId, selectionOrderMap]);
+  }, [filteredConversations, currentSlugFromUrl, selectionOrderMap]);
 
   // Limit conversations to 7 items for sidebar display
   const MAX_SIDEBAR_CHATS = 7;
@@ -394,9 +399,7 @@ export function SidebarConversationHistory({
                         <p className="font-medium">
                           <Trans i18nKey="common:sidebar.noChatsFound" />
                         </p>
-                        <p className="text-xs">
-                          Start a new chat to get started
-                        </p>
+                        <p className="text-xs">{t('sidebar.startNewChat')}</p>
                       </div>
                     </div>
                   </SidebarMenuItem>
@@ -446,7 +449,9 @@ export function SidebarConversationHistory({
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                        placeholder="Chat title..."
+                                        placeholder={t(
+                                          'sidebar.chatTitlePlaceholder',
+                                        )}
                                         maxLength={100}
                                       />
                                       <button
@@ -508,7 +513,7 @@ export function SidebarConversationHistory({
                                               }}
                                             >
                                               <Pencil className="mr-2 size-4" />
-                                              Rename
+                                              <Trans i18nKey="common:sidebar.rename" />
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                               onClick={(e) => {
@@ -547,7 +552,7 @@ export function SidebarConversationHistory({
                                               className="text-destructive focus:text-destructive"
                                             >
                                               <Trash2 className="mr-2 size-4" />
-                                              Delete
+                                              <Trans i18nKey="common:sidebar.delete" />
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -620,6 +625,7 @@ export function SidebarConversationHistory({
                     {/* Other Conversations - Flat list */}
                     {limitedConversations.map((conversation) => {
                       const isEditing = editingId === conversation.id;
+                      const isActive = conversation.slug === currentSlugFromUrl;
                       const conversationPath = createPath(
                         pathsConfig.app.conversation,
                         conversation.slug,
@@ -632,6 +638,7 @@ export function SidebarConversationHistory({
                               <div className="w-full">
                                 <SidebarMenuButton
                                   asChild
+                                  isActive={isActive}
                                   tooltip={conversation.title}
                                 >
                                   <Link
@@ -661,7 +668,9 @@ export function SidebarConversationHistory({
                                             e.stopPropagation()
                                           }
                                           className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                          placeholder="Chat title..."
+                                          placeholder={t(
+                                            'sidebar.chatTitlePlaceholder',
+                                          )}
                                           maxLength={100}
                                         />
                                         <button
@@ -721,7 +730,7 @@ export function SidebarConversationHistory({
                                                 }}
                                               >
                                                 <Pencil className="mr-2 size-4" />
-                                                Rename
+                                                <Trans i18nKey="common:sidebar.rename" />
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
                                                 onClick={(e) => {
@@ -760,7 +769,7 @@ export function SidebarConversationHistory({
                                                 className="text-destructive focus:text-destructive"
                                               >
                                                 <Trash2 className="mr-2 size-4" />
-                                                Delete
+                                                <Trans i18nKey="common:sidebar.delete" />
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -781,7 +790,7 @@ export function SidebarConversationHistory({
                                 }
                               >
                                 <Pencil className="mr-2 size-4" />
-                                Rename
+                                <Trans i18nKey="common:sidebar.rename" />
                               </ContextMenuItem>
                               {onConversationBookmark && (
                                 <ContextMenuItem
@@ -898,6 +907,9 @@ export function SidebarNotebookHistory({
   const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
   const projectSlug = params.slug || projectSlugMatch?.[1];
 
+  const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
+  const currentSlugFromUrl = notebookSlugMatch?.[1];
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
@@ -908,24 +920,31 @@ export function SidebarNotebookHistory({
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
   const filteredNotebooks = useMemo(() => {
-    if (!searchQuery.trim()) return notebooks;
-    const query = searchQuery.toLowerCase();
-    return notebooks.filter((notebook) =>
-      notebook.title.toLowerCase().includes(query),
+    let filtered = notebooks;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = notebooks.filter((notebook) =>
+        notebook.title.toLowerCase().includes(query),
+      );
+    }
+    return [...filtered].sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
     );
   }, [notebooks, searchQuery]);
 
+  const activeNotebookSlug = currentSlugFromUrl || currentNotebookSlug;
+
   const currentNotebook = useMemo(
     () =>
-      currentNotebookSlug
-        ? filteredNotebooks.find((n) => n.slug === currentNotebookSlug)
+      activeNotebookSlug
+        ? filteredNotebooks.find((n) => n.slug === activeNotebookSlug)
         : null,
-    [filteredNotebooks, currentNotebookSlug],
+    [filteredNotebooks, activeNotebookSlug],
   );
 
   const otherNotebooks = useMemo(
-    () => filteredNotebooks.filter((n) => n.slug !== currentNotebookSlug),
-    [filteredNotebooks, currentNotebookSlug],
+    () => filteredNotebooks.filter((n) => n.slug !== activeNotebookSlug),
+    [filteredNotebooks, activeNotebookSlug],
   );
 
   // Limit notebooks to 6 items for sidebar display
@@ -1071,7 +1090,7 @@ export function SidebarNotebookHistory({
                           <Trans i18nKey="common:sidebar.noNotebooksFound" />
                         </p>
                         <p className="text-xs">
-                          Create a new notebook to get started
+                          {t('sidebar.createNewNotebook')}
                         </p>
                       </div>
                     </div>
@@ -1120,7 +1139,9 @@ export function SidebarNotebookHistory({
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                        placeholder="Notebook title..."
+                                        placeholder={t(
+                                          'sidebar.notebookTitlePlaceholder',
+                                        )}
                                         maxLength={100}
                                       />
                                       <button
@@ -1152,6 +1173,7 @@ export function SidebarNotebookHistory({
                                         )}
                                       </span>
                                       <div className="relative shrink-0">
+                                        <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                             <button
@@ -1174,7 +1196,7 @@ export function SidebarNotebookHistory({
                                               }}
                                             >
                                               <Pencil className="mr-2 size-4" />
-                                              Rename
+                                              <Trans i18nKey="common:sidebar.rename" />
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -1187,7 +1209,7 @@ export function SidebarNotebookHistory({
                                               className="text-destructive focus:text-destructive"
                                             >
                                               <Trash2 className="mr-2 size-4" />
-                                              Delete
+                                              <Trans i18nKey="common:sidebar.delete" />
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -1208,7 +1230,7 @@ export function SidebarNotebookHistory({
                               }
                             >
                               <Pencil className="mr-2 size-4" />
-                              Rename
+                              <Trans i18nKey="common:sidebar.rename" />
                             </ContextMenuItem>
                             <ContextMenuSeparator />
                             <ContextMenuItem
@@ -1218,7 +1240,7 @@ export function SidebarNotebookHistory({
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 size-4" />
-                              Delete
+                              <Trans i18nKey="common:sidebar.delete" />
                             </ContextMenuItem>
                           </ContextMenuContent>
                         </ContextMenu>
@@ -1227,6 +1249,7 @@ export function SidebarNotebookHistory({
 
                     {limitedNotebooks.map((notebook) => {
                       const isEditing = editingId === notebook.id;
+                      const isActive = notebook.slug === activeNotebookSlug;
                       const notebookPath = createPath(
                         pathsConfig.app.projectNotebook,
                         notebook.slug,
@@ -1239,6 +1262,7 @@ export function SidebarNotebookHistory({
                               <div className="w-full">
                                 <SidebarMenuButton
                                   asChild
+                                  isActive={isActive}
                                   tooltip={notebook.title}
                                 >
                                   <Link
@@ -1265,7 +1289,9 @@ export function SidebarNotebookHistory({
                                             e.stopPropagation()
                                           }
                                           className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                          placeholder="Notebook title..."
+                                          placeholder={t(
+                                            'sidebar.notebookTitlePlaceholder',
+                                          )}
                                           maxLength={100}
                                         />
                                         <button
@@ -1297,6 +1323,9 @@ export function SidebarNotebookHistory({
                                           {truncateChatTitle(notebook.title)}
                                         </span>
                                         <div className="relative shrink-0">
+                                          {isActive && (
+                                            <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
+                                          )}
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                               <button
@@ -1319,7 +1348,7 @@ export function SidebarNotebookHistory({
                                                 }}
                                               >
                                                 <Pencil className="mr-2 size-4" />
-                                                Rename
+                                                <Trans i18nKey="common:sidebar.rename" />
                                               </DropdownMenuItem>
                                               <DropdownMenuSeparator />
                                               <DropdownMenuItem
@@ -1332,7 +1361,7 @@ export function SidebarNotebookHistory({
                                                 className="text-destructive focus:text-destructive"
                                               >
                                                 <Trash2 className="mr-2 size-4" />
-                                                Delete
+                                                <Trans i18nKey="common:sidebar.delete" />
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -1350,7 +1379,7 @@ export function SidebarNotebookHistory({
                                 }
                               >
                                 <Pencil className="mr-2 size-4" />
-                                Rename
+                                <Trans i18nKey="common:sidebar.rename" />
                               </ContextMenuItem>
                               <ContextMenuSeparator />
                               <ContextMenuItem
@@ -1358,7 +1387,7 @@ export function SidebarNotebookHistory({
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 size-4" />
-                                Delete
+                                <Trans i18nKey="common:sidebar.delete" />
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>

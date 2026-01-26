@@ -8,7 +8,13 @@ import { cn } from '../../lib/utils';
 import { BotAvatar } from '../bot-avatar';
 import { Button } from '../../shadcn/button';
 import { Textarea } from '../../shadcn/textarea';
-import { CopyIcon, RefreshCcwIcon, CheckIcon, XIcon, PencilIcon } from 'lucide-react';
+import {
+  CopyIcon,
+  RefreshCcwIcon,
+  CheckIcon,
+  XIcon,
+  PencilIcon,
+} from 'lucide-react';
 import { Message, MessageContent } from '../../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import {
@@ -57,7 +63,11 @@ export interface MessageItemProps {
     notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
-  onEditStart: (messageId: string, text: string, datasourceIds: string[]) => void;
+  onEditStart: (
+    messageId: string,
+    text: string,
+    datasourceIds: string[],
+  ) => void;
   onEditSubmit: () => void;
   onEditCancel: () => void;
   onEditTextChange: (text: string) => void;
@@ -208,9 +218,7 @@ function MessageItemComponent({
 
                         const lastUserMessage = [...messages]
                           .reverse()
-                          .find(
-                            (msg) => normalizeUIRole(msg.role) === 'user',
-                          );
+                          .find((msg) => normalizeUIRole(msg.role) === 'user');
 
                         const isLastUserMessage =
                           lastUserMessage?.id === message.id;
@@ -250,7 +258,8 @@ function MessageItemComponent({
                               (() => {
                                 const { text: cleanText, context } =
                                   parseMessageWithContext(part.text);
-                                const hasContext = context?.lastAssistantResponse;
+                                const hasContext =
+                                  context?.lastAssistantResponse;
 
                                 return (
                                   <>
@@ -274,7 +283,9 @@ function MessageItemComponent({
                                         )}
                                         {datasources && pluginLogoMap && (
                                           <DatasourceSelector
-                                            selectedDatasources={editDatasources}
+                                            selectedDatasources={
+                                              editDatasources
+                                            }
                                             onSelectionChange={
                                               onEditDatasourcesChange
                                             }
@@ -307,7 +318,7 @@ function MessageItemComponent({
                                               onEditCancel();
                                             }
                                           }}
-                                          className="bg-muted/50 text-foreground min-h-[60px] w-full resize-none rounded-lg border-2 border-primary/30 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                                          className="bg-muted/50 text-foreground border-primary/30 focus:border-primary min-h-[60px] w-full resize-none rounded-lg border-2 px-4 py-3 text-sm focus:outline-none"
                                           autoFocus
                                         />
                                       </Message>
@@ -445,7 +456,15 @@ function MessageItemComponent({
                                                 <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  onClick={() => onEditStart(message.id, part.text, messageDatasources?.map(ds => ds.id) ?? [])}
+                                                  onClick={() =>
+                                                    onEditStart(
+                                                      message.id,
+                                                      part.text,
+                                                      messageDatasources?.map(
+                                                        (ds) => ds.id,
+                                                      ) ?? [],
+                                                    )
+                                                  }
                                                   className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                                                   title={t('sidebar.edit')}
                                                 >

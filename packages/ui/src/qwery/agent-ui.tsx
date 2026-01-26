@@ -88,7 +88,11 @@ export interface QweryAgentUIProps {
   onDatasourceSelectionChange?: (datasourceIds: string[]) => void;
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
-  onMessageUpdate?: (messageId: string, content: string, datasourceIds?: string[]) => Promise<void>;
+  onMessageUpdate?: (
+    messageId: string,
+    content: string,
+    datasourceIds?: string[],
+  ) => Promise<void>;
   onSendMessageReady?: (
     sendMessage: ReturnType<typeof useChat>['sendMessage'],
     model: string,
@@ -443,7 +447,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
             ),
             metadata: {
               ...(msg.metadata || {}),
-              datasources: editDatasources.length > 0 ? editDatasources : undefined,
+              datasources:
+                editDatasources.length > 0 ? editDatasources : undefined,
             },
           };
         }
@@ -458,7 +463,11 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     setEditWarningDialog({ open: false, messageId: '', messageText: '' });
 
     if (onMessageUpdate) {
-      onMessageUpdate(editingMessageId, updatedText, editDatasources.length > 0 ? editDatasources : undefined).catch((error) => {
+      onMessageUpdate(
+        editingMessageId,
+        updatedText,
+        editDatasources.length > 0 ? editDatasources : undefined,
+      ).catch((error) => {
         console.error('Failed to persist message edit:', error);
       });
     }
@@ -477,7 +486,16 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
         }, 300);
       });
     }, 0);
-  }, [editingMessageId, editText, editDatasources, messages, setMessages, onMessageUpdate, regenerate, scrollToBottomRef]);
+  }, [
+    editingMessageId,
+    editText,
+    editDatasources,
+    messages,
+    setMessages,
+    onMessageUpdate,
+    regenerate,
+    scrollToBottomRef,
+  ]);
 
   const handleEditSubmit = useCallback(async () => {
     if (!editingMessageId || !editText.trim()) return;
@@ -511,7 +529,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
             ),
             metadata: {
               ...(msg.metadata || {}),
-              datasources: editDatasources.length > 0 ? editDatasources : undefined,
+              datasources:
+                editDatasources.length > 0 ? editDatasources : undefined,
             },
           };
         }
@@ -533,7 +552,11 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
     if (onMessageUpdate) {
       try {
-        await onMessageUpdate(editingMessageId, updatedText, editDatasources.length > 0 ? editDatasources : undefined);
+        await onMessageUpdate(
+          editingMessageId,
+          updatedText,
+          editDatasources.length > 0 ? editDatasources : undefined,
+        );
       } catch (error) {
         console.error('Failed to persist message edit:', error);
       }
@@ -553,7 +576,16 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
         }, 300);
       });
     }, 0);
-  }, [editingMessageId, editText, editDatasources, setMessages, onMessageUpdate, messages, regenerate, scrollToBottomRef]);
+  }, [
+    editingMessageId,
+    editText,
+    editDatasources,
+    setMessages,
+    onMessageUpdate,
+    messages,
+    regenerate,
+    scrollToBottomRef,
+  ]);
 
   const handleRegenerate = useCallback(async () => {
     const lastAssistantMessage = messages
@@ -935,8 +967,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                       'flex-end flex w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
                                       normalizeUIRole(message.role) ===
                                         'assistant' && 'mx-4 sm:mx-6',
-                                      normalizeUIRole(message.role) === 'user' &&
-                                        isEditing
+                                      normalizeUIRole(message.role) ===
+                                        'user' && isEditing
                                         ? 'max-w-full'
                                         : 'max-w-[80%]',
                                     )}
@@ -954,7 +986,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                         return (
                                           <>
                                             {(hasContext ||
-                                              (datasources && pluginLogoMap)) && (
+                                              (datasources &&
+                                                pluginLogoMap)) && (
                                               <div className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 overflow-x-hidden">
                                                 {hasContext ? (
                                                   <div className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-xs">
@@ -973,19 +1006,22 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 ) : (
                                                   <div className="flex-1" />
                                                 )}
-                                                {datasources && pluginLogoMap && (
-                                                  <DatasourceSelector
-                                                    selectedDatasources={
-                                                      editDatasources
-                                                    }
-                                                    onSelectionChange={
-                                                      setEditDatasources
-                                                    }
-                                                    datasources={datasources}
-                                                    pluginLogoMap={pluginLogoMap}
-                                                    variant="badge"
-                                                  />
-                                                )}
+                                                {datasources &&
+                                                  pluginLogoMap && (
+                                                    <DatasourceSelector
+                                                      selectedDatasources={
+                                                        editDatasources
+                                                      }
+                                                      onSelectionChange={
+                                                        setEditDatasources
+                                                      }
+                                                      datasources={datasources}
+                                                      pluginLogoMap={
+                                                        pluginLogoMap
+                                                      }
+                                                      variant="badge"
+                                                    />
+                                                  )}
                                               </div>
                                             )}
                                             <div className="group w-full max-w-full min-w-0">
@@ -998,7 +1034,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                   onChange={(e) =>
                                                     setEditText(e.target.value)
                                                   }
-                                                  className="bg-muted/50 text-foreground min-h-[60px] w-full resize-none rounded-lg border-2 border-primary/30 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                                                  className="bg-muted/50 text-foreground border-primary/30 focus:border-primary min-h-[60px] w-full resize-none rounded-lg border-2 px-4 py-3 text-sm focus:outline-none"
                                                   onKeyDown={(e) => {
                                                     if (
                                                       e.key === 'Enter' &&
