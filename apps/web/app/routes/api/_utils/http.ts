@@ -46,5 +46,3 @@ export function parseLimit(
   }
   return Math.min(parsed, max);
 }
-
-

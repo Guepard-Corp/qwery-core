@@ -85,7 +85,9 @@ export class OrganizationRepository extends IOrganizationRepository {
 
     const offset = options?.offset ?? 0;
     const limit = options?.limit;
-    return limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+    return limit
+      ? filtered.slice(offset, offset + limit)
+      : filtered.slice(offset);
   }
 
   async findAll(): Promise<Organization[]> {

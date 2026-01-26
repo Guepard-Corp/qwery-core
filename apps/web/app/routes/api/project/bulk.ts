@@ -1,6 +1,9 @@
 import type { ActionFunctionArgs } from 'react-router';
 
-import { DeleteProjectService, GetProjectService } from '@qwery/domain/services';
+import {
+  DeleteProjectService,
+  GetProjectService,
+} from '@qwery/domain/services';
 
 import { createRepositories } from '~/lib/repositories/repositories-factory';
 import { handleDomainException } from '../_utils/http';
@@ -74,7 +77,13 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 
     const items = results
-      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof useCase.execute>>> => r.status === 'fulfilled')
+      .filter(
+        (
+          r,
+        ): r is PromiseFulfilledResult<
+          Awaited<ReturnType<typeof useCase.execute>>
+        > => r.status === 'fulfilled',
+      )
       .map((r) => r.value);
 
     return Response.json({ success: true, items });
@@ -83,5 +92,3 @@ export async function action({ request }: ActionFunctionArgs) {
     return handleDomainException(error);
   }
 }
-
-

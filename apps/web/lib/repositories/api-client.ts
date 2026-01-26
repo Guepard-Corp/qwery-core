@@ -24,7 +24,7 @@ async function handleResponse<T>(
     const errorData = await response.json().catch(() => ({
       error: response.statusText || 'Unknown error',
     }));
-    
+
     throw new ApiError(
       errorData.error || errorData.message || 'Request failed',
       response.status,

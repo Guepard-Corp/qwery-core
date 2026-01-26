@@ -32,7 +32,10 @@ function normalizeString(value: unknown): string {
   return '';
 }
 
-function matchesRule<T extends Record<string, unknown>>(row: T, rule: FilterRule) {
+function matchesRule<T extends Record<string, unknown>>(
+  row: T,
+  rule: FilterRule,
+) {
   const raw = row[rule.field];
   const left = normalizeString(raw).toLowerCase();
   const op = rule.operator;
@@ -111,5 +114,3 @@ export function saveToLocalStorage<T>(key: string, value: T): void {
     // ignore
   }
 }
-
-

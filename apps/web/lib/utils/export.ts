@@ -20,9 +20,9 @@ export function exportToCSV<T extends ExportableItem>(
   }
 
   const allKeys = Object.keys(firstItem);
-  const keys = options?.headers || allKeys.filter(
-    (key) => !options?.excludeKeys?.includes(key),
-  );
+  const keys =
+    options?.headers ||
+    allKeys.filter((key) => !options?.excludeKeys?.includes(key));
 
   const headers = keys.join(',');
   const rows = items.map((item) =>
@@ -33,7 +33,11 @@ export function exportToCSV<T extends ExportableItem>(
           return '';
         }
         const stringValue = String(value);
-        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        if (
+          stringValue.includes(',') ||
+          stringValue.includes('"') ||
+          stringValue.includes('\n')
+        ) {
           return `"${stringValue.replace(/"/g, '""')}"`;
         }
         return stringValue;
@@ -66,7 +70,9 @@ export function exportToJSON<T extends ExportableItem>(
     ? JSON.stringify(items, null, 2)
     : JSON.stringify(items);
 
-  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+  const blob = new Blob([jsonContent], {
+    type: 'application/json;charset=utf-8;',
+  });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
 
@@ -78,4 +84,3 @@ export function exportToJSON<T extends ExportableItem>(
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
-

@@ -92,7 +92,9 @@ export class ProjectRepository extends IProjectRepository {
 
     const offset = options?.offset ?? 0;
     const limit = options?.limit;
-    return limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+    return limit
+      ? filtered.slice(offset, offset + limit)
+      : filtered.slice(offset);
   }
 
   async findAll(): Promise<Project[]> {

@@ -31,5 +31,3 @@ export function saveColumnVisibility(
 ): void {
   saveToLocalStorage(storageKey, state);
 }
-
-

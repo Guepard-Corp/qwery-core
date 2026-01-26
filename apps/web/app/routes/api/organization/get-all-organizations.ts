@@ -4,7 +4,11 @@ import {
   GetOrganizationsService,
 } from '@qwery/domain/services';
 import { createRepositories } from '~/lib/repositories/repositories-factory';
-import { handleDomainException, parseLimit, parsePositiveInt } from '../_utils/http';
+import {
+  handleDomainException,
+  parseLimit,
+  parsePositiveInt,
+} from '../_utils/http';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const repositories = await createRepositories();
@@ -28,7 +32,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       : organizations;
 
     const paginated =
-      limit > 0 ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
+      limit > 0
+        ? filtered.slice(offset, offset + limit)
+        : filtered.slice(offset);
 
     return Response.json(paginated);
   } catch (error) {

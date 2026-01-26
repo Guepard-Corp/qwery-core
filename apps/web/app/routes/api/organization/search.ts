@@ -3,7 +3,11 @@ import type { LoaderFunctionArgs } from 'react-router';
 import { GetOrganizationsService } from '@qwery/domain/services';
 
 import { createRepositories } from '~/lib/repositories/repositories-factory';
-import { handleDomainException, parseLimit, parsePositiveInt } from '../_utils/http';
+import {
+  handleDomainException,
+  parseLimit,
+  parsePositiveInt,
+} from '../_utils/http';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const repositories = await createRepositories();
@@ -35,5 +39,3 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return handleDomainException(error);
   }
 }
-
-
