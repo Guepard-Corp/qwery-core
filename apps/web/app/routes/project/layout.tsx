@@ -1,4 +1,4 @@
-import { Outlet, useSearchParams, useLocation, useParams } from 'react-router';
+import { Outlet, useSearchParams, useLocation } from 'react-router';
 import { useEffect, useRef, useState, useMemo } from 'react';
 
 import {
@@ -26,14 +26,8 @@ import {
   NotebookSidebarProvider,
   useNotebookSidebar,
 } from '~/lib/context/notebook-sidebar-context';
-import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
-import {
-  getWorkspaceFromLocalStorage,
-  setWorkspaceInLocalStorage,
-} from '~/lib/workspace/workspace-helper';
-import { useQueryClient } from '@tanstack/react-query';
-import { getWorkspaceQueryKey } from '~/lib/hooks/use-workspace-mode';
-import { getNotebooksByProjectIdKey } from '~/lib/queries/use-get-notebook';
+import { ProjectProvider } from '~/lib/context/project-context';
+import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
@@ -52,62 +46,17 @@ function SidebarLayoutInner(
   const { layoutState } = props.loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const params = useParams();
-  const { workspace, repositories } = useWorkspace();
-  const queryClient = useQueryClient();
+  const { repositories } = useWorkspace();
   const sidebarRef = useRef<ResizableContentRef>(null);
   const { registerSidebarControl } = useNotebookSidebar();
   const [persistedConversationSlug, setPersistedConversationSlug] = useState<
     string | null
   >(null);
 
-  // Extract project slug from URL
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = projectSlugMatch?.[1];
-
-  // Fetch project by slug to get the project ID
-  const projectBySlug = useGetProjectBySlug(
-    repositories.project,
-    projectSlug || '',
-  );
-
-  // Update workspace when project changes
-  useEffect(() => {
-    if (
-      projectBySlug.data?.id &&
-      projectBySlug.data.id !== workspace.projectId
-    ) {
-      const currentWorkspace = getWorkspaceFromLocalStorage();
-      const updatedWorkspace = {
-        ...currentWorkspace,
-        projectId: projectBySlug.data.id,
-        organizationId:
-          projectBySlug.data.organizationId || currentWorkspace.organizationId,
-      };
-      setWorkspaceInLocalStorage(updatedWorkspace);
-      // Dispatch custom event to notify workspace provider
-      window.dispatchEvent(new Event('workspace-updated'));
-      // Invalidate workspace query to trigger re-initialization
-      queryClient.invalidateQueries({
-        queryKey: getWorkspaceQueryKey(updatedWorkspace),
-      });
-      // Invalidate notebooks query to ensure fresh data for the new project
-      // Invalidate both old and new project notebooks
-      if (workspace.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: getNotebooksByProjectIdKey(workspace.projectId),
-        });
-      }
-      queryClient.invalidateQueries({
-        queryKey: getNotebooksByProjectIdKey(projectBySlug.data.id),
-      });
-    }
-  }, [
-    projectBySlug.data?.id,
-    workspace.projectId,
-    queryClient,
-    projectBySlug.data?.organizationId,
-  ]);
+  // Note: We intentionally do NOT sync workspace context with URL here.
+  // Components use URL-derived project data directly via useGetProjectBySlug.
+  // The workspace context provides userId and repositories only.
+  // This prevents feedback loops and flickering when navigating between projects.
 
   // Only enable notebook sidebar behavior on notebook pages
   const isNotebookPage = location.pathname.startsWith('/notebook/');
@@ -296,9 +245,12 @@ function SidebarLayoutInner(
 
 function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
-    <NotebookSidebarProvider>
-      <SidebarLayoutInner {...props} />
-    </NotebookSidebarProvider>
+    <ProjectProvider>
+      <ProjectPausedOverlay />
+      <NotebookSidebarProvider>
+        <SidebarLayoutInner {...props} />
+      </NotebookSidebarProvider>
+    </ProjectProvider>
   );
 }
 
@@ -306,38 +258,41 @@ function SimpleModeSidebarLayout(
   props: Route.ComponentProps & React.PropsWithChildren,
 ) {
   return (
-    <AgentStatusProvider>
-      <Page>
-        <PageTopNavigation>
-          <ProjectLayoutTopBar />
-        </PageTopNavigation>
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <LayoutMobileNavigation />
-        </PageMobileNavigation>
-        <PageFooter>
-          <LayoutFooter />
-        </PageFooter>
-        <AgentSidebar>
-          <AgentTabs
-            tabs={[
-              {
-                id: 'query-sql-results',
-                title: 'Results',
-                description: 'Query SQL Results',
-                component: <div>Query SQL Results</div>,
-              },
-              {
-                id: 'query-sql-visualisation',
-                title: 'Visualisation',
-                description: 'Visualisation of the query SQL results',
-                component: <div>Query SQL Results</div>,
-              },
-            ]}
-          />
-        </AgentSidebar>
-        {props.children}
-      </Page>
-    </AgentStatusProvider>
+    <ProjectProvider>
+      <ProjectPausedOverlay />
+      <AgentStatusProvider>
+        <Page>
+          <PageTopNavigation>
+            <ProjectLayoutTopBar />
+          </PageTopNavigation>
+          <PageMobileNavigation className={'flex items-center justify-between'}>
+            <LayoutMobileNavigation />
+          </PageMobileNavigation>
+          <PageFooter>
+            <LayoutFooter />
+          </PageFooter>
+          <AgentSidebar>
+            <AgentTabs
+              tabs={[
+                {
+                  id: 'query-sql-results',
+                  title: 'Results',
+                  description: 'Query SQL Results',
+                  component: <div>Query SQL Results</div>,
+                },
+                {
+                  id: 'query-sql-visualisation',
+                  title: 'Visualisation',
+                  description: 'Visualisation of the query SQL results',
+                  component: <div>Query SQL Results</div>,
+                },
+              ]}
+            />
+          </AgentSidebar>
+          {props.children}
+        </Page>
+      </AgentStatusProvider>
+    </ProjectProvider>
   );
 }
 
