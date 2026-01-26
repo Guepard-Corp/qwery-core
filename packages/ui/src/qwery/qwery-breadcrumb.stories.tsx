@@ -1,8 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ThemeProvider } from 'next-themes';
 import { MemoryRouter } from 'react-router';
-import { QweryBreadcrumb } from './qwery-breadcrumb';
-import type { BreadcrumbNodeItem } from './qwery-breadcrumb';
+import {
+  QweryBreadcrumb,
+  GenericBreadcrumb,
+  type BreadcrumbNodeItem,
+  type BreadcrumbNodeConfig,
+} from './qwery-breadcrumb';
 
 const meta: Meta<typeof QweryBreadcrumb> = {
   title: 'Qwery/QweryBreadcrumb',
@@ -63,29 +67,6 @@ const mockNotebooks: BreadcrumbNodeItem[] = [
   { id: 'nb-6', name: 'Development Notebook', slug: 'development-notebook' },
 ];
 
-const defaultLabels = {
-  searchOrgs: 'Search organizations...',
-  searchProjects: 'Search projects...',
-  searchDatasources: 'Search datasources...',
-  searchNotebooks: 'Search notebooks...',
-  viewAllOrgs: 'View all organizations',
-  viewAllProjects: 'View all projects',
-  viewAllDatasources: 'View all datasources',
-  viewAllNotebooks: 'View all notebooks',
-  newOrg: 'New Organization',
-  newProject: 'New Project',
-  newDatasource: 'New Datasource',
-  newNotebook: 'New Notebook',
-  loading: 'Loading...',
-};
-
-const defaultPaths = {
-  viewAllOrgs: '/organizations',
-  viewAllProjects: '/org/acme-corp',
-  viewAllDatasources: '/prj/main-project/ds',
-  viewAllNotebooks: '/prj/main-project',
-};
-
 const defaultHandlers = {
   onOrganizationSelect: (org: BreadcrumbNodeItem) => {
     console.log('Selected organization:', org);
@@ -121,8 +102,6 @@ export const Default: Story = {
       isLoading: false,
       current: mockProjects[0] ?? null,
     },
-    labels: defaultLabels,
-    paths: defaultPaths,
     ...defaultHandlers,
   },
 };
@@ -145,8 +124,6 @@ export const WithDatasource: Story = {
       current: mockDatasources[0] ?? null,
       type: 'datasource',
     },
-    labels: defaultLabels,
-    paths: defaultPaths,
     ...defaultHandlers,
   },
 };
@@ -169,8 +146,6 @@ export const WithNotebook: Story = {
       current: mockNotebooks[0] ?? null,
       type: 'notebook',
     },
-    labels: defaultLabels,
-    paths: defaultPaths,
     ...defaultHandlers,
   },
 };
@@ -187,26 +162,107 @@ export const Loading: Story = {
       isLoading: true,
       current: null,
     },
-    labels: defaultLabels,
-    paths: defaultPaths,
     ...defaultHandlers,
   },
 };
 
-export const Empty: Story = {
+export const OrganizationOnly: Story = {
   args: {
     organization: {
-      items: [],
+      items: mockOrganizations,
       isLoading: false,
-      current: { id: 'org-1', name: 'Acme Corporation', slug: 'acme-corp' },
+      current: mockOrganizations[0] ?? null,
     },
-    project: {
-      items: [],
-      isLoading: false,
-      current: { id: 'project-1', name: 'Main Project', slug: 'main-project' },
-    },
-    labels: defaultLabels,
-    paths: defaultPaths,
     ...defaultHandlers,
+  },
+};
+
+// Generic Breadcrumb Stories - demonstrating the modular design
+const GenericMeta: Meta<typeof GenericBreadcrumb> = {
+  title: 'Qwery/GenericBreadcrumb',
+  component: GenericBreadcrumb,
+  parameters: {
+    layout: 'padded',
+  },
+  decorators: [
+    (Story) => (
+      <ThemeProvider attribute="class" enableSystem defaultTheme="system">
+        <MemoryRouter initialEntries={['/']}>
+          <div className="p-8">
+            <Story />
+          </div>
+        </MemoryRouter>
+      </ThemeProvider>
+    ),
+  ],
+};
+
+export const GenericTwoLevels: StoryObj<typeof GenericBreadcrumb> = {
+  ...GenericMeta,
+  render: () => {
+    const nodes: BreadcrumbNodeConfig[] = [
+      {
+        items: [
+          { id: '1', name: 'Category A', slug: 'cat-a' },
+          { id: '2', name: 'Category B', slug: 'cat-b' },
+        ],
+        current: { id: '1', name: 'Category A', slug: 'cat-a' },
+        labels: {
+          search: 'Search categories...',
+          viewAll: 'View all categories',
+          new: 'New Category',
+        },
+        onSelect: (item) => console.log('Category:', item),
+        onViewAll: () => console.log('View all'),
+        onNew: () => console.log('New'),
+      },
+      {
+        items: [
+          { id: '1', name: 'Item 1', slug: 'item-1' },
+          { id: '2', name: 'Item 2', slug: 'item-2' },
+        ],
+        current: { id: '1', name: 'Item 1', slug: 'item-1' },
+        labels: {
+          search: 'Search items...',
+          viewAll: 'View all items',
+          new: 'New Item',
+        },
+        onSelect: (item) => console.log('Item:', item),
+      },
+    ];
+    return <GenericBreadcrumb nodes={nodes} />;
+  },
+};
+
+export const GenericFourLevels: StoryObj<typeof GenericBreadcrumb> = {
+  ...GenericMeta,
+  render: () => {
+    const nodes: BreadcrumbNodeConfig[] = [
+      {
+        items: [{ id: '1', name: 'Root', slug: 'root' }],
+        current: { id: '1', name: 'Root', slug: 'root' },
+        labels: { search: 'Search...', viewAll: 'View all', new: 'New' },
+        onSelect: () => {},
+      },
+      {
+        items: [{ id: '1', name: 'Level 1', slug: 'l1' }],
+        current: { id: '1', name: 'Level 1', slug: 'l1' },
+        labels: { search: 'Search...', viewAll: 'View all', new: 'New' },
+        onSelect: () => {},
+      },
+      {
+        items: [{ id: '1', name: 'Level 2', slug: 'l2' }],
+        current: { id: '1', name: 'Level 2', slug: 'l2' },
+        labels: { search: 'Search...', viewAll: 'View all', new: 'New' },
+        onSelect: () => {},
+      },
+      {
+        items: [{ id: '1', name: 'Level 3', slug: 'l3' }],
+        current: { id: '1', name: 'Level 3', slug: 'l3' },
+        labels: { search: 'Search...', viewAll: 'View all', new: 'New' },
+        onSelect: () => {},
+      },
+    ];
+    return <GenericBreadcrumb nodes={nodes} />;
   },
 };
