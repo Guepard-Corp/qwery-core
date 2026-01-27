@@ -205,12 +205,29 @@ export default function ConversationPage() {
   }
 
   if (!getMessages.data) {
+    if (getMessages.isError) {
+      return (
+        <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
+          <p className="text-muted-foreground text-sm">
+            Failed to load messages for this conversation.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => getMessages.refetch()}
+            data-test="conversation-retry-messages"
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
     return null;
   }
 
   return (
     <div className="relative h-full">
       <Agent
+        key={slug}
         ref={agentRef}
         conversationSlug={slug as string}
         initialMessages={getMessages.data}

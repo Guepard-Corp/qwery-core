@@ -161,42 +161,67 @@ export class FactoryAgent {
       attributes: conversationAttrs as unknown as Record<string, unknown>,
     });
 
-    // Get the current input message to track which request this is for
     const lastMessage = opts.messages[opts.messages.length - 1];
+    const textPart = lastMessage?.parts.find((p) => p.type === 'text');
+    const currentInputMessage =
+      textPart && 'text' in textPart ? (textPart.text as string) : '';
 
-    // Persist latest user message (non-blocking, errors collected but don't block response)
     const messagePersistenceService = new MessagePersistenceService(
       this.repositories.message,
       this.repositories.conversation,
       this.conversationSlug,
     );
-
-    const persistenceErrors: Error[] = [];
-
-    messagePersistenceService
-      .persistMessages([lastMessage as UIMessage])
-      .then((result) => {
-        if (result.errors.length > 0) {
-          persistenceErrors.push(...result.errors);
-          console.warn(
-            `Failed to persist user message for conversation ${this.conversationSlug}:`,
-            result.errors.map((e) => e.message).join(', '),
-          );
-        }
-      })
-      .catch((error) => {
-        persistenceErrors.push(
-          error instanceof Error ? error : new Error(String(error)),
-        );
+    const persistenceStart = performance.now();
+    console.log(
+      `[FactoryAgent ${this.id}] Starting user message persistence for conversation ${this.conversationSlug}`,
+    );
+    try {
+      const result = await messagePersistenceService.persistMessages([
+        lastMessage as UIMessage,
+      ]);
+      const ms = Math.round(performance.now() - persistenceStart);
+      if (result.errors.length > 0) {
         console.warn(
-          `Failed to persist message for conversation ${this.conversationSlug}:`,
-          error instanceof Error ? error.message : String(error),
+          `[FactoryAgent ${this.id}] User message persistence had errors after ${ms}ms:`,
+          result.errors.map((e) => e.message).join(', '),
         );
-      });
+      } else {
+        console.log(
+          `[FactoryAgent ${this.id}] ✓ User message persisted successfully in ${ms}ms`,
+        );
+      }
+    } catch (error) {
+      const ms = Math.round(performance.now() - persistenceStart);
+      console.warn(
+        `[FactoryAgent ${this.id}] Failed to persist user message for conversation ${this.conversationSlug} (took ${ms}ms): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
-    const textPart = lastMessage?.parts.find((p) => p.type === 'text');
-    const currentInputMessage =
-      textPart && 'text' in textPart ? (textPart.text as string) : '';
+    try {
+      const conversation = await this.repositories.conversation.findBySlug(
+        this.conversationSlug,
+      );
+      if (
+        conversation?.title === 'New Conversation' &&
+        currentInputMessage.trim()
+      ) {
+        const title = currentInputMessage.slice(0, 80).trim() || 'Untitled';
+        await this.repositories.conversation.update({
+          ...conversation,
+          title,
+          updatedAt: new Date(),
+          updatedBy: conversation.createdBy ?? 'system',
+        });
+        console.log(
+          `[FactoryAgent ${this.id}] Conversation title set from user message for ${this.conversationSlug} (ensures name saved if agent blocks)`,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `[FactoryAgent ${this.id}] Failed to persist conversation title for ${this.conversationSlug}:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
 
     // Start message span
     const messageAttrs = createMessageAttributes(
