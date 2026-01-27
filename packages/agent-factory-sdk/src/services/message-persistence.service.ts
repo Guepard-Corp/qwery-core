@@ -45,16 +45,9 @@ export class MessagePersistenceService {
     private readonly conversationRepository: IConversationRepository,
     private readonly conversationSlug: string,
   ) {}
-
-  /**
-   * Persists UIMessages to the database with idempotency checks
-   * @param messages - Array of UIMessages to persist
-   * @param createdBy - User/agent identifier who created the messages (default: 'agent')
-   * @returns Array of errors encountered during persistence (empty if all succeeded)
-   */
   async persistMessages(
     messages: UIMessage[],
-    createdBy: string = 'agent',
+    createdBy?: string,
   ): Promise<{ errors: Error[] }> {
     const useCase = new CreateMessageService(
       this.messageRepository,
@@ -62,6 +55,30 @@ export class MessagePersistenceService {
     );
 
     const errors: Error[] = [];
+
+    let resolvedCreatedBy: string | null = null;
+    try {
+      const conversation = await this.conversationRepository.findBySlug(
+        this.conversationSlug,
+      );
+      if (conversation && conversation.createdBy?.trim()) {
+        resolvedCreatedBy = conversation.createdBy;
+      } else if (createdBy?.trim()) {
+        resolvedCreatedBy = createdBy;
+      }
+    } catch (error) {
+      console.error(
+        'Error resolving conversation for message persistence:',
+        error,
+      );
+    }
+
+    if (!resolvedCreatedBy) {
+      console.warn(
+        `MessagePersistenceService: no valid createdBy resolved for conversation '${this.conversationSlug}', skipping persistence`,
+      );
+      return { errors: [] };
+    }
 
     // Persist each message with idempotency check
     for (const message of messages) {
@@ -87,7 +104,7 @@ export class MessagePersistenceService {
           input: {
             content: convertUIMessageToContent(message),
             role: uiRoleToMessageRole(message.role),
-            createdBy,
+            createdBy: resolvedCreatedBy,
           },
           conversationSlug: this.conversationSlug,
         });
