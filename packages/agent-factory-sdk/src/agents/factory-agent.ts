@@ -161,42 +161,52 @@ export class FactoryAgent {
       attributes: conversationAttrs as unknown as Record<string, unknown>,
     });
 
-    // Get the current input message to track which request this is for
     const lastMessage = opts.messages[opts.messages.length - 1];
+    const textPart = lastMessage?.parts.find((p) => p.type === 'text');
+    const currentInputMessage =
+      textPart && 'text' in textPart ? (textPart.text as string) : '';
 
-    // Persist latest user message (non-blocking, errors collected but don't block response)
     const messagePersistenceService = new MessagePersistenceService(
       this.repositories.message,
       this.repositories.conversation,
       this.conversationSlug,
     );
-
-    const persistenceErrors: Error[] = [];
-
-    messagePersistenceService
-      .persistMessages([lastMessage as UIMessage])
-      .then((result) => {
-        if (result.errors.length > 0) {
-          persistenceErrors.push(...result.errors);
-          console.warn(
-            `Failed to persist user message for conversation ${this.conversationSlug}:`,
-            result.errors.map((e) => e.message).join(', '),
-          );
-        }
-      })
-      .catch((error) => {
-        persistenceErrors.push(
-          error instanceof Error ? error : new Error(String(error)),
-        );
+    try {
+      const result = await messagePersistenceService.persistMessages([
+        lastMessage as UIMessage,
+      ]);
+      if (result.errors.length > 0) {
         console.warn(
-          `Failed to persist message for conversation ${this.conversationSlug}:`,
-          error instanceof Error ? error.message : String(error),
+          `[FactoryAgent] User message persistence failed for ${this.conversationSlug}:`,
+          result.errors.map((e) => e.message).join(', '),
         );
-      });
+      }
+    } catch (error) {
+      console.warn(
+        `[FactoryAgent] User message persistence threw for ${this.conversationSlug}:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
 
-    const textPart = lastMessage?.parts.find((p) => p.type === 'text');
-    const currentInputMessage =
-      textPart && 'text' in textPart ? (textPart.text as string) : '';
+    try {
+      const conversation = await this.repositories.conversation.findBySlug(
+        this.conversationSlug,
+      );
+      if (
+        conversation?.title === 'New Conversation' &&
+        currentInputMessage.trim()
+      ) {
+        const title = currentInputMessage.slice(0, 80).trim() || 'Untitled';
+        await this.repositories.conversation.update({
+          ...conversation,
+          title,
+          updatedAt: new Date(),
+          updatedBy: conversation.createdBy ?? 'system',
+        });
+      }
+    } catch {
+      // On error we continue; conversation keeps "New Conversation" until assistant responds
+    }
 
     // Start message span
     const messageAttrs = createMessageAttributes(
