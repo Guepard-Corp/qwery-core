@@ -50,10 +50,12 @@ async function fetchSpreadsheetMetadata(
 }
 
 /**
- * Generate CSV export URL for a specific tab (gid)
+ * Generate CSV export URL for a specific tab (gid).
+ * For gid 0, omit the gid param—Google returns 400 for &gid=0 on many sheets.
  */
 function getCsvUrlForTab(spreadsheetId: string, gid: number): string {
-  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+  const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+  return gid === 0 ? base : `${base}&gid=${gid}`;
 }
 
 /**
