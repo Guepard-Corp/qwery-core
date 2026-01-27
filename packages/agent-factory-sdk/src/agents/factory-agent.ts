@@ -171,30 +171,12 @@ export class FactoryAgent {
       this.repositories.conversation,
       this.conversationSlug,
     );
-    const persistenceStart = performance.now();
-    console.log(
-      `[FactoryAgent ${this.id}] Starting user message persistence for conversation ${this.conversationSlug}`,
-    );
     try {
-      const result = await messagePersistenceService.persistMessages([
+      await messagePersistenceService.persistMessages([
         lastMessage as UIMessage,
       ]);
-      const ms = Math.round(performance.now() - persistenceStart);
-      if (result.errors.length > 0) {
-        console.warn(
-          `[FactoryAgent ${this.id}] User message persistence had errors after ${ms}ms:`,
-          result.errors.map((e) => e.message).join(', '),
-        );
-      } else {
-        console.log(
-          `[FactoryAgent ${this.id}] ✓ User message persisted successfully in ${ms}ms`,
-        );
-      }
-    } catch (error) {
-      const ms = Math.round(performance.now() - persistenceStart);
-      console.warn(
-        `[FactoryAgent ${this.id}] Failed to persist user message for conversation ${this.conversationSlug} (took ${ms}ms): ${error instanceof Error ? error.message : String(error)}`,
-      );
+    } catch {
+      // Continue so the agent still responds even if persistence fails
     }
 
     try {
@@ -212,15 +194,9 @@ export class FactoryAgent {
           updatedAt: new Date(),
           updatedBy: conversation.createdBy ?? 'system',
         });
-        console.log(
-          `[FactoryAgent ${this.id}] Conversation title set from user message for ${this.conversationSlug} (ensures name saved if agent blocks)`,
-        );
       }
-    } catch (error) {
-      console.warn(
-        `[FactoryAgent ${this.id}] Failed to persist conversation title for ${this.conversationSlug}:`,
-        error instanceof Error ? error.message : String(error),
-      );
+    } catch {
+      // On error we continue; conversation keeps "New Conversation" until assistant responds
     }
 
     // Start message span
