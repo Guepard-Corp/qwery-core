@@ -172,11 +172,20 @@ export class FactoryAgent {
       this.conversationSlug,
     );
     try {
-      await messagePersistenceService.persistMessages([
+      const result = await messagePersistenceService.persistMessages([
         lastMessage as UIMessage,
       ]);
-    } catch {
-      // Continue so the agent still responds even if persistence fails
+      if (result.errors.length > 0) {
+        console.warn(
+          `[FactoryAgent] User message persistence failed for ${this.conversationSlug}:`,
+          result.errors.map((e) => e.message).join(', '),
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `[FactoryAgent] User message persistence threw for ${this.conversationSlug}:`,
+        error instanceof Error ? error.message : String(error),
+      );
     }
 
     try {
