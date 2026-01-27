@@ -18,7 +18,11 @@ import {
 const ConfigSchema = z
   .object({
     url: z.string().url().optional().describe('Public Parquet file URL'),
-    connectionUrl: z.string().url().optional().describe('Public Parquet file URL'),
+    connectionUrl: z
+      .string()
+      .url()
+      .optional()
+      .describe('Public Parquet file URL'),
   })
   .refine(
     (data) => data.url || data.connectionUrl,
@@ -39,7 +43,6 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
 
   const createDuckDbInstance = async () => {
     const { DuckDBInstance } = await import('@duckdb/node-api');
-    // Use in-memory database
     const instance = await DuckDBInstance.create(':memory:');
     return instance;
   };
@@ -51,6 +54,10 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       const conn = await instance.connect();
 
       try {
+        // Ensure HTTP/HTTPS access is available for remote Parquet URLs
+        await conn.run('INSTALL httpfs;');
+        await conn.run('LOAD httpfs;');
+
         const escapedUrl = config.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
