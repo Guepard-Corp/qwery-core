@@ -23,7 +23,8 @@ const ConfigSchema = z.object({
 type DriverConfig = z.infer<typeof ConfigSchema>;
 
 const convertToCsvLink = (spreadsheetId: string, gid: number): string => {
-  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+  const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+  return gid === 0 ? base : `${base}&gid=${gid}`;
 };
 
 /**
