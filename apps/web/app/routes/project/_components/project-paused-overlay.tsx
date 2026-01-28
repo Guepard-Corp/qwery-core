@@ -1,8 +1,10 @@
 import { PauseCircle } from 'lucide-react';
-import { useProject } from '~/lib/context/project-context';
+import { useProjectOptional } from '~/lib/context/project-context';
 
 export function ProjectPausedOverlay() {
-  const { project, isLoading } = useProject();
+  const context = useProjectOptional();
+  if (!context) return null;
+  const { project, isLoading } = context;
 
   if (isLoading || !project || project.status !== 'paused') {
     return null;

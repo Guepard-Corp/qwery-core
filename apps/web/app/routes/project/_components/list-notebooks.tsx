@@ -31,6 +31,7 @@ import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
 import { cn } from '@qwery/ui/utils';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -51,6 +52,7 @@ import {
 import pathsConfig, { createPath } from '~/config/paths.config';
 import type { NotebookOutput } from '@qwery/domain/usecases';
 import { useWorkspace } from '~/lib/context/workspace-context';
+import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -66,7 +68,16 @@ export function ListNotebooks({
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
-  const { workspace } = useWorkspace();
+  const { workspace, repositories } = useWorkspace();
+  const createNotebookMutation = useCreateNotebook(
+    repositories.notebook,
+    (notebook) =>
+      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
+    (error) =>
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create notebook',
+      ),
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -155,28 +166,12 @@ export function ListNotebooks({
     setSortOrder(checked ? 'desc' : 'asc');
   };
 
-  const handleCreateNotebook = async () => {
-    try {
-      const response = await fetch('/api/notebooks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: workspace.projectId,
-          title: 'Untitled notebook',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create notebook');
-      }
-
-      const notebook = await response.json();
-      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
-    } catch (error) {
-      console.error('Failed to create notebook:', error);
-    }
+  const handleCreateNotebook = () => {
+    if (!workspace.projectId) return;
+    createNotebookMutation.mutate({
+      projectId: workspace.projectId,
+      title: 'Untitled notebook',
+    });
   };
 
   return (

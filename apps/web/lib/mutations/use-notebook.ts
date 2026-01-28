@@ -3,14 +3,43 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Notebook } from '@qwery/domain/entities';
 import { INotebookRepository } from '@qwery/domain/repositories';
 import {
+  CreateNotebookService,
   DeleteNotebookService,
   UpdateNotebookService,
 } from '@qwery/domain/services';
-import { NotebookOutput, UpdateNotebookInput } from '@qwery/domain/usecases';
+import {
+  CreateNotebookInput,
+  NotebookOutput,
+  UpdateNotebookInput,
+} from '@qwery/domain/usecases';
 import {
   getNotebookKey,
   getNotebooksByProjectIdKey,
 } from '../queries/use-get-notebook';
+
+export function useCreateNotebook(
+  notebookRepository: INotebookRepository,
+  onSuccess?: (notebook: NotebookOutput) => void,
+  onError?: (error: Error) => void,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateNotebookInput): Promise<NotebookOutput> => {
+      const createNotebookService = new CreateNotebookService(
+        notebookRepository,
+      );
+      return await createNotebookService.execute(input);
+    },
+    onSuccess: (notebookOutput) => {
+      queryClient.invalidateQueries({
+        queryKey: getNotebooksByProjectIdKey(notebookOutput.projectId),
+      });
+      onSuccess?.(notebookOutput);
+    },
+    onError,
+  });
+}
 
 export function useNotebook(
   notebookRepository: INotebookRepository,

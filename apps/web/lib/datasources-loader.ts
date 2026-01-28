@@ -32,7 +32,7 @@ const DATASOURCE_TAGS: Record<string, string[]> = {
   'parquet-online': ['Files'],
 
   // APIs / SaaS
-  'youtube-data-api-v3': ['SaaS'],
+  'youtube-data-api-v3': ['API'],
 };
 
 /**

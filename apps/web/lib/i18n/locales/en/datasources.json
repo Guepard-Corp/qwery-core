@@ -19,6 +19,7 @@
     "connectionTestError": "Failed to test connection",
     "saveSuccess": "Connection configuration saved successfully",
     "saveFailed": "Failed to save connection configuration",
+    "docsLink": "View documentation",
     "card": {
         "created": "Created",
         "createdBy": "Created by",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 
 import {
   ChevronLeftIcon,
@@ -14,7 +14,7 @@ import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 
-import { createDatasourcePath } from '~/config/project.navigation.config';
+import { DatasourceConnectSheet } from './datasource-connect-sheet';
 
 const ITEMS_PER_PAGE = 24;
 
@@ -41,8 +41,31 @@ export function NewDatasource({
   const [currentPage, setCurrentPage] = useState(1);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [failedLogos, setFailedLogos] = useState<Set<string>>(new Set());
+  const [orderOverride, setOrderOverride] = useState<string[] | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedDatasource, setSelectedDatasource] = useState<{
+    id: string;
+    name: string;
+    logo: string;
+    description: string;
+  } | null>(null);
 
-  const filterTags = ['SQL', 'Files', 'SaaS'];
+  const filterTags = ['SQL', 'Files', 'SaaS', 'API'];
+
+  const openDrawerFor = useCallback((ds: PluginMetadata) => {
+    setSelectedDatasource({
+      id: ds.id,
+      name: ds.name,
+      logo: ds.logo,
+      description: ds.description,
+    });
+    setDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -60,6 +83,7 @@ export function NewDatasource({
   }, []);
 
   const toggleFilter = (tag: string) => {
+    setOrderOverride(null);
     setSelectedFilters((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(tag)) {
@@ -73,6 +97,7 @@ export function NewDatasource({
 
   const clearSearch = () => {
     setSearchQuery('');
+    setOrderOverride(null);
     searchInputRef.current?.focus();
   };
 
@@ -90,15 +115,69 @@ export function NewDatasource({
     });
   }, [datasources, searchQuery, selectedFilters]);
 
-  const effectiveCurrentPage = useMemo(() => {
-    const totalPages = Math.ceil(filteredDatasources.length / ITEMS_PER_PAGE);
-    return currentPage > totalPages ? 1 : currentPage;
-  }, [filteredDatasources.length, currentPage]);
+  const orderedDatasources = useMemo(() => {
+    if (!orderOverride || orderOverride.length !== filteredDatasources.length) {
+      return filteredDatasources;
+    }
+    const byId = new Map(filteredDatasources.map((d) => [d.id, d]));
+    return orderOverride
+      .map((id) => byId.get(id))
+      .filter((d): d is PluginMetadata => d != null);
+  }, [filteredDatasources, orderOverride]);
 
-  const totalPages = Math.ceil(filteredDatasources.length / ITEMS_PER_PAGE);
+  const effectiveCurrentPage = useMemo(() => {
+    const totalPages = Math.ceil(orderedDatasources.length / ITEMS_PER_PAGE);
+    return currentPage > totalPages ? 1 : currentPage;
+  }, [orderedDatasources.length, currentPage]);
+
+  const totalPages = Math.ceil(orderedDatasources.length / ITEMS_PER_PAGE);
   const startIndex = (effectiveCurrentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedDatasources = filteredDatasources.slice(startIndex, endIndex);
+  const paginatedDatasources = orderedDatasources.slice(startIndex, endIndex);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, pageIndex: number) => {
+      setDraggingIndex(pageIndex);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(startIndex + pageIndex));
+    },
+    [startIndex],
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, dropPageIndex: number) => {
+      e.preventDefault();
+      setDraggingIndex(null);
+      const dragGlobalIndex = parseInt(
+        e.dataTransfer.getData('text/plain'),
+        10,
+      );
+      if (Number.isNaN(dragGlobalIndex)) return;
+      const dropGlobalIndex = startIndex + dropPageIndex;
+      if (dragGlobalIndex === dropGlobalIndex) return;
+      const ids = orderedDatasources.map((d) => d.id);
+      const a = Math.min(dragGlobalIndex, dropGlobalIndex);
+      const b = Math.max(dragGlobalIndex, dropGlobalIndex);
+      if (a < 0 || b >= ids.length) return;
+      const next = [...ids];
+      const tmp = next[a];
+      const target = next[b];
+      if (tmp === undefined || target === undefined) return;
+      next[a] = target;
+      next[b] = tmp;
+      setOrderOverride(next);
+    },
+    [orderedDatasources, startIndex],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingIndex(null);
+  }, []);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -137,7 +216,10 @@ export function NewDatasource({
                 placeholder="Search datasources..."
                 className="h-full flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setOrderOverride(null);
+                }}
               />
               {searchQuery && (
                 <button
@@ -204,40 +286,54 @@ export function NewDatasource({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {paginatedDatasources.map((datasource) => {
+              {paginatedDatasources.map((datasource, index) => {
                 const hasFailed = failedLogos.has(datasource.id);
                 const showLogo = datasource.logo && !hasFailed;
                 const shouldInvert = isJsonDatasource(datasource.id);
+                const isDragging = draggingIndex === index;
 
                 return (
-                  <Link
+                  <div
                     key={datasource.id}
-                    to={createDatasourcePath(project_id, datasource.id)}
-                    className="group relative flex cursor-pointer flex-col items-center rounded-xl p-5 transition-all duration-200 hover:bg-[#ffcb51]/5"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      'cursor-grab transition-opacity active:cursor-grabbing',
+                      isDragging && 'opacity-50',
+                    )}
                   >
-                    <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
-                      {showLogo ? (
-                        <img
-                          src={datasource.logo}
-                          alt={datasource.name}
-                          className={cn(
-                            'h-12 w-12 object-contain',
-                            shouldInvert && 'dark:invert',
-                          )}
-                          onError={() => handleLogoError(datasource.id)}
-                        />
-                      ) : (
-                        <Database className="text-muted-foreground/60 h-9 w-9" />
-                      )}
-                    </div>
-                    <span className="text-foreground text-center text-base leading-tight font-medium">
-                      {datasource.name}
-                    </span>
-                    <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
-                      <span>Connect</span>
-                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                    </div>
-                  </Link>
+                    <button
+                      type="button"
+                      onClick={() => openDrawerFor(datasource)}
+                      className="group relative flex w-full cursor-pointer flex-col items-center rounded-xl p-5 text-left transition-all duration-200 hover:bg-[#ffcb51]/5"
+                    >
+                      <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
+                        {showLogo ? (
+                          <img
+                            src={datasource.logo}
+                            alt={datasource.name}
+                            className={cn(
+                              'h-12 w-12 object-contain',
+                              shouldInvert && 'dark:invert',
+                            )}
+                            onError={() => handleLogoError(datasource.id)}
+                          />
+                        ) : (
+                          <Database className="text-muted-foreground/60 h-9 w-9" />
+                        )}
+                      </div>
+                      <span className="text-foreground text-center text-base leading-tight font-medium">
+                        {datasource.name}
+                      </span>
+                      <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
+                        <span>Connect</span>
+                        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -316,6 +412,22 @@ export function NewDatasource({
           </>
         )}
       </div>
+
+      {selectedDatasource && (
+        <DatasourceConnectSheet
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          extensionId={selectedDatasource.id}
+          projectSlug={project_id}
+          extensionMeta={{
+            name: selectedDatasource.name,
+            logo: selectedDatasource.logo,
+            description: selectedDatasource.description,
+          }}
+          onSuccess={closeDrawer}
+          onCancel={closeDrawer}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Trans } from '@qwery/ui/trans';
 import {
@@ -47,6 +47,7 @@ import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
 import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
+import { useProject } from '~/lib/context/project-context';
 
 export interface SidebarConversationHistoryProps {
   conversations?: Conversation[];
@@ -79,11 +80,7 @@ export function SidebarConversationHistory({
 }: SidebarConversationHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
-  const params = useParams();
-
-  // Get project slug from pathname or params
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = params.slug || projectSlugMatch?.[1];
+  const { projectSlug } = useProject();
 
   // Get current conversation slug directly from URL for reliable active state
   const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
@@ -215,8 +212,7 @@ export function SidebarConversationHistory({
     });
   }, [filteredConversations, currentSlugFromUrl, selectionOrderMap]);
 
-  // Limit conversations to 7 items for sidebar display
-  const MAX_SIDEBAR_CHATS = 7;
+  const MAX_SIDEBAR_CHATS = 6;
   const limitedConversations = useMemo(() => {
     return otherConversations.slice(0, MAX_SIDEBAR_CHATS);
   }, [otherConversations]);
@@ -841,7 +837,7 @@ export function SidebarConversationHistory({
 
                   {/* View all chats button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-2 px-2 pt-6 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectConversation,
@@ -901,11 +897,7 @@ export function SidebarNotebookHistory({
 }: SidebarNotebookHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
-  const params = useParams();
-
-  // Get project slug from pathname or params
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = params.slug || projectSlugMatch?.[1];
+  const { projectSlug } = useProject();
 
   const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
   const currentSlugFromUrl = notebookSlugMatch?.[1];
@@ -947,8 +939,7 @@ export function SidebarNotebookHistory({
     [filteredNotebooks, activeNotebookSlug],
   );
 
-  // Limit notebooks to 6 items for sidebar display
-  const MAX_SIDEBAR_NOTEBOOKS = 6;
+  const MAX_SIDEBAR_NOTEBOOKS = 5;
   const limitedNotebooks = useMemo(
     () => otherNotebooks.slice(0, MAX_SIDEBAR_NOTEBOOKS),
     [otherNotebooks],
@@ -1398,7 +1389,7 @@ export function SidebarNotebookHistory({
 
                   {/* View all notebooks button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-2 px-2 pt-6 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectNotebooks,

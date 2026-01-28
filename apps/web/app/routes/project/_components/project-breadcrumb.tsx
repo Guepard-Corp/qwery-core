@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 
-import type { Notebook } from '@qwery/domain/entities';
+import { toast } from 'sonner';
+
 import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import {
   QweryBreadcrumb,
@@ -19,6 +20,7 @@ import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources'
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
+import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
 import { ProjectDialog } from '../../organization/_components/project-dialog';
@@ -197,6 +199,15 @@ export function ProjectBreadcrumb() {
     navigate(path);
   };
 
+  const createNotebookMutation = useCreateNotebook(
+    repositories.notebook,
+    (notebook) => handleNotebookSelect(toBreadcrumbNodeItem(notebook)),
+    (error) =>
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create notebook',
+      ),
+  );
+
   const handleNewOrg = () => {
     setShowCreateOrgDialog(true);
   };
@@ -237,25 +248,9 @@ export function ProjectBreadcrumb() {
     navigate(path);
   };
 
-  const handleNewNotebook = async () => {
+  const handleNewNotebook = () => {
     if (!projectId) return;
-    try {
-      const response = await fetch('/api/notebooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: projectId,
-          title: 'New Notebook',
-        }),
-      });
-      if (response.ok) {
-        const notebook: Notebook = await response.json();
-        await notebooks.refetch();
-        handleNotebookSelect(toBreadcrumbNodeItem(notebook));
-      }
-    } catch (error) {
-      console.error('Failed to create notebook:', error);
-    }
+    createNotebookMutation.mutate({ projectId, title: 'New Notebook' });
   };
 
   // Don't show breadcrumb if no project from URL yet
