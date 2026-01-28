@@ -291,7 +291,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     }
 
     let config = values as Record<string, unknown>;
-    const userId = 'system'; // Default user - replace with actual user context
+    const userId = workspace.userId;
 
     const validationError = validateProviderConfig(config);
     if (validationError) {

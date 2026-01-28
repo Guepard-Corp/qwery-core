@@ -56,7 +56,7 @@ export default function ProjectDatasourceViewPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
-  const { repositories } = useWorkspace();
+  const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
 
   // Load datasource by slug
@@ -136,7 +136,7 @@ export default function ProjectDatasourceViewPage() {
       }
 
       const config = values as Record<string, unknown>;
-      const userId = 'system'; // Default user - replace with actual user context
+      const userId = workspace.userId;
 
       if (!datasource.data) {
         toast.error('Datasource not found');
