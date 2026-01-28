@@ -13576,12 +13576,27 @@ var UserSchema = external_exports.object({
 });
 
 // packages/domain/src/entities/playground.type.ts
+var PlaygroundDatasourceSchema = DatasourceSchema.omit({
+  id: true,
+  projectId: true,
+  slug: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  isPublic: true,
+  remixedFrom: true
+}).extend({
+  datasource_kind: external_exports.nativeEnum(DatasourceKind).describe("The kind of the datasource")
+});
 var PlaygroundSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the playground"),
+  id: external_exports.string().describe("The unique identifier for the playground"),
   logo: external_exports.string().describe("The logo of the playground"),
   name: external_exports.string().min(1).max(255).describe("The name of the playground"),
   description: external_exports.string().min(1).max(1024).describe("The description of the playground"),
-  datasource: DatasourceSchema.describe("The datasource for the playground")
+  datasource: PlaygroundDatasourceSchema.describe(
+    "The datasource template for the playground"
+  )
 });
 
 // packages/domain/src/entities/template.type.ts
