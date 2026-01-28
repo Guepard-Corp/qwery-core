@@ -116,9 +116,6 @@ export function SubMenuModeToggle() {
         </span>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        side="right"
-        sideOffset={4}
-        align="start"
         className="min-w-[10rem]"
         onPointerEnter={() => setSubmenuOpen(true)}
         onPointerLeave={() => setSubmenuOpen(false)}
