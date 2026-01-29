@@ -23,7 +23,6 @@
     "@qwery/extension-mysql": "workspace:*",
     "@qwery/extension-parquet-online": "workspace:*",
     "@qwery/extension-postgresql": "workspace:*",
-    "@qwery/extension-s3": "workspace:*",
     "@qwery/extension-youtube-data-api-v3": "workspace:*",
     "@qwery/extensions-sdk": "workspace:*"
   },

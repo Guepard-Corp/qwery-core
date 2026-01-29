@@ -20,12 +20,12 @@ export default defineConfig({
     '@duckdb/node-bindings-darwin-arm64',
     '@duckdb/node-bindings-darwin-x64',
     '@duckdb/node-bindings-win32-x64',
-    '@qwery/extension-s3',
+
     // Externalize all OpenTelemetry packages to avoid ESM bundling issues
     /^@opentelemetry\/.*/,
     // Externalize gRPC packages to avoid ESM bundling issues
     '@grpc/grpc-js',
   ],
-  noExternal: [/^@qwery\/(?!extension-s3$).*/],
+  noExternal: [/^@qwery\/.*$/],
 });
 
