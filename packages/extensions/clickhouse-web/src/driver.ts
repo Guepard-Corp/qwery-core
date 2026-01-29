@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client-web';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type {
   DriverContext,

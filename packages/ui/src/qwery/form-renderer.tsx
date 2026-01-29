@@ -7,7 +7,7 @@ import type {
   FieldPath,
   FieldValues,
 } from 'react-hook-form';
-import type { z } from 'zod';
+import { z } from 'zod/v3';
 
 import { FieldGroup } from '@qwery/ui/field';
 import {

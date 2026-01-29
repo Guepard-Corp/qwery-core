@@ -6,7 +6,7 @@ import {
   AgentFactoryPort,
   AgentRunner,
 } from '../../ports';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export class AgentFactory extends AgentFactoryPort {
   constructor(dependencies: AgentFactoryDependencies) {

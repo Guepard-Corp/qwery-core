@@ -1,5 +1,5 @@
 import { generateObject } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { fromPromise } from 'xstate/actors';
 import type { UIMessage } from 'ai';
 import { INTENTS_LIST, IntentSchema } from '../types';

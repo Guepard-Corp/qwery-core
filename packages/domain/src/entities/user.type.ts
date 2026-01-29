@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import { Entity } from '../common/entity';
 import { Roles } from '../common/roles';

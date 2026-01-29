@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type { DatasourceMetadata, DatasourceResultSet } from './metadata';
 

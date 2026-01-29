@@ -6,7 +6,7 @@
  */
 
 import { InferUITool, Tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
   ChartConfigSchema,
   ChartTypeSelectionSchema,

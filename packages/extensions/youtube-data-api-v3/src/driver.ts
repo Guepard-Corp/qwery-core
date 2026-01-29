@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 
 import { google, youtube_v3 } from 'googleapis';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type {
   DatasourceMetadata,

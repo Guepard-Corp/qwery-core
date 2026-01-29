@@ -159,7 +159,7 @@ export interface ToolPayload {
   /** Array of tool calls to execute. */
   tool_calls: ToolCall[];
   /** Optional reasoning or explanation for the tool calls. */
-  reasoning?: string;
+  reasoningText?: string;
 }
 
 /**

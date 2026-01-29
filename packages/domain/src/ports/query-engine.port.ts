@@ -3,7 +3,7 @@ import type {
   DatasourceMetadata,
   DatasourceResultSet,
 } from '../entities';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * URI scheme validator for working directory paths.

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * Chart types supported by the system.
@@ -20,7 +20,7 @@ export const ChartTypeSchema = z.enum(CHART_TYPES);
 
 export const ChartTypeSelectionSchema = z.object({
   chartType: ChartTypeSchema,
-  reasoning: z.string(),
+  reasoningText: z.string(),
 });
 
 export type ChartTypeSelection = z.infer<typeof ChartTypeSelectionSchema>;

@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type {
   DriverContext,

@@ -10,7 +10,7 @@
 
 import type { InferUITool, Tool } from 'ai';
 import type { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type {
   ChartConfig,
   ChartTypeSelection,

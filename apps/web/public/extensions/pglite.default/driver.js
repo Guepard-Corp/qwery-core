@@ -8,12 +8,12 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn2, res) => function __init() {
+var __esm = (fn2, res) => (function __init() {
   return fn2 && (res = (0, fn2[__getOwnPropNames(fn2)[0]])(fn2 = 0)), res;
-};
-var __commonJS = (cb, mod) => function __require() {
+});
+var __commonJS = (cb, mod) => (function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
+});
 var __export = (target, all) => {
   for (var name2 in all)
     __defProp(target, name2, { get: all[name2], enumerable: true });
@@ -481,13 +481,13 @@ var init_chunk_VBDAOXYI = __esm({
         }), s4.type != 0 && (s4.size = 0), t2.checkHeader && h3.posixHeader.forEach(function(i3) {
           if (G4.isFunction(i3[5]) && !i3[5](s4, i3)) {
             var u2 = new Error(R3.fileCorrupted);
-            throw u2.data = { offset: e + i3[2], field: i3[0] }, u2;
+            throw (u2.data = { offset: e + i3[2], field: i3[0] }, u2);
           }
         }), t2.checkChecksum) {
           var n3 = h3.calculateChecksum(r, e, true);
           if (n3 != s4.checksum) {
             var o4 = new Error(R3.checksumCheckFailed);
-            throw o4.data = { offset: e, header: s4, checksum: n3 }, o4;
+            throw (o4.data = { offset: e, header: s4, checksum: n3 }, o4);
           }
         }
         return s4;
@@ -559,7 +559,7 @@ var init_chunk_VBDAOXYI = __esm({
         return H2(this.pg.Module.FS, C2, e, t2);
       }
       async init(e, t2) {
-        return this.pg = e, { emscriptenOpts: { ...t2, preRun: [...t2.preRun || [], (a2) => {
+        return this.pg = e, { emscriptenOpts: { ...t2, preRun: [...(t2.preRun || []), (a2) => {
           let n3 = Zr(a2, this);
           a2.FS.mkdir(C2), a2.FS.mount(n3, {}, C2);
         }] } };
@@ -631,9 +631,9 @@ var init_chunk_VBDAOXYI = __esm({
         let o4 = a2.realPath(n3);
         return a2.tryFSOperation(() => e.readdir(o4));
       }, symlink(n3, o4, i3) {
-        throw s4?.("symlink", a2.realPath(n3), o4, i3), new t2.ErrnoError(63);
+        throw (s4?.("symlink", a2.realPath(n3), o4, i3), new t2.ErrnoError(63));
       }, readlink(n3) {
-        throw s4?.("readlink", a2.realPath(n3)), new t2.ErrnoError(63);
+        throw (s4?.("readlink", a2.realPath(n3)), new t2.ErrnoError(63));
       } }, stream_ops: { open(n3) {
         s4?.("open stream", a2.realPath(n3.node));
         let o4 = a2.realPath(n3.node);
@@ -712,7 +712,7 @@ var init_nodefs = __esm({
         super(t2), this.rootDir = (void 0)(t2), (void 0)((void 0)(this.rootDir)) || (void 0)(this.rootDir);
       }
       async init(t2, e) {
-        return this.pg = t2, { emscriptenOpts: { ...e, preRun: [...e.preRun || [], (r) => {
+        return this.pg = t2, { emscriptenOpts: { ...e, preRun: [...(e.preRun || []), (r) => {
           let c2 = r.FS.filesystems.NODEFS;
           r.FS.mkdir(C2), r.FS.mount(c2, { root: this.rootDir }, C2);
         }] } };
@@ -792,7 +792,7 @@ var init_opfs_ahp = __esm({
         t2 > -1 && this.state.pool.splice(t2, 1);
       }
       async maybeCheckpointState() {
-        Date.now() - this.lastCheckpoint > this.checkpointInterval && await this.checkpointState();
+        Date.now() - this.lastCheckpoint > this.checkpointInterval && (await this.checkpointState());
       }
       async checkpointState() {
         let e = new TextEncoder().encode(JSON.stringify(this.state));
@@ -976,7 +976,7 @@ var init_opfs_ahp = __esm({
           let u2 = await h(this, F3).getFileHandle(l3.backingFilename), N2 = await u2.createSyncAccessHandle();
           h(this, b2).set(l3.backingFilename, u2), h(this, m3).set(l3.backingFilename, N2);
         } catch (u2) {
-          console.error("Error opening file handle for node", l3, u2);
+          console.error("Error opening file handle for node", l3.file, u2);
         }
         else for (let u2 of Object.values(l3.children)) a2.push(h3(u2));
       };
@@ -993,7 +993,7 @@ var init_opfs_ahp = __esm({
       try {
         t2();
       } catch (i3) {
-        throw h(this, y3).truncate(o4), i3;
+        throw (h(this, y3).truncate(o4), i3);
       }
     }, k3 = function(e) {
       let t2 = JSON.stringify(e), o4 = new TextEncoder().encode(`
@@ -1804,7 +1804,7 @@ var require_Reflect = __commonJS({
           var arraySentinel = [];
           var MapIterator = (
             /** @class */
-            (function() {
+            ((function() {
               function MapIterator2(keys, values, selector) {
                 this._index = 0;
                 this._keys = keys;
@@ -1849,11 +1849,11 @@ var require_Reflect = __commonJS({
                 return { value, done: true };
               };
               return MapIterator2;
-            })()
+            })())
           );
           var Map2 = (
             /** @class */
-            (function() {
+            ((function() {
               function Map3() {
                 this._keys = [];
                 this._values = [];
@@ -1952,7 +1952,7 @@ var require_Reflect = __commonJS({
                 return this._cacheIndex;
               };
               return Map3;
-            })()
+            })())
           );
           return Map2;
           function getKey(key, _3) {
@@ -1968,7 +1968,7 @@ var require_Reflect = __commonJS({
         function CreateSetPolyfill() {
           var Set2 = (
             /** @class */
-            (function() {
+            ((function() {
               function Set3() {
                 this._map = new _Map();
               }
@@ -2007,7 +2007,7 @@ var require_Reflect = __commonJS({
                 return this.keys();
               };
               return Set3;
-            })()
+            })())
           );
           return Set2;
         }
@@ -2017,7 +2017,7 @@ var require_Reflect = __commonJS({
           var rootKey = CreateUniqueKey();
           return (
             /** @class */
-            (function() {
+            ((function() {
               function WeakMap2() {
                 this._key = CreateUniqueKey();
               }
@@ -2058,7 +2058,7 @@ var require_Reflect = __commonJS({
                 this._key = CreateUniqueKey();
               };
               return WeakMap2;
-            })()
+            })())
           );
           function CreateUniqueKey() {
             var key;
@@ -2274,7 +2274,7 @@ function bn(e, t2, n3, r) {
         break;
       }
       case "commandComplete": {
-        u2 += gn(c2), i3.push({ ...a2, affectedRows: u2, ...r ? { blob: r } : {} }), a2 = { rows: [], fields: [] };
+        u2 += gn(c2), i3.push({ ...a2, affectedRows: u2, ...(r ? { blob: r } : {}) }), a2 = { rows: [], fields: [] };
         break;
       }
     }
@@ -2957,7 +2957,7 @@ var k2 = class {
     } catch (n3) {
       throw n3 instanceof C ? E({ e: n3, options: e, params: void 0, query: s4 }) : n3;
     } finally {
-      r.push(...await T(this, t, y2).call(this, k.sync(), e));
+      r.push(...(await T(this, t, y2).call(this, k.sync(), e)));
     }
     let o4 = r.find((n3) => n3.name === "parameterDescription"), i3 = r.find((n3) => n3.name === "rowDescription"), c2 = o4?.dataTypeIDs.map((n3) => ({ dataTypeID: n3, serializer: this.serializers[n3] })) ?? [], u2 = i3?.fields.map((n3) => ({ name: n3.name, dataTypeID: n3.dataTypeID, parser: this.parsers[n3.dataTypeID] })) ?? [];
     return { queryParams: c2, resultFields: u2 };
@@ -2979,7 +2979,7 @@ var k2 = class {
         let i3 = await s4(o4);
         return e || (e = true, await T(this, t, h2).call(this, "COMMIT")), x(this, p2, false), i3;
       } catch (i3) {
-        throw e || await T(this, t, h2).call(this, "ROLLBACK"), x(this, p2, false), i3;
+        throw (e || (await T(this, t, h2).call(this, "ROLLBACK")), x(this, p2, false), i3);
       }
     });
   }
@@ -3000,13 +3000,13 @@ T3 = /* @__PURE__ */ new WeakMap(), p2 = /* @__PURE__ */ new WeakMap(), t = /* @
         let Q3 = r?.serializers?.[D4] ?? this.serializers[D4];
         return Q3 ? Q3(b3) : b3.toString();
       });
-      o4 = [...c2, ...await T(this, t, y2).call(this, k.bind({ values: n3 }), r), ...await T(this, t, y2).call(this, k.describe({ type: "P" }), r), ...await T(this, t, y2).call(this, k.execute({}), r)];
+      o4 = [...c2, ...(await T(this, t, y2).call(this, k.bind({ values: n3 }), r)), ...(await T(this, t, y2).call(this, k.describe({ type: "P" }), r)), ...(await T(this, t, y2).call(this, k.execute({}), r))];
     } catch (c2) {
       throw c2 instanceof C ? E({ e: c2, options: r, params: e, query: s4 }) : c2;
     } finally {
-      o4.push(...await T(this, t, y2).call(this, k.sync(), r));
+      o4.push(...(await T(this, t, y2).call(this, k.sync(), r)));
     }
-    await this._cleanupBlob(), h(this, p2) || await this.syncToFs();
+    await this._cleanupBlob(), h(this, p2) || (await this.syncToFs());
     let i3 = await this._getWrittenBlob();
     return bn(o4, this.parsers, r, i3)[0];
   });
@@ -3019,9 +3019,9 @@ T3 = /* @__PURE__ */ new WeakMap(), p2 = /* @__PURE__ */ new WeakMap(), t = /* @
     } catch (i3) {
       throw i3 instanceof C ? E({ e: i3, options: e, params: void 0, query: s4 }) : i3;
     } finally {
-      r.push(...await T(this, t, y2).call(this, k.sync(), e));
+      r.push(...(await T(this, t, y2).call(this, k.sync(), e)));
     }
-    this._cleanupBlob(), h(this, p2) || await this.syncToFs();
+    this._cleanupBlob(), h(this, p2) || (await this.syncToFs());
     let o4 = await this._getWrittenBlob();
     return bn(r, this.parsers, e, o4);
   });
@@ -3243,7 +3243,7 @@ u();
 u();
 var ue2 = class extends ur {
   async init(t2, r) {
-    return this.pg = t2, { emscriptenOpts: { ...r, preRun: [...r.preRun || [], (s4) => {
+    return this.pg = t2, { emscriptenOpts: { ...r, preRun: [...(r.preRun || []), (s4) => {
       let o4 = s4.FS.filesystems.IDBFS;
       s4.FS.mkdir("/pglite"), s4.FS.mkdir(`/pglite/${this.dataDir}`), s4.FS.mount(o4, {}, `/pglite/${this.dataDir}`), s4.FS.symlink(`/pglite/${this.dataDir}`, C2);
     }] } };
@@ -3396,7 +3396,7 @@ var pt2 = (() => {
         var r = fs.readFileSync(e, t2 ? void 0 : "utf8");
         return r;
       }, !Module.thisProgram && process.argv.length > 1 && (thisProgram = process.argv[1].replace(/\\/g, "/")), arguments_ = process.argv.slice(2), quit_ = (e, t2) => {
-        throw process.exitCode = e, t2;
+        throw (process.exitCode = e, t2);
       };
     } else (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && (ENVIRONMENT_IS_WORKER ? scriptDirectory = self.location.href : typeof document < "u" && document.currentScript && (scriptDirectory = document.currentScript.src), _scriptName && (scriptDirectory = _scriptName), scriptDirectory.startsWith("blob:") ? scriptDirectory = "" : scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf("/") + 1), ENVIRONMENT_IS_WORKER && (readBinary = (e) => {
       var t2 = new XMLHttpRequest();
@@ -3472,7 +3472,7 @@ var pt2 = (() => {
     function abort(e) {
       Module.onAbort?.(e), e = "Aborted(" + e + ")", err(e), ABORT = true, e += ". Build with -sASSERTIONS for more info.";
       var t2 = new WebAssembly.RuntimeError(e);
-      throw readyPromiseReject(t2), t2;
+      throw (readyPromiseReject(t2), t2);
     }
     var dataURIPrefix = "data:application/octet-stream;base64,", isDataURI = (e) => e.startsWith(dataURIPrefix), isFileURI = (e) => e.startsWith("file://");
     function findWasmBinary() {
@@ -6132,7 +6132,7 @@ ${_3}`), 0;
     };
     __setitimer_js.sig = "iid";
     var __tzset_js = (e, t2, r, a2) => {
-      var s4 = (/* @__PURE__ */ new Date()).getFullYear(), o4 = new Date(s4, 0, 1), n3 = new Date(s4, 6, 1), _3 = o4.getTimezoneOffset(), l3 = n3.getTimezoneOffset(), p4 = Math.max(_3, l3);
+      var s4 = (/* @__PURE__ */ (new Date())).getFullYear(), o4 = new Date(s4, 0, 1), n3 = new Date(s4, 6, 1), _3 = o4.getTimezoneOffset(), l3 = n3.getTimezoneOffset(), p4 = Math.max(_3, l3);
       HEAPU32[e >> 2] = p4 * 60, HEAP32[t2 >> 2] = +(_3 != l3);
       var m4 = (u2) => {
         var f3 = u2 >= 0 ? "-" : "+", c2 = Math.abs(u2), w4 = String(Math.floor(c2 / 60)).padStart(2, "0"), x6 = String(c2 % 60).padStart(2, "0");
@@ -6944,7 +6944,7 @@ var L5 = class L6 extends k2 {
     typeof r == "string" ? a2 = { dataDir: r, ...a2 } : a2 = r, this.dataDir = a2.dataDir, a2.parsers !== void 0 && (this.parsers = { ...this.parsers, ...a2.parsers }), a2.serializers !== void 0 && (this.serializers = { ...this.serializers, ...a2.serializers }), a2?.debug !== void 0 && (this.debug = a2.debug), a2?.relaxedDurability !== void 0 && x(this, _e2, a2.relaxedDurability), x(this, fe2, a2.extensions ?? {}), this.waitReady = T(this, C4, Ve2).call(this, a2 ?? {});
   }
   static async create(r, a2) {
-    let s4 = typeof r == "string" ? { dataDir: r, ...a2 ?? {} } : r ?? {}, o4 = new L6(s4);
+    let s4 = typeof r == "string" ? { dataDir: r, ...(a2 ?? {}) } : r ?? {}, o4 = new L6(s4);
     return await o4.waitReady, o4;
   }
   get Module() {
@@ -6984,7 +6984,7 @@ var L5 = class L6 extends k2 {
   async _checkReady() {
     if (h(this, te2)) throw new Error("PGlite is closing");
     if (h(this, re2)) throw new Error("PGlite is closed");
-    h(this, ne2) || await this.waitReady;
+    h(this, ne2) || (await this.waitReady);
   }
   execProtocolRawSync(r) {
     let a2 = this.mod;
@@ -6992,14 +6992,14 @@ var L5 = class L6 extends k2 {
   }
   async execProtocolRaw(r, { syncToFs: a2 = true } = {}) {
     let s4 = this.execProtocolRawSync(r);
-    return a2 && await this.syncToFs(), s4;
+    return a2 && (await this.syncToFs()), s4;
   }
   async execProtocol(r, { syncToFs: a2 = true, throwOnError: s4 = true, onNotice: o4 } = {}) {
     x(this, Q2, s4), x(this, K2, o4), x(this, B, []), x(this, O4, null);
     let n3 = await this.execProtocolRaw(r, { syncToFs: a2 }), _3 = h(this, O4);
     x(this, Q2, false), x(this, K2, void 0), x(this, O4, null);
     let l3 = { messages: h(this, B), data: n3 };
-    if (x(this, B, []), s4 && _3) throw x(this, pe2, new ye()), _3;
+    if (x(this, B, []), s4 && _3) throw (x(this, pe2, new ye()), _3);
     return l3;
   }
   async execProtocolStream(r, { syncToFs: a2, throwOnError: s4 = true, onNotice: o4 } = {}) {
@@ -7007,7 +7007,7 @@ var L5 = class L6 extends k2 {
     let n3 = h(this, O4);
     x(this, Q2, false), x(this, K2, void 0), x(this, O4, null);
     let _3 = h(this, B);
-    if (x(this, B, []), s4 && n3) throw x(this, pe2, new ye()), n3;
+    if (x(this, B, []), s4 && n3) throw (x(this, pe2, new ye()), n3);
     return _3;
   }
   isInTransaction() {
@@ -7062,15 +7062,15 @@ ne2 = /* @__PURE__ */ new WeakMap(), te2 = /* @__PURE__ */ new WeakMap(), re2 = 
     let { dataDir: d2, fsType: g5 } = Ge2(r.dataDir);
     this.fs = await Ue2(d2, g5);
   }
-  let a2 = {}, s4 = [], o4 = [`PGDATA=${C2}`, `PREFIX=${Vr}`, `PGUSER=${r.username ?? "postgres"}`, `PGDATABASE=${r.database ?? "template1"}`, "MODE=REACT", "REPL=N", ...this.debug ? ["-d", this.debug.toString()] : []];
+  let a2 = {}, s4 = [], o4 = [`PGDATA=${C2}`, `PREFIX=${Vr}`, `PGUSER=${r.username ?? "postgres"}`, `PGDATABASE=${r.database ?? "template1"}`, "MODE=REACT", "REPL=N", ...(this.debug ? ["-d", this.debug.toString()] : [])];
   r.wasmModule || Rr();
   let n3 = r.fsBundle ? r.fsBundle.arrayBuffer() : Er(), _3;
   n3.then((d2) => {
     _3 = d2;
   });
-  let l3 = { WASM_PREFIX: Vr, arguments: o4, INITIAL_MEMORY: r.initialMemory, noExitRuntime: true, ...this.debug > 0 ? { print: console.info, printErr: console.error } : { print: () => {
+  let l3 = { WASM_PREFIX: Vr, arguments: o4, INITIAL_MEMORY: r.initialMemory, noExitRuntime: true, ...(this.debug > 0 ? { print: console.info, printErr: console.error } : { print: () => {
   }, printErr: () => {
-  } }, instantiateWasm: (d2, g5) => (Tr(d2, r.wasmModule).then(({ instance: u2, module: f3 }) => {
+  } }), instantiateWasm: (d2, g5) => (Tr(d2, r.wasmModule).then(({ instance: u2, module: f3 }) => {
     g5(u2, f3);
   }), {}), getPreloadedPackage: (d2, g5) => {
     if (d2 === "pglite.data") {
@@ -7113,7 +7113,7 @@ ne2 = /* @__PURE__ */ new WeakMap(), te2 = /* @__PURE__ */ new WeakMap(), re2 = 
     try {
       u2 = this.mod.HEAPU8.subarray(d2, d2 + g5);
     } catch (f3) {
-      throw console.error("error", f3), f3;
+      throw (console.error("error", f3), f3);
     }
     if (h(this, pe2).parse(u2, (f3) => {
       T(this, C4, Xe2).call(this, f3);
@@ -7184,7 +7184,7 @@ ne2 = /* @__PURE__ */ new WeakMap(), te2 = /* @__PURE__ */ new WeakMap(), re2 = 
   try {
     await n3.exec(`LISTEN ${r}`);
   } catch (_3) {
-    throw h(this, I2).get(o4).delete(a2), h(this, I2).get(o4)?.size === 0 && h(this, I2).delete(o4), _3;
+    throw (h(this, I2).get(o4).delete(a2), h(this, I2).get(o4)?.size === 0 && h(this, I2).delete(o4), _3);
   }
   return async (_3) => {
     await this.unlisten(o4, a2, _3);
@@ -7193,7 +7193,7 @@ ne2 = /* @__PURE__ */ new WeakMap(), te2 = /* @__PURE__ */ new WeakMap(), re2 = 
   let o4 = Nr(r), n3 = s4 ?? this, _3 = async () => {
     await n3.exec(`UNLISTEN ${r}`), h(this, I2).get(o4)?.size === 0 && h(this, I2).delete(o4);
   };
-  a2 ? (h(this, I2).get(o4)?.delete(a2), h(this, I2).get(o4)?.size === 0 && await _3()) : await _3();
+  a2 ? (h(this, I2).get(o4)?.delete(a2), h(this, I2).get(o4)?.size === 0 && (await _3())) : await _3();
 }, L5.DEFAULT_RECV_BUF_SIZE = 1 * 1024 * 1024, L5.MAX_BUFFER_SIZE = Math.pow(2, 30);
 var We2 = L5;
 u();
@@ -7677,7 +7677,7 @@ function getErrorMap() {
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
-  const fullPath = [...path, ...issueData.path || []];
+  const fullPath = [...path, ...(issueData.path || [])];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -9675,7 +9675,7 @@ var ZodObject = class _ZodObject extends ZodType {
     return new _ZodObject({
       ...this._def,
       unknownKeys: "strict",
-      ...message !== void 0 ? {
+      ...(message !== void 0 ? {
         errorMap: (issue, ctx) => {
           const defaultError = this._def.errorMap?.(issue, ctx).message ?? ctx.defaultError;
           if (issue.code === "unrecognized_keys")
@@ -9686,7 +9686,7 @@ var ZodObject = class _ZodObject extends ZodType {
             message: defaultError
           };
         }
-      } : {}
+      } : {})
     });
   }
   strip() {
@@ -11570,7 +11570,7 @@ var TransformationType;
 // node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/MetadataStorage.js
 var MetadataStorage = (
   /** @class */
-  (function() {
+  ((function() {
     function MetadataStorage2() {
       this._typeMetadatas = /* @__PURE__ */ new Map();
       this._transformMetadatas = /* @__PURE__ */ new Map();
@@ -11761,7 +11761,7 @@ var MetadataStorage = (
       return this._ancestorsMap.get(target);
     };
     return MetadataStorage2;
-  })()
+  })())
 );
 
 // node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/storage.js
@@ -11807,7 +11807,7 @@ function instantiateArrayType(arrayType2) {
 }
 var TransformOperationExecutor = (
   /** @class */
-  (function() {
+  ((function() {
     function TransformOperationExecutor2(transformationType, options) {
       this.transformationType = transformationType;
       this.options = options;
@@ -12183,7 +12183,7 @@ var TransformOperationExecutor = (
       });
     };
     return TransformOperationExecutor2;
-  })()
+  })())
 );
 
 // node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/constants/default-options.constant.js
@@ -12215,7 +12215,7 @@ var __assign = function() {
 };
 var ClassTransformer = (
   /** @class */
-  (function() {
+  ((function() {
     function ClassTransformer2() {
     }
     ClassTransformer2.prototype.instanceToPlain = function(object, options) {
@@ -12254,7 +12254,7 @@ var ClassTransformer = (
       return this.plainToInstance(cls, jsonObject, options);
     };
     return ClassTransformer2;
-  })()
+  })())
 );
 
 // node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/decorators/exclude.decorator.js
@@ -13171,21 +13171,21 @@ var DatasourceEntity = class extends Entity {
     const date = /* @__PURE__ */ new Date();
     const updatedDatasource = {
       ...datasource,
-      ...datasourceDTO.name && { name: datasourceDTO.name },
-      ...datasourceDTO.description && {
+      ...(datasourceDTO.name && { name: datasourceDTO.name }),
+      ...(datasourceDTO.description && {
         description: datasourceDTO.description
-      },
-      ...datasourceDTO.datasource_provider && {
+      }),
+      ...(datasourceDTO.datasource_provider && {
         datasource_provider: datasourceDTO.datasource_provider
-      },
-      ...datasourceDTO.datasource_driver && {
+      }),
+      ...(datasourceDTO.datasource_driver && {
         datasource_driver: datasourceDTO.datasource_driver
-      },
-      ...datasourceDTO.datasource_kind && {
+      }),
+      ...(datasourceDTO.datasource_kind && {
         datasource_kind: datasourceDTO.datasource_kind
-      },
-      ...datasourceDTO.config && { config: datasourceDTO.config },
-      ...datasourceDTO.updatedBy && { updatedBy: datasourceDTO.updatedBy },
+      }),
+      ...(datasourceDTO.config && { config: datasourceDTO.config }),
+      ...(datasourceDTO.updatedBy && { updatedBy: datasourceDTO.updatedBy }),
       updatedAt: date
     };
     return plainToClass(
@@ -13312,7 +13312,7 @@ var NotebookEntity = class extends Entity {
     const updatedNotebook = {
       ...notebook,
       ...restDTO,
-      ...cells !== void 0 && { cells },
+      ...(cells !== void 0 && { cells }),
       updatedAt: date
     };
     const transformed = plainToClass(NotebookEntity, updatedNotebook);
@@ -13430,13 +13430,13 @@ var OrganizationEntity = class extends Entity {
     const date = /* @__PURE__ */ new Date();
     const updatedOrganization = {
       ...organization,
-      ...organizationDTO.name && { name: organizationDTO.name },
-      ...organizationDTO.userId !== void 0 && {
+      ...(organizationDTO.name && { name: organizationDTO.name }),
+      ...(organizationDTO.userId !== void 0 && {
         userId: organizationDTO.userId
-      },
-      ...organizationDTO.updatedBy && {
+      }),
+      ...(organizationDTO.updatedBy && {
         updatedBy: organizationDTO.updatedBy
-      },
+      }),
       updatedAt: date
     };
     return plainToClass(
@@ -13510,10 +13510,10 @@ var ProjectEntity = class extends Entity {
     const date = /* @__PURE__ */ new Date();
     const updatedProject = {
       ...project,
-      ...projectDTO.name && { name: projectDTO.name },
-      ...projectDTO.description && { description: projectDTO.description },
-      ...projectDTO.status && { status: projectDTO.status },
-      ...projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy },
+      ...(projectDTO.name && { name: projectDTO.name }),
+      ...(projectDTO.description && { description: projectDTO.description }),
+      ...(projectDTO.status && { status: projectDTO.status }),
+      ...(projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy }),
       updatedAt: date
     };
     return plainToClass(ProjectEntity, ProjectSchema.parse(updatedProject));
@@ -13752,10 +13752,10 @@ var ConversationEntity = class extends Entity {
     const date = /* @__PURE__ */ new Date();
     const updatedConversation = {
       ...conversation,
-      ...conversationDTO.title && { title: conversationDTO.title },
-      ...conversationDTO.datasources && {
+      ...(conversationDTO.title && { title: conversationDTO.title }),
+      ...(conversationDTO.datasources && {
         datasources: conversationDTO.datasources
-      },
+      }),
       updatedAt: date,
       updatedBy: conversationDTO.updatedBy
     };
@@ -13878,8 +13878,8 @@ var MessageEntity = class extends Entity {
     const date = /* @__PURE__ */ new Date();
     const updatedMessage = {
       ...message,
-      ...messageDTO.content && { content: messageDTO.content },
-      ...messageDTO.metadata && { metadata: messageDTO.metadata },
+      ...(messageDTO.content && { content: messageDTO.content }),
+      ...(messageDTO.metadata && { metadata: messageDTO.metadata }),
       updatedAt: date,
       updatedBy: messageDTO.updatedBy
     };

@@ -14,7 +14,7 @@ export type ChartType = 'bar' | 'line' | 'pie';
 
 export interface ChartTypeSelection {
   chartType: ChartType;
-  reasoning: string;
+  reasoningText: string;
 }
 
 export interface ChartTypeCard {
@@ -81,12 +81,11 @@ export function ChartTypeSelector({
               AI Recommendation
             </h4>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              {selection.reasoning}
+              {selection.reasoningText}
             </p>
           </div>
         </div>
       </div>
-
       {/* Chart Type Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {CHART_TYPE_CARDS.map((card) => {

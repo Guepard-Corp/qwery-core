@@ -248,15 +248,13 @@ function extractTokenUsage(usage: unknown): {
   const usageObj = usage as Record<string, unknown>;
   const promptTokens =
     (typeof usageObj.inputTokens === 'number' ? usageObj.inputTokens : 0) ||
-    (typeof usageObj.promptTokens === 'number' ? usageObj.promptTokens : 0) ||
+    (typeof usageObj.inputTokens === 'number' ? usageObj.inputTokens : 0) ||
     (typeof usageObj.prompt_tokens === 'number' ? usageObj.prompt_tokens : 0) ||
     0;
 
   const completionTokens =
     (typeof usageObj.outputTokens === 'number' ? usageObj.outputTokens : 0) ||
-    (typeof usageObj.completionTokens === 'number'
-      ? usageObj.completionTokens
-      : 0) ||
+    (typeof usageObj.outputTokens === 'number' ? usageObj.outputTokens : 0) ||
     (typeof usageObj.completion_tokens === 'number'
       ? usageObj.completion_tokens
       : 0) ||
