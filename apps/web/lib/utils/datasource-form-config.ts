@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateDatasourceUrl } from './datasource-utils';
 
 import type {
   ConnectionFieldKind,
@@ -72,10 +73,10 @@ const DEFAULT_FIELD_LABELS: FieldLabels = {
 };
 
 const DEFAULT_INPUT_CONFIG: Partial<Record<DatasourceField, FieldInputConfig>> =
-  {
-    port: { type: 'text', inputMode: 'numeric', autoComplete: 'off' },
-    password: { type: 'password', autoComplete: 'new-password' },
-  };
+{
+  port: { type: 'text', inputMode: 'numeric', autoComplete: 'off' },
+  password: { type: 'password', autoComplete: 'new-password' },
+};
 
 type ProviderRule = {
   placeholders?: Partial<DatasourceFormPlaceholders>;
@@ -297,6 +298,15 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
     ),
     connectionFieldKind: 'sharedLink',
     docsUrl: 'https://support.google.com/docs/answer/2494822',
+    zodSchema: baseConfigSchema.refine(
+      (c) => {
+        const url = (c.sharedLink || c.url) as string | undefined;
+        if (!url) return false;
+        const { isValid } = validateDatasourceUrl('gsheet-csv', url);
+        return isValid;
+      },
+      { message: 'Provide a valid Google Sheets shared link' },
+    ),
   },
   'json-online': {
     ...credentialRule(
@@ -305,6 +315,28 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
       'Provide a JSON file URL',
     ),
     connectionFieldKind: 'fileUrl',
+    zodSchema: baseConfigSchema
+      .refine(
+        (c) => {
+          const url =
+            c.jsonUrl || c.url || c.connectionUrl || c.connectionString;
+          return !!url;
+        },
+        { message: 'Provide a JSON file URL' },
+      )
+      .refine(
+        (c) => {
+          const url =
+            (c.jsonUrl || c.url || c.connectionUrl || c.connectionString) as
+            | string
+            | undefined;
+          const { isValid } = validateDatasourceUrl('json-online', url);
+          return isValid;
+        },
+        {
+          message: 'Please enter a valid URL (must start with http:// or https://)',
+        },
+      ),
   },
   'parquet-online': {
     ...credentialRule(

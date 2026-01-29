@@ -25,6 +25,17 @@
         "name": "YouTube Data API v3",
         "description": "Query public YouTube video stats via API key",
         "icon": "media/YouTube_2024.svg",
+        "formConfig": {
+          "preset": "apiKey",
+          "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
+          "connectionFieldKind": "apiKey",
+          "showDetailsTab": false,
+          "showConnectionStringTab": true,
+          "placeholders": { "connectionString": "Your YouTube Data API key" },
+          "fieldLabels": { "connectionString": "API key" },
+          "normalizedKey": "apiKey",
+          "acceptedKeys": ["apiKey", "connectionUrl", "connectionString"]
+        },
         "schema": {
           "type": "object",
           "properties": {

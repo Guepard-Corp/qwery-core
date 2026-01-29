@@ -138,6 +138,7 @@ export function DatasourceSelector({
           type: 'single' as const,
           label: selected.name,
           icon,
+          provider: selected.datasource_provider,
         };
       }
     }
@@ -167,7 +168,10 @@ export function DatasourceSelector({
             <img
               src={displayInfo.icon}
               alt={displayInfo.label}
-              className="h-3.5 w-3.5 shrink-0 object-contain"
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 object-contain',
+                displayInfo.provider === 'json-online' && 'dark:invert',
+              )}
               onError={() => {
                 if (selectedDatasources[0]) {
                   handleImageError(selectedDatasources[0]);
@@ -276,7 +280,11 @@ export function DatasourceSelector({
                             <img
                               src={icon}
                               alt={datasource.name}
-                              className="mr-2 h-4 w-4 shrink-0 object-contain"
+                              className={cn(
+                                'mr-2 h-4 w-4 shrink-0 object-contain',
+                                datasource.datasource_provider === 'json-online' &&
+                                  'dark:invert',
+                              )}
                               onError={() => handleImageError(datasource.id)}
                             />
                           ) : (

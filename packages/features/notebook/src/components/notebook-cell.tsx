@@ -570,7 +570,10 @@ function NotebookCellComponent({
           <img
             src={ds.logo}
             alt={`${displayName} logo`}
-            className="h-4 w-4 flex-shrink-0 rounded object-contain"
+            className={cn(
+              'h-4 w-4 flex-shrink-0 rounded object-contain',
+              ds.id === 'json-online' && 'dark:invert',
+            )}
           />
         ) : (
           <span className="bg-muted inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase">

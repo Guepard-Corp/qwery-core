@@ -293,6 +293,7 @@ async function main() {
         schema: ds.schema,
         packageName: pkg.name,
         drivers: driverDescriptors,
+        formConfig: ds.formConfig ?? null,
       });
     }
   }

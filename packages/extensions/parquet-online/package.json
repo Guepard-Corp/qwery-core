@@ -23,6 +23,17 @@
         "name": "Parquet (Online)",
         "description": "Connect to public Parquet files via URL",
         "icon": "media/parquet.svg",
+        "formConfig": {
+          "preset": "fileUrl",
+          "connectionFieldKind": "fileUrl",
+          "showDetailsTab": false,
+          "showConnectionStringTab": true,
+          "placeholders": { "connectionString": "https://example.com/data.parquet" },
+          "fieldLabels": { "connectionString": "Parquet file URL" },
+          "normalizedKey": "url",
+          "acceptedKeys": ["url", "connectionUrl"],
+          "supportsPreview": true
+        },
         "schema": {
           "type": "object",
           "properties": {

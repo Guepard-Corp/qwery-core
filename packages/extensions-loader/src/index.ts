@@ -216,6 +216,7 @@ export async function getExtension(
     tags: [],
     scope: ds.scope,
     schema: ds.schema,
+    formConfig: ds.formConfig ?? null,
     getDriver: async (instanceName: string, config: unknown) => {
       const driver = pickDriver(drivers, config);
       if (!driver) {
@@ -303,6 +304,7 @@ export async function getExtensionMetadata(
     tags: [],
     scope: ds.scope ?? ExtensionScope.DATASOURCE,
     schema: ds.schema,
+    formConfig: ds.formConfig ?? null,
   };
 }
 
@@ -319,6 +321,7 @@ export async function getAllExtensionMetadata(): Promise<ExtensionMetadata[]> {
     tags: [],
     scope: ds.scope ?? ExtensionScope.DATASOURCE,
     schema: ds.schema,
+    formConfig: ds.formConfig ?? null,
   }));
 }
 

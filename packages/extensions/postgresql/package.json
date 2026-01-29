@@ -23,6 +23,18 @@
         "name": "PostgreSQL",
         "description": "Connect to PostgreSQL databases",
         "icon": "media/postgresql.svg",
+        "formConfig": {
+          "preset": "sql",
+          "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html",
+          "defaultHost": "localhost",
+          "defaultPort": "5432",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": true,
+          "showConnectionStringTab": true,
+          "showSslToggle": true,
+          "placeholders": { "port": "5432", "connectionString": "postgresql://user:pass@host:5432/db" },
+          "fieldLabels": { "connectionString": "Connection string" }
+        },
         "schema": {
           "type": "object",
           "oneOf": [
@@ -95,6 +107,22 @@
         "name": "Supabase",
         "description": "Connect to Supabase databases",
         "icon": "media/supabase-logo-wordmark--dark.svg",
+        "formConfig": {
+          "preset": "sql",
+          "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres",
+          "defaultHost": "db.xxx.supabase.co",
+          "defaultPort": "5432",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": true,
+          "showConnectionStringTab": true,
+          "showSslToggle": true,
+          "placeholders": {
+            "host": "db.xxx.supabase.co",
+            "port": "5432",
+            "connectionString": "postgresql://postgres.[ref]:[password]@db.xxx.supabase.co:5432/postgres"
+          },
+          "fieldLabels": { "connectionString": "Connection string" }
+        },
         "schema": {
           "type": "object",
           "oneOf": [
@@ -167,6 +195,22 @@
         "name": "Neon",
         "description": "Connect to Neon databases",
         "icon": "media/neon-logo-dark-color.svg",
+        "formConfig": {
+          "preset": "sql",
+          "docsUrl": "https://neon.tech/docs/connect/connect-intro",
+          "defaultHost": "ep-xxx.region.aws.neon.tech",
+          "defaultPort": "5432",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": true,
+          "showConnectionStringTab": true,
+          "showSslToggle": true,
+          "placeholders": {
+            "host": "ep-xxx.region.aws.neon.tech",
+            "port": "5432",
+            "connectionString": "postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require"
+          },
+          "fieldLabels": { "connectionString": "Connection string" }
+        },
         "schema": {
           "type": "object",
           "oneOf": [
