@@ -9980,12 +9980,12 @@ function extractConnectionUrl(config, providerId) {
 
 // packages/extensions/clickhouse-web/dist/driver.js
 var ConfigSchema = external_exports.object({
-  connectionUrl: external_exports.string().url().optional(),
+  connectionUrl: external_exports.string().url().describe("secret:true").optional(),
   host: external_exports.string().optional(),
   port: external_exports.number().int().min(1).max(65535).optional(),
   username: external_exports.string().optional(),
   user: external_exports.string().optional(),
-  password: external_exports.string().optional(),
+  password: external_exports.string().describe("secret:true").optional(),
   database: external_exports.string().optional()
 }).refine((data) => data.connectionUrl || data.host, {
   message: "Either connectionUrl or host must be provided"
