@@ -312,10 +312,10 @@ export function DatasourceConnectForm({
       </Button>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
-          variant="secondary"
+          variant="outline"
           onClick={handleTestConnection}
           disabled={isPending || !isFormValid || isConnecting}
-          className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold border-0 shadow-sm transition-all"
+          className="bg-white hover:bg-gray-50 text-black font-semibold border border-border shadow-sm transition-all"
         >
           {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
           Test Connection
@@ -325,7 +325,7 @@ export function DatasourceConnectForm({
           disabled={
             isConnecting || isPending || !isFormValid || isTestConnectionLoading
           }
-          className="bg-primary text-primary-foreground shadow-primary/20 shadow-lg"
+          className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold border-0 shadow-lg transition-all"
         >
           {isConnecting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
