@@ -37,7 +37,9 @@
             "password": "—",
             "connectionString": "pglite://:memory: or indexeddb://dbname"
           },
-          "fieldLabels": { "connectionString": "Database URI" }
+          "fieldLabels": {
+            "connectionString": "Database URI"
+          }
         },
         "schema": {
           "type": "object",

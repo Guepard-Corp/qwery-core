@@ -28,10 +28,17 @@
           "connectionFieldKind": "fileUrl",
           "showDetailsTab": false,
           "showConnectionStringTab": true,
-          "placeholders": { "connectionString": "https://example.com/data.parquet" },
-          "fieldLabels": { "connectionString": "Parquet file URL" },
+          "placeholders": {
+            "connectionString": "https://example.com/data.parquet"
+          },
+          "fieldLabels": {
+            "connectionString": "Parquet file URL"
+          },
           "normalizedKey": "url",
-          "acceptedKeys": ["url", "connectionUrl"],
+          "acceptedKeys": [
+            "url",
+            "connectionUrl"
+          ],
           "supportsPreview": true
         },
         "schema": {

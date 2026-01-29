@@ -31,10 +31,18 @@
           "connectionFieldKind": "apiKey",
           "showDetailsTab": false,
           "showConnectionStringTab": true,
-          "placeholders": { "connectionString": "Your YouTube Data API key" },
-          "fieldLabels": { "connectionString": "API key" },
+          "placeholders": {
+            "connectionString": "Your YouTube Data API key"
+          },
+          "fieldLabels": {
+            "connectionString": "API key"
+          },
           "normalizedKey": "apiKey",
-          "acceptedKeys": ["apiKey", "connectionUrl", "connectionString"]
+          "acceptedKeys": [
+            "apiKey",
+            "connectionUrl",
+            "connectionString"
+          ]
         },
         "schema": {
           "type": "object",

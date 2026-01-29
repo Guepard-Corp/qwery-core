@@ -32,8 +32,13 @@
           "showDetailsTab": true,
           "showConnectionStringTab": true,
           "showSslToggle": true,
-          "placeholders": { "port": "5432", "connectionString": "postgresql://user:pass@host:5432/db" },
-          "fieldLabels": { "connectionString": "Connection string" }
+          "placeholders": {
+            "port": "5432",
+            "connectionString": "postgresql://user:pass@host:5432/db"
+          },
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
         },
         "schema": {
           "type": "object",
@@ -121,7 +126,9 @@
             "port": "5432",
             "connectionString": "postgresql://postgres.[ref]:[password]@db.xxx.supabase.co:5432/postgres"
           },
-          "fieldLabels": { "connectionString": "Connection string" }
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
         },
         "schema": {
           "type": "object",
@@ -209,7 +216,9 @@
             "port": "5432",
             "connectionString": "postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require"
           },
-          "fieldLabels": { "connectionString": "Connection string" }
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
         },
         "schema": {
           "type": "object",

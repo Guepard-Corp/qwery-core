@@ -37,7 +37,9 @@
             "password": "—",
             "connectionString": "duckdb://path/to/file.duckdb or :memory:"
           },
-          "fieldLabels": { "connectionString": "Database path or connection string" }
+          "fieldLabels": {
+            "connectionString": "Database path or connection string"
+          }
         },
         "schema": {
           "type": "object",

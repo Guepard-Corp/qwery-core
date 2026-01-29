@@ -29,10 +29,17 @@
           "connectionFieldKind": "sharedLink",
           "showDetailsTab": false,
           "showConnectionStringTab": true,
-          "placeholders": { "connectionString": "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing" },
-          "fieldLabels": { "connectionString": "Shared link" },
+          "placeholders": {
+            "connectionString": "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
+          },
+          "fieldLabels": {
+            "connectionString": "Shared link"
+          },
           "normalizedKey": "sharedLink",
-          "acceptedKeys": ["sharedLink", "url"],
+          "acceptedKeys": [
+            "sharedLink",
+            "url"
+          ],
           "supportsPreview": true
         },
         "schema": {

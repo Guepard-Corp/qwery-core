@@ -38,7 +38,9 @@
             "username": "default",
             "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
           },
-          "fieldLabels": { "connectionString": "Connection string" }
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
         },
         "schema": {
           "type": "object",

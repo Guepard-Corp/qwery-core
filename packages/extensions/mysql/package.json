@@ -32,8 +32,13 @@
           "showDetailsTab": true,
           "showConnectionStringTab": true,
           "showSslToggle": true,
-          "placeholders": { "port": "3306", "connectionString": "mysql://user:pass@host:3306/db" },
-          "fieldLabels": { "connectionString": "Connection string" }
+          "placeholders": {
+            "port": "3306",
+            "connectionString": "mysql://user:pass@host:3306/db"
+          },
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
         },
         "schema": {
           "type": "object",
