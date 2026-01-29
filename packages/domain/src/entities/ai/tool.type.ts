@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export type Tool<TName extends string, TInput extends ToolInput, TOutput> = {
   name: TName;

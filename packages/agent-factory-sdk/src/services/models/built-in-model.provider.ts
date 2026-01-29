@@ -1,4 +1,4 @@
-import { builtInAI } from '@built-in-ai/core';
+import { browserAI } from '@browser-ai/core';
 import { LanguageModel } from 'ai';
 
 type ModelProvider = {
@@ -13,7 +13,7 @@ export function createBuiltInModelProvider(
   return {
     resolveModel: (_modelName) => {
       // Built-in AI doesn't use model names, it uses the browser's built-in model
-      return builtInAI();
+      return browserAI();
     },
   };
 }

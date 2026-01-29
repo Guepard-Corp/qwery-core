@@ -1,5 +1,5 @@
 import { registerExtension, ExtensionScope } from '@qwery/extensions-sdk';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { PostgresDatasourceDriver } from './postgres-driver';
 
 let registered = false;

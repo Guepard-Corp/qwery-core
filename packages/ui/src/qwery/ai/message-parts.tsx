@@ -731,7 +731,7 @@ export function ToolPart({
     // Handle selectChartType tool with ChartTypeSelector
     if (part.type === 'tool-selectChartType' && part.output) {
       const output = part.output as ChartTypeSelection | null;
-      if (output?.chartType && output?.reasoning) {
+      if (output?.chartType && output?.reasoningText) {
         return <ChartTypeSelector selection={output} />;
       }
     }

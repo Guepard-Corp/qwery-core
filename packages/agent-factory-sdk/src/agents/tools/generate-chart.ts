@@ -31,7 +31,7 @@ export async function selectChartType(
   sqlQuery: string,
   userInput: string,
   businessContext?: BusinessContext | null,
-): Promise<{ chartType: ChartType; reasoning: string }> {
+): Promise<{ chartType: ChartType; reasoningText: string }> {
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
@@ -84,7 +84,7 @@ export async function selectChartType(
     const fallbackType = supportedTypes[0] || 'bar';
     return {
       chartType: fallbackType,
-      reasoning: `Failed to analyze chart type, defaulting to ${fallbackType} chart`,
+      reasoningText: `Failed to analyze chart type, defaulting to ${fallbackType} chart`,
     };
   }
 }

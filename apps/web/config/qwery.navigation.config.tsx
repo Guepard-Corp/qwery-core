@@ -1,5 +1,5 @@
 import { Home } from 'lucide-react';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import { NavigationConfigSchema } from '@qwery/ui/navigation-schema';
 

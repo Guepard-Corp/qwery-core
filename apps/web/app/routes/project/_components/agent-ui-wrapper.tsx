@@ -94,6 +94,21 @@ const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
       totalTokens: aggregated.totalTokens,
       reasoningTokens: aggregated.reasoningTokens,
       cachedInputTokens: aggregated.cachedInputTokens,
+      inputTokenDetails: {
+        noCacheTokens: Math.max(
+          0,
+          aggregated.inputTokens - aggregated.cachedInputTokens,
+        ),
+        cacheReadTokens: aggregated.cachedInputTokens,
+        cacheWriteTokens: undefined,
+      },
+      outputTokenDetails: {
+        textTokens: Math.max(
+          0,
+          aggregated.outputTokens - aggregated.reasoningTokens,
+        ),
+        reasoningTokens: aggregated.reasoningTokens,
+      },
     },
   };
 };

@@ -1,5 +1,5 @@
 import * as duckdb from '@duckdb/node-api';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type {
   DriverContext,

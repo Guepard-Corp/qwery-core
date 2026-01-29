@@ -20,7 +20,7 @@
     "@qwery/prettier-config": "workspace:*",
     "@qwery/tailwind-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
-    "@react-router/node": "^7.10.1",
+    "@react-router/node": "^7.13.0",
     "@types/react": "catalog:",
     "eslint": "^9.39.0",
     "react": "catalog:",

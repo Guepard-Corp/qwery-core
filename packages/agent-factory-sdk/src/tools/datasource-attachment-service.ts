@@ -54,6 +54,8 @@ export class DatasourceAttachmentService {
     // Find appropriate strategy
     let strategy = this.strategies.find((s) => s.canHandle(provider));
 
+    console.log('strategy', strategy);
+
     // For foreign databases, check if provider-registry can handle it
     if (!strategy || strategy instanceof ForeignDatabaseAttachmentStrategy) {
       const mapping = await getProviderMapping(provider);

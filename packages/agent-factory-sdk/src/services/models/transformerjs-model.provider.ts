@@ -1,4 +1,4 @@
-import { transformersJS } from '@built-in-ai/transformers-js';
+import { transformersJS } from '@browser-ai/transformers-js';
 import { LanguageModel } from 'ai';
 
 const MODEL_MAPPING: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const RouteMatchingEnd = z
   .union([z.boolean(), z.function().args(z.string()).returns(z.boolean())])

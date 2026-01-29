@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
   Experimental_Agent as Agent,
   convertToModelMessages,
@@ -138,7 +138,7 @@ export const readDataAgent = async (
 
   const result = new Agent({
     model: await resolveModel(model),
-    system: agentPrompt,
+    instructions: agentPrompt,
     tools: {
       testConnection: tool({
         description:
@@ -1193,18 +1193,20 @@ export const readDataAgent = async (
       }),
     },
     stopWhen: stepCountIs(20),
-  });
-
-  return result.stream({
-    messages: convertToModelMessages(await validateUIMessages({ messages })),
     providerOptions: {
       openai: {
-        reasoningSummary: 'auto', // 'auto' for condensed or 'detailed' for comprehensive
+        reasoningSummary: 'auto',
         reasoningEffort: 'medium',
         reasoningDetailedSummary: true,
         reasoningDetailedSummaryLength: 'long',
       },
     },
+  });
+
+  return result.stream({
+    messages: await convertToModelMessages(
+      await validateUIMessages({ messages }),
+    ),
   });
 };
 

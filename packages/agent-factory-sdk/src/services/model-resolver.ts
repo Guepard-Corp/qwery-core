@@ -96,9 +96,18 @@ async function createProvider(
         defaultModel: getEnv('WEBLLM_MODEL') ?? modelName,
       });
     }
+    case 'anthropic': {
+      const { createAnthropicModelProvider } = await import(
+        './models/anthropic-model.provider'
+      );
+      return createAnthropicModelProvider({
+        apiKey: getEnv('ANTHROPIC_API_KEY'),
+        baseURL: getEnv('ANTHROPIC_BASE_URL'),
+      });
+    }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, anthropic.`,
       );
   }
 }
@@ -128,6 +137,7 @@ export async function resolveModel(
  * - Ollama: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "deepseek-r1:8b")
  * - WebLLM: WEBLLM_MODEL or VITE_WEBLLM_MODEL (defaults to "Llama-3.1-8B-Instruct-q4f32_1-MLC")
  * - Transformer: TRANSFORMER_MODEL or VITE_TRANSFORMER_MODEL (defaults to "SmolLM2-360M-Instruct")
+ * - Anthropic: ANTHROPIC_MODEL or VITE_ANTHROPIC_MODEL (defaults to "claude-3.5-sonnet")
  * - Browser: "built-in"
  */
 export function getDefaultModel(): string {
@@ -163,6 +173,12 @@ export function getDefaultModel(): string {
       break;
     case 'browser':
       modelName = 'built-in';
+      break;
+    case 'anthropic':
+      modelName =
+        getEnv('ANTHROPIC_MODEL') ||
+        getEnv('VITE_ANTHROPIC_MODEL') ||
+        'claude-3.5-sonnet';
       break;
     default:
       modelName =

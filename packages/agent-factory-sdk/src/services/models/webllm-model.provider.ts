@@ -1,4 +1,4 @@
-import { webLLM } from '@built-in-ai/web-llm';
+import { webLLM } from '@browser-ai/web-llm';
 import { LanguageModel } from 'ai';
 
 type ModelProvider = {

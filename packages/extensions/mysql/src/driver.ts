@@ -1,5 +1,5 @@
 import { createConnection, type Connection } from 'mysql2/promise';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 import type {
   DriverContext,

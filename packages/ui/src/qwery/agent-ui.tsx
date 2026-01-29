@@ -26,7 +26,7 @@ import {
   usePromptInputController,
 } from '../ai-elements/prompt-input';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useChat } from '@ai-sdk/react';
+import { useChat, type UIMessage as AiSdkUIMessage } from '@ai-sdk/react';
 import { useAgentStatus } from './ai/agent-status-context';
 import { useCompletionSound } from './ai/utils/notification-sound';
 import {
@@ -96,6 +96,13 @@ export interface QweryAgentUIProps {
   };
   conversationSlug?: string;
 }
+
+type UseChatTransport = NonNullable<
+  Extract<
+    NonNullable<Parameters<typeof useChat>[0]>,
+    { transport?: unknown }
+  >['transport']
+>;
 
 function QweryAgentUIContent(props: QweryAgentUIProps) {
   const {
@@ -174,17 +181,19 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   );
 
   const {
-    messages: chatMessages,
+    messages: chatMessagesAiSdk,
     sendMessage,
     status,
     regenerate,
     stop,
     setMessages,
-  } = useChat({
-    messages: initialMessages,
+  } = useChat<AiSdkUIMessage>({
+    messages: initialMessages as unknown as AiSdkUIMessage[] | undefined,
     experimental_throttle: 100,
-    transport: transportInstance,
+    transport: transportInstance as unknown as UseChatTransport,
   });
+
+  const chatMessages = chatMessagesAiSdk as unknown as UIMessage[];
 
   // Play notification sound when agent response completes
   useCompletionSound(status);

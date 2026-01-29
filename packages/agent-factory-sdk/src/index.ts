@@ -17,11 +17,16 @@ export {
   validateUIMessages,
 } from 'ai';
 export { createAzure } from '@ai-sdk/azure';
+export { createAnthropic } from '@ai-sdk/anthropic';
 
 const baseModels = [
   {
     name: 'GPT-5 Mini',
     value: 'azure/gpt-5-mini',
+  },
+  {
+    name: 'Anthropic Claude (4.5 Sonnet)',
+    value: 'anthropic/claude-sonnet-4-5-20250929',
   },
   {
     name: 'DeepSeek R1 (8B)',
