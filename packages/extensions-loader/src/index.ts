@@ -61,8 +61,6 @@ const driverImports = new Map<string, DriverImportFn>([
     () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
   ],
 
-
-
   // PostgreSQL (used by postgresql, postgresql-supabase, postgresql-neon)
   [
     'postgresql.default',
