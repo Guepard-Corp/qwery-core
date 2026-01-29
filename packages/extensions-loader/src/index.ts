@@ -61,6 +61,9 @@ const driverImports = new Map<string, DriverImportFn>([
     () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
   ],
 
+  // S3 Parquet
+  ['s3.duckdb', () => import('@qwery/extension-s3') as Promise<DriverModule>],
+
   // PostgreSQL (used by postgresql, postgresql-supabase, postgresql-neon)
   [
     'postgresql.default',

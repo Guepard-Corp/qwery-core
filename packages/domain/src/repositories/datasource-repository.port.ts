@@ -8,4 +8,11 @@ export abstract class IDatasourceRepository extends RepositoryPort<
   public abstract findByProjectId(
     projectId: string,
   ): Promise<Datasource[] | null>;
+
+  /**
+   * Reveals (decrypts/retrieves) all secrets within a datasource configuration.
+   */
+  public abstract revealSecrets(
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
 }

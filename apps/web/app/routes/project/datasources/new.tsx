@@ -188,6 +188,16 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       if (!(config.url || config.connectionUrl)) {
         return 'Please provide a Parquet file URL (url or connectionUrl)';
       }
+    } else if (provider === 's3') {
+      if (!config.bucket) {
+        return 'Please provide an S3 bucket name';
+      }
+      if (!config.region) {
+        return 'Please provide an S3 region';
+      }
+      if (!config.aws_access_key_id || !config.aws_secret_access_key) {
+        return 'Please provide AWS access key ID and secret access key';
+      }
     } else if (
       provider !== 'duckdb' &&
       provider !== 'duckdb-wasm' &&
@@ -213,6 +223,31 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     }
     if (provider === 'parquet-online') {
       return { url: config.url || config.connectionUrl };
+    }
+    if (provider === 's3') {
+      const normalized: Record<string, unknown> = {
+        aws_access_key_id: config.aws_access_key_id,
+        aws_secret_access_key: config.aws_secret_access_key,
+        region: config.region,
+        endpoint_url: config.endpoint_url,
+        bucket: config.bucket,
+        prefix: config.prefix,
+        includes: config.includes,
+        excludes: config.excludes,
+      };
+
+      Object.keys(normalized).forEach((key) => {
+        const value = normalized[key];
+        if (
+          value === '' ||
+          value === undefined ||
+          (Array.isArray(value) && value.length === 0)
+        ) {
+          delete normalized[key];
+        }
+      });
+
+      return normalized;
     }
     if (
       provider === 'duckdb' ||
@@ -250,6 +285,14 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     }
     if (provider === 'parquet-online') {
       return !!(values.url || values.connectionUrl);
+    }
+    if (provider === 's3') {
+      return !!(
+        values.bucket &&
+        values.region &&
+        values.aws_access_key_id &&
+        values.aws_secret_access_key
+      );
     }
     if (
       provider === 'duckdb' ||

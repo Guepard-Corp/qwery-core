@@ -48,7 +48,7 @@
                 },
                 "password": {
                   "type": "string",
-                  "description": "MySQL password",
+                  "description": "MySQL password secret:true",
                   "format": "password"
                 },
                 "database": {
@@ -70,7 +70,7 @@
               "properties": {
                 "connectionUrl": {
                   "type": "string",
-                  "description": "MySQL connection string (mysql://user:pass@host:port/database)",
+                  "description": "MySQL connection string (mysql://user:pass@host:port/database) secret:true",
                   "format": "uri"
                 }
               },

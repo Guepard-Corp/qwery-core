@@ -2,7 +2,10 @@
   "extends": "../../tooling/typescript/base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "paths": {
+      "@qwery/extension-s3": ["../extensions/s3/dist/driver.d.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

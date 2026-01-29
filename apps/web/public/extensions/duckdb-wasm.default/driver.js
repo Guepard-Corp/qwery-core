@@ -19827,12 +19827,27 @@ var UserSchema = external_exports.object({
 });
 
 // packages/domain/src/entities/playground.type.ts
+var PlaygroundDatasourceSchema = DatasourceSchema.omit({
+  id: true,
+  projectId: true,
+  slug: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  isPublic: true,
+  remixedFrom: true
+}).extend({
+  datasource_kind: external_exports.nativeEnum(DatasourceKind).describe("The kind of the datasource")
+});
 var PlaygroundSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the playground"),
+  id: external_exports.string().describe("The unique identifier for the playground"),
   logo: external_exports.string().describe("The logo of the playground"),
   name: external_exports.string().min(1).max(255).describe("The name of the playground"),
   description: external_exports.string().min(1).max(1024).describe("The description of the playground"),
-  datasource: DatasourceSchema.describe("The datasource for the playground")
+  datasource: PlaygroundDatasourceSchema.describe(
+    "The datasource template for the playground"
+  )
 });
 
 // packages/domain/src/entities/template.type.ts
@@ -20907,6 +20922,31 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
+// packages/extensions-sdk/src/timeout-utils.ts
+var DEFAULT_CONNECTION_TEST_TIMEOUT_MS = 3e4;
+async function withTimeout(promise, timeoutMs, errorMessage) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_2, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(errorMessage ?? `Operation timed out after ${timeoutMs}ms`)
+      );
+    }, timeoutMs);
+  });
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    return result;
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    throw error;
+  }
+}
+
 // packages/extensions/duckdb-wasm/dist/driver.js
 var ConfigSchema = external_exports.object({
   database: external_exports.string().default("playground").describe("Database name")
@@ -20934,9 +20974,11 @@ function makeDuckDBWasmDriver(context) {
   return {
     async testConnection(config) {
       const parsed = ConfigSchema.parse(config);
-      const instance8 = await getInstance(parsed);
-      await instance8.connection.query("SELECT 1");
-      context.logger?.info?.("duckdb-wasm: testConnection ok");
+      await withTimeout((async () => {
+        const instance8 = await getInstance(parsed);
+        await instance8.connection.query("SELECT 1");
+        context.logger?.info?.("duckdb-wasm: testConnection ok");
+      })(), DEFAULT_CONNECTION_TEST_TIMEOUT_MS, "DuckDB WASM connection test timed out");
     },
     async metadata(config) {
       const parsed = ConfigSchema.parse(config);

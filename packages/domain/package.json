@@ -20,7 +20,8 @@
     "./enums": "./src/enums/index.ts",
     "./usecases": "./src/usecases/index.ts",
     "./protocol": "./src/protocol/index.ts",
-    "./ports": "./src/ports/index.ts"
+    "./ports": "./src/ports/index.ts",
+    "./utils": "./src/utils/index.ts"
   },
   "dependencies": {
     "class-transformer": "^0.5.1",

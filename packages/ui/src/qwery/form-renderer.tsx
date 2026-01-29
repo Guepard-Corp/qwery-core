@@ -10,6 +10,7 @@ import type {
 import { z } from 'zod/v3';
 
 import { FieldGroup } from '@qwery/ui/field';
+import { Button } from '@qwery/ui/button';
 import {
   Form,
   FormControl,
@@ -128,7 +129,7 @@ function extractDefaultsFromSchema(
 
     // Check if it's a ZodObject
     const finalDef = (
-      currentSchema as { _def?: { typeName?: string; [key: string]: unknown } }
+      currentSchema as { _def?: { typeName?: string;[key: string]: unknown } }
     )._def;
     if (finalDef?.typeName === 'ZodObject') {
       const shapeFunction = (finalDef as { shape?: unknown })?.shape;
@@ -282,7 +283,12 @@ function renderField(
   // String
   if (isSchemaType(unwrapped, 'ZodString')) {
     const checks = getStringChecks(unwrapped);
-    const inputType = checks.email ? 'email' : 'text';
+    const isSecret =
+      (description &&
+        (description === 'secret:true' ||
+          description.includes('secret:true'))) ||
+      (unwrapped._def as any).format === 'password';
+    const inputType = isSecret ? 'password' : checks.email ? 'email' : 'text';
     const isLongText = checks.max && checks.max > 200;
 
     return (
@@ -293,20 +299,48 @@ function renderField(
           field,
         }: {
           field: ControllerRenderProps<FieldValues, FieldPath<FieldValues>>;
-        }) => (
-          <FormItem>
-            <FormLabel>{name}</FormLabel>
-            <FormControl>
-              {isLongText ? (
-                <Textarea {...field} placeholder={placeholder} rows={4} />
-              ) : (
-                <Input {...field} type={inputType} placeholder={placeholder} />
-              )}
-            </FormControl>
-            {description && <FormDescription>{description}</FormDescription>}
-            <FormMessage />
-          </FormItem>
-        )}
+        }) => {
+          const isProtected =
+            typeof field.value === 'string' &&
+            (field.value.startsWith('enc:') || field.value.startsWith('vault:'));
+
+          return (
+            <FormItem>
+              <FormLabel>{name}</FormLabel>
+              <FormControl>
+                {isLongText ? (
+                  <Textarea {...field} placeholder={placeholder} rows={4} />
+                ) : isSecret && isProtected ? (
+                  <div className="relative flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value="••••••••••••"
+                      type="text"
+                      className="bg-muted/50 flex-1 cursor-default opacity-80 font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 py-0 px-3"
+                      onClick={() => field.onChange('')}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <Input
+                    {...field}
+                    type={inputType}
+                    placeholder={placeholder}
+                  />
+                )}
+              </FormControl>
+              {description && <FormDescription>{description}</FormDescription>}
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
     );
   }
@@ -814,7 +848,7 @@ export function FormRenderer<T extends ZodSchemaType>({
 
   // Check if it's a ZodObject or ZodUnion
   const finalDef = (
-    currentSchema as { _def?: { typeName?: string; [key: string]: unknown } }
+    currentSchema as { _def?: { typeName?: string;[key: string]: unknown } }
   )._def;
   const isZodObject = finalDef?.typeName === 'ZodObject';
   const isZodUnion = finalDef?.typeName === 'ZodUnion';
