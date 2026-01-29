@@ -76,9 +76,13 @@ export async function action({ request }: { request: Request }) {
     }
 
     // Reveal secrets before passing to driver
-    const { createRepositories } = await import('~/lib/repositories/repositories-factory');
+    const { createRepositories } = await import(
+      '~/lib/repositories/repositories-factory'
+    );
     const repositories = await createRepositories();
-    const revealedConfig = await repositories.datasource.revealSecrets(config as Record<string, unknown>);
+    const revealedConfig = await repositories.datasource.revealSecrets(
+      config as Record<string, unknown>,
+    );
 
     const instance = await getDriverInstance(driver as DiscoveredDriver);
 

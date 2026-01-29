@@ -39,4 +39,12 @@ export class DatasourceRepository extends IDatasourceRepository {
   async delete(id: string): Promise<boolean> {
     return apiDelete(`/datasources/${id}`);
   }
+
+  async revealSecrets(
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    // Client-side repository does not reveal secrets.
+    // Secrets are revealed on the server before execution or via specialized API.
+    return config;
+  }
 }

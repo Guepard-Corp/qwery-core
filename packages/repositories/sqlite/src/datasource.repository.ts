@@ -3,7 +3,10 @@ import type Database from 'better-sqlite3';
 
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import type { Datasource } from '@qwery/domain/entities';
-import { IDatasourceRepository, ISecretVault } from '@qwery/domain/repositories';
+import {
+  IDatasourceRepository,
+  ISecretVault,
+} from '@qwery/domain/repositories';
 import { getSecretFields } from '@qwery/domain/utils';
 import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
 
@@ -25,7 +28,9 @@ export class DatasourceRepository extends IDatasourceRepository {
     this.init();
   }
 
-  private async getSecretFieldsForProvider(provider: string): Promise<string[]> {
+  private async getSecretFieldsForProvider(
+    provider: string,
+  ): Promise<string[]> {
     if (this.secretFieldsCache.has(provider)) {
       return this.secretFieldsCache.get(provider)!;
     }
@@ -134,6 +139,7 @@ export class DatasourceRepository extends IDatasourceRepository {
 
   private async deserialize(row: Record<string, unknown>): Promise<Datasource> {
     const config = JSON.parse(row.datasource_config as string);
+    const revealedConfig = await this.revealConfig(config);
 
     return {
       id: row.id as string,
@@ -144,7 +150,7 @@ export class DatasourceRepository extends IDatasourceRepository {
       datasource_provider: row.datasource_provider as string,
       datasource_driver: row.datasource_driver as string,
       datasource_kind: row.datasource_kind as string,
-      config: config,
+      config: revealedConfig,
       createdAt: new Date(row.created_at as string),
       updatedAt: new Date(row.updated_at as string),
       createdBy: row.created_by as string,
@@ -234,6 +240,7 @@ export class DatasourceRepository extends IDatasourceRepository {
       );
       return {
         ...entityWithSlug,
+        config: await this.revealConfig(protectedConfig),
       };
     } catch (error) {
       if (
@@ -293,6 +300,7 @@ export class DatasourceRepository extends IDatasourceRepository {
 
     return {
       ...entityWithSlug,
+      config: await this.revealConfig(protectedConfig),
     };
   }
 

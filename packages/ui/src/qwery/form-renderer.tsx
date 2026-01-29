@@ -129,7 +129,7 @@ function extractDefaultsFromSchema(
 
     // Check if it's a ZodObject
     const finalDef = (
-      currentSchema as { _def?: { typeName?: string;[key: string]: unknown } }
+      currentSchema as { _def?: { typeName?: string; [key: string]: unknown } }
     )._def;
     if (finalDef?.typeName === 'ZodObject') {
       const shapeFunction = (finalDef as { shape?: unknown })?.shape;
@@ -287,7 +287,7 @@ function renderField(
       (description &&
         (description === 'secret:true' ||
           description.includes('secret:true'))) ||
-      (unwrapped._def as any).format === 'password';
+      (unwrapped._def as { format?: string }).format === 'password';
     const inputType = isSecret ? 'password' : checks.email ? 'email' : 'text';
     const isLongText = checks.max && checks.max > 200;
 
@@ -302,7 +302,8 @@ function renderField(
         }) => {
           const isProtected =
             typeof field.value === 'string' &&
-            (field.value.startsWith('enc:') || field.value.startsWith('vault:'));
+            (field.value.startsWith('enc:') ||
+              field.value.startsWith('vault:'));
 
           return (
             <FormItem>
@@ -316,13 +317,13 @@ function renderField(
                       readOnly
                       value="••••••••••••"
                       type="text"
-                      className="bg-muted/50 flex-1 cursor-default opacity-80 font-mono"
+                      className="bg-muted/50 flex-1 cursor-default font-mono opacity-80"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 py-0 px-3"
+                      className="h-8 px-3 py-0"
                       onClick={() => field.onChange('')}
                     >
                       Change
@@ -848,7 +849,7 @@ export function FormRenderer<T extends ZodSchemaType>({
 
   // Check if it's a ZodObject or ZodUnion
   const finalDef = (
-    currentSchema as { _def?: { typeName?: string;[key: string]: unknown } }
+    currentSchema as { _def?: { typeName?: string; [key: string]: unknown } }
   )._def;
   const isZodObject = finalDef?.typeName === 'ZodObject';
   const isZodUnion = finalDef?.typeName === 'ZodUnion';

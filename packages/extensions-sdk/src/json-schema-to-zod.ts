@@ -27,7 +27,7 @@ export function jsonSchemaToZod(schema: JsonSchema): z.ZodTypeAny {
       result = result.describe(schema.description);
     }
     if (schema.format) {
-      (result._def as any).format = schema.format;
+      (result._def as { format?: string }).format = schema.format;
     }
     return result;
   };
