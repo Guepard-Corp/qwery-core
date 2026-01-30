@@ -34,7 +34,7 @@ export function parseGoogleSheetsUrl(url: string): GoogleSheetsUrlInfo | null {
 
     const parsedUrl = new URL(urlToParse);
 
-    if (!parsedUrl.hostname.includes('docs.google.com')) {
+    if (parsedUrl.hostname !== 'docs.google.com') {
       return null;
     }
 

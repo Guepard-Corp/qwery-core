@@ -42,7 +42,7 @@ export function validateDatasourceUrl(
   const type = getDatasourceType(extensionId);
 
   if (type === 'gsheet') {
-    const sheetsPattern = /docs\.google\.com\/spreadsheets\/d\//;
+    const sheetsPattern = /^https:\/\/docs\.google\.com\/spreadsheets\/d\//;
     const idPattern = /^[a-zA-Z0-9-_]{20,}$/;
     if (!sheetsPattern.test(value) && !idPattern.test(value)) {
       return {

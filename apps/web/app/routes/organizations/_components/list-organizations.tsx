@@ -285,7 +285,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -306,7 +306,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       !isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -335,7 +335,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       sortCriterion === 'date' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -387,7 +387,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       sortCriterion === 'name' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -485,18 +485,16 @@ export function ListOrganizations({
           </div>
         ) : (
           <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
-            {!isGridView && (
-              <BulkActionBar
-                selectedCount={selectedIds.size}
-                entityType="Organization"
-                onDelete={() => {
-                  if (selectedIds.size > 0) {
-                    setShowDeleteDialog(true);
-                  }
-                }}
-                onClearSelection={() => setSelectedIds(new Set())}
-              />
-            )}
+            <BulkActionBar
+              selectedCount={selectedIds.size}
+              entityType="Organization"
+              onDelete={() => {
+                if (selectedIds.size > 0) {
+                  setShowDeleteDialog(true);
+                }
+              }}
+              onClearSelection={() => setSelectedIds(new Set())}
+            />
             <div className="bg-card mb-8 overflow-hidden rounded-xl border">
               <Table>
                 <TableHeader className="sticky top-0 z-10">
