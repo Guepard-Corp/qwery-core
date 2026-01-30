@@ -1,11 +1,11 @@
 import { streamText } from 'ai';
 import { fromPromise } from 'xstate/actors';
 import { SYSTEM_INFO_PROMPT } from '../prompts/system-info.prompt';
-import { resolveModel, getDefaultModel } from '../../services';
+import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
-export const systemInfo = async (text: string) => {
+export const systemInfo = async (text: string, model?: string) => {
   const result = streamText({
-    model: await resolveModel(getDefaultModel()),
+    model: await resolveModel(model ?? getDefaultModel()),
     prompt: SYSTEM_INFO_PROMPT(text),
   });
 

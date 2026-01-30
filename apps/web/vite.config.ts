@@ -4,6 +4,8 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import fs from 'node:fs';
 import path from 'node:path';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 import tailwindCssVitePlugin from '@qwery/tailwind-config/vite';
 
@@ -84,6 +86,8 @@ export default defineConfig(({ command }) => ({
     devtoolsJson(),
     reactRouter(),
     tsconfigPaths(),
+    wasm(),
+    topLevelAwait(),
     ...tailwindCssVitePlugin.plugins,
   ],
   server: {
@@ -111,6 +115,7 @@ export default defineConfig(({ command }) => ({
         }
         if (id.startsWith('node:')) return true;
         if (id.startsWith('@opentelemetry/')) return true;
+        if (id.startsWith('@dqbd/tiktoken')) return true;
         return false;
       },
     },
@@ -122,6 +127,8 @@ export default defineConfig(({ command }) => ({
       '@duckdb/node-api',
       '@duckdb/duckdb-wasm',
       '@qwery/agent-factory-sdk',
+      'tokenlens',
+      '@dqbd/tiktoken',
     ],
     entries: [
       './app/root.tsx',

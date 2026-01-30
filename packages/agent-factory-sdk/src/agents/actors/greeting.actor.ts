@@ -1,11 +1,11 @@
 import { streamText } from 'ai';
 import { fromPromise } from 'xstate/actors';
 import { GREETING_PROMPT } from '../prompts/greeting.prompt';
-import { resolveModel } from '../../services';
+import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
-export const greeting = async (text: string, model: string) =>
+export const greeting = async (text: string, model?: string) =>
   streamText({
-    model: await resolveModel(model),
+    model: await resolveModel(model ?? getDefaultModel()),
     prompt: GREETING_PROMPT(text),
   });
 

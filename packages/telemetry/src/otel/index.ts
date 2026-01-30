@@ -50,4 +50,5 @@ export {
   endConversationSpanWithEvent,
   endActorSpanWithEvent,
   withActorTelemetry,
+  createLLMAttributes,
 } from './agent-helpers';

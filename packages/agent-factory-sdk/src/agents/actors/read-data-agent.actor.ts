@@ -8,7 +8,7 @@ import {
   stepCountIs,
 } from 'ai';
 import { fromPromise } from 'xstate/actors';
-import { resolveModel } from '../../services';
+import { resolveModel } from '../../services/model-resolver';
 import { testConnection } from '../../tools/test-connection';
 import type {
   SimpleSchema,

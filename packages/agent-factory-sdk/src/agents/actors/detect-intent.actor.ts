@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod/v3';
 import { fromPromise } from 'xstate/actors';
 import type { UIMessage } from 'ai';
@@ -9,6 +9,7 @@ import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 export const detectIntent = async (
   text: string,
   previousMessages?: UIMessage[],
+  model?: string,
 ) => {
   const maxAttempts = 2;
 
@@ -24,29 +25,37 @@ export const detectIntent = async (
         );
       });
 
-      const generatePromise = generateObject({
-        model: await resolveModel(getDefaultModel()),
-        schema: IntentSchema,
+      const generatePromise = generateText({
+        model: await resolveModel(model ?? getDefaultModel()),
+        output: Output.object({
+          schema: IntentSchema,
+        }),
         prompt: DETECT_INTENT_PROMPT(text, previousMessages),
       });
 
       const result = await Promise.race([generatePromise, timeoutPromise]);
 
-      const intentObject = result.object;
+      const intentObject = result.output;
       const matchedIntent = INTENTS_LIST.find(
         (intent) => intent.name === intentObject.intent,
       );
 
       if (!matchedIntent || matchedIntent.supported === false) {
         return {
-          intent: 'other' as const,
-          complexity: intentObject.complexity,
-          needsChart: intentObject.needsChart ?? false,
-          needsSQL: intentObject.needsSQL ?? false,
+          result: {
+            intent: 'other' as const,
+            complexity: intentObject.complexity,
+            needsChart: intentObject.needsChart ?? false,
+            needsSQL: intentObject.needsSQL ?? false,
+          },
+          usage: result.usage,
         };
       }
 
-      return intentObject;
+      return {
+        result: intentObject,
+        usage: result.usage,
+      };
     } catch (error) {
       lastError = error;
       if (error instanceof Error && error.stack) {
@@ -65,10 +74,13 @@ export const detectIntent = async (
   );
 
   return {
-    intent: 'other' as const,
-    complexity: 'simple' as const,
-    needsChart: false,
-    needsSQL: false,
+    result: {
+      intent: 'other' as const,
+      complexity: 'simple' as const,
+      needsChart: false,
+      needsSQL: false,
+    },
+    // No usage available on failure
   };
 };
 
@@ -83,11 +95,11 @@ export const detectIntentActor = fromPromise(
     };
   }): Promise<z.infer<typeof IntentSchema>> => {
     try {
-      const intent = await detectIntent(
+      const { result } = await detectIntent(
         input.inputMessage,
         input.previousMessages,
       );
-      return intent;
+      return result;
     } catch (error) {
       console.error('[detectIntentActor] ERROR:', error);
       throw error;
