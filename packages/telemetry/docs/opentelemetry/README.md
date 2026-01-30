@@ -252,10 +252,11 @@ export {
 } from '@qwery/telemetry/otel/agent-helpers';
 
 // Event constants
-export { CLI_EVENTS } from '@qwery/telemetry/events/cli.events';
-export { WEB_EVENTS } from '@qwery/telemetry/events/web.events';
-export { DESKTOP_EVENTS } from '@qwery/telemetry/events/desktop.events';
-export { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
+export { 
+  CLI_EVENTS,
+WEB_EVENTS,
+DESKTOP_EVENTS,
+AGENT_EVENTS } from '@qwery/telemetry';
 ```
 
 **Note:** Both `/otel` and `/opentelemetry` subpath exports are available for backward compatibility.

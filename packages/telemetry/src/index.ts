@@ -11,7 +11,6 @@ export const telemetry: TelemetryManager = createTelemetryManager({
 export * from './components';
 export { useTelemetry } from './hooks/use-telemetry';
 export { useCaptureException } from './hooks/use-capture-exception';
-export { NOTEBOOK_EVENTS, PROJECT_EVENTS } from './events';
 
 export {
   OtelClientService,
@@ -46,3 +45,5 @@ export {
   createSentryProvider,
   type SentryProviderConfig,
 } from './providers/sentry';
+
+export * from './events';

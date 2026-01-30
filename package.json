@@ -48,6 +48,7 @@
     "lint:fix": "turbo lint --cache-dir=.turbo --continue -- --fix --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg fix",
     "typecheck": "turbo typecheck --cache-dir=.turbo",
     "test": "turbo test --cache-dir=.turbo",
+    "evals": "pnpm --filter @qwery/agent-factory-sdk eval",
     "storybook": "pnpm --filter @qwery/storybook-config storybook",
     "build-storybook": "pnpm --filter @qwery/storybook-config build-storybook",
     "desktop:dev": "pnpm --filter desktop dev",

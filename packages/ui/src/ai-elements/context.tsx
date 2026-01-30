@@ -10,7 +10,8 @@ import { Progress } from '../shadcn/progress';
 import { cn } from '../lib/utils';
 import type { LanguageModelUsage } from 'ai';
 import { type ComponentProps, createContext, useContext } from 'react';
-import { getUsage } from 'tokenlens';
+import { computeCostUSD } from 'tokenlens';
+import React from 'react';
 
 const PERCENT_MAX = 100;
 const ICON_RADIUS = 10;
@@ -205,19 +206,29 @@ export const ContextContentFooter = ({
   ...props
 }: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue();
-  const costUSD = modelId
-    ? getUsage({
+  const [totalCost, setTotalCost] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (!modelId || !usage) {
+      return;
+    }
+
+    (async function computeCost() {
+      const costUSD = await computeCostUSD({
         modelId,
         usage: {
-          input: usage?.inputTokens ?? 0,
-          output: usage?.outputTokens ?? 0,
+          input_tokens: usage?.inputTokens ?? 0,
+          output_tokens: usage?.outputTokens ?? 0,
         },
-      }).costUSD?.totalUSD
-    : undefined;
-  const totalCost = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(costUSD ?? 0);
+      });
+      setTotalCost(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(costUSD.totalTokenCostUSD ?? 0),
+      );
+    })();
+  }, [modelId, usage]);
 
   return (
     <div
@@ -246,6 +257,7 @@ export const ContextInputUsage = ({
 }: ContextInputUsageProps) => {
   const { usage, modelId } = useContextValue();
   const inputTokens = usage?.inputTokens ?? 0;
+  const [inputCostText, setInputCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -255,16 +267,27 @@ export const ContextInputUsage = ({
     return null;
   }
 
-  const inputCost = modelId
-    ? getUsage({
+  React.useEffect(() => {
+    if (!modelId || !usage) {
+      return;
+    }
+
+    (async function computeCost() {
+      const costUSD = await computeCostUSD({
         modelId,
-        usage: { input: inputTokens, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined;
-  const inputCostText = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(inputCost ?? 0);
+        usage: {
+          input_tokens: usage?.inputTokens ?? 0,
+          output_tokens: usage?.outputTokens ?? 0,
+        },
+      });
+      setInputCostText(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(costUSD.inputTokenCostUSD ?? 0),
+      );
+    })();
+  }, [modelId, usage]);
 
   return (
     <div
@@ -286,6 +309,7 @@ export const ContextOutputUsage = ({
 }: ContextOutputUsageProps) => {
   const { usage, modelId } = useContextValue();
   const outputTokens = usage?.outputTokens ?? 0;
+  const [outputCostText, setOutputCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -295,16 +319,27 @@ export const ContextOutputUsage = ({
     return null;
   }
 
-  const outputCost = modelId
-    ? getUsage({
+  React.useEffect(() => {
+    if (!modelId || !usage) {
+      return;
+    }
+
+    (async function computeCost() {
+      const costUSD = await computeCostUSD({
         modelId,
-        usage: { input: 0, output: outputTokens },
-      }).costUSD?.totalUSD
-    : undefined;
-  const outputCostText = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(outputCost ?? 0);
+        usage: {
+          input_tokens: usage?.inputTokens ?? 0,
+          output_tokens: usage?.outputTokens ?? 0,
+        },
+      });
+      setOutputCostText(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(costUSD.outputTokenCostUSD ?? 0),
+      );
+    })();
+  }, [modelId, usage]);
 
   return (
     <div
@@ -326,6 +361,7 @@ export const ContextReasoningUsage = ({
 }: ContextReasoningUsageProps) => {
   const { usage, modelId } = useContextValue();
   const reasoningTokens = usage?.reasoningTokens ?? 0;
+  const [reasoningCostText, setReasoningCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -335,16 +371,27 @@ export const ContextReasoningUsage = ({
     return null;
   }
 
-  const reasoningCost = modelId
-    ? getUsage({
+  React.useEffect(() => {
+    if (!modelId || !usage) {
+      return;
+    }
+
+    (async function computeCost() {
+      const costUSD = await computeCostUSD({
         modelId,
-        usage: { reasoningTokens },
-      }).costUSD?.totalUSD
-    : undefined;
-  const reasoningCostText = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(reasoningCost ?? 0);
+        usage: {
+          input_tokens: usage?.inputTokens ?? 0,
+          output_tokens: usage?.outputTokens ?? 0,
+        },
+      });
+      setReasoningCostText(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(costUSD.reasoningTokenCostUSD ?? 0),
+      );
+    })();
+  }, [modelId, usage]);
 
   return (
     <div
@@ -366,6 +413,7 @@ export const ContextCacheUsage = ({
 }: ContextCacheUsageProps) => {
   const { usage, modelId } = useContextValue();
   const cacheTokens = usage?.cachedInputTokens ?? 0;
+  const [cacheCostText, setCacheCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -375,16 +423,30 @@ export const ContextCacheUsage = ({
     return null;
   }
 
-  const cacheCost = modelId
-    ? getUsage({
+  React.useEffect(() => {
+    if (!modelId || !usage) {
+      return;
+    }
+
+    (async function computeCost() {
+      const costUSD = await computeCostUSD({
         modelId,
-        usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined;
-  const cacheCostText = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(cacheCost ?? 0);
+        usage: {
+          input_tokens: usage?.inputTokens ?? 0,
+          output_tokens: usage?.outputTokens ?? 0,
+        },
+      });
+      const cacheCost =
+        (costUSD.cacheReadTokenCostUSD || 0) +
+        (costUSD.cacheWriteTokenCostUSD || 0);
+      setCacheCostText(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(cacheCost),
+      );
+    })();
+  }, [modelId, usage]);
 
   return (
     <div

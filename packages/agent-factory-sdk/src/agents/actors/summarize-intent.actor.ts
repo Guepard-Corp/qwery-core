@@ -4,9 +4,13 @@ import { SUMMARIZE_INTENT_PROMPT } from '../prompts/summarize-intent.prompt';
 import { fromPromise } from 'xstate/actors';
 import { resolveModel, getDefaultModel } from '../../services/model-resolver';
 
-export const summarizeIntent = async (text: string, intent: Intent) => {
+export const summarizeIntent = async (
+  text: string,
+  intent: Intent,
+  model?: string,
+) => {
   const result = streamText({
-    model: await resolveModel(getDefaultModel()),
+    model: await resolveModel(model || getDefaultModel()),
     prompt: SUMMARIZE_INTENT_PROMPT(text, intent),
   });
 

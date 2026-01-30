@@ -18,7 +18,7 @@ import {
   createActorAttributes,
   endActorSpanWithEvent,
 } from '@qwery/telemetry/otel';
-import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
+import { AGENT_EVENTS } from '@qwery/telemetry';
 import {
   context as otelContext,
   trace,
@@ -151,7 +151,10 @@ export const createStateMachine = (
         trace.setSpan(otelContext.active(), span),
         async () => {
           try {
-            const result = await detectIntent(input.inputMessage, undefined);
+            const { result } = await detectIntent(
+              input.inputMessage,
+              undefined,
+            );
 
             endActorSpanWithEvent(
               telemetry,

@@ -89,6 +89,8 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-devtools-json": "^1.0.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.5.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "catalog:"
   },
