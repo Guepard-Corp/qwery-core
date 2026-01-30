@@ -160,7 +160,7 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
               : String(installError);
           throw new Error(
             `Failed to install extension ${requiredExtension}: ${errorMsg}. ` +
-            `Please ensure the extension is available and network connectivity is working.`,
+              `Please ensure the extension is available and network connectivity is working.`,
           );
         }
       }
@@ -173,7 +173,7 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           loadError instanceof Error ? loadError.message : String(loadError);
         throw new Error(
           `Failed to load extension ${requiredExtension}: ${errorMsg}. ` +
-          `Extension may not be installed correctly.`,
+            `Extension may not be installed correctly.`,
         );
       }
     }

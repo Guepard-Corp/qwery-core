@@ -363,7 +363,6 @@ export const VirtuosoMessageList = forwardRef<
       />
       {renderScrollButton &&
         !isAtBottom &&
-        // eslint-disable-next-line react-hooks/refs -- scrollToBottom is a stable callback, not accessing refs during render
         renderScrollButton(scrollToBottom, isAtBottom)}
     </div>
   );
