@@ -5,12 +5,19 @@ import {
   useMemo,
   useRef,
   useState,
-  useImperativeHandle,
   forwardRef,
   useCallback,
 } from 'react';
 import { useTheme } from 'next-themes';
-import { ExternalLink, RefreshCw, FileJson, File, Copy, Check, Info, Loader2 } from 'lucide-react';
+import {
+  ExternalLink,
+  RefreshCw,
+  FileJson,
+  Copy,
+  Check,
+  Info,
+  Loader2,
+} from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
 import { Button } from '@qwery/ui/button';
 import {
@@ -51,9 +58,9 @@ export const DatasourcePreview = forwardRef<
     extensionId,
     formConfig,
     className,
-    isTestConnectionLoading = false,
+    isTestConnectionLoading: _isTestConnectionLoading = false,
   },
-  ref,
+  _ref,
 ) {
   const { theme, resolvedTheme } = useTheme();
   const previewUrl = useMemo(
@@ -82,6 +89,7 @@ export const DatasourcePreview = forwardRef<
   // Set initial view mode based on type
   useEffect(() => {
     if (dsType === 'json') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode('tree');
     } else {
       setViewMode('table');
@@ -91,6 +99,7 @@ export const DatasourcePreview = forwardRef<
   // Debounce preview URL updates by 1 second
   useEffect(() => {
     if (!previewUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedPreviewUrl(null);
       setPublicationStatus('unknown');
       return;
@@ -115,6 +124,7 @@ export const DatasourcePreview = forwardRef<
       const timer = setTimeout(() => setShowPublishingGuide(true), 2500);
       return () => clearTimeout(timer);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowPublishingGuide(false);
     }
   }, [extensionId, publicationStatus]);
@@ -122,6 +132,7 @@ export const DatasourcePreview = forwardRef<
   // Detect publication status for Google Sheets
   useEffect(() => {
     if (extensionId !== 'gsheet-csv' || !previewUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPublicationStatus('unknown');
       return;
     }
@@ -149,7 +160,8 @@ export const DatasourcePreview = forwardRef<
     const sharedLink = (formValues?.sharedLink || formValues?.url) as
       | string
       | undefined;
-    const { isValid, error } = validateDatasourceUrl(extensionId, sharedLink);
+    const { error } = validateDatasourceUrl(extensionId, sharedLink);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValidationError(error);
   }, [extensionId, formValues]);
 
@@ -161,11 +173,15 @@ export const DatasourcePreview = forwardRef<
 
     // For GSheet - we only try WASM/CSV if it's NOT a Google Sheet link (i.e. direct CSV)
     // OR if we specifically want to try the fallback (user's request)
-    const isGSheetLink = isGsheetCsv && debouncedPreviewUrl?.includes('docs.google.com/spreadsheets');
+    const isGSheetLink =
+      isGsheetCsv &&
+      debouncedPreviewUrl?.includes('docs.google.com/spreadsheets');
     const isDirectCsv = isGsheetCsv && !isGSheetLink;
 
     if ((!isJson && !isParquet && !isDirectCsv) || !debouncedPreviewUrl) {
-      if (!isGSheetLink) { // Don't clear if we might need gsheet data later
+      if (!isGSheetLink) {
+        // Don't clear if we might need gsheet data later
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setJsonData(null);
         setJsonError(null);
         setIsLoadingJson(false);
@@ -198,17 +214,25 @@ export const DatasourcePreview = forwardRef<
 
   // Special effect for Google Sheet WASM fallback
   useEffect(() => {
-    if (extensionId !== 'gsheet-csv' || publicationStatus !== 'not-published' || !debouncedPreviewUrl || !isWasmFallbackRequested) {
+    if (
+      extensionId !== 'gsheet-csv' ||
+      publicationStatus !== 'not-published' ||
+      !debouncedPreviewUrl ||
+      !isWasmFallbackRequested
+    ) {
       return;
     }
 
     // Convert to CSV export URL for WASM try
-    const gSheetIdMatch = debouncedPreviewUrl.match(/\/spreadsheets\/d\/(e\/)?([a-zA-Z0-9-_]{20,})/);
+    const gSheetIdMatch = debouncedPreviewUrl.match(
+      /\/spreadsheets\/d\/(e\/)?([a-zA-Z0-9-_]{20,})/,
+    );
     if (!gSheetIdMatch) return;
 
     const sheetId = gSheetIdMatch[2];
     const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingJson(true);
     setJsonError(null); // Clear any previous error
     fetchCsvData(csvUrl)
@@ -223,12 +247,18 @@ export const DatasourcePreview = forwardRef<
       .finally(() => {
         setIsLoadingJson(false);
       });
-  }, [extensionId, publicationStatus, debouncedPreviewUrl, isWasmFallbackRequested]);
+  }, [
+    extensionId,
+    publicationStatus,
+    debouncedPreviewUrl,
+    isWasmFallbackRequested,
+  ]);
 
   const handleRefresh = () => {
     setIsIframeLoading(true);
     setRefreshKey((prev) => prev + 1);
     if (iframeRef.current) {
+      // eslint-disable-next-line no-self-assign
       iframeRef.current.src = iframeRef.current.src;
     }
   };
@@ -252,9 +282,7 @@ export const DatasourcePreview = forwardRef<
   const handleCopyJson = useCallback(async () => {
     if (jsonData === null) return;
     try {
-      await navigator.clipboard.writeText(
-        JSON.stringify(jsonData, null, 2),
-      );
+      await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -270,7 +298,7 @@ export const DatasourcePreview = forwardRef<
     debouncedPreviewUrl ?? previewUrl ?? undefined;
   const displayUrl: string | undefined = baseUrl
     ? baseUrl +
-    (baseUrl.includes('?') ? themeParam : themeParam.replace('&', '?'))
+      (baseUrl.includes('?') ? themeParam : themeParam.replace('&', '?'))
     : undefined;
 
   const isGoogleSheets = dsType === 'gsheet';
@@ -291,7 +319,7 @@ export const DatasourcePreview = forwardRef<
       return (
         <div
           className={cn(
-            'flex flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 px-6 py-8 text-center shadow-sm',
+            'border-destructive/20 bg-destructive/5 flex flex-col items-center justify-center rounded-xl border px-6 py-8 text-center shadow-sm',
             className,
           )}
         >
@@ -323,18 +351,23 @@ export const DatasourcePreview = forwardRef<
       {/* Preview container - flex-1 to take available height */}
       {hasPreview && (
         <div className="group border-border bg-muted/30 dark:bg-muted/25 relative flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-lg border transition-colors duration-300">
-          <div className="relative h-full w-full flex-1 flex flex-col min-h-0">
-            {isJsonOnline || isParquetOnline || (dsType === 'gsheet' && !!jsonData) ? (
-              <div className="flex-1 min-h-0 relative flex flex-col items-stretch overflow-hidden">
+          <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
+            {isJsonOnline ||
+            isParquetOnline ||
+            (dsType === 'gsheet' && !!jsonData) ? (
+              <div className="relative flex min-h-0 flex-1 flex-col items-stretch overflow-hidden">
                 {isLoadingJson ? (
                   <div className="bg-muted/30 dark:bg-muted/20 flex h-full w-full items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="border-muted-foreground/20 border-t-muted-foreground size-8 animate-spin rounded-full border-2" />
-                      <div className="text-foreground text-sm font-medium text-center">
-                        {isParquetOnline ? 'Preparing Parquet Preview...' :
-                          dsType === 'gsheet' ? 'Preparing Data Preview...' : 'Loading JSON Preview...'}
+                      <div className="text-foreground text-center text-sm font-medium">
+                        {isParquetOnline
+                          ? 'Preparing Parquet Preview...'
+                          : dsType === 'gsheet'
+                            ? 'Preparing Data Preview...'
+                            : 'Loading JSON Preview...'}
                       </div>
-                      <div className="text-muted-foreground text-xs text-center px-4">
+                      <div className="text-muted-foreground px-4 text-center text-xs">
                         {isParquetOnline || dsType === 'gsheet'
                           ? 'Preparing data view'
                           : 'Fetching data from URL'}
@@ -348,7 +381,9 @@ export const DatasourcePreview = forwardRef<
                         <FileJson className="text-destructive size-8" />
                       </div>
                       <h4 className="text-foreground text-lg font-semibold">
-                        {isParquetOnline ? 'Failed to load Parquet' : 'Failed to load JSON'}
+                        {isParquetOnline
+                          ? 'Failed to load Parquet'
+                          : 'Failed to load JSON'}
                       </h4>
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                         {jsonError}
@@ -364,38 +399,41 @@ export const DatasourcePreview = forwardRef<
                       </Button>
                     </div>
                   </div>
-                ) : !!jsonData ? (
-                  <div className="flex-1 min-h-0 w-full animate-in fade-in zoom-in-95 duration-500 flex flex-col">
+                ) : jsonData ? (
+                  <div className="animate-in fade-in zoom-in-95 flex min-h-0 w-full flex-1 flex-col duration-500">
                     <JsonViewer
                       data={jsonData}
                       expandedPaths={expandedPaths}
                       onTogglePath={togglePath}
                       viewMode={viewMode}
                       onViewModeChange={setViewMode}
-                      itemsPerPage={isParquetOnline || dsType === 'gsheet' ? 20 : undefined}
+                      itemsPerPage={
+                        isParquetOnline || dsType === 'gsheet' ? 20 : undefined
+                      }
                     />
                   </div>
                 ) : null}
-
               </div>
-            ) : isGoogleSheets && publicationStatus === 'not-published' && !jsonData ? (
+            ) : isGoogleSheets &&
+              publicationStatus === 'not-published' &&
+              !jsonData ? (
               <div className="bg-muted/30 flex h-full items-center justify-center">
                 <div className="flex flex-col items-center gap-3 px-6 text-center">
-                  <div className="bg-amber-500/10 mb-2 flex h-16 w-16 items-center justify-center rounded-2xl">
-                    <Info className="text-amber-600 dark:text-amber-500 size-8" />
+                  <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
+                    <Info className="size-8 text-amber-600 dark:text-amber-500" />
                   </div>
                   <div className="text-foreground text-sm font-semibold">
                     Preview Not Available Yet
                   </div>
                   <div className="text-muted-foreground max-w-xs text-xs">
-                    Google requires sheets to be "Published to the web" to be
-                    viewed inside other applications.
+                    Google requires sheets to be &quot;Published to the
+                    web&quot; to be viewed inside other applications.
                   </div>
 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-4 text-[11px] h-8 bg-background/50 border-dashed hover:border-solid transition-all"
+                    className="bg-background/50 mt-4 h-8 border-dashed text-[11px] transition-all hover:border-solid"
                     onClick={() => setIsWasmFallbackRequested(true)}
                     disabled={isLoadingJson}
                   >
@@ -410,21 +448,23 @@ export const DatasourcePreview = forwardRef<
                   </Button>
 
                   {!isLoadingJson && showPublishingGuide && (
-                    <p className="text-muted-foreground text-[10px] mt-4 italic animate-in fade-in slide-in-from-bottom-2 duration-700">
+                    <p className="text-muted-foreground animate-in fade-in slide-in-from-bottom-2 mt-4 text-[10px] italic duration-700">
                       Follow the instructions below to enable the live preview.
                     </p>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="relative flex-1 min-h-0">
+              <div className="relative min-h-0 flex-1">
                 <iframe
                   key={refreshKey}
                   ref={iframeRef}
                   src={displayUrl}
                   className={cn(
                     'size-full border-0',
-                    isGoogleSheets && currentTheme === 'dark' && 'invert-[0.85] hue-rotate-180 contrast-[1.1] brightness-[0.9]'
+                    isGoogleSheets &&
+                      currentTheme === 'dark' &&
+                      'brightness-[0.9] contrast-[1.1] hue-rotate-180 invert-[0.85]',
                   )}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
                   title="Datasource preview"
@@ -445,12 +485,15 @@ export const DatasourcePreview = forwardRef<
             )}
 
             {/* Bottom-Left Utility Controls (Hover only) */}
-            {(!!jsonData || (isGoogleSheets && publicationStatus === 'published' && !validationError)) && (
-              <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-auto">
+            {(!!jsonData ||
+              (isGoogleSheets &&
+                publicationStatus === 'published' &&
+                !validationError)) && (
+              <div className="pointer-events-auto absolute bottom-3 left-3 z-30 flex items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-muted-foreground/70 hover:text-foreground bg-background/90 h-7 w-7 backdrop-blur-sm border border-border/40"
+                  className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 h-7 w-7 border backdrop-blur-sm"
                   onClick={handleRefresh}
                   title="Refresh preview"
                 >
@@ -461,74 +504,93 @@ export const DatasourcePreview = forwardRef<
                     href={displayUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-foreground bg-background/90 rounded h-7 w-7 flex items-center justify-center backdrop-blur-sm transition-colors border border-border/40"
+                    className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 flex h-7 w-7 items-center justify-center rounded border backdrop-blur-sm transition-colors"
                     title="Open in new tab"
                   >
                     <ExternalLink className="size-3.5" />
                   </a>
                 )}
-                {(isJsonOnline || isParquetOnline || (dsType === 'gsheet' && !!jsonData)) && jsonData !== null && !isLoadingJson && !jsonError && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground/70 hover:text-foreground bg-background/90 h-7 w-7 backdrop-blur-sm border border-border/40"
-                    onClick={handleCopyJson}
-                    title={isParquetOnline ? "Copy rows as JSON" : "Copy JSON"}
-                  >
-                    {copied ? (
-                      <Check className="size-3.5" />
-                    ) : (
-                      <Copy className="size-3.5" />
-                    )}
-                  </Button>
-                )}
+                {(isJsonOnline ||
+                  isParquetOnline ||
+                  (dsType === 'gsheet' && !!jsonData)) &&
+                  jsonData !== null &&
+                  !isLoadingJson &&
+                  !jsonError && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 h-7 w-7 border backdrop-blur-sm"
+                      onClick={handleCopyJson}
+                      title={
+                        isParquetOnline ? 'Copy rows as JSON' : 'Copy JSON'
+                      }
+                    >
+                      {copied ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
+                    </Button>
+                  )}
               </div>
             )}
 
             {/* Bottom-Right Controls: View Mode Toggles (Tree/Raw) */}
-            {(isJsonOnline || isParquetOnline || (dsType === 'gsheet' && !!jsonData)) && jsonData !== null && !isLoadingJson && !jsonError && (
-              <div className="absolute bottom-3 right-3 z-30 flex items-center pointer-events-auto">
-                <div className="mr-2 flex items-center gap-0.5 rounded-md border border-border/40 bg-background/60 p-0.5 backdrop-blur-md shadow-sm">
-                  {(isParquetOnline || (dsType === 'gsheet' && !!jsonData)) && (
-                    <Button
-                      variant={viewMode === 'table' ? 'default' : 'ghost'}
-                      size="sm"
-                      className={cn(
-                        "h-6 px-2 text-[10px] font-medium transition-all rounded-[4px]",
-                        viewMode === 'table' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setViewMode('table')}
-                    >
-                      Table
-                    </Button>
-                  )}
-                  {dsType === 'json' && (
-                    <Button
-                      variant={viewMode === 'tree' ? 'default' : 'ghost'}
-                      size="sm"
-                      className={cn(
-                        "h-6 px-2 text-[10px] font-medium transition-all rounded-[4px]",
-                        viewMode === 'tree' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setViewMode('tree')}
-                    >
-                      Tree
-                    </Button>
-                  )}
-                  <Button
-                    variant={viewMode === 'raw' ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      "h-6 px-2 text-[10px] font-medium transition-all rounded-[4px]",
-                      viewMode === 'raw' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            {(isJsonOnline ||
+              isParquetOnline ||
+              (dsType === 'gsheet' && !!jsonData)) &&
+              jsonData !== null &&
+              !isLoadingJson &&
+              !jsonError && (
+                <div className="pointer-events-auto absolute right-3 bottom-3 z-30 flex items-center">
+                  <div className="border-border/40 bg-background/60 mr-2 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm backdrop-blur-md">
+                    {(isParquetOnline ||
+                      (dsType === 'gsheet' && !!jsonData)) && (
+                      <Button
+                        variant={viewMode === 'table' ? 'default' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-6 rounded-[4px] px-2 text-[10px] font-medium transition-all',
+                          viewMode === 'table'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                        onClick={() => setViewMode('table')}
+                      >
+                        Table
+                      </Button>
                     )}
-                    onClick={() => setViewMode('raw')}
-                  >
-                    Raw
-                  </Button>
+                    {dsType === 'json' && (
+                      <Button
+                        variant={viewMode === 'tree' ? 'default' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-6 rounded-[4px] px-2 text-[10px] font-medium transition-all',
+                          viewMode === 'tree'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                        onClick={() => setViewMode('tree')}
+                      >
+                        Tree
+                      </Button>
+                    )}
+                    <Button
+                      variant={viewMode === 'raw' ? 'default' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        'h-6 rounded-[4px] px-2 text-[10px] font-medium transition-all',
+                        viewMode === 'raw'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                      onClick={() => setViewMode('raw')}
+                    >
+                      Raw
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       )}
@@ -559,4 +621,3 @@ export const DatasourcePreview = forwardRef<
     </div>
   );
 });
-

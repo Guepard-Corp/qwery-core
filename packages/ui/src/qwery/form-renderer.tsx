@@ -10,7 +10,6 @@ import type {
 import { z } from 'zod/v3';
 
 import { FieldGroup } from '@qwery/ui/field';
-import { Button } from '@qwery/ui/button';
 import {
   Form,
   FormControl,
@@ -283,12 +282,7 @@ function renderField(
   // String
   if (isSchemaType(unwrapped, 'ZodString')) {
     const checks = getStringChecks(unwrapped);
-    const isSecret =
-      (description &&
-        (description === 'secret:true' ||
-          description.includes('secret:true'))) ||
-      (unwrapped._def as { format?: string }).format === 'password';
-    const inputType = isSecret ? 'password' : checks.email ? 'email' : 'text';
+    const inputType = checks.email ? 'email' : 'text';
     const isLongText = checks.max && checks.max > 200;
 
     return (
@@ -299,49 +293,20 @@ function renderField(
           field,
         }: {
           field: ControllerRenderProps<FieldValues, FieldPath<FieldValues>>;
-        }) => {
-          const isProtected =
-            typeof field.value === 'string' &&
-            (field.value.startsWith('enc:') ||
-              field.value.startsWith('vault:'));
-
-          return (
-            <FormItem>
-              <FormLabel>{name}</FormLabel>
-              <FormControl>
-                {isLongText ? (
-                  <Textarea {...field} placeholder={placeholder} rows={4} />
-                ) : isSecret && isProtected ? (
-                  <div className="relative flex items-center gap-2">
-                    <Input
-                      readOnly
-                      value="••••••••••••"
-                      type="text"
-                      className="bg-muted/50 flex-1 cursor-default font-mono opacity-80"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-3 py-0"
-                      onClick={() => field.onChange('')}
-                    >
-                      Change
-                    </Button>
-                  </div>
-                ) : (
-                  <Input
-                    {...field}
-                    type={inputType}
-                    placeholder={placeholder}
-                  />
-                )}
-              </FormControl>
-              {description && <FormDescription>{description}</FormDescription>}
-              <FormMessage />
-            </FormItem>
-          );
-        }}
+        }) => (
+          <FormItem>
+            <FormLabel>{name}</FormLabel>
+            <FormControl>
+              {isLongText ? (
+                <Textarea {...field} placeholder={placeholder} rows={4} />
+              ) : (
+                <Input {...field} type={inputType} placeholder={placeholder} />
+              )}
+            </FormControl>
+            {description && <FormDescription>{description}</FormDescription>}
+            <FormMessage />
+          </FormItem>
+        )}
       />
     );
   }
@@ -602,6 +567,22 @@ export function FormRenderer<T extends ZodSchemaType>({
     return { ...schemaDefaults, ...defaultValues } as z.infer<T>;
   }, [schemaDefaults, defaultValues]);
 
+  const form = useForm<z.infer<T>>({
+    resolver: zodResolver(schema as z.ZodTypeAny),
+    defaultValues: mergedDefaults,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+  });
+
+  // Watch all form values to detect changes
+
+  const watchedValues = form.watch();
+  const previousValuesRef = React.useRef<z.infer<T> | null>(null);
+  const onFormReadyRef = React.useRef(onFormReady);
+  const onValidityChangeRef = React.useRef(onValidityChange);
+  onFormReadyRef.current = onFormReady;
+  onValidityChangeRef.current = onValidityChange;
+
   // Detect oneOf schema (ZodUnion) - connectionUrl OR separate fields
   const isOneOfSchema = React.useMemo(() => {
     try {
@@ -678,91 +659,6 @@ export function FormRenderer<T extends ZodSchemaType>({
 
   const hasOneOf = isOneOfSchema && separateFieldsSchema && connectionUrlSchema;
 
-  const form = useForm<z.infer<T>>({
-    resolver: zodResolver(schema as z.ZodTypeAny),
-    defaultValues: mergedDefaults,
-    mode: 'onChange',
-    reValidateMode: 'onChange',
-  });
-
-  // Watch all form values to detect changes
-
-  const watchedValues = form.watch();
-  const previousValuesRef = React.useRef<z.infer<T> | null>(null);
-  const onFormReadyRef = React.useRef(onFormReady);
-  const onValidityChangeRef = React.useRef(onValidityChange);
-  onFormReadyRef.current = onFormReady;
-  onValidityChangeRef.current = onValidityChange;
-
-  // Expose current form values to parent when they actually change
-  React.useEffect(() => {
-    if (!onFormReadyRef.current) return;
-
-    // Get current form values
-    const values = form.getValues();
-
-    // Deep comparison to avoid infinite loops
-    const valuesString = JSON.stringify(values);
-    const previousString = previousValuesRef.current
-      ? JSON.stringify(previousValuesRef.current)
-      : null;
-
-    // Only notify if values actually changed
-    if (valuesString !== previousString) {
-      previousValuesRef.current = values as z.infer<T>;
-
-      // For oneOf schemas, normalize the values before validation
-      // Remove empty fields and keep only the relevant option
-      let normalizedValues = values;
-      if (isOneOfSchema && hasOneOf) {
-        const hasConnectionUrl = Boolean(values.connectionUrl);
-        const hasHost = Boolean(values.host);
-
-        if (hasConnectionUrl) {
-          // Using connectionUrl - remove separate fields
-          normalizedValues = {
-            connectionUrl: values.connectionUrl,
-          };
-        } else if (hasHost) {
-          // Using separate fields - remove connectionUrl, keep only filled fields
-          normalizedValues = { ...values };
-          delete normalizedValues.connectionUrl;
-          // Remove empty optional fields (but keep password even if empty - it might be intentionally empty)
-          Object.keys(normalizedValues).forEach((key) => {
-            if (
-              key !== 'password' &&
-              (normalizedValues[key] === '' ||
-                normalizedValues[key] === undefined)
-            ) {
-              delete normalizedValues[key];
-            }
-          });
-        }
-      }
-
-      // Validate with schema
-      try {
-        const validatedValues = schema.parse(normalizedValues);
-        onFormReadyRef.current(validatedValues);
-      } catch {
-        // If validation fails, still pass the raw values (for partial input)
-        onFormReadyRef.current(values);
-      }
-    }
-  }, [watchedValues, form, schema, hasOneOf, isOneOfSchema]);
-
-  // Trigger initial validation and track validity changes
-  useEffect(() => {
-    if (!onValidityChangeRef.current) return;
-    form.trigger().then(() => {
-      onValidityChangeRef.current?.(form.formState.isValid);
-    });
-  }, [form]);
-
-  const handleSubmit = form.handleSubmit(async (values) => {
-    await onSubmit(values);
-  });
-
   // Custom validation for oneOf schemas - check if either connectionUrl OR required fields are filled
   const validateOneOfForm = React.useCallback(() => {
     if (!isOneOfSchema || !hasOneOf) return null;
@@ -797,11 +693,66 @@ export function FormRenderer<T extends ZodSchemaType>({
     return true; // Valid
   }, [isOneOfSchema, hasOneOf, form]);
 
-  // Track validity changes with custom validation for oneOf
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!onFormReadyRef.current) return;
+
+    const values = form.getValues();
+
+    const valuesString = JSON.stringify(values);
+    const previousString = previousValuesRef.current
+      ? JSON.stringify(previousValuesRef.current)
+      : null;
+
+    if (valuesString !== previousString) {
+      previousValuesRef.current = values as z.infer<T>;
+
+      let normalizedValues = values;
+      if (isOneOfSchema && hasOneOf) {
+        const hasConnectionUrl = Boolean(values.connectionUrl);
+        const hasHost = Boolean(values.host);
+
+        if (hasConnectionUrl) {
+          normalizedValues = {
+            connectionUrl: values.connectionUrl,
+          };
+        } else if (hasHost) {
+          normalizedValues = { ...values };
+          delete normalizedValues.connectionUrl;
+          Object.keys(normalizedValues).forEach((key) => {
+            if (
+              key !== 'password' &&
+              (normalizedValues[key] === '' ||
+                normalizedValues[key] === undefined)
+            ) {
+              delete normalizedValues[key];
+            }
+          });
+        }
+      }
+
+      try {
+        const validatedValues = schema.parse(normalizedValues);
+        onFormReadyRef.current(validatedValues);
+      } catch {
+        onFormReadyRef.current(values);
+      }
+    }
+  }, [watchedValues, form, schema, isOneOfSchema, hasOneOf]);
+
+  useEffect(() => {
+    if (!onValidityChangeRef.current) return;
+    form.trigger().then(() => {
+      onValidityChangeRef.current?.(form.formState.isValid);
+    });
+  }, [form]);
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
+
+  useEffect(() => {
     if (!onValidityChangeRef.current) return;
 
-    // For oneOf schemas, use custom validation
     if (isOneOfSchema && hasOneOf) {
       const customValid = validateOneOfForm();
       if (customValid !== null) {

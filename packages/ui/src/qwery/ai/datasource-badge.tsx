@@ -43,7 +43,8 @@ export function DatasourceBadge({
               alt={displayName}
               className={cn(
                 'h-3.5 w-3.5 shrink-0 object-contain',
-                datasource.datasource_provider === 'json-online' && 'dark:invert',
+                datasource.datasource_provider === 'json-online' &&
+                  'dark:invert',
               )}
             />
           ) : (

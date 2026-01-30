@@ -7,11 +7,11 @@ import pathsConfig from '~/config/paths.config';
 
 export function LogoImage({
   className,
-  width = 200,
+  _width = 200,
   size,
 }: {
   className?: string;
-  width?: number;
+  _width?: number;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }) {
   // Generate unique IDs to avoid conflicts if multiple logos are on the page

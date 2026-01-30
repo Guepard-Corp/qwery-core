@@ -183,6 +183,7 @@
     "./qwery-breadcrumb": "./src/qwery/qwery-breadcrumb.tsx",
     "./form-renderer": "./src/qwery/form-renderer.tsx",
     "./ai": "./src/qwery/ai/index.ts",
+    "./ai-utils": "./src/qwery/ai/utils/conversation-utils.ts",
     "./schema-graph": "./src/qwery/schema-graph/index.ts",
     "./qwery/datasource/tables": "./src/qwery/datasource/tables.tsx",
     "./qwery/datasource/columns": "./src/qwery/datasource/columns.tsx",

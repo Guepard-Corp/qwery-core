@@ -25,7 +25,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -88,6 +87,7 @@ export function OrganizationDialog({
 
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)
@@ -108,6 +108,7 @@ export function OrganizationDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((e: any) =>
                   typeof e === 'string' ? e : e?.message || String(e),
                 )
@@ -123,6 +124,7 @@ export function OrganizationDialog({
           const parsed = JSON.parse(error);
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)
@@ -168,6 +170,7 @@ export function OrganizationDialog({
 
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)
@@ -188,6 +191,7 @@ export function OrganizationDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((e: any) =>
                   typeof e === 'string' ? e : e?.message || String(e),
                 )
@@ -203,6 +207,7 @@ export function OrganizationDialog({
           const parsed = JSON.parse(error);
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)

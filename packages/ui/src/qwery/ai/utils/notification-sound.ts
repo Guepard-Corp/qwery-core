@@ -96,8 +96,9 @@ export function playCompletionSound(): void {
     masterGain.gain.setValueAtTime(1, now + 0.1);
     masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    if (oscNodes[0]) {
-      oscNodes[0].onended = () => {
+    const firstOsc = oscNodes[0];
+    if (firstOsc) {
+      firstOsc!.onended = () => {
         if (ctx.state === 'running' && ctx.currentTime - now > 1) {
           setTimeout(() => {
             if (ctx.state === 'running') {

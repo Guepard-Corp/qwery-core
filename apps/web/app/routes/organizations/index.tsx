@@ -1,5 +1,4 @@
 import { Skeleton } from '@qwery/ui/skeleton';
-import { Trans } from '@qwery/ui/trans';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';

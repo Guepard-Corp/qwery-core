@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -93,20 +93,21 @@ export function ListProjects({
   const [currentPage, setCurrentPage] = useState(1);
   const [isGridView, setIsGridView] = useState(true);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (isGridView) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIds(new Set());
     }
   }, [isGridView]);
   const [sortCriterion, setSortCriterion] = useState<SortCriterion>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [pausingProject, setPausingProject] = useState<Project | null>(null);
 
   useEffect(() => {
@@ -229,7 +230,6 @@ export function ListProjects({
 
   const handleDeleteSingle = (project: Project) => {
     setSelectedIds(new Set([project.id]));
-    setDeletingProject(project);
     setShowDeleteDialog(true);
   };
 
@@ -269,7 +269,6 @@ export function ListProjects({
       operation: 'delete',
       ids: Array.from(selectedIds),
     });
-    setDeletingProject(null);
   };
 
   const toggleSelection = (id: string) => {
@@ -852,7 +851,6 @@ export function ListProjects({
         onOpenChange={(open: boolean) => {
           setShowDeleteDialog(open);
           if (!open) {
-            setDeletingProject(null);
             setSelectedIds(new Set());
           }
         }}
@@ -874,8 +872,11 @@ export function ListProjects({
             <AlertDialogTitle>Pause Project?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to pause{' '}
-              <span className="font-semibold">"{pausingProject?.name}"</span>?
-              Users will not be able to access this project while it is paused.
+              <span className="font-semibold">
+                &quot;{pausingProject?.name}&quot;
+              </span>
+              ? Users will not be able to access this project while it is
+              paused.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

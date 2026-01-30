@@ -977,7 +977,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                     normalizeUIRole(message.role) === 'user' ? (
                                       (() => {
                                         const {
-                                          text: cleanText,
+                                          text: _cleanText,
                                           context: editContext,
                                         } = parseMessageWithContext(part.text);
                                         const hasContext =

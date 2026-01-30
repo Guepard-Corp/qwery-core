@@ -12,6 +12,18 @@ import OrganizationsPage from '../../../../app/routes/organizations/index';
 
 vi.mock('~/lib/context/workspace-context');
 vi.mock('~/lib/queries/use-get-organizations');
+vi.mock('~/lib/mutations/use-bulk-operations', () => ({
+  useBulkOrganizations: vi.fn(() => ({
+    mutate: vi.fn(),
+    isPending: false,
+  })),
+}));
+vi.mock('~/lib/mutations/use-organization', () => ({
+  useCreateOrganization: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useUpdateOrganization: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDeleteOrganization: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+}));
+
 vi.mock('@qwery/ui/trans', () => ({
   Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }));

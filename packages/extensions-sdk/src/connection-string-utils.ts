@@ -135,6 +135,14 @@ export function cleanPostgresConnectionUrl(connectionUrl: string): string {
     const url = new URL(connectionUrl);
     url.searchParams.delete('channel_binding');
 
+    // Handle sslmode parameter
+    const sslmode = url.searchParams.get('sslmode');
+    if (sslmode === 'disable') {
+      url.searchParams.set('sslmode', 'prefer');
+    } else if (!sslmode) {
+      url.searchParams.set('sslmode', 'prefer');
+    }
+
     return url.toString();
   } catch {
     // Fallback: simple string replacement if URL parsing fails
@@ -142,6 +150,16 @@ export function cleanPostgresConnectionUrl(connectionUrl: string): string {
     // Remove channel_binding parameter using regex
     cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, '');
     cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, '');
+
+    // Handle sslmode parameter
+    if (cleaned.includes('sslmode=disable')) {
+      cleaned = cleaned.replace(/sslmode=disable/g, 'sslmode=prefer');
+    } else if (!cleaned.includes('sslmode=')) {
+      // Add sslmode=prefer if missing
+      const separator = cleaned.includes('?') ? '&' : '?';
+      cleaned += `${separator}sslmode=prefer`;
+    }
+
     return cleaned;
   }
 }

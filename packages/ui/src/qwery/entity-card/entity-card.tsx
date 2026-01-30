@@ -47,7 +47,7 @@ export function EntityCard({
   description,
   status,
   createdAt,
-  createdBy,
+  createdBy: _createdBy,
   icon: Icon,
   iconElement,
   viewButton,
@@ -57,7 +57,7 @@ export function EntityCard({
   onPause,
   className,
   dataTest,
-  variant = 'project',
+  variant: _variant = 'project',
 }: EntityCardProps) {
   const statusColor =
     status === 'active'

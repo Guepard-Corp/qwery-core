@@ -277,14 +277,14 @@ export function DatasourceConnectionFields({
   formConfig,
   onFormReady,
   onValidityChange,
-  formId,
+  _formId,
   className,
 }: {
   extensionId: string;
   formConfig?: DatasourceFormConfigPayload | null;
   onFormReady: (values: Record<string, unknown>) => void;
   onValidityChange: (valid: boolean) => void;
-  formId?: string;
+  _formId?: string;
   className?: string;
 }) {
   const config = useMemo(

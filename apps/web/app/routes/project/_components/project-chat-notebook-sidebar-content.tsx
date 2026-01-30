@@ -222,6 +222,7 @@ export function ProjectChatNotebookSidebarContent() {
         slug: notebook.slug,
         updatedAt: notebook.updatedAt,
       })),
+
     [notebooksList],
   );
 

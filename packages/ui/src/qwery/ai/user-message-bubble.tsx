@@ -306,10 +306,10 @@ function getUserQuestionFromParentId(
   parentConversationId: string | undefined,
   messages:
     | Array<{
-      id: string;
-      role: string;
-      parts?: Array<{ type: string; text?: string }>;
-    }>
+        id: string;
+        role: string;
+        parts?: Array<{ type: string; text?: string }>;
+      }>
     | undefined,
   currentMessageId?: string,
 ): string | undefined {

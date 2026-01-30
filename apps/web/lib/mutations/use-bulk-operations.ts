@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { OrganizationOutput, ProjectOutput } from '@qwery/domain/usecases';
 import { apiPost } from '../repositories/api-client';
 import { getOrganizationsKey } from '../queries/use-get-organizations';
-import { getProjectsByOrganizationIdKey } from '../queries/use-get-projects';
 
 export type BulkOperation = 'delete' | 'export';
 

@@ -1,5 +1,5 @@
 import { FolderKanban } from 'lucide-react';
-import { EntityCard, type EntityCardProps } from '../entity-card/entity-card';
+import { EntityCard } from '../entity-card/entity-card';
 import type { ReactNode } from 'react';
 
 export interface ProjectCardProps {

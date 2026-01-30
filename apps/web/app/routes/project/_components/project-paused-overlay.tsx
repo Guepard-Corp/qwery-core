@@ -22,7 +22,7 @@ export function ProjectPausedOverlay() {
         <p className="text-muted-foreground text-sm leading-relaxed">
           The project{' '}
           <span className="text-foreground font-semibold">
-            "{project.name}"
+            &quot;{project.name}&quot;
           </span>{' '}
           has been paused and is currently not accessible. Please contact your
           administrator to resume access.

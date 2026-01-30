@@ -282,8 +282,8 @@ export function DatasourceSelector({
                               alt={datasource.name}
                               className={cn(
                                 'mr-2 h-4 w-4 shrink-0 object-contain',
-                                datasource.datasource_provider === 'json-online' &&
-                                  'dark:invert',
+                                datasource.datasource_provider ===
+                                  'json-online' && 'dark:invert',
                               )}
                               onError={() => handleImageError(datasource.id)}
                             />

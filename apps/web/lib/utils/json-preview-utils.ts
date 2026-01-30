@@ -68,9 +68,7 @@ export async function fetchJsonData(url: string): Promise<JsonFetchResult> {
     return {
       data: null,
       error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load JSON data',
+        error instanceof Error ? error.message : 'Failed to load JSON data',
     };
   }
 }

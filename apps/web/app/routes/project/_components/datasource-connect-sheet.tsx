@@ -7,7 +7,6 @@ import { Pencil, Shuffle, X } from 'lucide-react';
 import { Sheet, SheetContent } from '@qwery/ui/sheet';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
-import { ScrollArea } from '@qwery/ui/scroll-area';
 import { cn } from '@qwery/ui/utils';
 
 import { DatasourceConnectForm } from './datasource-connect-form';
@@ -73,6 +72,7 @@ export function DatasourceConnectSheet({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDatasourceName(generateRandomName());
     }
   }, [open, extensionId]);
@@ -112,7 +112,11 @@ export function DatasourceConnectSheet({
     setDatasourceName(generateRandomName());
   }, []);
 
-  const hasUnsavedChanges = formValues !== null && Object.values(formValues).some(v => v !== undefined && v !== null && v !== '');
+  const hasUnsavedChanges =
+    formValues !== null &&
+    Object.values(formValues).some(
+      (v) => v !== undefined && v !== null && v !== '',
+    );
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && hasUnsavedChanges) {
@@ -289,7 +293,7 @@ export function DatasourceConnectSheet({
                   extensionId={extensionId}
                   formConfig={extension.data?.formConfig}
                   isTestConnectionLoading={isTestConnectionLoading}
-                  className="flex-1 min-h-0"
+                  className="min-h-0 flex-1"
                 />
               )}
             </div>
@@ -304,17 +308,24 @@ export function DatasourceConnectSheet({
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
+      <AlertDialog
+        open={showExitConfirmation}
+        onOpenChange={setShowExitConfirmation}
+      >
         <AlertDialogContent className="z-[110]" overlayClassName="z-[110]">
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
-              You have entered connection details. Are you sure you want to exit? Your progress will be lost.
+              You have entered connection details. Are you sure you want to
+              exit? Your progress will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmExit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Exit and Discard
             </AlertDialogAction>
           </AlertDialogFooter>

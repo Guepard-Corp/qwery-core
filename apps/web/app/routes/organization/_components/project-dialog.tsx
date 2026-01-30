@@ -25,7 +25,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
 import { Textarea } from '@qwery/ui/textarea';
@@ -89,12 +88,14 @@ export function ProjectDialog({
 
           if (Array.isArray(parsed)) {
             const messages = parsed
-              .map((e: any) => {
+              .map((e: unknown) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path)
-                    ? e.path.join('.')
-                    : e.path || 'field';
-                  const message = e.message || 'Validation error';
+                  const errorObj = e as Record<string, unknown>;
+                  const field = Array.isArray(errorObj.path)
+                    ? errorObj.path.join('.')
+                    : (errorObj.path as string) || 'field';
+                  const message =
+                    (errorObj.message as string) || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
@@ -103,14 +104,17 @@ export function ProjectDialog({
             displayMessage =
               messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
-            if (parsed.message) {
-              displayMessage = parsed.message;
-            } else if (parsed.error) {
-              displayMessage = parsed.error;
-            } else if (Array.isArray(parsed.errors)) {
-              displayMessage = parsed.errors
-                .map((e: any) =>
-                  typeof e === 'string' ? e : e?.message || String(e),
+            const parsedObj = parsed as Record<string, unknown>;
+            if (parsedObj.message) {
+              displayMessage = parsedObj.message as string;
+            } else if (parsedObj.error) {
+              displayMessage = parsedObj.error as string;
+            } else if (Array.isArray(parsedObj.errors)) {
+              displayMessage = (parsedObj.errors as unknown[])
+                .map((e: unknown) =>
+                  typeof e === 'string'
+                    ? e
+                    : (e as Record<string, unknown>)?.message || String(e),
                 )
                 .filter(Boolean)
                 .join(', ');
@@ -124,12 +128,14 @@ export function ProjectDialog({
           const parsed = JSON.parse(error);
           if (Array.isArray(parsed)) {
             const messages = parsed
-              .map((e: any) => {
+              .map((e: unknown) => {
                 if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path)
-                    ? e.path.join('.')
-                    : e.path || 'field';
-                  const message = e.message || 'Validation error';
+                  const errorObj = e as Record<string, unknown>;
+                  const field = Array.isArray(errorObj.path)
+                    ? errorObj.path.join('.')
+                    : (errorObj.path as string) || 'field';
+                  const message =
+                    (errorObj.message as string) || 'Validation error';
                   return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
                 }
                 return String(e);
@@ -138,8 +144,11 @@ export function ProjectDialog({
             displayMessage =
               messages.length > 0 ? messages.join('. ') : 'Validation failed';
           } else if (typeof parsed === 'object' && parsed !== null) {
+            const parsedObj = parsed as Record<string, unknown>;
             displayMessage =
-              parsed.message || parsed.error || 'Failed to create project';
+              (parsedObj.message as string) ||
+              (parsedObj.error as string) ||
+              'Failed to create project';
           } else {
             displayMessage = error;
           }
@@ -169,6 +178,7 @@ export function ProjectDialog({
 
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)
@@ -189,6 +199,7 @@ export function ProjectDialog({
               displayMessage = parsed.error;
             } else if (Array.isArray(parsed.errors)) {
               displayMessage = parsed.errors
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((e: any) =>
                   typeof e === 'string' ? e : e?.message || String(e),
                 )
@@ -204,6 +215,7 @@ export function ProjectDialog({
           const parsed = JSON.parse(error);
           if (Array.isArray(parsed)) {
             const messages = parsed
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((e: any) => {
                 if (typeof e === 'object' && e !== null) {
                   const field = Array.isArray(e.path)

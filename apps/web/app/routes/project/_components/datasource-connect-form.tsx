@@ -70,6 +70,19 @@ export function DatasourceConnectForm({
     null,
   );
   const [isFormValid, setIsFormValid] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (
+      variant === 'sheet' &&
+      actionsContainerReady &&
+      actionsContainerRef?.current
+    ) {
+      setPortalTarget(actionsContainerRef.current);
+    } else {
+      setPortalTarget(null);
+    }
+  }, [variant, actionsContainerReady, actionsContainerRef]);
 
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
@@ -203,7 +216,7 @@ export function DatasourceConnectForm({
     onTestConnectionLoadingChange?.(true);
     testConnectionMutation.mutate(testDatasource as Datasource);
   }, [
-    extension?.data,
+    extension.data,
     extensionId,
     formValues,
     datasourceName,
@@ -287,7 +300,7 @@ export function DatasourceConnectForm({
       createdBy: userId,
     });
   }, [
-    extension?.data,
+    extension.data,
     extensionId,
     formValues,
     datasourceName,
@@ -315,7 +328,7 @@ export function DatasourceConnectForm({
           variant="outline"
           onClick={handleTestConnection}
           disabled={isPending || !isFormValid || isConnecting}
-          className="bg-white hover:bg-gray-50 text-black hover:text-black font-semibold border border-border shadow-sm transition-all"
+          className="border-border border bg-white font-semibold text-black shadow-sm transition-all hover:bg-gray-50 hover:text-black"
         >
           {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
           Test Connection
@@ -325,7 +338,7 @@ export function DatasourceConnectForm({
           disabled={
             isConnecting || isPending || !isFormValid || isTestConnectionLoading
           }
-          className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold border-0 shadow-lg transition-all"
+          className="border-0 bg-yellow-400 font-bold text-black shadow-lg transition-all hover:bg-yellow-500"
         >
           {isConnecting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
@@ -338,13 +351,14 @@ export function DatasourceConnectForm({
     </div>
   );
 
-  const portalTarget =
-    variant === 'sheet' && actionsContainerReady
-      ? actionsContainerRef?.current
-      : null;
-
   return (
-    <div className={cn(variant === 'sheet' ? 'w-full' : 'mx-auto max-w-3xl', 'space-y-8', className)}>
+    <div
+      className={cn(
+        variant === 'sheet' ? 'w-full' : 'mx-auto max-w-3xl',
+        'space-y-8',
+        className,
+      )}
+    >
       {showHeader && (
         <header className="space-y-3 px-4">
           <div className="flex min-w-0 items-center gap-4">
@@ -455,7 +469,7 @@ export function DatasourceConnectForm({
                 formConfig={extension.data?.formConfig}
                 onFormReady={handleFormReady}
                 onValidityChange={setIsFormValid}
-                formId={formId ?? 'datasource-form'}
+                _formId={formId ?? 'datasource-form'}
               />
             </div>
           )}

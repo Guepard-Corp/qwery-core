@@ -73,10 +73,10 @@ const DEFAULT_FIELD_LABELS: FieldLabels = {
 };
 
 const DEFAULT_INPUT_CONFIG: Partial<Record<DatasourceField, FieldInputConfig>> =
-{
-  port: { type: 'text', inputMode: 'numeric', autoComplete: 'off' },
-  password: { type: 'password', autoComplete: 'new-password' },
-};
+  {
+    port: { type: 'text', inputMode: 'numeric', autoComplete: 'off' },
+    password: { type: 'password', autoComplete: 'new-password' },
+  };
 
 type ProviderRule = {
   placeholders?: Partial<DatasourceFormPlaceholders>;
@@ -326,15 +326,16 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
       )
       .refine(
         (c) => {
-          const url =
-            (c.jsonUrl || c.url || c.connectionUrl || c.connectionString) as
-            | string
-            | undefined;
+          const url = (c.jsonUrl ||
+            c.url ||
+            c.connectionUrl ||
+            c.connectionString) as string | undefined;
           const { isValid } = validateDatasourceUrl('json-online', url);
           return isValid;
         },
         {
-          message: 'Please enter a valid URL (must start with http:// or https://)',
+          message:
+            'Please enter a valid URL (must start with http:// or https://)',
         },
       ),
   },

@@ -31,7 +31,7 @@ import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
 import { Checkbox } from '@qwery/ui/checkbox';
 import { cn } from '@qwery/ui/utils';
-import { formatRelativeTime } from '@qwery/ui/ai';
+import { formatRelativeTime } from '@qwery/ui/ai-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,6 +79,7 @@ export function ListOrganizations({
 
   useEffect(() => {
     if (isGridView) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIds(new Set());
     }
   }, [isGridView]);
@@ -86,7 +87,6 @@ export function ListOrganizations({
   const [showDialog, setShowDialog] = useState(false);
   const [editingOrganization, setEditingOrganization] =
     useState<Organization | null>(null);
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

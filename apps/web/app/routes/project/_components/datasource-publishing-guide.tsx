@@ -26,34 +26,35 @@ export function DatasourcePublishingGuide({
   return (
     <div
       className={cn(
-        'border-border/60 bg-muted/20 overflow-hidden rounded-lg border transition-colors hover:bg-muted/30',
+        'border-border/60 bg-muted/20 hover:bg-muted/30 overflow-hidden rounded-lg border transition-colors',
         className,
       )}
     >
       <div
-        className="cursor-pointer select-none px-4 py-3"
+        className="cursor-pointer px-4 py-3 select-none"
         onClick={() => setShowDetails(!showDetails)}
         role="button"
         tabIndex={0}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <HelpCircle className="text-amber-600 dark:text-amber-500 size-4 shrink-0" />
+          <div className="flex min-w-0 items-center gap-3">
+            <HelpCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-500" />
             <div className="min-w-0">
-              <p className="text-foreground text-[13px] font-semibold leading-none">
+              <p className="text-foreground text-[13px] leading-none font-semibold">
                 Enable Live Preview
               </p>
               <p className="text-muted-foreground mt-1.5 truncate text-[11px]">
-                Google Sheets must be "Published to the web" to be visualized.
+                Google Sheets must be &quot;Published to the web&quot; to be
+                visualized.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <a
               href="https://support.google.com/docs/answer/183965"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="text-muted-foreground hover:text-foreground p-1 transition-colors"
               onClick={(e) => e.stopPropagation()}
               title="Official Google Guide"
             >
@@ -70,7 +71,7 @@ export function DatasourcePublishingGuide({
         </div>
 
         {showDetails && (
-          <div className="mt-4 space-y-3 border-t border-border/40 pt-4 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="border-border/40 animate-in fade-in slide-in-from-top-1 mt-4 space-y-3 border-t pt-4 duration-200">
             {steps.map((step, idx) => (
               <div key={idx} className="flex items-start gap-3">
                 <span className="text-muted-foreground mt-0.5 text-[11px] font-bold opacity-50">
