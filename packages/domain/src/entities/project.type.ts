@@ -24,8 +24,10 @@ export const ProjectSchema = z.object({
     .max(255)
     .optional()
     .describe('The status of the project'),
-  createdAt: z.date().describe('The date and time the project was created'),
-  updatedAt: z
+  createdAt: z.coerce
+    .date()
+    .describe('The date and time the project was created'),
+  updatedAt: z.coerce
     .date()
     .describe('The date and time the project was last updated'),
   createdBy: z

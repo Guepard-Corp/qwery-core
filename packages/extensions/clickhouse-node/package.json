@@ -20,9 +20,28 @@
     "datasources": [
       {
         "id": "clickhouse-node",
-        "name": "ClickHouse (Node)",
+        "name": "ClickHouse (Server)",
         "description": "Connect to ClickHouse databases",
         "icon": "media/ClickHouseLogo_White_FNL.svg",
+        "formConfig": {
+          "preset": "sql",
+          "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+          "defaultHost": "localhost",
+          "defaultPort": "8123",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": true,
+          "showConnectionStringTab": true,
+          "showSslToggle": true,
+          "placeholders": {
+            "port": "8123",
+            "database": "default",
+            "username": "default",
+            "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
+          },
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
+        },
         "schema": {
           "type": "object",
           "oneOf": [
@@ -86,7 +105,7 @@
     "drivers": [
       {
         "id": "clickhouse.node",
-        "name": "ClickHouse (Node)",
+        "name": "ClickHouse (Server)",
         "description": "Node runtime ClickHouse driver",
         "runtime": "node",
         "entry": "./dist/driver.js"

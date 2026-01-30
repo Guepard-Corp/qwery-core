@@ -51,7 +51,8 @@ export function buildPostgresConnectionUrl(fields: ConnectionFields): string {
   const username = fields.username || fields.user || '';
   const password = fields.password || '';
   const database = fields.database || '';
-  const sslmode = fields.sslmode || 'prefer';
+  const sslmode =
+    fields.sslmode || (fields.ssl === true ? 'require' : 'prefer');
 
   // Build URL
   let url = `postgresql://`;
@@ -93,6 +94,9 @@ export function buildMysqlConnectionUrl(fields: ConnectionFields): string {
   if (database) {
     url += `/${database}`;
   }
+  if (fields.ssl === true) {
+    url += `${url.includes('?') ? '&' : '?'}ssl=true`;
+  }
 
   return url;
 }
@@ -102,17 +106,18 @@ export function buildMysqlConnectionUrl(fields: ConnectionFields): string {
  */
 export function buildClickHouseConnectionUrl(fields: ConnectionFields): string {
   const host = fields.host || 'localhost';
-  const port = fields.port || 8123;
+  const port = fields.port || (fields.ssl === true ? 8443 : 8123);
   const username = fields.username || fields.user || 'default';
   const password = fields.password || '';
   const database = fields.database || 'default';
+  const protocol = fields.ssl === true ? 'https' : 'http';
 
   // ClickHouse HTTP interface format
-  let url = `http://${host}:${port}`;
+  let url = `${protocol}://${host}:${port}`;
   if (username || password) {
     const encodedUser = username ? encodeURIComponent(username) : '';
     const encodedPass = password ? encodeURIComponent(password) : '';
-    url = `http://${encodedUser}${encodedPass ? `:${encodedPass}` : ''}@${host}:${port}`;
+    url = `${protocol}://${encodedUser}${encodedPass ? `:${encodedPass}` : ''}@${host}:${port}`;
   }
   if (database && database !== 'default') {
     url += `?database=${encodeURIComponent(database)}`;
@@ -123,17 +128,18 @@ export function buildClickHouseConnectionUrl(fields: ConnectionFields): string {
 
 /**
  * Clean PostgreSQL connection URL
- * Removes channel_binding parameter and ensures sslmode is set
+ * Removes channel_binding parameter.
  */
 export function cleanPostgresConnectionUrl(connectionUrl: string): string {
   try {
     const url = new URL(connectionUrl);
     url.searchParams.delete('channel_binding');
 
-    // Ensure sslmode is present
-    if (!url.searchParams.has('sslmode')) {
+    // Handle sslmode parameter
+    const sslmode = url.searchParams.get('sslmode');
+    if (sslmode === 'disable') {
       url.searchParams.set('sslmode', 'prefer');
-    } else if (url.searchParams.get('sslmode') === 'disable') {
+    } else if (!sslmode) {
       url.searchParams.set('sslmode', 'prefer');
     }
 
@@ -144,16 +150,16 @@ export function cleanPostgresConnectionUrl(connectionUrl: string): string {
     // Remove channel_binding parameter using regex
     cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, '');
     cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, '');
-    // Change sslmode=disable to prefer (servers require SSL)
-    cleaned = cleaned.replace(/sslmode=disable/g, 'sslmode=prefer');
-    // Ensure sslmode is present if it was removed
-    if (!cleaned.includes('sslmode=')) {
-      if (cleaned.includes('?')) {
-        cleaned += '&sslmode=prefer';
-      } else {
-        cleaned += '?sslmode=prefer';
-      }
+
+    // Handle sslmode parameter
+    if (cleaned.includes('sslmode=disable')) {
+      cleaned = cleaned.replace(/sslmode=disable/g, 'sslmode=prefer');
+    } else if (!cleaned.includes('sslmode=')) {
+      // Add sslmode=prefer if missing
+      const separator = cleaned.includes('?') ? '&' : '?';
+      cleaned += `${separator}sslmode=prefer`;
     }
+
     return cleaned;
   }
 }

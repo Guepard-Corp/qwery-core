@@ -23,6 +23,24 @@
         "name": "Embedded PostgreSQL",
         "description": "Test PostgreSQL queries in your browser using PGlite",
         "icon": "media/pglite.svg",
+        "formConfig": {
+          "preset": "embeddable",
+          "docsUrl": "https://github.com/electric-sql/pglite",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": false,
+          "showConnectionStringTab": true,
+          "placeholders": {
+            "host": "—",
+            "port": "—",
+            "database": ":memory: or indexeddb://dbname",
+            "username": "—",
+            "password": "—",
+            "connectionString": "pglite://:memory: or indexeddb://dbname"
+          },
+          "fieldLabels": {
+            "connectionString": "Database URI"
+          }
+        },
         "schema": {
           "type": "object",
           "properties": {

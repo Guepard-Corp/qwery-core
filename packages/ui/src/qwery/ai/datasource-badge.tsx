@@ -41,7 +41,11 @@ export function DatasourceBadge({
             <img
               src={iconUrl}
               alt={displayName}
-              className="h-3.5 w-3.5 shrink-0 object-contain"
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 object-contain',
+                datasource.datasource_provider === 'json-online' &&
+                  'dark:invert',
+              )}
             />
           ) : (
             <Database className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
@@ -65,7 +69,11 @@ export function DatasourceBadge({
                 <img
                   src={iconUrl}
                   alt={datasource.name || datasource.slug || datasource.id}
-                  className="h-6 w-6 object-contain"
+                  className={cn(
+                    'h-6 w-6 object-contain',
+                    datasource.datasource_provider === 'json-online' &&
+                      'dark:invert',
+                  )}
                 />
               ) : (
                 <Database className="text-muted-foreground h-5 w-5" />
@@ -225,7 +233,11 @@ function DatasourceBadgesHover({
                       <img
                         src={iconUrl}
                         alt={displayName}
-                        className="h-5 w-5 object-contain"
+                        className={cn(
+                          'h-5 w-5 object-contain',
+                          datasource.datasource_provider === 'json-online' &&
+                            'dark:invert',
+                        )}
                       />
                     ) : (
                       <Database className="text-muted-foreground h-4 w-4" />

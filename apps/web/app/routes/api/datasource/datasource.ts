@@ -53,13 +53,20 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const projectId = url.searchParams.get('projectId');
 
-    if (projectId) {
-      const datasources = await repository.findByProjectId(projectId);
-      return Response.json(datasources ?? []);
+    // Require projectId to prevent fetching all datasources from all orgs/projects
+    if (!projectId) {
+      return Response.json(
+        {
+          error: 'projectId query parameter is required',
+          message:
+            'Datasources must be fetched for a specific project. Please provide a projectId query parameter.',
+        },
+        { status: 400 },
+      );
     }
 
-    const datasources = await repository.findAll();
-    return Response.json(datasources);
+    const datasources = await repository.findByProjectId(projectId);
+    return Response.json(datasources ?? []);
   } catch (error) {
     console.error('Error in datasource loader:', error);
     return handleDomainException(error);

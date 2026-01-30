@@ -21,23 +21,31 @@ export function useGetProjects(repository: IProjectRepository, orgId: string) {
   });
 }
 
-export function useGetProjectById(repository: IProjectRepository, id: string) {
+export function useGetProjectById(
+  repository: IProjectRepository,
+  id: string,
+  options?: { enabled?: boolean },
+) {
   const useCase = new GetProjectService(repository);
   return useQuery({
     queryKey: ['project', id],
     queryFn: () => useCase.execute(id),
     staleTime: 30 * 1000,
+    enabled: options?.enabled !== undefined ? options.enabled && !!id : !!id,
   });
 }
 
 export function useGetProjectBySlug(
   repository: IProjectRepository,
   slug: string,
+  options?: { enabled?: boolean },
 ) {
   const useCase = new GetProjectBySlugService(repository);
   return useQuery({
     queryKey: ['project', slug],
     queryFn: () => useCase.execute(slug),
     staleTime: 30 * 1000,
+    enabled:
+      options?.enabled !== undefined ? options.enabled && !!slug : !!slug,
   });
 }

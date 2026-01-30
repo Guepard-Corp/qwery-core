@@ -98,28 +98,36 @@ export const CodeBlock = ({
     };
   }, [code, language, showLineNumbers]);
 
+  const isSQL = language === 'sql';
+
   return (
     <CodeBlockContext.Provider value={{ code }}>
       <div
         className={cn(
-          'group bg-background text-foreground relative w-full max-w-[28rem] min-w-0 overflow-hidden rounded-md border',
+          'group bg-muted/30 text-foreground relative w-full min-w-0 overflow-hidden rounded-lg',
           className,
         )}
         {...props}
       >
         <div className="relative max-w-full min-w-0 overflow-x-auto">
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
+            className={cn(
+              '[&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed',
+              isSQL ? '[&>pre]:bg-muted/50!' : '[&>pre]:bg-muted/30!',
+            )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-base [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:p-4 [&>pre]:text-base"
+            className={cn(
+              '[&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed',
+              isSQL ? '[&>pre]:bg-muted/40!' : '[&>pre]:bg-muted/20!',
+            )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
-            <div className="absolute top-2 right-2 flex items-center gap-2">
+            <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
               {children}
             </div>
           )}

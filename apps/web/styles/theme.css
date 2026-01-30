@@ -122,8 +122,35 @@
   }
 }
 
+/* Override syntax highlighting background colors for SQL code blocks */
+div[data-code-block-container="true"] pre[style*="background-color"] {
+  background-color: hsl(0, 0%, 2%) !important;
+}
+
+div[data-code-block-container="true"] pre code,
+div[data-code-block-container="true"] pre code *,
+div[data-code-block-container="true"] pre span {
+  background-color: transparent !important;
+}
+
+/* Force code block header to be pitch black */
+div[data-code-block-container="true"] > div[data-code-block-header="true"],
+div[data-code-block-container="true"] > div.code-block-header,
+div[data-code-block-container="true"] > div[class*="rounded-t-md"] {
+  background-color: hsl(0, 0%, 2%) !important;
+}
+
 @property --border-angle {
   inherits: false;
   initial-value: 0deg;
   syntax: '<angle>';
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type="search"]::-ms-clear {
+  display: none;
 }

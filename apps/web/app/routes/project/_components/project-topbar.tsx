@@ -29,35 +29,33 @@ export function ProjectLayoutTopBar() {
   };
   return (
     <PageTopBar>
-      <div className="flex w-full items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <AppLogo />
-          {workspace.mode === WorkspaceModeEnum.SIMPLE ? null : (
-            <SidebarTrigger className="lg:hidden" />
-          )}
-          <ProjectBreadcrumb />
-        </div>
-        <div className="flex items-center space-x-4">
-          <ProjectConversationHistory />
-          <WorkspaceModeSwitch
-            onChange={handleSwitchWorkspaceMode}
-            defaultMode={
-              workspace.mode === WorkspaceModeEnum.ADVANCED
-                ? 'advanced'
-                : 'simple'
-            }
-          />
-          <Button asChild size="icon" variant="ghost">
-            <Link
-              to="https://docs.qwery.run"
-              target="_blank"
-              data-test="docs-link"
-              rel="noopener noreferrer"
-            >
-              <FileText className="h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
+      <div className="flex items-center space-x-4">
+        <AppLogo className="h-7 w-7" />
+        {workspace.mode === WorkspaceModeEnum.SIMPLE ? null : (
+          <SidebarTrigger className="lg:hidden" />
+        )}
+        <ProjectBreadcrumb />
+      </div>
+      <div className="flex items-center space-x-4">
+        <ProjectConversationHistory />
+        <WorkspaceModeSwitch
+          onChange={handleSwitchWorkspaceMode}
+          defaultMode={
+            workspace.mode === WorkspaceModeEnum.ADVANCED
+              ? 'advanced'
+              : 'simple'
+          }
+        />
+        <Button asChild size="icon" variant="ghost">
+          <Link
+            to="https://docs.qwery.run"
+            target="_blank"
+            data-test="docs-link"
+            rel="noopener noreferrer"
+          >
+            <FileText className="h-5 w-5" />
+          </Link>
+        </Button>
       </div>
     </PageTopBar>
   );

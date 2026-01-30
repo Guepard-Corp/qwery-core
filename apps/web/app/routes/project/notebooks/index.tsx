@@ -1,16 +1,35 @@
 import { Skeleton } from '@qwery/ui/skeleton';
+import { useEffect, useState, useMemo } from 'react';
+import { useParams } from 'react-router';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
+import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
 
 import { ListNotebooks } from '../_components/list-notebooks';
-import { useEffect, useState } from 'react';
 
 export default function ProjectNotebooksPage() {
   const { repositories, workspace } = useWorkspace();
+  const params = useParams();
+  const projectSlug = params.slug;
+
+  // Get project by slug to ensure we have the correct projectId
+  const projectBySlug = useGetProjectBySlug(
+    repositories.project,
+    projectSlug || '',
+  );
+
+  // Use projectId from the fetched project, fallback to workspace.projectId
+  const projectId = useMemo(() => {
+    return projectBySlug.data?.id || workspace.projectId;
+  }, [projectBySlug.data?.id, workspace.projectId]);
+
   const notebooks = useGetNotebooksByProjectId(
     repositories.notebook,
-    workspace.projectId as string,
+    projectId as string,
+    {
+      enabled: !!projectId,
+    },
   );
 
   const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(

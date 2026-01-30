@@ -685,49 +685,37 @@ export function FormRenderer<T extends ZodSchemaType>({
     reValidateMode: 'onChange',
   });
 
-  // Watch all form values to detect changes
-
   const watchedValues = form.watch();
   const previousValuesRef = React.useRef<z.infer<T> | null>(null);
   const onFormReadyRef = React.useRef(onFormReady);
   const onValidityChangeRef = React.useRef(onValidityChange);
   onFormReadyRef.current = onFormReady;
   onValidityChangeRef.current = onValidityChange;
-
-  // Expose current form values to parent when they actually change
   React.useEffect(() => {
     if (!onFormReadyRef.current) return;
 
-    // Get current form values
     const values = form.getValues();
 
-    // Deep comparison to avoid infinite loops
     const valuesString = JSON.stringify(values);
     const previousString = previousValuesRef.current
       ? JSON.stringify(previousValuesRef.current)
       : null;
 
-    // Only notify if values actually changed
     if (valuesString !== previousString) {
       previousValuesRef.current = values as z.infer<T>;
 
-      // For oneOf schemas, normalize the values before validation
-      // Remove empty fields and keep only the relevant option
       let normalizedValues = values;
       if (isOneOfSchema && hasOneOf) {
         const hasConnectionUrl = Boolean(values.connectionUrl);
         const hasHost = Boolean(values.host);
 
         if (hasConnectionUrl) {
-          // Using connectionUrl - remove separate fields
           normalizedValues = {
             connectionUrl: values.connectionUrl,
           };
         } else if (hasHost) {
-          // Using separate fields - remove connectionUrl, keep only filled fields
           normalizedValues = { ...values };
           delete normalizedValues.connectionUrl;
-          // Remove empty optional fields (but keep password even if empty - it might be intentionally empty)
           Object.keys(normalizedValues).forEach((key) => {
             if (
               key !== 'password' &&
@@ -740,18 +728,15 @@ export function FormRenderer<T extends ZodSchemaType>({
         }
       }
 
-      // Validate with schema
       try {
         const validatedValues = schema.parse(normalizedValues);
         onFormReadyRef.current(validatedValues);
       } catch {
-        // If validation fails, still pass the raw values (for partial input)
         onFormReadyRef.current(values);
       }
     }
-  }, [watchedValues, form, schema, hasOneOf, isOneOfSchema]);
+  }, [watchedValues, form, schema, isOneOfSchema, hasOneOf]);
 
-  // Trigger initial validation and track validity changes
   useEffect(() => {
     if (!onValidityChangeRef.current) return;
     form.trigger().then(() => {
@@ -763,7 +748,6 @@ export function FormRenderer<T extends ZodSchemaType>({
     await onSubmit(values);
   });
 
-  // Custom validation for oneOf schemas - check if either connectionUrl OR required fields are filled
   const validateOneOfForm = React.useCallback(() => {
     if (!isOneOfSchema || !hasOneOf) return null;
 
@@ -773,12 +757,10 @@ export function FormRenderer<T extends ZodSchemaType>({
     );
     const hasHost = Boolean(values.host?.trim?.() || values.host);
 
-    // For oneOf: either connectionUrl OR host must be present
     if (!hasConnectionUrl && !hasHost) {
-      return false; // Invalid - neither option is filled
+      return false;
     }
 
-    // If using connectionUrl, it must be a non-empty string
     if (hasConnectionUrl) {
       const url = String(values.connectionUrl || '').trim();
       if (!url) {
@@ -786,7 +768,6 @@ export function FormRenderer<T extends ZodSchemaType>({
       }
     }
 
-    // If using separate fields, host is required
     if (hasHost && !hasConnectionUrl) {
       const host = String(values.host || '').trim();
       if (!host) {
@@ -797,11 +778,9 @@ export function FormRenderer<T extends ZodSchemaType>({
     return true; // Valid
   }, [isOneOfSchema, hasOneOf, form]);
 
-  // Track validity changes with custom validation for oneOf
-  React.useEffect(() => {
+  useEffect(() => {
     if (!onValidityChangeRef.current) return;
 
-    // For oneOf schemas, use custom validation
     if (isOneOfSchema && hasOneOf) {
       const customValid = validateOneOfForm();
       if (customValid !== null) {

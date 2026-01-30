@@ -29,6 +29,7 @@ import {
 } from '@qwery/ui/card';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
+import { cn } from '@qwery/ui/utils';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -361,7 +362,11 @@ export default function ProjectDatasourceViewPage() {
               <img
                 src={extension.data?.logo}
                 alt={extension.data?.name}
-                className="h-12 w-12 rounded object-contain"
+                className={cn(
+                  'h-12 w-12 rounded object-contain',
+                  datasource?.data?.datasource_provider === 'json-online' &&
+                    'dark:invert',
+                )}
               />
             )}
             <div>

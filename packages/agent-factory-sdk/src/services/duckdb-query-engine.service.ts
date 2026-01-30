@@ -429,6 +429,9 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
    * Execute a SQL query across attached datasources.
    */
   async query(query: string): Promise<DatasourceResultSet> {
+    // Apply default limit to prevent OOM on large datasets
+    const safeQuery = this.applyDefaultLimit(query);
+
     if (!this.initialized || !this.connection) {
       throw new Error(
         'DuckDBQueryEngine must be initialized and connected before querying',
@@ -437,7 +440,7 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     try {
       const startTime = performance.now();
-      const resultReader = await this.connection.runAndReadAll(query);
+      const resultReader = await this.connection.runAndReadAll(safeQuery);
       await resultReader.readAll();
       const rows = resultReader.getRowObjectsJS() as Array<
         Record<string, unknown>
@@ -618,6 +621,39 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
 
     // Unknown
     return 'unknown';
+  }
+
+  /**
+   * Applies a default limit of 1000 to SELECT queries if not present,
+   * or caps existing limits to 1000.
+   */
+  private applyDefaultLimit(query: string): string {
+    const MAX_LIMIT = 1000;
+    const trimmed = query.trim();
+
+    // Only apply to SELECT or WITH (CTE) queries
+    if (!/^\s*(?:SELECT|WITH)\b/i.test(trimmed)) {
+      return query;
+    }
+
+    const limitRegex = /\bLIMIT\s+(\d+)\s{0,10}(;?)\s{0,10}$/i;
+    const match = trimmed.match(limitRegex);
+
+    if (match && match[1]) {
+      const limit = parseInt(match[1], 10);
+      if (limit > MAX_LIMIT) {
+        // Cap the limit to MAX_LIMIT
+        return trimmed.replace(limitRegex, `LIMIT ${MAX_LIMIT}$2`);
+      }
+      return query;
+    }
+
+    // No LIMIT clause found, append default limit
+    if (trimmed.endsWith(';')) {
+      return trimmed.slice(0, -1) + ` LIMIT ${MAX_LIMIT};`;
+    }
+
+    return trimmed + ` LIMIT ${MAX_LIMIT}`;
   }
 
   /**

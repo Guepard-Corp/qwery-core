@@ -26,6 +26,8 @@ import {
   NotebookSidebarProvider,
   useNotebookSidebar,
 } from '~/lib/context/notebook-sidebar-context';
+import { ProjectProvider } from '~/lib/context/project-context';
+import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
@@ -50,6 +52,11 @@ function SidebarLayoutInner(
   const [persistedConversationSlug, setPersistedConversationSlug] = useState<
     string | null
   >(null);
+
+  // Note: We intentionally do NOT sync workspace context with URL here.
+  // Components use URL-derived project data directly via useGetProjectBySlug.
+  // The workspace context provides userId and repositories only.
+  // This prevents feedback loops and flickering when navigating between projects.
 
   // Only enable notebook sidebar behavior on notebook pages
   const isNotebookPage = location.pathname.startsWith('/notebook/');
@@ -238,9 +245,12 @@ function SidebarLayoutInner(
 
 function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
-    <NotebookSidebarProvider>
-      <SidebarLayoutInner {...props} />
-    </NotebookSidebarProvider>
+    <ProjectProvider>
+      <ProjectPausedOverlay />
+      <NotebookSidebarProvider>
+        <SidebarLayoutInner {...props} />
+      </NotebookSidebarProvider>
+    </ProjectProvider>
   );
 }
 
@@ -248,38 +258,41 @@ function SimpleModeSidebarLayout(
   props: Route.ComponentProps & React.PropsWithChildren,
 ) {
   return (
-    <AgentStatusProvider>
-      <Page>
-        <PageTopNavigation>
-          <ProjectLayoutTopBar />
-        </PageTopNavigation>
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <LayoutMobileNavigation />
-        </PageMobileNavigation>
-        <PageFooter>
-          <LayoutFooter />
-        </PageFooter>
-        <AgentSidebar>
-          <AgentTabs
-            tabs={[
-              {
-                id: 'query-sql-results',
-                title: 'Results',
-                description: 'Query SQL Results',
-                component: <div>Query SQL Results</div>,
-              },
-              {
-                id: 'query-sql-visualisation',
-                title: 'Visualisation',
-                description: 'Visualisation of the query SQL results',
-                component: <div>Query SQL Results</div>,
-              },
-            ]}
-          />
-        </AgentSidebar>
-        {props.children}
-      </Page>
-    </AgentStatusProvider>
+    <ProjectProvider>
+      <ProjectPausedOverlay />
+      <AgentStatusProvider>
+        <Page>
+          <PageTopNavigation>
+            <ProjectLayoutTopBar />
+          </PageTopNavigation>
+          <PageMobileNavigation className={'flex items-center justify-between'}>
+            <LayoutMobileNavigation />
+          </PageMobileNavigation>
+          <PageFooter>
+            <LayoutFooter />
+          </PageFooter>
+          <AgentSidebar>
+            <AgentTabs
+              tabs={[
+                {
+                  id: 'query-sql-results',
+                  title: 'Results',
+                  description: 'Query SQL Results',
+                  component: <div>Query SQL Results</div>,
+                },
+                {
+                  id: 'query-sql-visualisation',
+                  title: 'Visualisation',
+                  description: 'Visualisation of the query SQL results',
+                  component: <div>Query SQL Results</div>,
+                },
+              ]}
+            />
+          </AgentSidebar>
+          {props.children}
+        </Page>
+      </AgentStatusProvider>
+    </ProjectProvider>
   );
 }
 

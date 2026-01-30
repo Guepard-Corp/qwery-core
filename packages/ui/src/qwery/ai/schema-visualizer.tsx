@@ -8,7 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '../../shadcn/collapsible';
-import { TOOL_UI_CONFIG } from './tool-ui-config';
+import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { Trans } from '../trans';
 
 export interface SchemaColumn {

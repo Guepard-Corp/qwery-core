@@ -29,7 +29,7 @@ import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { cn } from '../../lib/utils';
 import { SchemaVisualizer } from './schema-visualizer';
 import { Trans } from '../trans';
-import { TOOL_UI_CONFIG } from './tool-ui-config';
+import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 
 import { ViewSheetVisualizer } from './sheets/view-sheet-visualizer';
 

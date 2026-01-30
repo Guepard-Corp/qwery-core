@@ -6,9 +6,17 @@ import {
   useState,
 } from 'react';
 
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, Link } from 'react-router';
 
-import { Pencil } from 'lucide-react';
+import {
+  Pencil,
+  X,
+  Database,
+  Loader2,
+  Zap,
+  ArrowLeft,
+  Check,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -17,15 +25,9 @@ import { GetProjectBySlugService } from '@qwery/domain/services';
 import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
 import { FormRenderer } from '@qwery/ui/form-renderer';
 import { Button } from '@qwery/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@qwery/ui/card';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
+import { cn } from '@qwery/ui/utils';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -45,8 +47,6 @@ export async function loader({ params }: Route.LoaderArgs) {
     throw new Response('Extension not found', { status: 404 });
   }
 
-  // Return only metadata - schema will be loaded on client
-  // Zod schemas cannot be serialized through React Router
   return {
     extensionId: extension.id,
     name: extension.name,
@@ -118,7 +118,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     },
   );
 
-  // Reset form values and generate new name when extension changes
   useEffect(() => {
     startTransition(() => {
       setFormValues(null);
@@ -126,7 +125,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     });
   }, [extensionId]);
 
-  // Focus input when editing starts
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
@@ -155,23 +153,32 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
   if (extension.isLoading) {
     return (
-      <div>
-        <Trans i18nKey="datasources:loading" />
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground text-sm">
+            <Trans i18nKey="datasources:loading" />
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!extension) {
     return (
-      <div>
-        <Trans i18nKey="datasources:notFound" />
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Database className="text-muted-foreground/50 h-12 w-12" />
+          <p className="text-muted-foreground text-sm">
+            <Trans i18nKey="datasources:notFound" />
+          </p>
+        </div>
       </div>
     );
   }
 
   const provider = extension.data?.id;
 
-  // Helper: Validate provider config
   const validateProviderConfig = (
     config: Record<string, unknown>,
   ): string | null => {
@@ -210,7 +217,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     return null;
   };
 
-  // Helper: Normalize provider config
   const normalizeProviderConfig = (
     config: Record<string, unknown>,
   ): Record<string, unknown> => {
@@ -256,11 +262,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     ) {
       return config.database ? { database: config.database } : {};
     }
-    // For other providers with oneOf schemas
     if (config.connectionUrl) {
       return { connectionUrl: config.connectionUrl };
     }
-    // Using separate fields - remove connectionUrl and empty fields (but keep password even if empty)
     const normalized = { ...config };
     delete normalized.connectionUrl;
     Object.keys(normalized).forEach((key) => {
@@ -274,7 +278,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     return normalized;
   };
 
-  // Helper: Check if form is valid for provider
   const isFormValidForProvider = (values: Record<string, unknown>): boolean => {
     if (!provider) return false;
     if (provider === 'gsheet-csv') {
@@ -299,7 +302,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       provider === 'duckdb-wasm' ||
       provider === 'pglite'
     ) {
-      return true; // Always enabled - database field is optional with defaults
+      return true;
     }
     return !!(values.connectionUrl || values.host);
   };
@@ -344,7 +347,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
     config = normalizeProviderConfig(config);
 
-    // Infer datasource_kind from extension driver runtime
     const dsMeta = await getDiscoveredDatasource(extension.data.id);
     const driver =
       dsMeta?.drivers.find(
@@ -393,137 +395,192 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     testConnectionMutation.mutate(testDatasource as Datasource);
   };
 
+  const canSubmit =
+    provider === 'duckdb' || provider === 'duckdb-wasm' || provider === 'pglite'
+      ? true
+      : isFormValid && formValues && isFormValidForProvider(formValues);
+
   return (
-    <div className="p-2 lg:p-4">
-      <Card className="mx-auto w-full max-w-2xl">
-        <CardHeader>
+    <div className="bg-background flex h-full flex-col">
+      <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
+        <div className="mx-auto max-w-2xl px-6 py-4">
+          <Link
+            to={createPath(pathsConfig.app.availableSources, project_id)}
+            className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to datasources</span>
+          </Link>
+
           <div className="flex items-center gap-4">
-            {(extension.data?.logo || loaderData.logo) && (
-              <img
-                src={extension.data?.logo || loaderData.logo}
-                alt={extension.data?.name || loaderData.name}
-                className="h-12 w-12 rounded object-contain"
-              />
-            )}
-            <div>
-              <CardTitle>
-                <Trans
-                  i18nKey="datasources:new_pageTitle"
-                  values={{ name: loaderData.name || extension.data?.name }}
+            <div className="bg-muted/50 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl">
+              {(extension.data?.logo || loaderData.logo) && (
+                <img
+                  src={extension.data?.logo || loaderData.logo}
+                  alt={extension.data?.name || loaderData.name}
+                  className="h-9 w-9 object-contain"
                 />
-              </CardTitle>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-foreground text-xl font-semibold tracking-tight">
+                Connect to {loaderData.name || extension.data?.name}
+              </h1>
               {(loaderData.description || extension.data?.description) && (
-                <CardDescription>
+                <p className="text-muted-foreground mt-0.5 truncate text-sm">
                   {loaderData.description || extension.data?.description}
-                </CardDescription>
+                </p>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Editable Datasource Name */}
-          <div className="border-border mb-6 border-b pb-6">
-            <label className="text-muted-foreground mb-2 block text-sm font-medium">
-              <Trans i18nKey="datasources:nameLabel" />
-            </label>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl px-6 py-8">
+          <div
+            className={cn(
+              'border-border/60 overflow-hidden rounded-xl border transition-all',
+              isEditingName && 'ring-2 ring-[#ffcb51]',
+            )}
+          >
             <div
-              className="flex items-center gap-2"
+              className="border-border/40 bg-muted/20 border-b px-5 py-4"
               onMouseEnter={() => setIsHoveringName(true)}
               onMouseLeave={() => setIsHoveringName(false)}
             >
-              {isEditingName ? (
-                <Input
-                  ref={nameInputRef}
-                  value={datasourceName}
-                  onChange={(e) => setDatasourceName(e.target.value)}
-                  onBlur={handleNameSave}
-                  onKeyDown={handleNameKeyDown}
-                  className="flex-1"
+              <label className="text-muted-foreground mb-2 block text-xs font-medium tracking-wider uppercase">
+                <Trans i18nKey="datasources:nameLabel" />
+              </label>
+              <div className="flex items-center gap-2">
+                {isEditingName ? (
+                  <>
+                    <Input
+                      ref={nameInputRef}
+                      value={datasourceName}
+                      onChange={(e) => setDatasourceName(e.target.value)}
+                      onBlur={handleNameSave}
+                      onKeyDown={handleNameKeyDown}
+                      className="text-foreground h-auto flex-1 border-0 bg-transparent p-0 text-lg font-medium shadow-none focus-visible:ring-0"
+                      placeholder="Enter datasource name..."
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => {
+                        setDatasourceName(generateRandomName());
+                        setIsEditingName(false);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex flex-1 items-center gap-2">
+                    <span className="text-foreground text-lg font-medium">
+                      {datasourceName}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={cn(
+                        'h-7 w-7 transition-opacity',
+                        isHoveringName ? 'opacity-100' : 'opacity-0',
+                      )}
+                      onClick={() => setIsEditingName(true)}
+                      aria-label={t('editNameAriaLabel')}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-background p-5">
+              {extension.data?.schema && (
+                <FormRenderer
+                  schema={extension.data.schema}
+                  onSubmit={handleSubmit}
+                  formId="datasource-form"
+                  onFormReady={setFormValues}
+                  onValidityChange={setIsFormValid}
                 />
-              ) : (
-                <div className="group flex flex-1 items-center gap-2">
-                  <span className="text-base font-medium">
-                    {datasourceName}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={`h-7 w-7 transition-opacity ${isHoveringName ? 'opacity-100' : 'opacity-0'}`}
-                    onClick={() => setIsEditingName(true)}
-                    aria-label={t('editNameAriaLabel')}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
               )}
             </div>
-          </div>
-          {extension.data?.schema && (
-            <FormRenderer
-              schema={extension.data.schema}
-              onSubmit={handleSubmit}
-              formId="datasource-form"
-              onFormReady={setFormValues}
-              onValidityChange={setIsFormValid}
-            />
-          )}
-          <div className="mt-6 flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handleTestConnection}
-              disabled={
-                testConnectionMutation.isPending ||
-                createDatasourceMutation.isPending ||
-                !formValues ||
-                !isFormValidForProvider(formValues)
-              }
-            >
-              {testConnectionMutation.isPending ? (
-                <Trans i18nKey="datasources:testing" />
-              ) : (
-                <Trans i18nKey="datasources:testConnection" />
-              )}
-            </Button>
-            <div className="flex gap-2">
+
+            <div className="border-border/40 bg-muted/10 flex items-center justify-between border-t px-5 py-4">
               <Button
-                variant="outline"
-                onClick={() =>
-                  navigate(
-                    createPath(pathsConfig.app.projectDatasources, project_id),
-                  )
-                }
+                variant="ghost"
+                size="sm"
+                onClick={handleTestConnection}
                 disabled={
-                  createDatasourceMutation.isPending ||
-                  testConnectionMutation.isPending
-                }
-              >
-                <Trans i18nKey="datasources:cancel" />
-              </Button>
-              <Button
-                type="submit"
-                form="datasource-form"
-                disabled={
-                  createDatasourceMutation.isPending ||
                   testConnectionMutation.isPending ||
-                  (provider === 'duckdb' ||
-                  provider === 'duckdb-wasm' ||
-                  provider === 'pglite'
-                    ? false
-                    : !isFormValid ||
-                      !formValues ||
-                      !isFormValidForProvider(formValues))
+                  createDatasourceMutation.isPending ||
+                  !formValues ||
+                  !isFormValidForProvider(formValues)
                 }
+                className="text-muted-foreground hover:text-foreground h-9 gap-2"
               >
-                {createDatasourceMutation.isPending ? (
-                  <Trans i18nKey="datasources:connecting" />
+                {testConnectionMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Testing...</span>
+                  </>
                 ) : (
-                  <Trans i18nKey="datasources:connect" />
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <Trans i18nKey="datasources:testConnection" />
+                  </>
                 )}
               </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    navigate(
+                      createPath(pathsConfig.app.availableSources, project_id),
+                    )
+                  }
+                  disabled={
+                    createDatasourceMutation.isPending ||
+                    testConnectionMutation.isPending
+                  }
+                  className="h-9"
+                >
+                  <Trans i18nKey="datasources:cancel" />
+                </Button>
+                <Button
+                  type="submit"
+                  form="datasource-form"
+                  size="sm"
+                  disabled={
+                    createDatasourceMutation.isPending ||
+                    testConnectionMutation.isPending ||
+                    !canSubmit
+                  }
+                  className="h-9 gap-2 bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
+                >
+                  {createDatasourceMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4" />
+                      <Trans i18nKey="datasources:connect" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

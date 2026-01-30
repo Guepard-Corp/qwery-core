@@ -28,7 +28,10 @@ export function useGetDatasourcesByProjectId(
     queryKey: getDatasourcesByProjectIdKey(projectId),
     queryFn: () => useCase.execute(projectId),
     staleTime: 30 * 1000,
-    enabled: options?.enabled !== undefined ? options.enabled : !!projectId,
+    enabled:
+      options?.enabled !== undefined
+        ? options.enabled && !!projectId
+        : !!projectId,
   });
 }
 

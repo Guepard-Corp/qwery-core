@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {},
   },
   test: {
     clearMocks: true,

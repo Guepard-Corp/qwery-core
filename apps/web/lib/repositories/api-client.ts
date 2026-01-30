@@ -1,5 +1,17 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: number,
+    public data?: unknown,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function handleResponse<T>(
   response: Response,
   allowNotFound = false,
@@ -9,10 +21,16 @@ async function handleResponse<T>(
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
+    const errorData = await response.json().catch(() => ({
       error: response.statusText || 'Unknown error',
     }));
-    throw new Error(error.error || error.message || 'Request failed');
+
+    throw new ApiError(
+      errorData.error || errorData.message || 'Request failed',
+      response.status,
+      errorData.code,
+      errorData.data,
+    );
   }
 
   // Handle empty responses
@@ -28,6 +46,12 @@ export interface ApiGetOptions {
   allowNotFound?: boolean;
   signal?: AbortSignal;
   timeout?: number;
+}
+
+export interface ApiRequestOptions {
+  signal?: AbortSignal;
+  timeout?: number;
+  headers?: Record<string, string>;
 }
 
 export async function apiGet<T>(
@@ -66,52 +90,117 @@ export async function apiGet<T>(
   }
 }
 
-export async function apiPost<T>(endpoint: string, data: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+export async function apiPost<T>(
+  endpoint: string,
+  data: unknown,
+  options?: ApiRequestOptions,
+): Promise<T> {
+  const controller = options?.signal ? undefined : new AbortController();
+  const timeoutId =
+    options?.timeout && controller
+      ? setTimeout(() => controller.abort(), options.timeout)
+      : undefined;
 
-  const result = await handleResponse<T>(response, false);
-  if (result === null) {
-    throw new Error('Unexpected null response');
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      body: JSON.stringify(data),
+      signal: options?.signal || controller?.signal,
+    });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    const result = await handleResponse<T>(response, false);
+    if (result === null) {
+      throw new ApiError('Unexpected null response', response.status);
+    }
+    return result;
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    throw error;
   }
-  return result;
 }
 
-export async function apiPut<T>(endpoint: string, data: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+export async function apiPut<T>(
+  endpoint: string,
+  data: unknown,
+  options?: ApiRequestOptions,
+): Promise<T> {
+  const controller = options?.signal ? undefined : new AbortController();
+  const timeoutId =
+    options?.timeout && controller
+      ? setTimeout(() => controller.abort(), options.timeout)
+      : undefined;
 
-  const result = await handleResponse<T>(response, false);
-  if (result === null) {
-    throw new Error('Unexpected null response');
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      body: JSON.stringify(data),
+      signal: options?.signal || controller?.signal,
+    });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    const result = await handleResponse<T>(response, false);
+    if (result === null) {
+      throw new ApiError('Unexpected null response', response.status);
+    }
+    return result;
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    throw error;
   }
-  return result;
 }
 
-export async function apiDelete(endpoint: string): Promise<boolean> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+export async function apiDelete(
+  endpoint: string,
+  options?: ApiRequestOptions,
+): Promise<boolean> {
+  const controller = options?.signal ? undefined : new AbortController();
+  const timeoutId =
+    options?.timeout && controller
+      ? setTimeout(() => controller.abort(), options.timeout)
+      : undefined;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: response.statusText || 'Unknown error',
-    }));
-    throw new Error(error.error || error.message || 'Delete failed');
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      signal: options?.signal || controller?.signal,
+    });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) {
+      await handleResponse<never>(response, false);
+    }
+
+    return true;
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    throw error;
   }
-
-  return true;
 }

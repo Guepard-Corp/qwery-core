@@ -2,10 +2,10 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
-import type { Notebook, Organization, Project } from '@qwery/domain/entities';
+import { toast } from 'sonner';
+
 import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import {
   QweryBreadcrumb,
@@ -13,13 +13,17 @@ import {
 } from '@qwery/ui/qwery-breadcrumb';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
+import { useProject } from '~/lib/context/project-context';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
 import { useGetProjects } from '~/lib/queries/use-get-projects';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
+import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
+import { ProjectDialog } from '../../organization/_components/project-dialog';
 
 function toBreadcrumbNodeItem<
   T extends { id: string; slug: string; name?: string; title?: string },
@@ -34,14 +38,22 @@ function toBreadcrumbNodeItem<
 }
 
 export function ProjectBreadcrumb() {
-  const { t } = useTranslation('common');
-  const { workspace, repositories } = useWorkspace();
+  const { repositories } = useWorkspace();
+  const {
+    project,
+    projectId,
+    projectSlug,
+    organizationId,
+    isLoading: isProjectLoading,
+  } = useProject();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const [_unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
     [],
   );
+  const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
+  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
 
   useEffect(() => {
     const updateUnsavedSlugs = () => {
@@ -73,22 +85,19 @@ export function ProjectBreadcrumb() {
       ? (params.slug as string)
       : undefined;
 
-  // Fetch data
+  // Fetch data using URL-derived IDs
   const organizations = useGetOrganizations(repositories.organization);
-  const projects = useGetProjects(
-    repositories.project,
-    workspace.organizationId || '',
-  );
+  const projects = useGetProjects(repositories.project, organizationId || '');
   // Only fetch datasources when on a datasource route
   const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
-    workspace.projectId || '',
-    { enabled: isDatasourceRoute },
+    projectId || '',
+    { enabled: isDatasourceRoute && !!projectId },
   );
   const notebooks = useGetNotebooksByProjectId(
     repositories.notebook,
-    workspace.projectId,
-    { enabled: isNotebookRoute },
+    projectId,
+    { enabled: isNotebookRoute && !!projectId },
   );
   const currentDatasource = useGetDatasourceBySlug(
     repositories.datasource,
@@ -118,20 +127,17 @@ export function ProjectBreadcrumb() {
     return map;
   }, [pluginMetadata]);
 
-  // Get current items
+  // Get current items from URL-derived data
   const currentOrg = useMemo(() => {
-    if (!workspace.organizationId || !organizations.data) return null;
-    const org = organizations.data.find(
-      (org) => org.id === workspace.organizationId,
-    );
+    if (!organizationId || !organizations.data) return null;
+    const org = organizations.data.find((org) => org.id === organizationId);
     return org ? toBreadcrumbNodeItem(org) : null;
-  }, [workspace.organizationId, organizations.data]);
+  }, [organizationId, organizations.data]);
 
   const currentProject = useMemo(() => {
-    if (!workspace.projectId || !projects.data) return null;
-    const proj = projects.data.find((proj) => proj.id === workspace.projectId);
-    return proj ? toBreadcrumbNodeItem(proj) : null;
-  }, [workspace.projectId, projects.data]);
+    if (!project) return null;
+    return toBreadcrumbNodeItem(project);
+  }, [project]);
 
   const currentObject = useMemo(() => {
     if (isDatasourceRoute && currentDatasource.data) {
@@ -158,13 +164,13 @@ export function ProjectBreadcrumb() {
     pluginLogoMap,
   ]);
 
-  // Filter projects by current org
+  // Filter projects by current org (from URL-derived organizationId)
   const filteredProjects = useMemo(() => {
-    if (!projects.data || !workspace.organizationId) return [];
+    if (!projects.data || !organizationId) return [];
     return projects.data
-      .filter((proj) => proj.organizationId === workspace.organizationId)
+      .filter((proj) => proj.organizationId === organizationId)
       .map((proj) => toBreadcrumbNodeItem(proj));
-  }, [projects.data, workspace.organizationId]);
+  }, [projects.data, organizationId]);
 
   // Handlers
   const handleOrgSelect = (org: BreadcrumbNodeItem) => {
@@ -193,46 +199,43 @@ export function ProjectBreadcrumb() {
     navigate(path);
   };
 
-  const handleNewOrg = async () => {
-    try {
-      const response = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'New Organization',
-          is_owner: true,
-          createdBy: workspace.username || 'system',
-        }),
-      });
-      if (response.ok) {
-        const org: Organization = await response.json();
-        await organizations.refetch();
-        handleOrgSelect(toBreadcrumbNodeItem(org));
+  const createNotebookMutation = useCreateNotebook(
+    repositories.notebook,
+    (notebook) => handleNotebookSelect(toBreadcrumbNodeItem(notebook)),
+    (error) =>
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create notebook',
+      ),
+  );
+
+  const handleNewOrg = () => {
+    setShowCreateOrgDialog(true);
+  };
+
+  const handleNewProject = () => {
+    if (!organizationId) return;
+    setShowCreateProjectDialog(true);
+  };
+
+  const handleOrgDialogSuccess = async () => {
+    await organizations.refetch();
+    // Find the newly created org (last one in the list) and navigate to it
+    if (organizations.data && organizations.data.length > 0) {
+      const latestOrg = organizations.data[organizations.data.length - 1];
+      if (latestOrg) {
+        handleOrgSelect(toBreadcrumbNodeItem(latestOrg));
       }
-    } catch (error) {
-      console.error('Failed to create organization:', error);
     }
   };
 
-  const handleNewProject = async () => {
-    if (!workspace.organizationId) return;
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId: workspace.organizationId,
-          name: 'New Project',
-          createdBy: workspace.username || 'system',
-        }),
-      });
-      if (response.ok) {
-        const project: Project = await response.json();
-        await projects.refetch();
-        handleProjectSelect(toBreadcrumbNodeItem(project));
+  const handleProjectDialogSuccess = async () => {
+    await projects.refetch();
+    // Find the newly created project (last one in the list) and navigate to it
+    if (projects.data && projects.data.length > 0) {
+      const latestProject = projects.data[projects.data.length - 1];
+      if (latestProject) {
+        handleProjectSelect(toBreadcrumbNodeItem(latestProject));
       }
-    } catch (error) {
-      console.error('Failed to create project:', error);
     }
   };
 
@@ -245,132 +248,121 @@ export function ProjectBreadcrumb() {
     navigate(path);
   };
 
-  const handleNewNotebook = async () => {
-    if (!workspace.projectId) return;
-    try {
-      const response = await fetch('/api/notebooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: workspace.projectId,
-          title: 'New Notebook',
-        }),
-      });
-      if (response.ok) {
-        const notebook: Notebook = await response.json();
-        await notebooks.refetch();
-        handleNotebookSelect(toBreadcrumbNodeItem(notebook));
-      }
-    } catch (error) {
-      console.error('Failed to create notebook:', error);
-    }
+  const handleNewNotebook = () => {
+    if (!projectId) return;
+    createNotebookMutation.mutate({ projectId, title: 'New Notebook' });
   };
 
-  // Don't show breadcrumb if no org/project
-  if (!workspace.organizationId || !workspace.projectId) {
+  // Don't show breadcrumb if no project from URL yet
+  if (!projectSlug || isProjectLoading) {
     return null;
   }
 
   return (
-    <QweryBreadcrumb
-      organization={{
-        items: (organizations.data || []).map((org) =>
-          toBreadcrumbNodeItem(org),
-        ),
-        isLoading: organizations.isLoading,
-        current: currentOrg,
-      }}
-      project={{
-        items: filteredProjects,
-        isLoading: projects.isLoading,
-        current: currentProject,
-      }}
-      object={
-        currentObject
-          ? {
-              items:
-                currentObject.type === 'datasource'
-                  ? (datasources.data || []).map((ds) =>
-                      toBreadcrumbNodeItem(
-                        ds,
-                        pluginLogoMap.get(ds.datasource_provider),
-                      ),
-                    )
-                  : (notebooks.data || []).map((nb) => ({
-                      id: nb.id,
-                      slug: nb.slug,
-                      name: nb.title,
-                    })),
-              isLoading:
-                currentObject.type === 'datasource'
-                  ? datasources.isLoading
-                  : notebooks.isLoading,
-              current: currentObject.current,
-              type: currentObject.type,
-            }
-          : undefined
-      }
-      labels={{
-        searchOrgs: t('breadcrumb.searchOrgs'),
-        searchProjects: t('breadcrumb.searchProjects'),
-        searchDatasources: t('breadcrumb.searchDatasources'),
-        searchNotebooks: t('breadcrumb.searchNotebooks'),
-        viewAllOrgs: t('breadcrumb.viewAllOrgs'),
-        viewAllProjects: t('breadcrumb.viewAllProjects'),
-        viewAllDatasources: t('breadcrumb.viewAllDatasources'),
-        viewAllNotebooks: t('breadcrumb.viewAllNotebooks'),
-        newOrg: t('breadcrumb.newOrg'),
-        newProject: t('breadcrumb.newProject'),
-        newDatasource: t('breadcrumb.newDatasource'),
-        newNotebook: t('breadcrumb.newNotebook'),
-        loading: t('breadcrumb.loading'),
-      }}
-      paths={{
-        viewAllOrgs: pathsConfig.app.organizations,
-        viewAllProjects: createPath(
-          pathsConfig.app.organizationView,
-          currentOrg?.slug || '',
-        ),
-        viewAllDatasources: createPath(
-          pathsConfig.app.projectDatasources,
-          currentProject?.slug || '',
-        ),
-        viewAllNotebooks: createPath(
-          pathsConfig.app.projectNotebooks,
-          currentProject?.slug || '',
-        ),
-      }}
-      onOrganizationSelect={handleOrgSelect}
-      onProjectSelect={handleProjectSelect}
-      onDatasourceSelect={handleDatasourceSelect}
-      onNotebookSelect={handleNotebookSelect}
-      onViewAllOrgs={() => navigate(pathsConfig.app.organizations)}
-      onViewAllProjects={() => {
-        if (currentOrg) {
-          navigate(
-            createPath(pathsConfig.app.organizationView, currentOrg.slug),
-          );
+    <>
+      <QweryBreadcrumb
+        organization={{
+          items: (organizations.data || []).map((org) =>
+            toBreadcrumbNodeItem(org),
+          ),
+          isLoading: organizations.isLoading,
+          current: currentOrg,
+        }}
+        project={{
+          items: filteredProjects,
+          isLoading: projects.isLoading,
+          current: currentProject,
+        }}
+        object={
+          currentObject
+            ? {
+                items:
+                  currentObject.type === 'datasource'
+                    ? (datasources.data || []).map((ds) =>
+                        toBreadcrumbNodeItem(
+                          ds,
+                          pluginLogoMap.get(ds.datasource_provider),
+                        ),
+                      )
+                    : (notebooks.data || []).map((nb) => ({
+                        id: nb.id,
+                        slug: nb.slug,
+                        name: nb.title,
+                      })),
+                isLoading:
+                  currentObject.type === 'datasource'
+                    ? datasources.isLoading
+                    : notebooks.isLoading,
+                current: currentObject.current,
+                type: currentObject.type,
+              }
+            : undefined
         }
-      }}
-      onViewAllDatasources={() => {
-        if (currentProject) {
-          navigate(
-            createPath(pathsConfig.app.projectDatasources, currentProject.slug),
-          );
-        }
-      }}
-      onViewAllNotebooks={() => {
-        if (currentProject) {
-          navigate(
-            createPath(pathsConfig.app.projectNotebooks, currentProject.slug),
-          );
-        }
-      }}
-      onNewOrg={handleNewOrg}
-      onNewProject={handleNewProject}
-      onNewDatasource={handleNewDatasource}
-      onNewNotebook={handleNewNotebook}
-      unsavedNotebookSlugs={_unsavedNotebookSlugs}
-    />
+        paths={{
+          viewAllOrgs: pathsConfig.app.organizations,
+          viewAllProjects: createPath(
+            pathsConfig.app.organizationView,
+            currentOrg?.slug || '',
+          ),
+          viewAllDatasources: createPath(
+            pathsConfig.app.projectDatasources,
+            currentProject?.slug || '',
+          ),
+          viewAllNotebooks: createPath(
+            pathsConfig.app.projectNotebooks,
+            currentProject?.slug || '',
+          ),
+        }}
+        onOrganizationSelect={handleOrgSelect}
+        onProjectSelect={handleProjectSelect}
+        onDatasourceSelect={handleDatasourceSelect}
+        onNotebookSelect={handleNotebookSelect}
+        onViewAllOrgs={() => navigate(pathsConfig.app.organizations)}
+        onViewAllProjects={() => {
+          if (currentOrg) {
+            navigate(
+              createPath(pathsConfig.app.organizationView, currentOrg.slug),
+            );
+          }
+        }}
+        onViewAllDatasources={() => {
+          if (currentProject) {
+            navigate(
+              createPath(
+                pathsConfig.app.projectDatasources,
+                currentProject.slug,
+              ),
+            );
+          }
+        }}
+        onViewAllNotebooks={() => {
+          if (currentProject) {
+            navigate(
+              createPath(pathsConfig.app.projectNotebooks, currentProject.slug),
+            );
+          }
+        }}
+        onNewOrg={handleNewOrg}
+        onNewProject={handleNewProject}
+        onNewDatasource={handleNewDatasource}
+        onNewNotebook={handleNewNotebook}
+        unsavedNotebookSlugs={_unsavedNotebookSlugs}
+      />
+      <OrganizationDialog
+        open={showCreateOrgDialog}
+        onOpenChange={setShowCreateOrgDialog}
+        organization={null}
+        onSuccess={handleOrgDialogSuccess}
+      />
+      {organizationId && (
+        <ProjectDialog
+          open={showCreateProjectDialog}
+          onOpenChange={setShowCreateProjectDialog}
+          project={null}
+          organizationId={organizationId}
+          onSuccess={handleProjectDialogSuccess}
+        />
+      )}
+    </>
   );
 }

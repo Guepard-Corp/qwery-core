@@ -8631,8 +8631,8 @@ var ProjectSchema = external_exports.object({
   slug: external_exports.string().min(1).describe("The slug of the project"),
   description: external_exports.string().min(1).max(1024).optional().describe("The description of the project"),
   status: external_exports.string().min(1).max(255).optional().describe("The status of the project"),
-  createdAt: external_exports.date().describe("The date and time the project was created"),
-  updatedAt: external_exports.date().describe("The date and time the project was last updated"),
+  createdAt: external_exports.coerce.date().describe("The date and time the project was created"),
+  updatedAt: external_exports.coerce.date().describe("The date and time the project was last updated"),
   createdBy: external_exports.string().min(1).max(255).describe("The user who created the project"),
   updatedBy: external_exports.string().min(1).max(255).describe("The user who last updated the project")
 });
@@ -9838,7 +9838,7 @@ function buildPostgresConnectionUrl(fields) {
   const username = fields.username || fields.user || "";
   const password = fields.password || "";
   const database = fields.database || "";
-  const sslmode = fields.sslmode || "prefer";
+  const sslmode = fields.sslmode || (fields.ssl === true ? "require" : "prefer");
   let url = `postgresql://`;
   if (username || password) {
     const encodedUser = username ? encodeURIComponent(username) : "";
@@ -9870,19 +9870,23 @@ function buildMysqlConnectionUrl(fields) {
   if (database) {
     url += `/${database}`;
   }
+  if (fields.ssl === true) {
+    url += `${url.includes("?") ? "&" : "?"}ssl=true`;
+  }
   return url;
 }
 function buildClickHouseConnectionUrl(fields) {
   const host = fields.host || "localhost";
-  const port = fields.port || 8123;
+  const port = fields.port || (fields.ssl === true ? 8443 : 8123);
   const username = fields.username || fields.user || "default";
   const password = fields.password || "";
   const database = fields.database || "default";
-  let url = `http://${host}:${port}`;
+  const protocol = fields.ssl === true ? "https" : "http";
+  let url = `${protocol}://${host}:${port}`;
   if (username || password) {
     const encodedUser = username ? encodeURIComponent(username) : "";
     const encodedPass = password ? encodeURIComponent(password) : "";
-    url = `http://${encodedUser}${encodedPass ? `:${encodedPass}` : ""}@${host}:${port}`;
+    url = `${protocol}://${encodedUser}${encodedPass ? `:${encodedPass}` : ""}@${host}:${port}`;
   }
   if (database && database !== "default") {
     url += `?database=${encodeURIComponent(database)}`;
@@ -9893,24 +9897,11 @@ function cleanPostgresConnectionUrl(connectionUrl) {
   try {
     const url = new URL(connectionUrl);
     url.searchParams.delete("channel_binding");
-    if (!url.searchParams.has("sslmode")) {
-      url.searchParams.set("sslmode", "prefer");
-    } else if (url.searchParams.get("sslmode") === "disable") {
-      url.searchParams.set("sslmode", "prefer");
-    }
     return url.toString();
   } catch {
     let cleaned = connectionUrl;
     cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, "");
     cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, "");
-    cleaned = cleaned.replace(/sslmode=disable/g, "sslmode=prefer");
-    if (!cleaned.includes("sslmode=")) {
-      if (cleaned.includes("?")) {
-        cleaned += "&sslmode=prefer";
-      } else {
-        cleaned += "?sslmode=prefer";
-      }
-    }
     return cleaned;
   }
 }
@@ -9980,12 +9971,12 @@ function extractConnectionUrl(config, providerId) {
 
 // packages/extensions/clickhouse-web/dist/driver.js
 var ConfigSchema = external_exports.object({
-  connectionUrl: external_exports.string().url().describe("secret:true").optional(),
+  connectionUrl: external_exports.string().url().optional(),
   host: external_exports.string().optional(),
   port: external_exports.number().int().min(1).max(65535).optional(),
   username: external_exports.string().optional(),
   user: external_exports.string().optional(),
-  password: external_exports.string().describe("secret:true").optional(),
+  password: external_exports.string().optional(),
   database: external_exports.string().optional()
 }).refine((data) => data.connectionUrl || data.host, {
   message: "Either connectionUrl or host must be provided"

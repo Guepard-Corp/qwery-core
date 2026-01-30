@@ -4,6 +4,22 @@ import { IOrganizationRepository } from '@qwery/domain/repositories';
 import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
 
 export class OrganizationRepository extends IOrganizationRepository {
+  async search(
+    query: string,
+    options?: RepositoryFindOptions,
+  ): Promise<Organization[]> {
+    const params = new URLSearchParams();
+    params.set('q', query);
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.offset) params.set('offset', String(options.offset));
+
+    const result = await apiGet<{ results: Organization[] }>(
+      `/organizations/search?${params.toString()}`,
+      false,
+    );
+    return result?.results || [];
+  }
+
   async findAll(_options?: RepositoryFindOptions): Promise<Organization[]> {
     const result = await apiGet<Organization[]>('/organizations', false);
     return result || [];

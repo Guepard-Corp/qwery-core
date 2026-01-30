@@ -19734,8 +19734,8 @@ var ProjectSchema = external_exports.object({
   slug: external_exports.string().min(1).describe("The slug of the project"),
   description: external_exports.string().min(1).max(1024).optional().describe("The description of the project"),
   status: external_exports.string().min(1).max(255).optional().describe("The status of the project"),
-  createdAt: external_exports.date().describe("The date and time the project was created"),
-  updatedAt: external_exports.date().describe("The date and time the project was last updated"),
+  createdAt: external_exports.coerce.date().describe("The date and time the project was created"),
+  updatedAt: external_exports.coerce.date().describe("The date and time the project was last updated"),
   createdBy: external_exports.string().min(1).max(255).describe("The user who created the project"),
   updatedBy: external_exports.string().min(1).max(255).describe("The user who last updated the project")
 });

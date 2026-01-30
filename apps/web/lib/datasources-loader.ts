@@ -5,13 +5,34 @@ type DatasourceMetadata = {
   name: string;
   description: string;
   logo: string;
-  tags?: string[];
+  tags: string[];
   drivers: Array<{
     id: string;
     name: string;
     description?: string;
     runtime?: string;
   }>;
+};
+
+const DATASOURCE_TAGS: Record<string, string[]> = {
+  // SQL Databases
+  'clickhouse-node': ['SQL'],
+  'clickhouse-web': ['SQL'],
+  duckdb: ['SQL'],
+  'duckdb-wasm': ['SQL'],
+  mysql: ['SQL'],
+  pglite: ['SQL'],
+  postgresql: ['SQL'],
+  'postgresql-supabase': ['SQL', 'SaaS'],
+  'postgresql-neon': ['SQL', 'SaaS'],
+
+  // File-based sources
+  'gsheet-csv': ['Files', 'SaaS'],
+  'json-online': ['Files'],
+  'parquet-online': ['Files'],
+
+  // APIs / SaaS
+  'youtube-data-api-v3': ['API'],
 };
 
 /**
@@ -39,6 +60,6 @@ export const DATASOURCES: DatasourceMetadata[] = (
   name: ds.name,
   description: ds.description || '',
   logo: ds.icon || '',
-  tags: [],
+  tags: DATASOURCE_TAGS[ds.id] || [],
   drivers: ds.drivers,
 }));

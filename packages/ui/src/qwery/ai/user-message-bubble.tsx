@@ -4,7 +4,7 @@ import { ArrowUpLeft } from 'lucide-react';
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import { Message, MessageContent } from '../../ai-elements/message';
-import { scrollToElementBySelector } from './scroll-utils';
+import { scrollToElementBySelector } from './utils/scroll-utils';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { cleanContextMarkers } from './utils/message-context';
 import {

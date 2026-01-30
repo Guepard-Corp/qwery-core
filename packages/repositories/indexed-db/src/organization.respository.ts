@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { Organization } from '@qwery/domain/entities';
 import { IOrganizationRepository } from '@qwery/domain/repositories';
+import type { RepositoryFindOptions } from '@qwery/domain/common';
 
 const DB_NAME = 'qwery-organizations';
 const DB_VERSION = 1;
@@ -66,6 +67,27 @@ export class OrganizationRepository extends IOrganizationRepository {
       createdAt: new Date(data.createdAt as string),
       updatedAt: new Date(data.updatedAt as string),
     } as Organization;
+  }
+
+  async search(
+    query: string,
+    options?: RepositoryFindOptions,
+  ): Promise<Organization[]> {
+    const q = query.trim().toLowerCase();
+    const all = await this.findAll();
+    const filtered = q
+      ? all.filter((org) => {
+          const name = org.name?.toLowerCase() ?? '';
+          const slug = org.slug?.toLowerCase() ?? '';
+          return name.includes(q) || slug.includes(q);
+        })
+      : all;
+
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    return limit
+      ? filtered.slice(offset, offset + limit)
+      : filtered.slice(offset);
   }
 
   async findAll(): Promise<Organization[]> {

@@ -1,4 +1,5 @@
 export * from './types';
+export * from './form-config';
 export * from './registry';
 export * from './datasource.driver';
 export * from './driver';

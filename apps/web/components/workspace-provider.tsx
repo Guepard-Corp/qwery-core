@@ -20,7 +20,27 @@ import {
 } from '~/lib/workspace/workspace-helper';
 
 export function WorkspaceProvider(props: React.PropsWithChildren) {
-  const localWorkspace = getWorkspaceFromLocalStorage();
+  const [localWorkspace, setLocalWorkspace] = useState<Workspace>(
+    getWorkspaceFromLocalStorage(),
+  );
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setLocalWorkspace(getWorkspaceFromLocalStorage());
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    window.addEventListener('workspace-updated', handleStorageChange);
+
+    const interval = setInterval(handleStorageChange, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('workspace-updated', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   const workspaceQuery = useWorkspaceMode(localWorkspace);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);

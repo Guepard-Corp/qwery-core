@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Trans } from '@qwery/ui/trans';
 import {
-  MessageCircle,
   Pencil,
   X,
   Bookmark,
@@ -13,7 +12,6 @@ import {
   Share2,
   Trash2,
   MoreHorizontal,
-  Notebook,
 } from 'lucide-react';
 import { cn, truncateChatTitle } from '@qwery/ui/utils';
 import {
@@ -49,6 +47,7 @@ import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
 import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
+import { useProject } from '~/lib/context/project-context';
 
 export interface SidebarConversationHistoryProps {
   conversations?: Conversation[];
@@ -81,11 +80,11 @@ export function SidebarConversationHistory({
 }: SidebarConversationHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
-  const params = useParams();
+  const { projectSlug } = useProject();
 
-  // Get project slug from pathname or params
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = params.slug || projectSlugMatch?.[1];
+  // Get current conversation slug directly from URL for reliable active state
+  const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
+  const currentSlugFromUrl = conversationSlugMatch?.[1];
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -163,7 +162,7 @@ export function SidebarConversationHistory({
     }
   }, [currentConversationId]);
 
-  // Filter conversations by search query and sort by bookmarked first
+  // Filter conversations by search query and sort by bookmarked first, then createdAt (newest first)
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
     if (searchQuery.trim()) {
@@ -172,27 +171,28 @@ export function SidebarConversationHistory({
         conv.title.toLowerCase().includes(query),
       );
     }
-    // Sort: bookmarked first, then by updatedAt
+    // Sort: bookmarked first, then by createdAt (newest first)
     return [...filtered].sort((a, b) => {
       const aBookmarked = bookmarkedIds.has(a.id);
       const bBookmarked = bookmarkedIds.has(b.id);
       if (aBookmarked && !bBookmarked) return -1;
       if (!aBookmarked && bBookmarked) return 1;
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
   }, [conversations, searchQuery, bookmarkedIds]);
 
-  // Get current conversation separately
+  // Get current conversation separately using URL slug for reliable matching
   const currentConversation = useMemo(() => {
+    if (!currentSlugFromUrl) return null;
     return (
-      filteredConversations.find((c) => c.id === currentConversationId) || null
+      filteredConversations.find((c) => c.slug === currentSlugFromUrl) || null
     );
-  }, [filteredConversations, currentConversationId]);
+  }, [filteredConversations, currentSlugFromUrl]);
 
-  // Sort conversations by selection order: current first, then by selection timestamp, then by updatedAt
+  // Sort conversations by selection order: current first, then by selection timestamp, then by createdAt
   const otherConversations = useMemo(() => {
     const others = filteredConversations.filter(
-      (c) => c.id !== currentConversationId,
+      (c) => c.slug !== currentSlugFromUrl,
     );
 
     return others.sort((a, b) => {
@@ -207,13 +207,12 @@ export function SidebarConversationHistory({
       if (aTimestamp !== undefined) return -1;
       // Only b has timestamp: b comes first
       if (bTimestamp !== undefined) return 1;
-      // Neither has timestamp: sort by updatedAt
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
+      // Neither has timestamp: sort by createdAt (newest first)
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
-  }, [filteredConversations, currentConversationId, selectionOrderMap]);
+  }, [filteredConversations, currentSlugFromUrl, selectionOrderMap]);
 
-  // Limit conversations to 7 items for sidebar display
-  const MAX_SIDEBAR_CHATS = 7;
+  const MAX_SIDEBAR_CHATS = 6;
   const limitedConversations = useMemo(() => {
     return otherConversations.slice(0, MAX_SIDEBAR_CHATS);
   }, [otherConversations]);
@@ -344,10 +343,10 @@ export function SidebarConversationHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
@@ -371,10 +370,10 @@ export function SidebarConversationHistory({
 
   return (
     <>
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentChats" />
                 <ChevronRight
@@ -396,9 +395,7 @@ export function SidebarConversationHistory({
                         <p className="font-medium">
                           <Trans i18nKey="common:sidebar.noChatsFound" />
                         </p>
-                        <p className="text-xs">
-                          Start a new chat to get started
-                        </p>
+                        <p className="text-xs">{t('sidebar.startNewChat')}</p>
                       </div>
                     </div>
                   </SidebarMenuItem>
@@ -427,7 +424,6 @@ export function SidebarConversationHistory({
                                   )}
                                   className="group flex w-full min-w-0 items-center gap-2"
                                 >
-                                  <MessageCircle className="size-4 shrink-0" />
                                   {editingId === currentConversation.id ? (
                                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                       <Input
@@ -449,7 +445,9 @@ export function SidebarConversationHistory({
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                        placeholder="Chat title..."
+                                        placeholder={t(
+                                          'sidebar.chatTitlePlaceholder',
+                                        )}
                                         maxLength={100}
                                       />
                                       <button
@@ -511,7 +509,7 @@ export function SidebarConversationHistory({
                                               }}
                                             >
                                               <Pencil className="mr-2 size-4" />
-                                              Rename
+                                              <Trans i18nKey="common:sidebar.rename" />
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                               onClick={(e) => {
@@ -550,7 +548,7 @@ export function SidebarConversationHistory({
                                               className="text-destructive focus:text-destructive"
                                             >
                                               <Trash2 className="mr-2 size-4" />
-                                              Delete
+                                              <Trans i18nKey="common:sidebar.delete" />
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -623,6 +621,7 @@ export function SidebarConversationHistory({
                     {/* Other Conversations - Flat list */}
                     {limitedConversations.map((conversation) => {
                       const isEditing = editingId === conversation.id;
+                      const isActive = conversation.slug === currentSlugFromUrl;
                       const conversationPath = createPath(
                         pathsConfig.app.conversation,
                         conversation.slug,
@@ -635,13 +634,13 @@ export function SidebarConversationHistory({
                               <div className="w-full">
                                 <SidebarMenuButton
                                   asChild
+                                  isActive={isActive}
                                   tooltip={conversation.title}
                                 >
                                   <Link
                                     to={conversationPath}
                                     className="group flex w-full min-w-0 items-center gap-2"
                                   >
-                                    <MessageCircle className="size-4 shrink-0" />
                                     {isEditing ? (
                                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                         <Input
@@ -665,7 +664,9 @@ export function SidebarConversationHistory({
                                             e.stopPropagation()
                                           }
                                           className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                          placeholder="Chat title..."
+                                          placeholder={t(
+                                            'sidebar.chatTitlePlaceholder',
+                                          )}
                                           maxLength={100}
                                         />
                                         <button
@@ -725,7 +726,7 @@ export function SidebarConversationHistory({
                                                 }}
                                               >
                                                 <Pencil className="mr-2 size-4" />
-                                                Rename
+                                                <Trans i18nKey="common:sidebar.rename" />
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
                                                 onClick={(e) => {
@@ -764,7 +765,7 @@ export function SidebarConversationHistory({
                                                 className="text-destructive focus:text-destructive"
                                               >
                                                 <Trash2 className="mr-2 size-4" />
-                                                Delete
+                                                <Trans i18nKey="common:sidebar.delete" />
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -785,7 +786,7 @@ export function SidebarConversationHistory({
                                 }
                               >
                                 <Pencil className="mr-2 size-4" />
-                                Rename
+                                <Trans i18nKey="common:sidebar.rename" />
                               </ContextMenuItem>
                               {onConversationBookmark && (
                                 <ContextMenuItem
@@ -836,16 +837,16 @@ export function SidebarConversationHistory({
 
                   {/* View all chats button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectConversation,
                           projectSlug,
                         )}
-                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
+                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
                       >
                         <Trans i18nKey="common:sidebar.viewAllChats" />
-                        <ArrowRight className="size-4 shrink-0" />
+                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </div>
                   )}
@@ -896,11 +897,10 @@ export function SidebarNotebookHistory({
 }: SidebarNotebookHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
-  const params = useParams();
+  const { projectSlug } = useProject();
 
-  // Get project slug from pathname or params
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = params.slug || projectSlugMatch?.[1];
+  const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
+  const currentSlugFromUrl = notebookSlugMatch?.[1];
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -912,28 +912,34 @@ export function SidebarNotebookHistory({
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
   const filteredNotebooks = useMemo(() => {
-    if (!searchQuery.trim()) return notebooks;
-    const query = searchQuery.toLowerCase();
-    return notebooks.filter((notebook) =>
-      notebook.title.toLowerCase().includes(query),
+    let filtered = notebooks;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = notebooks.filter((notebook) =>
+        notebook.title.toLowerCase().includes(query),
+      );
+    }
+    return [...filtered].sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
     );
   }, [notebooks, searchQuery]);
 
+  const activeNotebookSlug = currentSlugFromUrl || currentNotebookSlug;
+
   const currentNotebook = useMemo(
     () =>
-      currentNotebookSlug
-        ? filteredNotebooks.find((n) => n.slug === currentNotebookSlug)
+      activeNotebookSlug
+        ? filteredNotebooks.find((n) => n.slug === activeNotebookSlug)
         : null,
-    [filteredNotebooks, currentNotebookSlug],
+    [filteredNotebooks, activeNotebookSlug],
   );
 
   const otherNotebooks = useMemo(
-    () => filteredNotebooks.filter((n) => n.slug !== currentNotebookSlug),
-    [filteredNotebooks, currentNotebookSlug],
+    () => filteredNotebooks.filter((n) => n.slug !== activeNotebookSlug),
+    [filteredNotebooks, activeNotebookSlug],
   );
 
-  // Limit notebooks to 6 items for sidebar display
-  const MAX_SIDEBAR_NOTEBOOKS = 6;
+  const MAX_SIDEBAR_NOTEBOOKS = 5;
   const limitedNotebooks = useMemo(
     () => otherNotebooks.slice(0, MAX_SIDEBAR_NOTEBOOKS),
     [otherNotebooks],
@@ -1022,10 +1028,10 @@ export function SidebarNotebookHistory({
 
   if (isLoading) {
     return (
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
@@ -1049,10 +1055,10 @@ export function SidebarNotebookHistory({
 
   return (
     <>
-      <SidebarGroup className="min-w-0 overflow-hidden">
+      <SidebarGroup className="min-w-0 overflow-hidden py-0">
         <Collapsible open={isRecentsOpen} onOpenChange={setIsRecentsOpen}>
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 my-1 cursor-pointer rounded-md px-2 py-1.5">
+            <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
               <div className="flex w-full items-center justify-between">
                 <Trans i18nKey="common:sidebar.recentNotebooks" />
                 <ChevronRight
@@ -1075,7 +1081,7 @@ export function SidebarNotebookHistory({
                           <Trans i18nKey="common:sidebar.noNotebooksFound" />
                         </p>
                         <p className="text-xs">
-                          Create a new notebook to get started
+                          {t('sidebar.createNewNotebook')}
                         </p>
                       </div>
                     </div>
@@ -1103,7 +1109,6 @@ export function SidebarNotebookHistory({
                                   )}
                                   className="group flex w-full min-w-0 items-center gap-2"
                                 >
-                                  <Notebook className="size-4 shrink-0" />
                                   {editingId === currentNotebook.id ? (
                                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                       <Input
@@ -1125,7 +1130,9 @@ export function SidebarNotebookHistory({
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                        placeholder="Notebook title..."
+                                        placeholder={t(
+                                          'sidebar.notebookTitlePlaceholder',
+                                        )}
                                         maxLength={100}
                                       />
                                       <button
@@ -1157,6 +1164,7 @@ export function SidebarNotebookHistory({
                                         )}
                                       </span>
                                       <div className="relative shrink-0">
+                                        <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                             <button
@@ -1179,7 +1187,7 @@ export function SidebarNotebookHistory({
                                               }}
                                             >
                                               <Pencil className="mr-2 size-4" />
-                                              Rename
+                                              <Trans i18nKey="common:sidebar.rename" />
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -1192,7 +1200,7 @@ export function SidebarNotebookHistory({
                                               className="text-destructive focus:text-destructive"
                                             >
                                               <Trash2 className="mr-2 size-4" />
-                                              Delete
+                                              <Trans i18nKey="common:sidebar.delete" />
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -1213,7 +1221,7 @@ export function SidebarNotebookHistory({
                               }
                             >
                               <Pencil className="mr-2 size-4" />
-                              Rename
+                              <Trans i18nKey="common:sidebar.rename" />
                             </ContextMenuItem>
                             <ContextMenuSeparator />
                             <ContextMenuItem
@@ -1223,7 +1231,7 @@ export function SidebarNotebookHistory({
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 size-4" />
-                              Delete
+                              <Trans i18nKey="common:sidebar.delete" />
                             </ContextMenuItem>
                           </ContextMenuContent>
                         </ContextMenu>
@@ -1232,6 +1240,7 @@ export function SidebarNotebookHistory({
 
                     {limitedNotebooks.map((notebook) => {
                       const isEditing = editingId === notebook.id;
+                      const isActive = notebook.slug === activeNotebookSlug;
                       const notebookPath = createPath(
                         pathsConfig.app.projectNotebook,
                         notebook.slug,
@@ -1244,13 +1253,13 @@ export function SidebarNotebookHistory({
                               <div className="w-full">
                                 <SidebarMenuButton
                                   asChild
+                                  isActive={isActive}
                                   tooltip={notebook.title}
                                 >
                                   <Link
                                     to={notebookPath}
                                     className="group flex w-full min-w-0 items-center gap-2"
                                   >
-                                    <Notebook className="size-4 shrink-0" />
                                     {isEditing ? (
                                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                         <Input
@@ -1271,7 +1280,9 @@ export function SidebarNotebookHistory({
                                             e.stopPropagation()
                                           }
                                           className="h-auto flex-1 border-0 bg-transparent px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-0"
-                                          placeholder="Notebook title..."
+                                          placeholder={t(
+                                            'sidebar.notebookTitlePlaceholder',
+                                          )}
                                           maxLength={100}
                                         />
                                         <button
@@ -1303,6 +1314,9 @@ export function SidebarNotebookHistory({
                                           {truncateChatTitle(notebook.title)}
                                         </span>
                                         <div className="relative shrink-0">
+                                          {isActive && (
+                                            <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
+                                          )}
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                               <button
@@ -1325,7 +1339,7 @@ export function SidebarNotebookHistory({
                                                 }}
                                               >
                                                 <Pencil className="mr-2 size-4" />
-                                                Rename
+                                                <Trans i18nKey="common:sidebar.rename" />
                                               </DropdownMenuItem>
                                               <DropdownMenuSeparator />
                                               <DropdownMenuItem
@@ -1338,7 +1352,7 @@ export function SidebarNotebookHistory({
                                                 className="text-destructive focus:text-destructive"
                                               >
                                                 <Trash2 className="mr-2 size-4" />
-                                                Delete
+                                                <Trans i18nKey="common:sidebar.delete" />
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -1356,7 +1370,7 @@ export function SidebarNotebookHistory({
                                 }
                               >
                                 <Pencil className="mr-2 size-4" />
-                                Rename
+                                <Trans i18nKey="common:sidebar.rename" />
                               </ContextMenuItem>
                               <ContextMenuSeparator />
                               <ContextMenuItem
@@ -1364,7 +1378,7 @@ export function SidebarNotebookHistory({
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 size-4" />
-                                Delete
+                                <Trans i18nKey="common:sidebar.delete" />
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>
@@ -1375,16 +1389,16 @@ export function SidebarNotebookHistory({
 
                   {/* View all notebooks button */}
                   {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 px-2 pt-4 pb-2">
+                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
                       <Link
                         to={createPath(
                           pathsConfig.app.projectNotebooks,
                           projectSlug,
                         )}
-                        className="border-border/50 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:border-border flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors"
+                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
                       >
                         <Trans i18nKey="common:sidebar.viewAllNotebooks" />
-                        <ArrowRight className="size-4 shrink-0" />
+                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </div>
                   )}

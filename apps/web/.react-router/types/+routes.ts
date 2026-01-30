@@ -33,12 +33,24 @@ type Pages = {
   "/api/organizations": {
     params: {};
   };
+  "/api/organizations/search": {
+    params: {};
+  };
+  "/api/organizations/bulk": {
+    params: {};
+  };
   "/api/organizations/:id": {
     params: {
       "id": string;
     };
   };
   "/api/projects": {
+    params: {};
+  };
+  "/api/projects/search": {
+    params: {};
+  };
+  "/api/projects/bulk": {
     params: {};
   };
   "/api/projects/:id": {
@@ -180,7 +192,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/:id" | "/api/projects" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
+    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/search" | "/api/organizations/bulk" | "/api/organizations/:id" | "/api/projects" | "/api/projects/search" | "/api/projects/bulk" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
   };
   "routes/version.ts": {
     id: "routes/version";
@@ -202,6 +214,14 @@ type RouteFiles = {
     id: "routes/api/organization/get-all-organizations";
     page: "/api/organizations";
   };
+  "routes/api/organization/search.ts": {
+    id: "routes/api/organization/search";
+    page: "/api/organizations/search";
+  };
+  "routes/api/organization/bulk.ts": {
+    id: "routes/api/organization/bulk";
+    page: "/api/organizations/bulk";
+  };
   "routes/api/organization/organization.ts": {
     id: "routes/api/organization/organization";
     page: "/api/organizations/:id";
@@ -209,6 +229,14 @@ type RouteFiles = {
   "routes/api/project/get-all-projects.ts": {
     id: "routes/api/project/get-all-projects";
     page: "/api/projects";
+  };
+  "routes/api/project/search.ts": {
+    id: "routes/api/project/search";
+    page: "/api/projects/search";
+  };
+  "routes/api/project/bulk.ts": {
+    id: "routes/api/project/bulk";
+    page: "/api/projects/bulk";
   };
   "routes/api/project/project.ts": {
     id: "routes/api/project/project";
@@ -363,8 +391,12 @@ type RouteModules = {
   "routes/ingest.$": typeof import("./app/routes/ingest.$.ts");
   "routes/api/chat": typeof import("./app/routes/api/chat.ts");
   "routes/api/organization/get-all-organizations": typeof import("./app/routes/api/organization/get-all-organizations.ts");
+  "routes/api/organization/search": typeof import("./app/routes/api/organization/search.ts");
+  "routes/api/organization/bulk": typeof import("./app/routes/api/organization/bulk.ts");
   "routes/api/organization/organization": typeof import("./app/routes/api/organization/organization.ts");
   "routes/api/project/get-all-projects": typeof import("./app/routes/api/project/get-all-projects.ts");
+  "routes/api/project/search": typeof import("./app/routes/api/project/search.ts");
+  "routes/api/project/bulk": typeof import("./app/routes/api/project/bulk.ts");
   "routes/api/project/project": typeof import("./app/routes/api/project/project.ts");
   "routes/api/datasource/datasource": typeof import("./app/routes/api/datasource/datasource.ts");
   "routes/api/driver/command": typeof import("./app/routes/api/driver/command.ts");

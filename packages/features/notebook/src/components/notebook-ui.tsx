@@ -394,7 +394,10 @@ function FullViewDialog({
           <img
             src={selectedDatasource.logo}
             alt={`${displayName} logo`}
-            className="h-4 w-4 rounded object-contain"
+            className={cn(
+              'h-4 w-4 rounded object-contain',
+              selectedDatasource.id === 'json-online' && 'dark:invert',
+            )}
           />
         ) : (
           <span className="bg-muted inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold uppercase">

@@ -77,7 +77,10 @@ export function DatasourceCard({
                 <img
                   src={logo}
                   alt={name}
-                  className="h-full w-full object-contain p-1.5"
+                  className={cn(
+                    'h-full w-full object-contain p-1.5',
+                    provider === 'json-online' && 'dark:invert',
+                  )}
                   onError={handleLogoError}
                 />
               ) : (

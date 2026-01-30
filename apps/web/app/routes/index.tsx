@@ -120,7 +120,7 @@ function DashboardSkeleton() {
         <section className="mb-16 space-y-5 text-center">
           {/* Qwery Logo & Brand */}
           <div className="mb-8 flex flex-col items-center gap-4">
-            <LogoImage size="2xl" width={256} />
+            <LogoImage size="2xl" _width={256} />
             <Skeleton className="h-10 w-32" />
           </div>
 

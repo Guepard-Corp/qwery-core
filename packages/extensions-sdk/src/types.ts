@@ -1,5 +1,6 @@
 import { z } from 'zod/v3';
 
+import type { DatasourceFormConfigPayload } from './form-config';
 import type { DatasourceMetadata, DatasourceResultSet } from './metadata';
 
 /**
@@ -38,6 +39,11 @@ export interface DatasourceExtension<T extends z.ZodTypeAny = z.ZodTypeAny> {
   schema: T;
 
   /**
+   * Optional form config for create-datasource UI (placeholders, labels, docs, preset).
+   */
+  formConfig?: DatasourceFormConfigPayload | null;
+
+  /**
    * Optional scope of the extension
    */
   scope?: ExtensionScope;
@@ -71,6 +77,7 @@ export interface ExtensionMetadata {
   tags?: string[];
   scope: ExtensionScope;
   schema: z.ZodTypeAny;
+  formConfig?: DatasourceFormConfigPayload | null;
 }
 
 // v0 driver/runtime contracts

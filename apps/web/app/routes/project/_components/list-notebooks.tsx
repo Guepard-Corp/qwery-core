@@ -22,6 +22,7 @@ import {
   ArrowUpDown,
   Plus,
   Notebook,
+  X,
 } from 'lucide-react';
 
 import { Button } from '@qwery/ui/button';
@@ -30,6 +31,7 @@ import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
 import { cn } from '@qwery/ui/utils';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -50,6 +52,7 @@ import {
 import pathsConfig, { createPath } from '~/config/paths.config';
 import type { NotebookOutput } from '@qwery/domain/usecases';
 import { useWorkspace } from '~/lib/context/workspace-context';
+import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -65,7 +68,16 @@ export function ListNotebooks({
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
-  const { workspace } = useWorkspace();
+  const { workspace, repositories } = useWorkspace();
+  const createNotebookMutation = useCreateNotebook(
+    repositories.notebook,
+    (notebook) =>
+      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
+    (error) =>
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create notebook',
+      ),
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -154,28 +166,12 @@ export function ListNotebooks({
     setSortOrder(checked ? 'desc' : 'asc');
   };
 
-  const handleCreateNotebook = async () => {
-    try {
-      const response = await fetch('/api/notebooks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: workspace.projectId,
-          title: 'Untitled notebook',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create notebook');
-      }
-
-      const notebook = await response.json();
-      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
-    } catch (error) {
-      console.error('Failed to create notebook:', error);
-    }
+  const handleCreateNotebook = () => {
+    if (!workspace.projectId) return;
+    createNotebookMutation.mutate({
+      projectId: workspace.projectId,
+      title: 'Untitled notebook',
+    });
   };
 
   return (
@@ -188,200 +184,203 @@ export function ListNotebooks({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <div
+            className={cn(
+              'bg-muted/30 border-border/50 focus-within:border-border flex h-12 flex-1 items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
+              shouldAnimate && 'ring-2 ring-[#ffcb51] ring-offset-2',
+            )}
+          >
+            <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
             <Input
               ref={searchInputRef}
-              type="search"
+              type="text"
               placeholder={t(
                 'notebooks:search_placeholder',
                 'Search notebooks...',
               )}
-              className={cn(
-                'h-11 w-full pr-24 pl-9 transition-all',
-                shouldAnimate &&
-                  'ring-primary animate-pulse ring-2 ring-offset-2',
-              )}
+              className="h-full flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <div className="absolute top-1/2 right-1 -translate-y-1/2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hover:bg-accent/50 h-9 gap-2 border-none px-3 focus-visible:ring-0"
-                  >
-                    <Settings2 className="text-muted-foreground/60 h-4 w-4" />
-                    <span className="text-muted-foreground/60 text-xs font-medium">
-                      Options
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    Display Mode
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(true)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <LayoutGrid
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full p-1 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <div className="bg-border/50 mx-1 h-6 w-px" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hover:bg-muted h-8 shrink-0 gap-2 border-none px-2 focus-visible:ring-0"
+                >
+                  <Settings2 className="text-muted-foreground/60 h-4 w-4" />
+                  <span className="text-muted-foreground/60 text-xs font-medium">
+                    Options
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                  Display Mode
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => setIsGridView(true)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    isGridView && 'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <LayoutGrid
+                      className={cn(
+                        'h-4 w-4',
+                        isGridView
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">{t('grid_view', 'Grid')}</span>
+                  </div>
+                  {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsGridView(false)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    !isGridView &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <List
+                      className={cn(
+                        'h-4 w-4',
+                        !isGridView
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">{t('table_view', 'Table')}</span>
+                  </div>
+                  {!isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
+                  {t('sort_by', 'Sort By')}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleSortClick('date')}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    sortCriterion === 'date' &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Calendar
+                      className={cn(
+                        'h-4 w-4',
+                        sortCriterion === 'date'
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">{t('date', 'Date')}</span>
+                  </div>
+                  {sortCriterion === 'date' && (
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          isGridView
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'asc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
+                      >
+                        {t('asc', 'ASC')}
+                      </span>
+                      <Switch
+                        checked={sortOrder === 'desc'}
+                        onCheckedChange={handleSortOrderToggle}
+                        className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
                       />
-                      <span className="text-sm">{t('grid_view', 'Grid')}</span>
-                    </div>
-                    {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setIsGridView(false)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      !isGridView &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <List
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          !isGridView
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'desc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
-                      />
-                      <span className="text-sm">
-                        {t('table_view', 'Table')}
+                      >
+                        {t('desc', 'DESC')}
                       </span>
                     </div>
-                    {!isGridView && (
-                      <Check className="h-4 w-4 text-[#ffcb51]" />
-                    )}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator className="my-1" />
-
-                  <DropdownMenuLabel className="text-muted-foreground/30 px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase">
-                    {t('sort_by', 'Sort By')}
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('date')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'date' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Calendar
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleSortClick('name')}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between px-3 py-2.5',
+                    sortCriterion === 'name' &&
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CaseSensitive
+                      className={cn(
+                        'h-4 w-4',
+                        sortCriterion === 'name'
+                          ? 'text-[#ffcb51]'
+                          : 'text-muted-foreground/40',
+                      )}
+                    />
+                    <span className="text-sm">{t('name', 'Name')}</span>
+                  </div>
+                  {sortCriterion === 'name' && (
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'date'
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'asc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
-                      />
-                      <span className="text-sm">{t('date', 'Date')}</span>
-                    </div>
-                    {sortCriterion === 'date' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {t('asc', 'ASC')}
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
-                        />
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {t('desc', 'DESC')}
-                        </span>
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleSortClick('name')}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2.5',
-                      sortCriterion === 'name' &&
-                        'text-foreground bg-[#ffcb51]/10 font-medium',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CaseSensitive
+                        {t('asc', 'ASC')}
+                      </span>
+                      <Switch
+                        checked={sortOrder === 'desc'}
+                        onCheckedChange={handleSortOrderToggle}
+                        className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
+                      />
+                      <span
                         className={cn(
-                          'h-4 w-4',
-                          sortCriterion === 'name'
-                            ? 'text-[#ffcb51]'
+                          'text-[10px]',
+                          sortOrder === 'desc'
+                            ? 'font-bold text-[#ffcb51]'
                             : 'text-muted-foreground/40',
                         )}
-                      />
-                      <span className="text-sm">{t('name', 'Name')}</span>
-                    </div>
-                    {sortCriterion === 'name' && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'asc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {t('asc', 'ASC')}
-                        </span>
-                        <Switch
-                          checked={sortOrder === 'desc'}
-                          onCheckedChange={handleSortOrderToggle}
-                          className="h-4 w-7 scale-75 data-[state=checked]:bg-[#ffcb51]"
-                        />
-                        <span
-                          className={cn(
-                            'text-[10px]',
-                            sortOrder === 'desc'
-                              ? 'font-bold text-[#ffcb51]'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {t('desc', 'DESC')}
-                        </span>
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                        {t('desc', 'DESC')}
+                      </span>
+                    </div>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <Button
             onClick={handleCreateNotebook}

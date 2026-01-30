@@ -23,6 +23,25 @@
         "name": "JSON (Online)",
         "description": "Connect to public JSON files via URL",
         "icon": "media/json.svg",
+        "formConfig": {
+          "preset": "fileUrl",
+          "connectionFieldKind": "fileUrl",
+          "showDetailsTab": false,
+          "showConnectionStringTab": true,
+          "placeholders": {
+            "connectionString": "https://example.com/data.json"
+          },
+          "fieldLabels": {
+            "connectionString": "JSON file URL"
+          },
+          "normalizedKey": "jsonUrl",
+          "acceptedKeys": [
+            "jsonUrl",
+            "url",
+            "connectionUrl"
+          ],
+          "supportsPreview": true
+        },
         "schema": {
           "type": "object",
           "properties": {

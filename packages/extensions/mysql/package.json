@@ -23,6 +23,23 @@
         "name": "MySQL",
         "description": "Connect to MySQL databases",
         "icon": "media/MySQL.svg",
+        "formConfig": {
+          "preset": "sql",
+          "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html",
+          "defaultHost": "localhost",
+          "defaultPort": "3306",
+          "connectionFieldKind": "connectionString",
+          "showDetailsTab": true,
+          "showConnectionStringTab": true,
+          "showSslToggle": true,
+          "placeholders": {
+            "port": "3306",
+            "connectionString": "mysql://user:pass@host:3306/db"
+          },
+          "fieldLabels": {
+            "connectionString": "Connection string"
+          }
+        },
         "schema": {
           "type": "object",
           "oneOf": [

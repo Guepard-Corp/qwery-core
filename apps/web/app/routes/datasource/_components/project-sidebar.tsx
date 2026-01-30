@@ -20,7 +20,10 @@ import { Shortcuts } from 'node_modules/@qwery/ui/src/qwery/shortcuts';
 import { useTelemetry, PROJECT_EVENTS } from '@qwery/telemetry';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
-import { useDeleteNotebook } from '~/lib/mutations/use-notebook';
+import {
+  useCreateNotebook,
+  useDeleteNotebook,
+} from '~/lib/mutations/use-notebook';
 import type { NotebookOutput } from '@qwery/domain/usecases';
 import {
   AlertDialog,
@@ -49,7 +52,16 @@ export function ProjectSidebar() {
   const notebooksList = useMemo(() => notebooks?.data ?? [], [notebooks?.data]);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isCreatingNotebook, setIsCreatingNotebook] = useState(false);
+
+  const createNotebookMutation = useCreateNotebook(
+    notebookRepository,
+    (notebook) =>
+      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
+    (error) =>
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create notebook',
+      ),
+  );
 
   const deleteNotebookMutation = useDeleteNotebook(
     notebookRepository,
@@ -124,56 +136,29 @@ export function ProjectSidebar() {
     }
   }, [notebooksList]);
 
-  const handleCreateNotebook = useCallback(async () => {
+  const handleCreateNotebook = useCallback(() => {
     if (!workspace.projectId) {
       toast.error('Unable to resolve project context for notebook creation');
       return;
     }
-
-    setIsCreatingNotebook(true);
-    try {
-      const response = await fetch('/api/notebooks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: workspace.projectId,
-          title: generateNotebookTitle(),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        const message = errorBody?.error || 'Failed to create notebook';
-        throw new Error(message);
-      }
-
-      const notebook = await response.json();
-      await notebooks.refetch();
-      navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
-    } catch (error) {
-      console.error(error);
-      const message =
-        error instanceof Error ? error.message : 'Failed to create notebook';
-      toast.error(message);
-    } finally {
-      setIsCreatingNotebook(false);
-    }
-  }, [generateNotebookTitle, navigate, notebooks, workspace.projectId]);
+    createNotebookMutation.mutate({
+      projectId: workspace.projectId,
+      title: generateNotebookTitle(),
+    });
+  }, [createNotebookMutation, generateNotebookTitle, workspace.projectId]);
 
   const _notebookGroupAction = workspace.projectId ? (
     <span
       className="flex h-full w-full items-center justify-center"
       onClick={(event) => {
         event.stopPropagation();
-        if (!isCreatingNotebook && !isBulkDeleting) {
+        if (!createNotebookMutation.isPending && !isBulkDeleting) {
           handleCreateNotebook();
         }
       }}
       aria-label="Add new notebook"
     >
-      {isCreatingNotebook ? (
+      {createNotebookMutation.isPending ? (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
       ) : (
         <Plus className="h-4 w-4 shrink-0" />

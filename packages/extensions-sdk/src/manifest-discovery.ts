@@ -2,6 +2,7 @@ import { z } from 'zod/v3';
 
 import registry from '../../extensions-loader/src/registry.json';
 
+import type { DatasourceFormConfigPayload } from './form-config';
 import { jsonSchemaToZod, type JsonSchema } from './json-schema-to-zod';
 import { ExtensionScope, type DriverRuntime } from './types';
 
@@ -26,6 +27,7 @@ export interface DiscoveredDatasource {
   packageDir: string;
   packageName: string;
   scope: ExtensionScope;
+  formConfig?: DatasourceFormConfigPayload | null;
 }
 
 export interface DiscoveredExtensionPackage {
@@ -45,6 +47,7 @@ type RegistryPayload = {
     icon?: string;
     schema: JsonSchema;
     packageName: string;
+    formConfig?: DatasourceFormConfigPayload | null;
     drivers: Array<{
       id: string;
       name: string;
@@ -77,9 +80,10 @@ function transformRegistryToDiscovered(
       rawSchema: ds.schema,
       schema: jsonSchemaToZod(ds.schema),
       drivers,
-      packageDir: '', // Empty - not needed
+      packageDir: '',
       packageName: ds.packageName,
       scope: ExtensionScope.DATASOURCE,
+      formConfig: ds.formConfig ?? null,
     };
   });
 

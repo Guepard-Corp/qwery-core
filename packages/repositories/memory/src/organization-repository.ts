@@ -6,6 +6,27 @@ import { IOrganizationRepository } from '@qwery/domain/repositories';
 export class OrganizationRepository extends IOrganizationRepository {
   private organizations = new Map<string, Organization>();
 
+  async search(
+    query: string,
+    options?: RepositoryFindOptions,
+  ): Promise<Organization[]> {
+    const q = query.trim().toLowerCase();
+    const all = Array.from(this.organizations.values());
+    const filtered = q
+      ? all.filter((org) => {
+          const name = org.name?.toLowerCase() ?? '';
+          const slug = org.slug?.toLowerCase() ?? '';
+          return name.includes(q) || slug.includes(q);
+        })
+      : all;
+
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    return limit
+      ? filtered.slice(offset, offset + limit)
+      : filtered.slice(offset);
+  }
+
   async findAll(options?: RepositoryFindOptions): Promise<Organization[]> {
     const allOrgs = Array.from(this.organizations.values());
     const offset = options?.offset ?? 0;

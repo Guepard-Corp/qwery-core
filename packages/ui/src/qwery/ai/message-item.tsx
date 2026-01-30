@@ -8,7 +8,13 @@ import { cn } from '../../lib/utils';
 import { BotAvatar } from '../bot-avatar';
 import { Button } from '../../shadcn/button';
 import { Textarea } from '../../shadcn/textarea';
-import { CopyIcon, RefreshCcwIcon, CheckIcon, XIcon } from 'lucide-react';
+import {
+  CopyIcon,
+  RefreshCcwIcon,
+  CheckIcon,
+  XIcon,
+  PencilIcon,
+} from 'lucide-react';
 import { Message, MessageContent } from '../../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import {
@@ -24,6 +30,7 @@ import {
   parseMessageWithContext,
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
+import { DatasourceSelector } from './datasource-selector';
 import {
   Tool,
   ToolHeader,
@@ -32,7 +39,7 @@ import {
 } from '../../ai-elements/tool';
 import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
-import { TOOL_UI_CONFIG } from './tool-ui-config';
+import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { ToolPart } from './message-parts';
 import { getUserFriendlyToolName } from './utils/tool-name';
 import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
@@ -46,6 +53,7 @@ export interface MessageItemProps {
   lastAssistantMessage: UIMessage | undefined;
   editingMessageId: string | null;
   editText: string;
+  editDatasources: string[];
   copiedMessagePartId: string | null;
   datasources?: DatasourceItem[];
   selectedDatasources?: string[];
@@ -55,9 +63,15 @@ export interface MessageItemProps {
     notebookCellType?: NotebookCellType;
     datasourceId?: string;
   };
+  onEditStart: (
+    messageId: string,
+    text: string,
+    datasourceIds: string[],
+  ) => void;
   onEditSubmit: () => void;
   onEditCancel: () => void;
   onEditTextChange: (text: string) => void;
+  onEditDatasourcesChange: (datasourceIds: string[]) => void;
   onRegenerate: () => void;
   onCopyPart: (partId: string) => void;
   sendMessage?: ReturnType<
@@ -78,14 +92,17 @@ function MessageItemComponent({
   lastAssistantMessage,
   editingMessageId,
   editText,
+  editDatasources,
   copiedMessagePartId,
   datasources,
   selectedDatasources,
   pluginLogoMap,
   notebookContext,
+  onEditStart,
   onEditSubmit,
   onEditCancel,
   onEditTextChange,
+  onEditDatasourcesChange,
   onRegenerate,
   onCopyPart,
   sendMessage,
@@ -171,6 +188,58 @@ function MessageItemComponent({
                     const isEditing = editingMessageId === message.id;
 
                     if (normalizeUIRole(message.role) === 'user') {
+                      const messageDatasources = (() => {
+                        if (
+                          message.metadata &&
+                          typeof message.metadata === 'object'
+                        ) {
+                          const metadata = message.metadata as Record<
+                            string,
+                            unknown
+                          >;
+                          if (
+                            'datasources' in metadata &&
+                            Array.isArray(metadata.datasources)
+                          ) {
+                            const metadataDatasources = (
+                              metadata.datasources as string[]
+                            )
+                              .map((dsId) =>
+                                datasources?.find((ds) => ds.id === dsId),
+                              )
+                              .filter(
+                                (ds): ds is DatasourceItem => ds !== undefined,
+                              );
+                            if (metadataDatasources.length > 0) {
+                              return metadataDatasources;
+                            }
+                          }
+                        }
+
+                        const lastUserMessage = [...messages]
+                          .reverse()
+                          .find((msg) => normalizeUIRole(msg.role) === 'user');
+
+                        const isLastUserMessage =
+                          lastUserMessage?.id === message.id;
+
+                        if (
+                          isLastUserMessage &&
+                          selectedDatasources &&
+                          selectedDatasources.length > 0
+                        ) {
+                          return selectedDatasources
+                            .map((dsId) =>
+                              datasources?.find((ds) => ds.id === dsId),
+                            )
+                            .filter(
+                              (ds): ds is DatasourceItem => ds !== undefined,
+                            );
+                        }
+
+                        return undefined;
+                      })();
+
                       return (
                         <div
                           key={`${message.id}-${i}`}
@@ -178,131 +247,181 @@ function MessageItemComponent({
                             'animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start justify-end gap-3 overflow-x-hidden duration-300',
                           )}
                         >
-                          <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                          <div
+                            className={cn(
+                              'flex-end flex w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
+                              isEditing ? 'max-w-full' : 'max-w-[80%]',
+                            )}
+                          >
                             {isEditing &&
                             normalizeUIRole(message.role) === 'user' ? (
-                              <>
-                                <Textarea
-                                  value={editText}
-                                  onChange={(e) => {
-                                    onEditTextChange(e.target.value);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (
-                                      e.key === 'Enter' &&
-                                      (e.metaKey || e.ctrlKey)
-                                    ) {
-                                      e.preventDefault();
-                                      onEditSubmit();
-                                    } else if (e.key === 'Escape') {
-                                      e.preventDefault();
-                                      onEditCancel();
-                                    }
-                                  }}
-                                  className="min-h-[60px] resize-none"
-                                  autoFocus
-                                />
-                                <div className="mt-1 flex items-center justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={onEditSubmit}
-                                    className="h-7 w-7"
-                                    title="Save"
-                                  >
-                                    <CheckIcon className="size-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={onEditCancel}
-                                    className="h-7 w-7"
-                                    title="Cancel"
-                                  >
-                                    <XIcon className="size-3" />
-                                  </Button>
-                                </div>
-                              </>
+                              (() => {
+                                const { text: _cleanText, context } =
+                                  parseMessageWithContext(part.text);
+                                const hasContext =
+                                  context?.lastAssistantResponse;
+
+                                return (
+                                  <>
+                                    {(hasContext ||
+                                      (datasources && pluginLogoMap)) && (
+                                      <div className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 overflow-x-hidden">
+                                        {hasContext ? (
+                                          <div className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-xs">
+                                            <span className="font-medium">
+                                              Context:{' '}
+                                            </span>
+                                            {context.lastAssistantResponse?.substring(
+                                              0,
+                                              100,
+                                            )}
+                                            {(context.lastAssistantResponse
+                                              ?.length ?? 0) > 100 && '...'}
+                                          </div>
+                                        ) : (
+                                          <div className="flex-1" />
+                                        )}
+                                        {datasources && pluginLogoMap && (
+                                          <DatasourceSelector
+                                            selectedDatasources={
+                                              editDatasources
+                                            }
+                                            onSelectionChange={
+                                              onEditDatasourcesChange
+                                            }
+                                            datasources={datasources}
+                                            pluginLogoMap={pluginLogoMap}
+                                            variant="badge"
+                                          />
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="group w-full max-w-full min-w-0">
+                                      <Message
+                                        from={message.role}
+                                        className="w-full max-w-full min-w-0"
+                                      >
+                                        <Textarea
+                                          value={editText}
+                                          onChange={(e) => {
+                                            onEditTextChange(e.target.value);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (
+                                              e.key === 'Enter' &&
+                                              (e.metaKey || e.ctrlKey)
+                                            ) {
+                                              e.preventDefault();
+                                              onEditSubmit();
+                                            } else if (e.key === 'Escape') {
+                                              e.preventDefault();
+                                              onEditCancel();
+                                            }
+                                          }}
+                                          className="bg-muted/50 text-foreground border-primary/30 focus:border-primary min-h-[60px] w-full resize-none rounded-lg border-2 px-4 py-3 text-sm focus:outline-none"
+                                          autoFocus
+                                        />
+                                      </Message>
+                                      <div className="mt-2 flex items-center justify-end gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={onEditCancel}
+                                          className="h-8 px-3"
+                                        >
+                                          <XIcon className="mr-1 size-3" />
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={onEditSubmit}
+                                          className="h-8 px-3"
+                                        >
+                                          <CheckIcon className="mr-1 size-3" />
+                                          Save & Regenerate
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()
                             ) : (
                               <>
                                 {normalizeUIRole(message.role) === 'user' ? (
                                   (() => {
                                     const { text, context } =
                                       parseMessageWithContext(part.text);
-                                    const messageDatasources = (() => {
-                                      if (
-                                        message.metadata &&
-                                        typeof message.metadata === 'object'
-                                      ) {
-                                        const metadata =
-                                          message.metadata as Record<
-                                            string,
-                                            unknown
-                                          >;
-                                        if (
-                                          'datasources' in metadata &&
-                                          Array.isArray(metadata.datasources)
-                                        ) {
-                                          const metadataDatasources = (
-                                            metadata.datasources as string[]
-                                          )
-                                            .map((dsId) =>
-                                              datasources?.find(
-                                                (ds) => ds.id === dsId,
-                                              ),
-                                            )
-                                            .filter(
-                                              (ds): ds is DatasourceItem =>
-                                                ds !== undefined,
-                                            );
-                                          if (metadataDatasources.length > 0) {
-                                            return metadataDatasources;
-                                          }
-                                        }
-                                      }
-
-                                      const lastUserMessage = [...messages]
-                                        .reverse()
-                                        .find(
-                                          (msg) =>
-                                            normalizeUIRole(msg.role) ===
-                                            'user',
-                                        );
-
-                                      const isLastUserMessage =
-                                        lastUserMessage?.id === message.id;
-
-                                      if (
-                                        isLastUserMessage &&
-                                        selectedDatasources &&
-                                        selectedDatasources.length > 0
-                                      ) {
-                                        return selectedDatasources
-                                          .map((dsId) =>
-                                            datasources?.find(
-                                              (ds) => ds.id === dsId,
-                                            ),
-                                          )
-                                          .filter(
-                                            (ds): ds is DatasourceItem =>
-                                              ds !== undefined,
-                                          );
-                                      }
-
-                                      return undefined;
-                                    })();
 
                                     if (context) {
                                       return (
-                                        <UserMessageBubble
-                                          key={`${message.id}-${i}`}
-                                          text={text}
-                                          context={context}
-                                          messageId={message.id}
-                                          messages={messages}
-                                          datasources={messageDatasources}
-                                          pluginLogoMap={pluginLogoMap}
-                                        />
+                                        <div className="group w-full max-w-full min-w-0">
+                                          <UserMessageBubble
+                                            key={`${message.id}-${i}`}
+                                            text={text}
+                                            context={context}
+                                            messageId={message.id}
+                                            messages={messages}
+                                            datasources={messageDatasources}
+                                            pluginLogoMap={pluginLogoMap}
+                                          />
+                                          {isLastTextPart && (
+                                            <div className="mt-1 flex items-center justify-end gap-1">
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                  onEditStart(
+                                                    message.id,
+                                                    text,
+                                                    messageDatasources?.map(
+                                                      (ds) => ds.id,
+                                                    ) ?? [],
+                                                  )
+                                                }
+                                                className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                title={t('sidebar.edit')}
+                                              >
+                                                <PencilIcon className="size-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={async () => {
+                                                  const partId = `${message.id}-${i}`;
+                                                  try {
+                                                    await navigator.clipboard.writeText(
+                                                      text,
+                                                    );
+                                                    onCopyPart(partId);
+                                                    setTimeout(() => {
+                                                      onCopyPart('');
+                                                    }, 2000);
+                                                  } catch (error) {
+                                                    console.error(
+                                                      'Failed to copy:',
+                                                      error,
+                                                    );
+                                                  }
+                                                }}
+                                                className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                title={
+                                                  copiedMessagePartId ===
+                                                  `${message.id}-${i}`
+                                                    ? t('sidebar.copied')
+                                                    : t('sidebar.copy')
+                                                }
+                                              >
+                                                {copiedMessagePartId ===
+                                                `${message.id}-${i}` ? (
+                                                  <CheckIcon className="size-3 text-green-600" />
+                                                ) : (
+                                                  <CopyIcon className="size-3" />
+                                                )}
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     }
 
@@ -329,11 +448,28 @@ function MessageItemComponent({
                                               </div>
                                             </MessageContent>
                                           </Message>
-                                          {/* Copy button for user messages - only visible on hover */}
+                                          {/* Edit and Copy buttons for user messages - only visible on hover */}
                                           {normalizeUIRole(message.role) ===
                                             'user' &&
                                             isLastTextPart && (
-                                              <div className="mt-1 flex items-center justify-end gap-2">
+                                              <div className="mt-1 flex items-center justify-end gap-1">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                    onEditStart(
+                                                      message.id,
+                                                      part.text,
+                                                      messageDatasources?.map(
+                                                        (ds) => ds.id,
+                                                      ) ?? [],
+                                                    )
+                                                  }
+                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                  title={t('sidebar.edit')}
+                                                >
+                                                  <PencilIcon className="size-3" />
+                                                </Button>
                                                 <Button
                                                   variant="ghost"
                                                   size="icon"
