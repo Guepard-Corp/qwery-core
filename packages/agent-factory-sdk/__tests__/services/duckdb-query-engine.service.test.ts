@@ -79,6 +79,29 @@ describe('DuckDBQueryEngine', () => {
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0]?.test_value).toBe(1);
     });
+
+    it('should enforce default limit on SELECT queries', async () => {
+      await engine.query(
+        'CREATE TABLE big_table AS SELECT generate_series AS id FROM generate_series(1, 2000)',
+      );
+
+      const resultNoLimit = await engine.query('SELECT * FROM big_table');
+      expect(resultNoLimit.rows.length).toBe(1000);
+
+      const resultLimit5 = await engine.query(
+        'SELECT * FROM big_table LIMIT 5',
+      );
+      expect(resultLimit5.rows.length).toBe(5);
+
+      const resultLimit1500 = await engine.query(
+        'SELECT * FROM big_table LIMIT 1500',
+      );
+      expect(resultLimit1500.rows.length).toBe(1000);
+      const resultLimit1500Semi = await engine.query(
+        'SELECT * FROM big_table LIMIT 1500;',
+      );
+      expect(resultLimit1500Semi.rows.length).toBe(1000);
+    });
   });
 
   describe('s3:// protocol with MinIO', () => {

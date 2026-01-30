@@ -10,6 +10,7 @@ import type {
 import { z } from 'zod/v3';
 
 import { FieldGroup } from '@qwery/ui/field';
+import { Button } from '@qwery/ui/button';
 import {
   Form,
   FormControl,
@@ -282,7 +283,12 @@ function renderField(
   // String
   if (isSchemaType(unwrapped, 'ZodString')) {
     const checks = getStringChecks(unwrapped);
-    const inputType = checks.email ? 'email' : 'text';
+    const isSecret =
+      (description &&
+        (description === 'secret:true' ||
+          description.includes('secret:true'))) ||
+      (unwrapped._def as { format?: string }).format === 'password';
+    const inputType = isSecret ? 'password' : checks.email ? 'email' : 'text';
     const isLongText = checks.max && checks.max > 200;
 
     return (
@@ -293,20 +299,49 @@ function renderField(
           field,
         }: {
           field: ControllerRenderProps<FieldValues, FieldPath<FieldValues>>;
-        }) => (
-          <FormItem>
-            <FormLabel>{name}</FormLabel>
-            <FormControl>
-              {isLongText ? (
-                <Textarea {...field} placeholder={placeholder} rows={4} />
-              ) : (
-                <Input {...field} type={inputType} placeholder={placeholder} />
-              )}
-            </FormControl>
-            {description && <FormDescription>{description}</FormDescription>}
-            <FormMessage />
-          </FormItem>
-        )}
+        }) => {
+          const isProtected =
+            typeof field.value === 'string' &&
+            (field.value.startsWith('enc:') ||
+              field.value.startsWith('vault:'));
+
+          return (
+            <FormItem>
+              <FormLabel>{name}</FormLabel>
+              <FormControl>
+                {isLongText ? (
+                  <Textarea {...field} placeholder={placeholder} rows={4} />
+                ) : isSecret && isProtected ? (
+                  <div className="relative flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value="••••••••••••"
+                      type="text"
+                      className="bg-muted/50 flex-1 cursor-default font-mono opacity-80"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 py-0"
+                      onClick={() => field.onChange('')}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <Input
+                    {...field}
+                    type={inputType}
+                    placeholder={placeholder}
+                  />
+                )}
+              </FormControl>
+              {description && <FormDescription>{description}</FormDescription>}
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
     );
   }
@@ -567,22 +602,6 @@ export function FormRenderer<T extends ZodSchemaType>({
     return { ...schemaDefaults, ...defaultValues } as z.infer<T>;
   }, [schemaDefaults, defaultValues]);
 
-  const form = useForm<z.infer<T>>({
-    resolver: zodResolver(schema as z.ZodTypeAny),
-    defaultValues: mergedDefaults,
-    mode: 'onChange',
-    reValidateMode: 'onChange',
-  });
-
-  // Watch all form values to detect changes
-
-  const watchedValues = form.watch();
-  const previousValuesRef = React.useRef<z.infer<T> | null>(null);
-  const onFormReadyRef = React.useRef(onFormReady);
-  const onValidityChangeRef = React.useRef(onValidityChange);
-  onFormReadyRef.current = onFormReady;
-  onValidityChangeRef.current = onValidityChange;
-
   // Detect oneOf schema (ZodUnion) - connectionUrl OR separate fields
   const isOneOfSchema = React.useMemo(() => {
     try {
@@ -659,41 +678,20 @@ export function FormRenderer<T extends ZodSchemaType>({
 
   const hasOneOf = isOneOfSchema && separateFieldsSchema && connectionUrlSchema;
 
-  // Custom validation for oneOf schemas - check if either connectionUrl OR required fields are filled
-  const validateOneOfForm = React.useCallback(() => {
-    if (!isOneOfSchema || !hasOneOf) return null;
+  const form = useForm<z.infer<T>>({
+    resolver: zodResolver(schema as z.ZodTypeAny),
+    defaultValues: mergedDefaults,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+  });
 
-    const values = form.getValues();
-    const hasConnectionUrl = Boolean(
-      values.connectionUrl?.trim?.() || values.connectionUrl,
-    );
-    const hasHost = Boolean(values.host?.trim?.() || values.host);
-
-    // For oneOf: either connectionUrl OR host must be present
-    if (!hasConnectionUrl && !hasHost) {
-      return false; // Invalid - neither option is filled
-    }
-
-    // If using connectionUrl, it must be a non-empty string
-    if (hasConnectionUrl) {
-      const url = String(values.connectionUrl || '').trim();
-      if (!url) {
-        return false;
-      }
-    }
-
-    // If using separate fields, host is required
-    if (hasHost && !hasConnectionUrl) {
-      const host = String(values.host || '').trim();
-      if (!host) {
-        return false;
-      }
-    }
-
-    return true; // Valid
-  }, [isOneOfSchema, hasOneOf, form]);
-
-  useEffect(() => {
+  const watchedValues = form.watch();
+  const previousValuesRef = React.useRef<z.infer<T> | null>(null);
+  const onFormReadyRef = React.useRef(onFormReady);
+  const onValidityChangeRef = React.useRef(onValidityChange);
+  onFormReadyRef.current = onFormReady;
+  onValidityChangeRef.current = onValidityChange;
+  React.useEffect(() => {
     if (!onFormReadyRef.current) return;
 
     const values = form.getValues();
@@ -749,6 +747,36 @@ export function FormRenderer<T extends ZodSchemaType>({
   const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit(values);
   });
+
+  const validateOneOfForm = React.useCallback(() => {
+    if (!isOneOfSchema || !hasOneOf) return null;
+
+    const values = form.getValues();
+    const hasConnectionUrl = Boolean(
+      values.connectionUrl?.trim?.() || values.connectionUrl,
+    );
+    const hasHost = Boolean(values.host?.trim?.() || values.host);
+
+    if (!hasConnectionUrl && !hasHost) {
+      return false;
+    }
+
+    if (hasConnectionUrl) {
+      const url = String(values.connectionUrl || '').trim();
+      if (!url) {
+        return false;
+      }
+    }
+
+    if (hasHost && !hasConnectionUrl) {
+      const host = String(values.host || '').trim();
+      if (!host) {
+        return false;
+      }
+    }
+
+    return true; // Valid
+  }, [isOneOfSchema, hasOneOf, form]);
 
   useEffect(() => {
     if (!onValidityChangeRef.current) return;
