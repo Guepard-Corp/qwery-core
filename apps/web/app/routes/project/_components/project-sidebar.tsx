@@ -64,7 +64,7 @@ export function ProjectSidebar() {
     repositories.notebook,
     projectId,
   );
-  const notebooksList = notebooks.data || [];
+  const notebooksList = useMemo(() => notebooks.data || [], [notebooks.data]);
 
   // Get current notebook slug
   const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);

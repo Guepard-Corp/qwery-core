@@ -75,25 +75,34 @@ export async function action({ request }: { request: Request }) {
       );
     }
 
+    // Reveal secrets before passing to driver
+    const { createRepositories } = await import(
+      '~/lib/repositories/repositories-factory'
+    );
+    const repositories = await createRepositories();
+    const revealedConfig = await repositories.datasource.revealSecrets(
+      config as Record<string, unknown>,
+    );
+
     const instance = await getDriverInstance(driver as DiscoveredDriver);
 
     switch (action) {
       case 'testConnection': {
-        await instance.testConnection(config);
+        await instance.testConnection(revealedConfig);
         return Response.json({
           success: true,
           data: { connected: true, message: 'ok' },
         });
       }
       case 'metadata': {
-        const metadata = await instance.metadata(config);
+        const metadata = await instance.metadata(revealedConfig);
         return Response.json({ success: true, data: metadata });
       }
       case 'query': {
         if (!sql) {
           return Response.json({ error: 'Missing sql' }, { status: 400 });
         }
-        const result = await instance.query(sql, config);
+        const result = await instance.query(sql, revealedConfig);
         return Response.json({ success: true, data: result });
       }
       default:

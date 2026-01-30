@@ -32,7 +32,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "ClickHouse password",
+                "description": "ClickHouse password secret:true",
                 "format": "password"
               },
               "database": {
@@ -50,7 +50,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
+                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
                 "format": "uri"
               }
             },
@@ -102,7 +102,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "ClickHouse password",
+                "description": "ClickHouse password secret:true",
                 "format": "password"
               },
               "database": {
@@ -120,7 +120,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
+                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
                 "format": "uri"
               }
             },
@@ -278,7 +278,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "MySQL password",
+                "description": "MySQL password secret:true",
                 "format": "password"
               },
               "database": {
@@ -300,7 +300,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "MySQL connection string (mysql://user:pass@host:port/database)",
+                "description": "MySQL connection string (mysql://user:pass@host:port/database) secret:true",
                 "format": "uri"
               }
             },
@@ -404,7 +404,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "PostgreSQL password",
+                "description": "PostgreSQL password secret:true",
                 "format": "password"
               },
               "database": {
@@ -433,7 +433,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "PostgreSQL connection string (postgresql://user:pass@host:port/db)"
+                "description": "PostgreSQL connection string (postgresql://user:pass@host:port/db) secret:true"
               }
             },
             "required": [
@@ -482,7 +482,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "Supabase password",
+                "description": "Supabase password secret:true",
                 "format": "password"
               },
               "database": {
@@ -511,7 +511,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "Supabase connection string (postgresql://user:pass@host:port/db)"
+                "description": "Supabase connection string (postgresql://user:pass@host:port/db) secret:true"
               }
             },
             "required": [
@@ -560,7 +560,7 @@
               },
               "password": {
                 "type": "string",
-                "description": "Neon password",
+                "description": "Neon password secret:true",
                 "format": "password"
               },
               "database": {
@@ -589,7 +589,7 @@
             "properties": {
               "connectionUrl": {
                 "type": "string",
-                "description": "Neon connection string (postgresql://user:pass@host:port/db)"
+                "description": "Neon connection string (postgresql://user:pass@host:port/db) secret:true"
               }
             },
             "required": [
@@ -618,7 +618,8 @@
         "properties": {
           "apiKey": {
             "type": "string",
-            "description": "YouTube Data API key"
+            "description": "YouTube Data API key secret:true",
+            "format": "password"
           },
           "channelId": {
             "type": "string",

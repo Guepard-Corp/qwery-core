@@ -87,6 +87,7 @@ export const VirtuosoMessageList = forwardRef<
 
   const stableMessageItemProps = useMemo(
     () => messageItemProps,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       messageItemProps.lastAssistantMessage,
       messageItemProps.editingMessageId,
@@ -264,7 +265,7 @@ export const VirtuosoMessageList = forwardRef<
       }
     }
     previousMessagesLengthRef.current = messages.length;
-  }, [messages.length]);
+  }, [messages]);
 
   // Force scroll when a new assistant message appears (to ensure visibility)
   useEffect(() => {
@@ -359,7 +360,6 @@ export const VirtuosoMessageList = forwardRef<
       />
       {renderScrollButton &&
         !isAtBottom &&
-        // eslint-disable-next-line react-hooks/refs -- renderScrollButton is a render prop, scrollToBottom callback accesses refs internally but is stable
         renderScrollButton(scrollToBottom, isAtBottom)}
     </div>
   );

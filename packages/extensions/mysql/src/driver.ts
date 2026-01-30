@@ -16,12 +16,12 @@ import {
 
 const ConfigSchema = z
   .object({
-    connectionUrl: z.string().url().optional(),
+    connectionUrl: z.string().url().describe('secret:true').optional(),
     host: z.string().optional(),
     port: z.number().int().min(1).max(65535).optional(),
     username: z.string().optional(),
     user: z.string().optional(),
-    password: z.string().optional(),
+    password: z.string().describe('secret:true').optional(),
     database: z.string().optional(),
     ssl: z.boolean().optional(),
   })
@@ -57,8 +57,8 @@ function buildMysqlConfig(connectionUrl: string) {
       database: url.pathname ? url.pathname.replace(/^\//, '') || undefined : undefined,
       ssl: ssl
         ? {
-            rejectUnauthorized: false,
-          }
+          rejectUnauthorized: false,
+        }
         : undefined,
     };
   }
@@ -309,7 +309,7 @@ export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
       const fieldArray = Array.isArray(fields) ? fields : [];
 
       // Try to get affectedRows from the result if available
-      const affectedRows = 
+      const affectedRows =
         (result as unknown as { affectedRows?: number })?.affectedRows ?? rowArray.length;
 
       return {

@@ -301,6 +301,12 @@ export class DatasourceRepository extends IDatasourceRepository {
     });
   }
 
+  async revealSecrets(
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return config;
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       this.db.close();

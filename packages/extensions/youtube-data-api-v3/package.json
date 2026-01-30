@@ -30,7 +30,8 @@
           "properties": {
             "apiKey": {
               "type": "string",
-              "description": "YouTube Data API key"
+              "description": "YouTube Data API key secret:true",
+              "format": "password"
             },
             "channelId": {
               "type": "string",

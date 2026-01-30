@@ -18,42 +18,51 @@ export type JsonSchema = {
  * Falls back to z.any() when structure is not recognised.
  */
 export function jsonSchemaToZod(schema: JsonSchema): z.ZodTypeAny {
-  const withDescription = <T extends z.ZodTypeAny>(
+  const withMetadata = <T extends z.ZodTypeAny>(
     base: T,
-    description?: string,
-  ) => (description ? base.describe(description) : base);
+    schema: JsonSchema,
+  ) => {
+    let result = base;
+    if (schema.description) {
+      result = result.describe(schema.description);
+    }
+    if (schema.format) {
+      (result._def as { format?: string }).format = schema.format;
+    }
+    return result;
+  };
 
   // Handle oneOf first (union types)
   if (schema.oneOf && Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
     const unionSchemas = schema.oneOf.map((subSchema) =>
       jsonSchemaToZod(subSchema),
     );
-    return withDescription(
+    return withMetadata(
       z.union(unionSchemas as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]),
-      schema.description,
+      schema,
     );
   }
 
   switch (schema.type) {
     case 'string': {
       if (schema.enum && schema.enum.length > 0) {
-        return withDescription(
+        return withMetadata(
           z.enum([...schema.enum] as [string, ...string[]]),
-          schema.description,
+          schema,
         );
       }
-      return withDescription(z.string(), schema.description);
+      return withMetadata(z.string(), schema);
     }
     case 'number':
     case 'integer': {
-      return withDescription(z.number(), schema.description);
+      return withMetadata(z.number(), schema);
     }
     case 'boolean': {
-      return withDescription(z.boolean(), schema.description);
+      return withMetadata(z.boolean(), schema);
     }
     case 'array': {
       const itemSchema = schema.items ? jsonSchemaToZod(schema.items) : z.any();
-      return withDescription(z.array(itemSchema), schema.description);
+      return withMetadata(z.array(itemSchema), schema);
     }
     case 'object': {
       const shapeEntries =
@@ -68,17 +77,17 @@ export function jsonSchemaToZod(schema: JsonSchema): z.ZodTypeAny {
         shape[key] = required.has(key) ? fieldSchema : fieldSchema.optional();
       }
 
-      return withDescription(z.object(shape), schema.description);
+      return withMetadata(z.object(shape), schema);
     }
     default: {
       // Enum with no explicit type
       if (schema.enum && schema.enum.length > 0) {
-        return withDescription(
+        return withMetadata(
           z.enum([...schema.enum] as [string, ...string[]]),
-          schema.description,
+          schema,
         );
       }
-      return withDescription(z.any(), schema.description);
+      return withMetadata(z.any(), schema);
     }
   }
 }

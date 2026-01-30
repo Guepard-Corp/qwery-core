@@ -16,12 +16,12 @@ import {
 
 const ConfigSchema = z
   .object({
-    connectionUrl: z.string().url().optional(),
+    connectionUrl: z.string().url().describe('secret:true').optional(),
     host: z.string().optional(),
     port: z.number().int().min(1).max(65535).optional(),
     username: z.string().optional(),
     user: z.string().optional(),
-    password: z.string().optional(),
+    password: z.string().describe('secret:true').optional(),
     database: z.string().optional(),
     sslmode: z
       .enum(['disable', 'require', 'prefer', 'verify-ca', 'verify-full'])
@@ -51,9 +51,9 @@ function buildPgConfig(connectionUrl: string) {
   const ssl: ConnectionOptions | undefined =
     sslmode === 'require'
       ? {
-          rejectUnauthorized: false,
-          checkServerIdentity: () => undefined,
-        }
+        rejectUnauthorized: false,
+        checkServerIdentity: () => undefined,
+      }
       : undefined;
 
   return {

@@ -50,4 +50,10 @@ export class DatasourceRepository extends IDatasourceRepository {
   async delete(id: string): Promise<boolean> {
     return this.datasources.delete(id);
   }
+
+  async revealSecrets(
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return config;
+  }
 }

@@ -38,6 +38,7 @@ describe('OrganizationsPage', () => {
       nextCursor: null,
       hasMore: false,
     }),
+    revealSecrets: vi.fn((config) => Promise.resolve(config)),
   };
 
   const mockWorkspace = {

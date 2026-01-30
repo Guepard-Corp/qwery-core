@@ -50,7 +50,7 @@
                 },
                 "password": {
                   "type": "string",
-                  "description": "ClickHouse password",
+                  "description": "ClickHouse password secret:true",
                   "format": "password"
                 },
                 "database": {
@@ -68,7 +68,7 @@
               "properties": {
                 "connectionUrl": {
                   "type": "string",
-                  "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
+                  "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
                   "format": "uri"
                 }
               },
