@@ -44,12 +44,6 @@ function buildClickHouseConfig(connectionUrl: string) {
   const protocol = url.protocol === 'clickhouse:' ? 'http:' : url.protocol;
   const host = `${protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}`;
 
-  console.log('url', url);
-  console.log('protocol', protocol);
-  console.log('host', host);
-  console.log('username', url.username ? decodeURIComponent(url.username) : 'default');
-  console.log('password', url.password ? decodeURIComponent(url.password) : '');
-  console.log('database', url.pathname ? url.pathname.replace(/^\//, '') || 'default' : 'default');
   return {
     host,
     username: url.username ? decodeURIComponent(url.username) : 'default',
@@ -70,7 +64,6 @@ export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver 
     const key = connectionUrl;
     if (!clientMap.has(key)) {
       const clientConfig = buildClickHouseConfig(connectionUrl);
-      console.log('clientConfig', clientConfig);
       const client = createClient(clientConfig);
       clientMap.set(key, client);
     }

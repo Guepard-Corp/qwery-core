@@ -91,6 +91,7 @@
       "protobufjs",
       "sentry",
       "sharp",
+      "@swc/core",
       "unrs-resolver"
     ]
   },
