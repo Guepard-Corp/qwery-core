@@ -298,7 +298,9 @@ export const DatasourcePreview = forwardRef<
     debouncedPreviewUrl ?? previewUrl ?? undefined;
   const displayUrl: string | undefined = baseUrl
     ? baseUrl +
-      (baseUrl.includes('?') ? themeParam : themeParam.replace('&', '?'))
+      (baseUrl.includes('?')
+        ? '&' + themeParam.substring(1)
+        : '?' + themeParam.substring(1))
     : undefined;
 
   const isGoogleSheets = dsType === 'gsheet';
