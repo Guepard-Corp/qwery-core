@@ -53,7 +53,7 @@ export * from './charts/pie-chart';
 export * from './charts/chart-utils';
 
 // Scroll utilities
-export * from './scroll-utils';
+export * from './utils/scroll-utils';
 
 // Infinite messages hook
 export {

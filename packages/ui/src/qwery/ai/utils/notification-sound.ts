@@ -20,6 +20,8 @@ function getAudioContext(): AudioContext {
 
 export function playCompletionSound(): void {
   try {
+    // Sound is currently muted
+    return;
     const ctx = getAudioContext();
 
     if (ctx.state === 'suspended') {

@@ -315,7 +315,7 @@ export function DatasourceConnectForm({
           variant="outline"
           onClick={handleTestConnection}
           disabled={isPending || !isFormValid || isConnecting}
-          className="bg-white hover:bg-gray-50 text-black font-semibold border border-border shadow-sm transition-all"
+          className="bg-white hover:bg-gray-50 text-black hover:text-black font-semibold border border-border shadow-sm transition-all"
         >
           {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
           Test Connection

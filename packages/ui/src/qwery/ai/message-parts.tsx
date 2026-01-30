@@ -29,7 +29,7 @@ import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { cn } from '../../lib/utils';
 import { SchemaVisualizer } from './schema-visualizer';
 import { Trans } from '../trans';
-import { TOOL_UI_CONFIG } from './tool-ui-config';
+import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 
 import { ViewSheetVisualizer } from './sheets/view-sheet-visualizer';
 
@@ -488,15 +488,15 @@ export function ToolPart({
       const input = part.input as { query?: string } | null;
       const output = part.output as
         | {
-            result?: {
-              rows?: unknown[];
-              columns?: unknown[];
-              query?: string;
-            };
-            sqlQuery?: string;
-            shouldPaste?: boolean;
-            chartExecutionOverride?: boolean;
-          }
+          result?: {
+            rows?: unknown[];
+            columns?: unknown[];
+            query?: string;
+          };
+          sqlQuery?: string;
+          shouldPaste?: boolean;
+          chartExecutionOverride?: boolean;
+        }
         | null
         | undefined;
 
@@ -572,31 +572,31 @@ export function ToolPart({
       // Check if we should show paste button (inline mode with shouldPaste flag)
       const shouldShowPasteButton = Boolean(
         shouldPaste === true &&
-          sqlQuery &&
-          onPasteToNotebook &&
-          notebookContext?.cellId !== undefined &&
-          notebookContext?.notebookCellType &&
-          notebookContext?.datasourceId,
+        sqlQuery &&
+        onPasteToNotebook &&
+        notebookContext?.cellId !== undefined &&
+        notebookContext?.notebookCellType &&
+        notebookContext?.datasourceId,
       );
 
       // Create paste handler callback
       const handlePasteToNotebook =
         shouldShowPasteButton && onPasteToNotebook
           ? () => {
-              if (
-                sqlQuery &&
-                notebookContext?.cellId !== undefined &&
-                notebookContext?.notebookCellType &&
-                notebookContext?.datasourceId
-              ) {
-                onPasteToNotebook(
-                  sqlQuery,
-                  notebookContext.notebookCellType,
-                  notebookContext.datasourceId,
-                  notebookContext.cellId,
-                );
-              }
+            if (
+              sqlQuery &&
+              notebookContext?.cellId !== undefined &&
+              notebookContext?.notebookCellType &&
+              notebookContext?.datasourceId
+            ) {
+              onPasteToNotebook(
+                sqlQuery,
+                notebookContext.notebookCellType,
+                notebookContext.datasourceId,
+                notebookContext.cellId,
+              );
             }
+          }
           : undefined;
 
       return (
@@ -605,11 +605,11 @@ export function ToolPart({
           result={
             hasResults && output?.result
               ? {
-                  result: {
-                    columns: output.result.columns as string[],
-                    rows: output.result.rows as Array<Record<string, unknown>>,
-                  },
-                }
+                result: {
+                  columns: output.result.columns as string[],
+                  rows: output.result.rows as Array<Record<string, unknown>>,
+                },
+              }
               : undefined
           }
           onPasteToNotebook={handlePasteToNotebook}

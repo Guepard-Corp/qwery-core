@@ -4,7 +4,7 @@ import { ArrowUpLeft } from 'lucide-react';
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import { Message, MessageContent } from '../../ai-elements/message';
-import { scrollToElementBySelector } from './scroll-utils';
+import { scrollToElementBySelector } from './utils/scroll-utils';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { cleanContextMarkers } from './utils/message-context';
 import {
@@ -306,10 +306,10 @@ function getUserQuestionFromParentId(
   parentConversationId: string | undefined,
   messages:
     | Array<{
-        id: string;
-        role: string;
-        parts?: Array<{ type: string; text?: string }>;
-      }>
+      id: string;
+      role: string;
+      parts?: Array<{ type: string; text?: string }>;
+    }>
     | undefined,
   currentMessageId?: string,
 ): string | undefined {
