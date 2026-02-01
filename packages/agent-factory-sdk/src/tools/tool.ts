@@ -71,12 +71,40 @@ function isAsyncTool<Params extends z.ZodType>(
   return 'init' in config && typeof config.init === 'function';
 }
 
+/** Plugin-style definition: description + parameters (or args record) + execute. Use for custom tools and directory-loaded tools. */
+export type PluginToolConfig<Params extends z.ZodType = z.ZodType> = {
+  description: string;
+  parameters?: Params;
+  args?: Record<string, z.ZodType>;
+  execute: (args: z.infer<Params>, ctx: ToolContext) => Promise<ToolResult>;
+  whenModel?: (model: Model) => boolean;
+};
+
 export const Tool = {
   define<Params extends z.ZodType>(
     id: string,
     config: ToolConfigSync<Params> | ToolConfigAsync<Params>,
   ): ToolInfo<Params> {
     return { id, ...config } as ToolInfo<Params>;
+  },
+  /**
+   * Define a tool from a plugin-style config (description, parameters or args, execute).
+   * Use this for custom tools and for tools loaded from a directory.
+   */
+  definePlugin<Params extends z.ZodType = z.ZodType>(
+    id: string,
+    config: PluginToolConfig<Params>,
+  ): ToolInfo<Params> {
+    const parameters = (config.parameters ??
+      (config.args
+        ? z.object(config.args)
+        : z.object({}))) as unknown as Params;
+    return Tool.define(id, {
+      description: config.description,
+      parameters,
+      execute: config.execute as ToolExecute<Params>,
+      whenModel: config.whenModel,
+    });
   },
   isAsync: isAsyncTool,
 };

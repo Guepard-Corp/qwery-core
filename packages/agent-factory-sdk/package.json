@@ -17,6 +17,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./config": "./src/config/index.ts",
+    "./config/node": "./src/config/node.ts",
     "./llm": "./src/llm/index.ts",
     "./tools/datasource-name-utils": "./src/tools/datasource-name-utils.ts",
     "./tools/datasource-loader": "./src/tools/datasource-loader.ts",
@@ -44,6 +46,7 @@
     "@qwery/telemetry": "workspace:*",
     "ai": "catalog:",
     "ai-sdk-ollama": "^3.3.0",
+    "gray-matter": "^4.0.3",
     "i": "^0.3.7",
     "nanoid": "^5.1.6",
     "npm": "^11.6.4",

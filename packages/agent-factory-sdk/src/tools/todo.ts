@@ -6,8 +6,8 @@ import {
 } from '@qwery/domain/services';
 import { TodoItemSchema } from '@qwery/domain/entities';
 import { Tool } from './tool';
-import { TODOWRITE_DESCRIPTION } from '../agents/prompts/todowrite.prompt';
-import { TODOREAD_DESCRIPTION } from '../agents/prompts/todoread.prompt';
+import { TODOWRITE_DESCRIPTION } from './prompts/todowrite.prompt';
+import { TODOREAD_DESCRIPTION } from './prompts/todoread.prompt';
 
 function getRepositories(ctx: {
   extra?: Record<string, unknown>;

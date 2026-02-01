@@ -10,6 +10,7 @@ import {
 export type SystemContext = {
   cwd?: string;
   date?: string;
+  isGitRepo?: boolean;
 };
 
 /**
@@ -33,12 +34,27 @@ export const SystemPrompt = {
   },
 
   async environment(model: Model, context?: SystemContext): Promise<string[]> {
+    const modelId = model.api?.id ?? model.id;
     const date = context?.date ?? new Date().toDateString();
     const cwd =
       context?.cwd ??
       (typeof process !== 'undefined' ? process.cwd?.() : undefined);
-    const lines = [`Model: ${model.providerID}/${model.id}`, `Date: ${date}`];
-    if (cwd) lines.push(`Working directory: ${cwd}`);
-    return [lines.join('\n')];
+    const platform =
+      typeof process !== 'undefined' ? process.platform : undefined;
+    const isGitRepo = context?.isGitRepo;
+
+    const envLines = [
+      `You are powered by the model named ${modelId}. The exact model ID is ${model.providerID}/${modelId}`,
+      `Here is some useful information about the environment you are running in:`,
+      `<env>`,
+      ...(cwd ? [`  Working directory: ${cwd}`] : []),
+      ...(isGitRepo !== undefined
+        ? [`  Is directory a git repo: ${isGitRepo ? 'yes' : 'no'}`]
+        : []),
+      ...(platform ? [`  Platform: ${platform}`] : []),
+      `  Today's date: ${date}`,
+      `</env>`,
+    ];
+    return [envLines.join('\n')];
   },
 };

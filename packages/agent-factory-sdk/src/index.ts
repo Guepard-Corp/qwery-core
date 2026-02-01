@@ -8,6 +8,9 @@ export * from './agents';
 export * from './agents/tools/types';
 export * from './agents/tools/inferred-types';
 
+// Export config (browser-safe: skills cache only; use @qwery/agent-factory-sdk/config/node for disk loaders)
+export * from './config';
+
 // Export agent/tool registry system
 export * from './tools/tool';
 export * from './tools/registry';

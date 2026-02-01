@@ -40,8 +40,9 @@ import {
 import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
-import { ToolPart } from './message-parts';
+import { ToolPart, TodoPart } from './message-parts';
 import { getUserFriendlyToolName } from './utils/tool-name';
+import { getLastTodoPartIndex } from './utils/todo-parts';
 import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
 import { useToolVariant } from './tool-variant-context';
@@ -173,7 +174,32 @@ function MessageItemComponent({
                 !hasAssistantParts && 'w-full',
               )}
             >
+              {(() => {
+                const lastTodoIndex = getLastTodoPartIndex(message.parts);
+                return lastTodoIndex !== null ? (
+                  <div
+                    key={`${message.id}-todo`}
+                    className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
+                  >
+                    <TodoPart
+                      part={
+                        message.parts[lastTodoIndex] as ToolUIPart & {
+                          type: 'tool-todowrite' | 'tool-todoread';
+                        }
+                      }
+                      messageId={message.id}
+                      index={lastTodoIndex}
+                    />
+                  </div>
+                ) : null;
+              })()}
               {message.parts.map((part, i: number) => {
+                if (
+                  part.type === 'tool-todowrite' ||
+                  part.type === 'tool-todoread'
+                ) {
+                  return null;
+                }
                 const isLastTextPart =
                   part.type === 'text' && i === lastTextPartIndex;
                 const isStreaming =

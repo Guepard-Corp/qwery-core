@@ -3,14 +3,15 @@ import { z } from 'zod/v3';
 import type { Tool } from 'ai';
 import type { ToolInfo, ToolContext, Model, ToolExecute } from './tool';
 import type { AgentInfoWithId } from '../agents/agent';
-import { AskAgent } from '../agents/ask-agent';
-import { QueryAgent } from '../agents/query-agent';
+import { AskAgent, QueryAgent, CompactionAgent } from '../agents';
 import { TodoWriteTool, TodoReadTool } from './todo';
 import { WebFetchTool } from './webfetch';
 import { GetSchemaTool } from './get-schema';
 import { RunQueryTool } from './run-query';
 import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
+import { GetSkillTool } from './get-skill';
+import { TaskTool } from './task';
 
 const tools = new Map<string, ToolInfo>();
 const agents = new Map<string, AgentInfoWithId>();
@@ -24,11 +25,14 @@ function registerTools() {
   tools.set(RunQueryTool.id, RunQueryTool as unknown as ToolInfo);
   tools.set(SelectChartTypeTool.id, SelectChartTypeTool as unknown as ToolInfo);
   tools.set(GenerateChartTool.id, GenerateChartTool as unknown as ToolInfo);
+  tools.set(GetSkillTool.id, GetSkillTool as unknown as ToolInfo);
+  tools.set(TaskTool.id, TaskTool as unknown as ToolInfo);
 }
 
 function registerAgents() {
   agents.set(AskAgent.id, AskAgent);
   agents.set(QueryAgent.id, QueryAgent);
+  agents.set(CompactionAgent.id, CompactionAgent);
 }
 
 registerTools();
@@ -93,10 +97,27 @@ export const Registry = {
       }
 
       const allTools = Array.from(tools.values());
-      const toolIds = agent.options?.toolIds as string[] | undefined;
-      const byAgent = toolIds?.length
-        ? allTools.filter((t) => toolIds.includes(t.id))
-        : allTools;
+      const options = agent.options ?? {};
+      const toolsMap = options.tools as Record<string, boolean> | undefined;
+      const toolIds = options.toolIds as string[] | undefined;
+      const toolDenylist = options.toolDenylist as string[] | undefined;
+
+      let allowlist: string[] | undefined;
+      if (toolsMap && toolsMap['*'] === false) {
+        allowlist = Object.entries(toolsMap)
+          .filter(([k, v]) => k !== '*' && v === true)
+          .map(([k]) => k);
+      } else if (toolIds?.length) {
+        allowlist = toolIds;
+      }
+
+      let byAgent =
+        allowlist != null
+          ? allTools.filter((t) => allowlist!.includes(t.id))
+          : allTools;
+      if (toolDenylist?.length) {
+        byAgent = byAgent.filter((t) => !toolDenylist.includes(t.id));
+      }
       const byModel = byAgent.filter((t) => whenModelMatches(t, model));
 
       const result: Record<string, Tool> = {};
@@ -113,17 +134,39 @@ export const Registry = {
               toolCallId: options.toolCallId,
               abortSignal: options.abortSignal,
             });
-            const output = await resolved.execute(args, context);
-            if (typeof output === 'string') return output;
-            if (
-              typeof output === 'object' &&
-              output !== null &&
-              'output' in output &&
-              Object.keys(output).length === 1
-            ) {
-              return (output as { output: string }).output;
+            const raw = await resolved.execute(args, context);
+            const toTruncate =
+              typeof raw === 'string'
+                ? raw
+                : typeof raw === 'object' &&
+                    raw !== null &&
+                    'output' in raw &&
+                    Object.keys(raw).length === 1
+                  ? (raw as { output: string }).output
+                  : null;
+            if (toTruncate != null) {
+              try {
+                const { truncateOutput } = await import('./truncation');
+                const truncated = await truncateOutput(toTruncate);
+                if (truncated.truncated) {
+                  return typeof raw === 'string'
+                    ? truncated.content
+                    : { output: truncated.content };
+                }
+              } catch {
+                // truncation not available (e.g. browser or Node without fs); return as-is
+              }
             }
-            return output as Record<string, unknown>;
+            if (typeof raw === 'string') return raw;
+            if (
+              typeof raw === 'object' &&
+              raw !== null &&
+              'output' in raw &&
+              Object.keys(raw).length === 1
+            ) {
+              return (raw as { output: string }).output;
+            }
+            return raw as Record<string, unknown>;
           },
         });
       }

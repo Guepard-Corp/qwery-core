@@ -7,6 +7,7 @@ export {
   TextPart,
   ReasoningPart,
   ToolPart,
+  TodoPart,
   SourcesPart,
   TASK_STATUS_META,
   type TaskStatus,
