@@ -6,6 +6,7 @@ import type {
 import { generateSemanticViewName } from '../../view-registry';
 import { getDatasourceDatabaseName } from '../../datasource-name-utils';
 import type { SimpleSchema } from '@qwery/domain/entities';
+import { getLogger } from '@qwery/shared/logger';
 
 const sanitizeName = (value: string): string => {
   const cleaned = value.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -70,7 +71,8 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
           await conn.run(`ATTACH '${escapedPath}' AS "${escapedDbName}"`);
           databaseAttached = true;
 
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[DuckDBNativeAttach] Attached persistent database: ${attachedDatabaseName} at ${dbFilePath}`,
           );
         } else {
@@ -78,7 +80,8 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
           await conn.run(`ATTACH ':memory:' AS "${escapedDbName}"`);
           databaseAttached = true;
 
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[DuckDBNativeAttach] Attached in-memory database: ${attachedDatabaseName}`,
           );
         }
@@ -112,7 +115,8 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
       }>;
 
       if (existingTables.length > 0) {
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DuckDBNativeAttach] Dropping ${existingTables.length} existing table(s) to ensure clean state`,
         );
         for (const table of existingTables) {
@@ -122,7 +126,7 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
               `DROP TABLE IF EXISTS "${escapedDbName}"."${escapedTableName}"`,
             );
           } catch (error) {
-            console.warn(
+            logger.warn(
               `[DuckDBNativeAttach] Failed to drop table ${table.table_name}:`,
               error,
             );
@@ -130,7 +134,8 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
         }
       }
     } catch (error) {
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `[DuckDBNativeAttach] Failed to check/drop existing tables, continuing:`,
         error,
       );
@@ -236,7 +241,8 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
         ],
       };
     } catch (error) {
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `[DuckDBNativeAttach] Failed to extract schema for table ${tempTableName}:`,
         error,
       );
@@ -244,16 +250,17 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
 
     // Generate semantic name from schema (same pattern as gsheets)
     let finalTableName: string;
+    const logger = await getLogger();
     if (schema) {
       finalTableName = generateSemanticViewName(schema, []);
       finalTableName = sanitizeName(finalTableName.toLowerCase());
-      console.log(
+      logger.debug(
         `[DuckDBNativeAttach] Generated semantic name: ${finalTableName} from schema`,
       );
     } else {
       // Fallback to base name if schema extraction failed
       finalTableName = sanitizeName(baseName.toLowerCase());
-      console.warn(
+      logger.warn(
         `[DuckDBNativeAttach] Schema extraction failed, using base name: ${finalTableName}`,
       );
     }
@@ -265,19 +272,19 @@ export class DuckDBNativeAttachmentStrategy implements AttachmentStrategy {
         await conn.run(
           `ALTER TABLE "${escapedDbName}"."${escapedTempTableName}" RENAME TO "${escapedFinalTableName}"`,
         );
-        console.log(
+        logger.debug(
           `[DuckDBNativeAttach] Renamed table from ${tempTableName} to ${finalTableName}`,
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(
+        logger.error(
           `[DuckDBNativeAttach] Failed to rename table from ${tempTableName} to ${finalTableName}: ${errorMsg}`,
         );
         // If rename fails, use temp name
         finalTableName = tempTableName;
       }
     } else {
-      console.log(
+      logger.debug(
         `[DuckDBNativeAttach] Semantic name matches temp name, keeping: ${finalTableName}`,
       );
     }

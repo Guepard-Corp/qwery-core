@@ -7,6 +7,7 @@ import { extractSchema } from '../../extract-schema';
 import { extractConnectionUrl } from '@qwery/extensions-sdk';
 import { getDatasourceDatabaseName } from '../../datasource-name-utils';
 import { setClickHouseSchemaMappings } from '../../clickhouse-schema-mapping';
+import { getLogger } from '@qwery/shared/logger';
 
 export class ClickHouseAttachmentStrategy implements AttachmentStrategy {
   canHandle(provider: string): boolean {
@@ -171,12 +172,14 @@ export class ClickHouseAttachmentStrategy implements AttachmentStrategy {
           // Attach persistent SQLite database file
           await conn.run(`ATTACH '${escapedPath}' AS "${escapedDbName}"`);
 
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[ClickHouseAttach] Attached persistent database: ${attachedDatabaseName} at ${dbFilePath}`,
           );
         }
       } catch (error) {
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `[ClickHouseAttach] Could not attach database ${attachedDatabaseName}, continuing:`,
           error,
         );
@@ -222,13 +225,15 @@ export class ClickHouseAttachmentStrategy implements AttachmentStrategy {
               SELECT * FROM read_json_auto('${escapedHttpUrl}')
             `);
 
-            console.log(
+            const logger = await getLogger();
+            logger.debug(
               `[ClickHouseAttach] Created table ${attachedDatabaseName}.main.${tableName} from schema ${originalSchema}`,
             );
           } catch (error) {
             const errorMsg =
               error instanceof Error ? error.message : String(error);
-            console.error(
+            const logger = await getLogger();
+            logger.error(
               `[ClickHouseAttach] Failed to create table ${table.name} from schema ${schemaName}:`,
               errorMsg,
             );

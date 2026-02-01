@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { resolveModel, getDefaultModel } from './model-resolver';
 import type { SimpleSchema } from '@qwery/domain/entities';
+import { getLogger } from '@qwery/shared/logger';
 
 const GENERATE_SHEET_NAME_PROMPT = (
   currentName: string,
@@ -62,7 +63,8 @@ export async function generateSheetName(
 
     return newName || currentName;
   } catch (error) {
-    console.error('[generateSheetName] Error:', error);
+    const logger = await getLogger();
+    logger.error('[generateSheetName] Error:', error);
     return currentName;
   }
 }

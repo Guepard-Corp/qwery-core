@@ -8,6 +8,10 @@ export * from './agents';
 export * from './agents/tools/types';
 export * from './agents/tools/inferred-types';
 
+// Export agent/tool registry system
+export * from './tools/tool';
+export * from './tools/registry';
+
 // Reexport AI SDK
 export type { UIMessage } from 'ai';
 export {

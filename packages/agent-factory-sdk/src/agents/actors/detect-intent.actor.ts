@@ -5,6 +5,7 @@ import type { UIMessage } from 'ai';
 import { INTENTS_LIST, IntentSchema } from '../types';
 import { DETECT_INTENT_PROMPT } from '../prompts/detect-intent.prompt';
 import { resolveModel, getDefaultModel } from '../../services/model-resolver';
+import { getLogger } from '@qwery/shared/logger';
 
 export const detectIntent = async (
   text: string,
@@ -59,7 +60,8 @@ export const detectIntent = async (
     } catch (error) {
       lastError = error;
       if (error instanceof Error && error.stack) {
-        console.error('[detectIntent] Stack:', error.stack);
+        const logger = await getLogger();
+        logger.error('[detectIntent] Stack:', error.stack);
       }
 
       if (attempt === maxAttempts) {
@@ -68,7 +70,8 @@ export const detectIntent = async (
     }
   }
 
-  console.error(
+  const logger = await getLogger();
+  logger.error(
     '[detectIntent] All attempts failed, falling back to other intent:',
     lastError instanceof Error ? lastError.message : String(lastError),
   );
@@ -101,7 +104,8 @@ export const detectIntentActor = fromPromise(
       );
       return result;
     } catch (error) {
-      console.error('[detectIntentActor] ERROR:', error);
+      const logger = await getLogger();
+      logger.error('[detectIntentActor] ERROR:', error);
       throw error;
     }
   },

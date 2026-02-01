@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 build/
+qwery.db/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -179,3 +180,4 @@ packages/agent-factory-sdk/test-business-context/.vscode/
 
 # Evals
 **/packages/agent-factory-sdk/evals
+test.db

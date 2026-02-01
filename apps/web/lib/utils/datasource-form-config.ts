@@ -78,6 +78,18 @@ const DEFAULT_INPUT_CONFIG: Partial<Record<DatasourceField, FieldInputConfig>> =
     password: { type: 'password', autoComplete: 'new-password' },
   };
 
+/**
+ * Schema type for provider config validation.
+ * Uses minimal interface to stay compatible with Zod 3/4 internal types.
+ */
+type ProviderConfigSchema = {
+  safeParse: (
+    data: unknown,
+  ) =>
+    | { success: true; data: Record<string, unknown> }
+    | { success: false; error: z.ZodError };
+};
+
 type ProviderRule = {
   placeholders?: Partial<DatasourceFormPlaceholders>;
   fieldLabels?: FieldLabels;
@@ -91,7 +103,7 @@ type ProviderRule = {
   isValid: (values: Record<string, unknown>) => boolean;
   getValidationError: (values: Record<string, unknown>) => string | null;
   normalize: (config: Record<string, unknown>) => Record<string, unknown>;
-  zodSchema: z.ZodType<Record<string, unknown>>;
+  zodSchema: ProviderConfigSchema;
 };
 
 const stringOrUndefined = z.union([z.string(), z.undefined()]);
@@ -434,7 +446,7 @@ export function validateProviderConfigWithZod(
   const parsed = rule.zodSchema.safeParse(config);
   if (parsed.success)
     return { success: true, data: parsed.data as Record<string, unknown> };
-  const msg = parsed.error.errors[0]?.message ?? 'Invalid configuration';
+  const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
   return { success: false, error: msg };
 }
 
@@ -459,6 +471,6 @@ export function isFormValidForProvider(
 export function getProviderZodSchema(
   extensionId: string,
   formConfig?: DatasourceFormConfigPayload | null,
-): z.ZodType<Record<string, unknown>> {
+): ProviderConfigSchema {
   return resolveRule(extensionId, formConfig).zodSchema;
 }

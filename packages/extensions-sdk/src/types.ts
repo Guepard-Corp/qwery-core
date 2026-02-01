@@ -111,9 +111,64 @@ export interface DriverContext {
   runtime?: DriverRuntime;
   /**
    * Optional query engine connection for drivers that need to create views
-   * in the main query engine. This is abstract and engine-agnostic.
+   * in the main query engine (e.g. in-memory DuckDB). For attach/detach,
+   * this is the federated connection; driver uses it only for CREATE VIEW /
+   * CREATE TABLE / DROP (no ATTACH). This is abstract and engine-agnostic.
    */
   queryEngineConnection?: unknown;
+}
+
+/**
+ * Options passed to driver.attach(); connection is DriverContext.queryEngineConnection (in-memory DuckDB).
+ */
+export interface DriverAttachOptions {
+  /** Datasource config (sharedLink, url, connection string, etc.) */
+  config: unknown;
+  /**
+   * Optional schema name to namespace this datasource's views/tables.
+   * Driver can CREATE SCHEMA if needed, then create views/tables in it.
+   * If omitted, driver uses main (or a default schema).
+   */
+  schemaName?: string;
+  /**
+   * Optional hint for single-view drivers (default view/table name).
+   * Multi-table drivers (e.g. GSheet tabs) can ignore and use their own naming.
+   */
+  viewName?: string;
+  /** Optional: conversation ID (e.g. for logging or cache keys) */
+  conversationId?: string;
+  /** Optional: workspace root (e.g. for logging) */
+  workspace?: string;
+}
+
+/**
+ * One view or table created by the driver in the main DuckDB.
+ */
+export interface DriverAttachTable {
+  /** Schema (e.g. "main" or custom schemaName) */
+  schema: string;
+  /** Table or view name */
+  table: string;
+  /** Query path for federated SQL, e.g. "main.my_view" or "ds_gsheet_1.tab_orders" */
+  path: string;
+}
+
+/** Result of driver.attach() */
+export interface DriverAttachResult {
+  tables: DriverAttachTable[];
+}
+
+/**
+ * Options passed to driver.detach().
+ */
+export interface DriverDetachOptions {
+  config: unknown;
+  /** Schema name used at attach (so driver knows what to drop) */
+  schemaName?: string;
+  /** Names of views/tables to drop (or driver can derive from config) */
+  tableNames?: string[];
+  conversationId?: string;
+  workspace?: string;
 }
 
 export interface IDataSourceDriver {
@@ -121,6 +176,15 @@ export interface IDataSourceDriver {
   query(sql: string, config: unknown): Promise<DatasourceResultSet>;
   metadata(config: unknown): Promise<DatasourceMetadata>;
   close?(): Promise<void>;
+  /**
+   * Optional: create views/tables for this datasource in the federated query engine.
+   * Uses DriverContext.queryEngineConnection (in-memory DuckDB). No ATTACH; only CREATE VIEW / CREATE TABLE.
+   */
+  attach?(options: DriverAttachOptions): Promise<DriverAttachResult>;
+  /**
+   * Optional: drop views/tables created by attach.
+   */
+  detach?(options: DriverDetachOptions): Promise<void>;
 }
 
 export type DriverFactory = (context: DriverContext) => IDataSourceDriver;

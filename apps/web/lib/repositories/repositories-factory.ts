@@ -18,6 +18,7 @@ export async function createRepositories(): Promise<Repositories> {
       ProjectRepository,
       MessageRepository,
       UsageRepository,
+      TodoRepository,
     } = await import('@qwery/repository-sqlite');
 
     const DB_PATH = process.env.VITE_DATABASE_PATH || undefined;
@@ -31,6 +32,7 @@ export async function createRepositories(): Promise<Repositories> {
       conversation: new ConversationRepository(DB_PATH),
       message: new MessageRepository(DB_PATH),
       usage: new UsageRepository(DB_PATH),
+      todo: new TodoRepository(DB_PATH),
     };
   }
 
@@ -39,7 +41,10 @@ export async function createRepositories(): Promise<Repositories> {
     // When using SQLite, use API repositories that call the backend API
     // (which uses SQLite repositories on the server)
     const [
-      { UserRepository: IndexedDBUserRepository },
+      {
+        UserRepository: IndexedDBUserRepository,
+        TodoRepository: IndexedDBTodoRepository,
+      },
       {
         ConversationRepository: APIConversationRepository,
         DatasourceRepository: APIDatasourceRepository,
@@ -63,6 +68,7 @@ export async function createRepositories(): Promise<Repositories> {
       conversation: new APIConversationRepository(),
       message: new APIMessageRepository(),
       usage: new APIUsageRepository(),
+      todo: new IndexedDBTodoRepository(),
     };
   }
 
@@ -76,6 +82,7 @@ export async function createRepositories(): Promise<Repositories> {
     ConversationRepository: IndexedDBConversationRepository,
     MessageRepository: IndexedDBMessageRepository,
     UsageRepository: IndexedDBUsageRepository,
+    TodoRepository: IndexedDBTodoRepository,
   } = await import('@qwery/repository-indexed-db');
 
   return {
@@ -87,5 +94,6 @@ export async function createRepositories(): Promise<Repositories> {
     conversation: new IndexedDBConversationRepository(),
     message: new IndexedDBMessageRepository(),
     usage: new IndexedDBUsageRepository(),
+    todo: new IndexedDBTodoRepository(),
   };
 }

@@ -5,6 +5,7 @@ import { loadDatasources, type LoadedDatasource } from './datasource-loader';
 import { getSchemaCache, type SchemaCacheManager } from './schema-cache';
 import { getDatasourceDatabaseName } from './datasource-name-utils';
 import type { ConversationOutput } from '@qwery/domain/usecases';
+import { getLogger } from '@qwery/shared/logger';
 
 // Lazy workspace resolution - only resolve when actually needed
 let WORKSPACE_CACHE: string | undefined;
@@ -59,7 +60,10 @@ export interface DatasourceOrchestrationResult {
 }
 
 export interface DatasourceOrchestrationOptions {
+  /** Conversation UUID; used for schema cache and attach. */
   conversationId: string;
+  /** Conversation slug; used to load conversation (GetConversationBySlugService). If omitted, conversationId is passed to the slug service (may fail if id is not a slug). */
+  conversationSlug?: string;
   repositories: Repositories;
   queryEngine: AbstractQueryEngine;
   metadataDatasources?: string[];
@@ -80,23 +84,30 @@ export class DatasourceOrchestrationService {
   async orchestrate(
     options: DatasourceOrchestrationOptions,
   ): Promise<DatasourceOrchestrationResult> {
-    const { conversationId, repositories, queryEngine, metadataDatasources } =
-      options;
+    const {
+      conversationId,
+      conversationSlug,
+      repositories,
+      queryEngine,
+      metadataDatasources,
+    } = options;
 
     const workspace = getWorkspace();
     if (!workspace) {
       throw new Error('WORKSPACE environment variable is not set');
     }
 
+    const slugToLoad = conversationSlug ?? conversationId;
     const getConversationService = new GetConversationBySlugService(
       repositories.conversation,
     );
     let conversation: ConversationOutput | null = null;
     try {
-      conversation = await getConversationService.execute(conversationId);
+      conversation = await getConversationService.execute(slugToLoad);
     } catch (error) {
-      console.warn(
-        `[DatasourceOrchestration] Conversation ${conversationId} not found:`,
+      const logger = await getLogger();
+      logger.warn(
+        `[DatasourceOrchestration] Conversation ${slugToLoad} not found:`,
         error,
       );
     }
@@ -133,11 +144,12 @@ export class DatasourceOrchestrationService {
           );
           await queryEngine.connect();
           attached = true;
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[DatasourceOrchestration] Initialized engine and processed ${loaded.length} datasource(s) (some may have failed - check logs)`,
           );
 
-          console.log(
+          logger.debug(
             `[DatasourceOrchestration] [CACHE] Loading schema cache for ${loaded.length} datasource(s) after attach...`,
           );
 
@@ -146,7 +158,7 @@ export class DatasourceOrchestrationService {
           );
 
           if (uncachedDatasources.length > 0) {
-            console.log(
+            logger.debug(
               `[DatasourceOrchestration] [CACHE] ${uncachedDatasources.length} uncached datasource(s) found, loading metadata...`,
             );
             const cacheLoadStartTime = performance.now();
@@ -154,13 +166,13 @@ export class DatasourceOrchestrationService {
               uncachedDatasources.map((d) => d.datasource),
             );
 
-            console.log(
+            logger.debug(
               `[DatasourceOrchestration] [CACHE] Metadata retrieved: ${metadata.tables.length} table(s), ${metadata.columns.length} column(s)`,
             );
 
             for (const { datasource } of uncachedDatasources) {
               const dbName = getDatasourceDatabaseName(datasource);
-              console.log(
+              logger.debug(
                 `[DatasourceOrchestration] [CACHE] Loading cache for datasource ${datasource.id} (provider: ${datasource.datasource_provider}, dbName: ${dbName})`,
               );
               await schemaCache.loadSchemaForDatasource(
@@ -171,11 +183,11 @@ export class DatasourceOrchestrationService {
               );
             }
             const cacheLoadTime = performance.now() - cacheLoadStartTime;
-            console.log(
+            logger.debug(
               `[DatasourceOrchestration] [CACHE] ✓ Cache loaded for ${uncachedDatasources.length} datasource(s) during init in ${cacheLoadTime.toFixed(2)}ms`,
             );
           } else {
-            console.log(
+            logger.debug(
               `[DatasourceOrchestration] [CACHE] ✓ All datasources already cached, skipping load`,
             );
           }
@@ -190,7 +202,8 @@ export class DatasourceOrchestrationService {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `[DatasourceOrchestration] Failed to initialize engine or attach datasources:`,
           errorMsg,
         );
@@ -203,11 +216,13 @@ export class DatasourceOrchestrationService {
         });
         await queryEngine.connect();
       } catch {
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DatasourceOrchestration] Engine already initialized or initialization skipped`,
         );
       }
-      console.log(
+      const logger = await getLogger();
+      logger.debug(
         `[DatasourceOrchestration] No datasources found in conversation ${conversationId}, engine initialized`,
       );
     }
@@ -251,7 +266,8 @@ export class DatasourceOrchestrationService {
 
         for (const cachedId of cachedDatasourceIds) {
           if (!currentDatasourceIds.has(cachedId)) {
-            console.log(
+            const logger = await getLogger();
+            logger.debug(
               `[DatasourceOrchestration] [CACHE] Datasource ${cachedId} no longer attached, invalidating cache`,
             );
             schemaCache.invalidate(cachedId);
@@ -270,7 +286,8 @@ export class DatasourceOrchestrationService {
           metadataDatasources.some((id) => !schemaCache.isCached(id));
 
         if (uncachedDatasources.length > 0 || metadataDiffers) {
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[DatasourceOrchestration] [CACHE] ✗ ${uncachedDatasources.length} uncached datasource(s) found${metadataDiffers ? ' (metadata differs)' : ''}, syncing and loading cache...`,
           );
 
@@ -295,11 +312,12 @@ export class DatasourceOrchestrationService {
               dbName,
             );
           }
-          console.log(
+          logger.debug(
             `[DatasourceOrchestration] [CACHE] ✓ Sync and cache load completed`,
           );
         } else {
-          console.log(
+          const logger = await getLogger();
+          logger.debug(
             `[DatasourceOrchestration] [CACHE] ✓ All datasources cached, ensuring attachment`,
           );
           const loaded = await loadDatasources(

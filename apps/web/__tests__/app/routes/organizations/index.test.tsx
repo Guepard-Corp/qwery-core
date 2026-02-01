@@ -52,6 +52,7 @@ describe('OrganizationsPage', () => {
       hasMore: false,
     }),
     revealSecrets: vi.fn((config) => Promise.resolve(config)),
+    upsertByConversationId: vi.fn().mockResolvedValue([]),
   };
 
   const mockWorkspace = {
@@ -77,6 +78,7 @@ describe('OrganizationsPage', () => {
         conversation: mockRepository,
         message: mockRepository,
         usage: mockRepository,
+        todo: mockRepository,
       },
       workspace: mockWorkspace,
     });

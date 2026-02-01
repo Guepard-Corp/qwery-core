@@ -4,12 +4,17 @@ import type { AttachmentResult } from './datasource-attachment/types';
 import { DuckDBNativeAttachmentStrategy } from './datasource-attachment/strategies/duckdb-native-attachment-strategy';
 import { ForeignDatabaseAttachmentStrategy } from './datasource-attachment/strategies/foreign-database-attachment-strategy';
 import { ClickHouseAttachmentStrategy } from './datasource-attachment/strategies/clickhouse-attachment-strategy';
-import { GSheetAttachmentStrategy } from './datasource-attachment/strategies/gsheet-attachment-strategy';
+import {
+  GSheetAttachmentStrategy,
+  getGSheetDriverWithConnection,
+} from './datasource-attachment/strategies/gsheet-attachment-strategy';
+import { getDatasourceDatabaseName } from './datasource-name-utils';
 import { getProviderMapping } from './provider-registry';
 import type {
   GSheetAttachmentOptions,
   ClickHouseAttachmentOptions,
 } from './datasource-attachment/types';
+import { getLogger } from '@qwery/shared/logger';
 
 // Connection type from DuckDB instance
 type Connection = Awaited<ReturnType<DuckDBInstance['connect']>>;
@@ -51,10 +56,70 @@ export class DatasourceAttachmentService {
       options;
     const provider = datasource.datasource_provider;
 
+    const logger = await getLogger();
+
+    // For gsheet-csv: try driver.attach first (extension owns attach logic)
+    if (provider === 'gsheet-csv' && conversationId && workspace) {
+      const driverWithAttach = await getGSheetDriverWithConnection(connection);
+      if (driverWithAttach) {
+        try {
+          const schemaName = getDatasourceDatabaseName(datasource);
+          const driverResult = await driverWithAttach.attach({
+            config: datasource.config,
+            schemaName,
+            conversationId,
+            workspace,
+          });
+          if (driverResult.tables.length > 0) {
+            const first = driverResult.tables[0]!;
+            let schemaDefinition: SimpleSchema | undefined;
+            try {
+              const escapedSchema = first.schema.replace(/"/g, '""');
+              const escapedTable = first.table.replace(/"/g, '""');
+              const describeReader = await connection.runAndReadAll(
+                `DESCRIBE "${escapedSchema}"."${escapedTable}"`,
+              );
+              await describeReader.readAll();
+              const rows = describeReader.getRowObjectsJS() as Array<{
+                column_name: string;
+                column_type: string;
+              }>;
+              schemaDefinition = {
+                databaseName: schemaName,
+                schemaName: first.schema,
+                tables: [
+                  {
+                    tableName: first.table,
+                    columns: rows.map((r) => ({
+                      columnName: r.column_name,
+                      columnType: r.column_type,
+                    })),
+                  },
+                ],
+              };
+            } catch {
+              // ignore
+            }
+            if (schemaDefinition) {
+              return {
+                viewName: first.path,
+                displayName: first.table,
+                schema: schemaDefinition,
+              };
+            }
+          }
+        } catch (error) {
+          logger.debug(
+            '[DatasourceAttachmentService] gsheet-csv driver.attach failed, falling back to strategy:',
+            error,
+          );
+        }
+      }
+    }
+
     // Find appropriate strategy
     let strategy = this.strategies.find((s) => s.canHandle(provider));
-
-    console.log('strategy', strategy);
+    logger.debug('strategy', strategy);
 
     // For foreign databases, check if provider-registry can handle it
     if (!strategy || strategy instanceof ForeignDatabaseAttachmentStrategy) {

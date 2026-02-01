@@ -181,6 +181,7 @@ export function initializeSchema(db: Database.Database): void {
       total_tokens INTEGER NOT NULL DEFAULT 0,
       reasoning_tokens INTEGER NOT NULL DEFAULT 0,
       cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+      cost REAL NOT NULL DEFAULT 0,
       context_size INTEGER NOT NULL DEFAULT 0,
       credits_cap INTEGER NOT NULL DEFAULT 0,
       credits_used INTEGER NOT NULL DEFAULT 0,
@@ -198,4 +199,22 @@ export function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_usage_organization_id ON usage(organization_id);
     CREATE INDEX IF NOT EXISTS idx_usage_user_id ON usage(user_id);
   `);
+
+  // Todo table (one row per conversation, JSON array of todo items)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS todo (
+      conversation_id TEXT PRIMARY KEY,
+      todos_json TEXT NOT NULL DEFAULT '[]',
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_todo_conversation_id ON todo(conversation_id);
+  `);
+
+  // Migration: add cost column if missing (existing DBs created before cost was added)
+  try {
+    db.exec('ALTER TABLE usage ADD COLUMN cost REAL NOT NULL DEFAULT 0');
+  } catch {
+    // Column already exists
+  }
 }

@@ -22,7 +22,7 @@ catalog:
   uuid: ^11.0.3
   vite: ^7.1.12
   vitest: ^4.0.18
-  zod: 3.25.76
+  zod: ^4.0.0
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'

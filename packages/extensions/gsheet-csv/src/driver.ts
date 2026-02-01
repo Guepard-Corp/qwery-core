@@ -6,6 +6,9 @@ import type {
   IDataSourceDriver,
   DatasourceResultSet,
   DatasourceMetadata,
+  DriverAttachOptions,
+  DriverAttachResult,
+  DriverDetachOptions,
 } from '@qwery/extensions-sdk';
 import {
   DatasourceMetadataZodSchema,
@@ -25,6 +28,58 @@ type DriverConfig = z.infer<typeof ConfigSchema>;
 const convertToCsvLink = (spreadsheetId: string, gid: number): string => {
   const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
   return gid === 0 ? base : `${base}&gid=${gid}`;
+};
+
+const extractSpreadsheetId = (url: string): string | null => {
+  const match = url.match(
+    /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+  );
+  return match?.[1] ?? null;
+};
+
+/** Fetch all tab metadata (gid + name) from spreadsheet HTML */
+const fetchSpreadsheetMetadata = async (
+  spreadsheetId: string,
+): Promise<Array<{ gid: number; name: string }>> => {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Qwery/1.0)' },
+    });
+    if (!response.ok) return [];
+    const html = await response.text();
+    const tabs: Array<{ gid: number; name: string }> = [];
+    const regex = /"sheetId":(\d+),"title":"([^"]+)"/g;
+    let m;
+    while ((m = regex.exec(html)) !== null) {
+      const gid = parseInt(m[1]!, 10);
+      const name = m[2]!;
+      if (!tabs.some((t) => t.gid === gid)) tabs.push({ gid, name });
+    }
+    return tabs;
+  } catch {
+    return [];
+  }
+};
+
+const extractGidsFromUrl = (url: string): number[] => {
+  const gids: number[] = [];
+  const queryMatch = url.match(/[?&]gid=(\d+)/);
+  if (queryMatch?.[1]) {
+    const gid = parseInt(queryMatch[1], 10);
+    if (!isNaN(gid)) gids.push(gid);
+  }
+  const hashMatch = url.match(/#gid=(\d+)/);
+  if (hashMatch?.[1]) {
+    const gid = parseInt(hashMatch[1], 10);
+    if (!isNaN(gid) && !gids.includes(gid)) gids.push(gid);
+  }
+  return gids;
+};
+
+const sanitizeTableName = (name: string): string => {
+  const cleaned = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+  return /^\d/.test(cleaned) ? `v_${cleaned}` : cleaned;
 };
 
 /**
@@ -426,6 +481,127 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
         );
       } finally {
         conn.closeSync();
+      }
+    },
+
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'gsheet-csv attach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
+      const sharedLink = parsed.sharedLink;
+      const spreadsheetId = extractSpreadsheetId(sharedLink);
+      if (!spreadsheetId) {
+        throw new Error(
+          `Invalid Google Sheets URL: ${sharedLink}. Expected https://docs.google.com/spreadsheets/d/{id}/...`,
+        );
+      }
+
+      const triedGids = new Set<number>();
+      const tabsWithUrl: Array<{ gid: number; csvUrl: string; name?: string }> =
+        [];
+
+      const addTab = (gid: number, name?: string) => {
+        if (triedGids.has(gid)) return;
+        triedGids.add(gid);
+        tabsWithUrl.push({
+          gid,
+          csvUrl: convertToCsvLink(spreadsheetId, gid),
+          name,
+        });
+      };
+
+      const metadata = await fetchSpreadsheetMetadata(spreadsheetId);
+      for (const m of metadata) addTab(m.gid, m.name);
+      for (const gid of extractGidsFromUrl(sharedLink)) addTab(gid);
+      addTab(0);
+
+      const validatedTabs: typeof tabsWithUrl = [];
+      for (const tab of tabsWithUrl) {
+        try {
+          const escaped = tab.csvUrl.replace(/'/g, "''");
+          const r = await conn.runAndReadAll(
+            `SELECT * FROM read_csv_auto('${escaped}') LIMIT 1`,
+          );
+          await r.readAll();
+          validatedTabs.push(tab);
+        } catch {
+          context.logger?.warn?.(
+            `gsheet-csv: tab gid=${tab.gid} not accessible, skipping`,
+          );
+        }
+      }
+
+      if (validatedTabs.length === 0) {
+        throw new Error(
+          `No accessible tabs in Google Sheet: ${sharedLink}. Ensure the sheet is publicly accessible.`,
+        );
+      }
+
+      const schemaName = options.schemaName ?? 'main';
+      const escapedSchema = schemaName.replace(/"/g, '""');
+      if (schemaName !== 'main') {
+        await conn.run(`CREATE SCHEMA IF NOT EXISTS "${escapedSchema}"`);
+      }
+
+      const resultTables: DriverAttachResult['tables'] = [];
+      const usedNames = new Set<string>();
+
+      for (const tab of validatedTabs) {
+        let tableName: string;
+        if (tab.name) {
+          tableName = sanitizeTableName(tab.name);
+          let n = tableName;
+          let c = 1;
+          while (usedNames.has(n)) {
+            n = `${tableName}_${c}`;
+            c += 1;
+          }
+          tableName = n;
+        } else {
+          tableName = `tab_${tab.gid}`;
+          let c = 1;
+          while (usedNames.has(tableName)) {
+            tableName = `tab_${tab.gid}_${c}`;
+            c += 1;
+          }
+        }
+        usedNames.add(tableName);
+
+        const escapedTable = tableName.replace(/"/g, '""');
+        const escapedUrl = tab.csvUrl.replace(/'/g, "''");
+        await conn.run(`
+          CREATE OR REPLACE VIEW "${escapedSchema}"."${escapedTable}" AS
+          SELECT * FROM read_csv_auto('${escapedUrl}')
+        `);
+        resultTables.push({
+          schema: schemaName,
+          table: tableName,
+          path: `${schemaName}.${tableName}`,
+        });
+      }
+
+      return { tables: resultTables };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'gsheet-csv detach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const schemaName = options.schemaName ?? 'main';
+      const escapedSchema = schemaName.replace(/"/g, '""');
+      const tableNames = options.tableNames ?? [];
+      for (const table of tableNames) {
+        const escapedTable = table.replace(/"/g, '""');
+        await conn.run(
+          `DROP VIEW IF EXISTS "${escapedSchema}"."${escapedTable}"`,
+        );
       }
     },
 

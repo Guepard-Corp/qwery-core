@@ -127,7 +127,6 @@ export default defineConfig(({ command }) => ({
       '@duckdb/node-api',
       '@duckdb/duckdb-wasm',
       '@qwery/agent-factory-sdk',
-      'tokenlens',
       '@dqbd/tiktoken',
     ],
     include: [

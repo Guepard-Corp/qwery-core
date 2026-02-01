@@ -6,6 +6,7 @@ import type {
 } from './types/business-context.types';
 import { saveBusinessContext } from './utils/business-context.storage';
 import { isSystemOrTempTable } from './utils/business-context.utils';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface BuildBusinessContextOptions {
   conversationDir: string;
@@ -205,14 +206,17 @@ export const buildBusinessContext = async (
   };
 
   // Save in background (don't await - this is the only I/O and it's async)
-  saveBusinessContext(opts.conversationDir, fastContext).catch((err) => {
-    console.warn(`[BuildBusinessContext] Failed to save fast context:`, err);
+  saveBusinessContext(opts.conversationDir, fastContext).catch(async (err) => {
+    const logger = await getLogger();
+    logger.warn(`[BuildBusinessContext] Failed to save fast context:`, err);
   });
 
   const elapsed = Date.now() - startTime;
   if (elapsed > 100) {
-    console.warn(
-      `[BuildBusinessContext] Fast path took ${elapsed}ms (target: < 100ms) for view: ${opts.viewName}`,
+    getLogger().then((l) =>
+      l.warn(
+        `[BuildBusinessContext] Fast path took ${elapsed}ms (target: < 100ms) for view: ${opts.viewName}`,
+      ),
     );
   }
 

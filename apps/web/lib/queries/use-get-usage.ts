@@ -23,8 +23,12 @@ export function useGetUsage(
 
   return useQuery({
     queryKey: getUsageKey(conversationSlug, userId),
-    queryFn: () => useCase.execute({ conversationSlug, userId }),
+    queryFn: () =>
+      useCase.execute({
+        conversationSlug,
+        userId: userId || '',
+      }),
     staleTime: 30 * 1000,
-    enabled: !!conversationSlug && !!userId,
+    enabled: !!conversationSlug,
   });
 }

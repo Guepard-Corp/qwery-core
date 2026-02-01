@@ -1,4 +1,5 @@
 import type { AnyActorRef } from 'xstate';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * Registry for managing actor lifecycle
@@ -8,8 +9,10 @@ export class ActorRegistry {
 
   register(id: string, actor: AnyActorRef): void {
     if (this.actors.has(id)) {
-      console.warn(
-        `[ActorRegistry] Actor ${id} already registered, stopping previous`,
+      getLogger().then((l) =>
+        l.warn(
+          `[ActorRegistry] Actor ${id} already registered, stopping previous`,
+        ),
       );
       this.actors.get(id)?.stop();
     }

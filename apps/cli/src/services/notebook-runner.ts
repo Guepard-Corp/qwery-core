@@ -11,6 +11,7 @@ import {
 import {
   ConversationRepository,
   MessageRepository,
+  TodoRepository,
   UsageRepository,
 } from '@qwery/repository-in-memory';
 import { nanoid } from 'nanoid';
@@ -82,6 +83,7 @@ export class NotebookRunner {
           conversation: conversationRepository,
           message: messageRepository,
           usage: usageRepository,
+          todo: new TodoRepository(),
         };
 
         // Create the conversation before creating the FactoryAgent

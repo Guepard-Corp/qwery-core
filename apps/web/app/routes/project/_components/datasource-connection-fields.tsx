@@ -305,7 +305,11 @@ export function DatasourceConnectionFields({
   const providerResolver: Resolver<Record<string, unknown>> = useCallback(
     (values) => {
       const result = schema.safeParse(values);
-      if (result.success) return { values: result.data, errors: {} };
+      if (result.success)
+        return {
+          values: result.data as Record<string, unknown>,
+          errors: {},
+        };
       const errors: Record<string, { type: string; message: string }> = {};
       for (const issue of result.error.issues) {
         const path = issue.path.join('.') || '_root';

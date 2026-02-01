@@ -4,6 +4,7 @@ import type {
   SimpleColumn,
 } from '@qwery/domain/entities';
 import type { DuckDBInstance } from '@duckdb/node-api';
+import { getLogger } from '@qwery/shared/logger';
 
 // Connection type from DuckDB instance
 type Connection = Awaited<ReturnType<DuckDBInstance['connect']>>;
@@ -19,7 +20,8 @@ export const extractSchema = async (
 ): Promise<SimpleSchema> => {
   const conn = opts.connection;
 
-  console.log(
+  const logger = await getLogger();
+  logger.debug(
     `[ExtractSchema] Extracting schema${opts.viewName ? ` for view: ${opts.viewName}` : ' (all views)'}`,
   );
 

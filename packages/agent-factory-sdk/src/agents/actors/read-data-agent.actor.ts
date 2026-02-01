@@ -37,6 +37,7 @@ import {
 } from '../../tools/query-result-cache';
 import { extractTablePathsFromQuery } from '../../tools/validate-table-paths';
 import { datasourceOrchestrationService } from '../../tools/datasource-orchestration-service';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * Extract datasource IDs from message metadata
@@ -59,8 +60,10 @@ function extractDatasourcesFromMessages(
         datasources.length > 0 &&
         datasources.every((ds) => typeof ds === 'string')
       ) {
-        console.log(
-          `[ReadDataAgent] Extracted ${datasources.length} datasource(s) from message metadata`,
+        getLogger().then((l) =>
+          l.info(
+            `[ReadDataAgent] Extracted ${datasources.length} datasource(s) from message metadata`,
+          ),
         );
         return datasources as string[];
       }
@@ -90,7 +93,8 @@ export const readDataAgent = async (
   // Extract datasources from message metadata (prioritized)
   const metadataDatasources = extractDatasourcesFromMessages(messages);
 
-  console.log('[readDataAgent] Starting with context:', {
+  const logger = await getLogger();
+  logger.debug('[readDataAgent] Starting with context:', {
     conversationId,
     promptSource,
     needSQL,
@@ -117,7 +121,7 @@ export const readDataAgent = async (
       });
     } catch (error) {
       // Log but don't fail - datasources might not be available yet
-      console.warn(
+      logger.warn(
         `[ReadDataAgent] Failed to initialize engine or datasources:`,
         error,
       );
@@ -125,7 +129,7 @@ export const readDataAgent = async (
   }
   const agentInitTime = performance.now() - agentInitStartTime;
   if (agentInitTime > 50) {
-    console.log(
+    logger.debug(
       `[ReadDataAgent] [PERF] Agent initialization took ${agentInitTime.toFixed(2)}ms`,
     );
   }
@@ -174,7 +178,7 @@ export const readDataAgent = async (
               ? [viewName]
               : undefined;
 
-          console.log(
+          logger.debug(
             `[ReadDataAgent] getSchema called${
               requestedViews
                 ? ` for ${requestedViews.length} view(s): ${requestedViews.join(', ')}`
@@ -212,7 +216,7 @@ export const readDataAgent = async (
           const fileDir = join(workspace, conversationId);
           const dbPath = join(fileDir, 'database.duckdb');
 
-          console.log(
+          logger.debug(
             `[ReadDataAgent] Workspace: ${workspace}, ConversationId: ${conversationId}, dbPath: ${dbPath}`,
           );
 
@@ -231,7 +235,7 @@ export const readDataAgent = async (
 
             if (allCached && allDatasources.length > 0) {
               // Use cache - get all schemas (filtering by requestedViews happens below)
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [CACHE] ✓ Using cached schema for ${allDatasources.length} datasource(s)`,
               );
               collectedSchemas = schemaCache.toSimpleSchemas(
@@ -239,11 +243,11 @@ export const readDataAgent = async (
               );
               schemaDiscoveryTime =
                 performance.now() - schemaDiscoveryStartTime;
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [CACHE] ✓ Schema retrieved from cache in ${schemaDiscoveryTime.toFixed(2)}ms (${collectedSchemas.size} schema(s))`,
               );
             } else {
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [CACHE] ✗ Cache miss or fallback, querying DuckDB metadata...`,
               );
               // Fallback to querying DuckDB (for main database or uncached datasources)
@@ -267,7 +271,7 @@ export const readDataAgent = async (
                   : undefined,
               );
               const metadataTime = performance.now() - metadataStartTime;
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [PERF] queryEngine.metadata took ${metadataTime.toFixed(2)}ms`,
               );
 
@@ -281,7 +285,7 @@ export const readDataAgent = async (
                 datasourceProviderMap,
               });
               const transformTime = performance.now() - transformStartTime;
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [PERF] transformMetadataToSimpleSchema took ${transformTime.toFixed(2)}ms`,
               );
             }
@@ -383,7 +387,7 @@ export const readDataAgent = async (
                     filteredSchemas.set(viewId, foundSchema);
                   }
                 } else {
-                  console.warn(
+                  logger.warn(
                     `[ReadDataAgent] View "${viewId}" not found in metadata, skipping`,
                   );
                 }
@@ -392,13 +396,13 @@ export const readDataAgent = async (
             }
 
             schemaDiscoveryTime = performance.now() - schemaDiscoveryStartTime;
-            console.log(
+            logger.debug(
               `[ReadDataAgent] [PERF] Total schema discovery took ${schemaDiscoveryTime.toFixed(2)}ms`,
             );
           } catch (error) {
             const errorMsg =
               error instanceof Error ? error.message : String(error);
-            console.error(
+            logger.error(
               `[ReadDataAgent] Failed to get metadata: ${errorMsg}`,
               error,
             );
@@ -409,7 +413,7 @@ export const readDataAgent = async (
           const perfConfigStartTime = performance.now();
           const perfConfig = await getConfig(fileDir);
           const perfConfigTime = performance.now() - perfConfigStartTime;
-          console.log(
+          logger.debug(
             `[ReadDataAgent] [PERF] getConfig took ${perfConfigTime.toFixed(2)}ms`,
           );
 
@@ -511,7 +515,7 @@ export const readDataAgent = async (
               });
               const buildContextTime =
                 performance.now() - buildContextStartTime;
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [PERF] buildBusinessContext (single) took ${buildContextTime.toFixed(2)}ms`,
               );
 
@@ -540,7 +544,7 @@ export const readDataAgent = async (
             for (const [vName, vSchema] of schemasMap.entries()) {
               // Skip system tables
               if (isSystemOrTempTable(vName)) {
-                console.debug(
+                logger.debug(
                   `[ReadDataAgent] Skipping system table in context building: ${vName}`,
                 );
                 continue;
@@ -551,7 +555,7 @@ export const readDataAgent = async (
                 (t) => !isSystemOrTempTable(t.tableName),
               );
               if (!hasValidTables) {
-                console.debug(
+                logger.debug(
                   `[ReadDataAgent] Skipping schema with no valid tables: ${vName}`,
                 );
                 continue;
@@ -565,7 +569,7 @@ export const readDataAgent = async (
               });
               const buildContextTime =
                 performance.now() - buildContextStartTime;
-              console.log(
+              logger.debug(
                 `[ReadDataAgent] [PERF] buildBusinessContext for ${vName} took ${buildContextTime.toFixed(2)}ms`,
               );
               fastContexts.push(ctx);
@@ -582,12 +586,12 @@ export const readDataAgent = async (
             const mergeStartTime = performance.now();
             fastContext = mergeBusinessContexts(fastContexts);
             const mergeTime = performance.now() - mergeStartTime;
-            console.log(
+            logger.debug(
               `[ReadDataAgent] [PERF] mergeBusinessContexts (${fastContexts.length} contexts) took ${mergeTime.toFixed(2)}ms`,
             );
           }
           const contextTime = performance.now() - contextStartTime;
-          console.log(
+          logger.debug(
             `[ReadDataAgent] [PERF] Total business context building took ${contextTime.toFixed(2)}ms`,
           );
 
@@ -617,7 +621,7 @@ export const readDataAgent = async (
           const tableCount = allTableNames.length;
 
           const totalTime = performance.now() - startTime;
-          console.log(
+          logger.debug(
             `[ReadDataAgent] [PERF] getSchema TOTAL took ${totalTime.toFixed(2)}ms (sync: ${syncTime.toFixed(2)}ms, discovery: ${schemaDiscoveryTime.toFixed(2)}ms, context: ${contextTime.toFixed(2)}ms)`,
           );
 
@@ -661,7 +665,7 @@ export const readDataAgent = async (
             needSQL === true &&
             !isChartRequestInInlineMode;
 
-          console.log('[runQuery] Tool execution:', {
+          logger.debug('[runQuery] Tool execution:', {
             promptSource,
             needSQL,
             needChart,
@@ -673,7 +677,7 @@ export const readDataAgent = async (
 
           // If inline mode and needSQL is true (but NOT chart request), don't execute - return SQL for pasting
           if (shouldSkipExecution) {
-            console.log(
+            logger.debug(
               '[runQuery] Skipping execution - SQL will be pasted to notebook cell',
             );
             return {
@@ -685,11 +689,11 @@ export const readDataAgent = async (
 
           // For chart requests in inline mode, we'll execute but still return SQL for pasting
           if (isChartRequestInInlineMode) {
-            console.log(
+            logger.debug(
               '[runQuery] Executing query for chart generation (inline mode override)',
             );
           } else {
-            console.log('[runQuery] Executing query normally');
+            logger.debug('[runQuery] Executing query normally');
           }
 
           // Normal execution path for chat mode or when needSQL is false
@@ -763,7 +767,7 @@ export const readDataAgent = async (
               ) {
                 throw error; // Re-throw validation errors
               }
-              console.warn(
+              logger.warn(
                 '[runQuery] Datasource validation failed, continuing with query execution:',
                 error,
               );
@@ -813,7 +817,7 @@ export const readDataAgent = async (
               throw error;
             }
             // Otherwise, log warning but continue (might be a complex query we can't parse)
-            console.warn(
+            logger.warn(
               '[ReadDataAgent] Failed to validate table paths in query:',
               error,
             );
@@ -822,63 +826,63 @@ export const readDataAgent = async (
           // Rewrite table paths for ClickHouse (convert default -> main) before execution
           // For ClickHouse, agent generates queries with datasource.default.table
           // but DuckDB needs datasource.main.table (SQLite attached databases only support 'main' schema)
-          console.log(
+          logger.debug(
             `[QueryRewrite] Starting rewrite for query: ${query.substring(0, 100)}...`,
           );
           let rewrittenQuery = query;
           const schemaCache = orchestration.schemaCache;
           const tablePaths = extractTablePathsFromQuery(query);
-          console.log(
+          logger.debug(
             `[QueryRewrite] Extracted ${tablePaths.length} table path(s): ${tablePaths.join(', ')}`,
           );
           const replacements: Array<{ from: string; to: string }> = [];
 
           for (const tablePath of tablePaths) {
-            console.log(`[QueryRewrite] Processing table path: ${tablePath}`);
+            logger.debug(`[QueryRewrite] Processing table path: ${tablePath}`);
             // Check if this is a three-part path (datasource.schema.table)
             const parts = tablePath.split('.');
             if (parts.length === 3) {
               const [datasourceName, schemaName, tableName] = parts;
-              console.log(
+              logger.debug(
                 `[QueryRewrite] Parsed: datasource=${datasourceName}, schema=${schemaName}, table=${tableName}`,
               );
 
               // For ClickHouse, if schema is not 'main', it's a display path that needs rewriting
               if (schemaName !== 'main') {
-                console.log(
+                logger.debug(
                   `[QueryRewrite] Schema is not 'main', checking if display path exists in cache...`,
                 );
                 const hasPath = schemaCache.hasTablePath(tablePath);
-                console.log(
+                logger.debug(
                   `[QueryRewrite] hasTablePath(${tablePath}) = ${hasPath}`,
                 );
 
                 // Try to get the query path from the mapping first
                 const queryPath =
                   schemaCache.getQueryPathForDisplayPath(tablePath);
-                console.log(
+                logger.debug(
                   `[QueryRewrite] getQueryPathForDisplayPath(${tablePath}) = ${queryPath || 'null'}`,
                 );
 
                 if (queryPath) {
                   replacements.push({ from: tablePath, to: queryPath });
-                  console.log(
+                  logger.debug(
                     `[QueryRewrite] ✓ Found mapping: ${tablePath} -> ${queryPath}`,
                   );
                 } else {
                   // Fallback: construct query path manually and verify it exists
                   // This handles cases where mapping might not be set up correctly
                   const constructedQueryPath = `${datasourceName}.main.${tableName}`;
-                  console.log(
+                  logger.debug(
                     `[QueryRewrite] Trying fallback: constructed query path = ${constructedQueryPath}`,
                   );
                   const allPaths =
                     schemaCache.getAllTablePathsFromAllDatasources();
-                  console.log(
+                  logger.debug(
                     `[QueryRewrite] All available paths (${allPaths.length} total): ${allPaths.slice(0, 10).join(', ')}${allPaths.length > 10 ? '...' : ''}`,
                   );
                   const pathExists = allPaths.includes(constructedQueryPath);
-                  console.log(
+                  logger.debug(
                     `[QueryRewrite] Path ${constructedQueryPath} exists in cache: ${pathExists}`,
                   );
 
@@ -887,25 +891,25 @@ export const readDataAgent = async (
                       from: tablePath,
                       to: constructedQueryPath,
                     });
-                    console.log(
+                    logger.debug(
                       `[QueryRewrite] ✓ Using fallback: ${tablePath} -> ${constructedQueryPath}`,
                     );
                   } else {
-                    console.warn(
+                    logger.warn(
                       `[QueryRewrite] ✗ Could not find query path for ${tablePath}`,
                     );
-                    console.warn(
+                    logger.warn(
                       `[QueryRewrite] Available paths: ${allPaths.slice(0, 10).join(', ')}${allPaths.length > 10 ? '...' : ''}`,
                     );
                   }
                 }
               } else {
-                console.log(
+                logger.debug(
                   `[QueryRewrite] Schema is 'main', no rewriting needed for ${tablePath}`,
                 );
               }
             } else {
-              console.log(
+              logger.debug(
                 `[QueryRewrite] Path has ${parts.length} parts, skipping (not three-part)`,
               );
             }
@@ -936,7 +940,7 @@ export const readDataAgent = async (
                 });
               }
             }
-            console.log(
+            logger.debug(
               `[QueryRewrite] Rewrote ${replacements.length} table path(s) for ClickHouse:`,
               replacements.map((r) => `${r.from} -> ${r.to}`).join(', '),
             );
@@ -946,7 +950,7 @@ export const readDataAgent = async (
           const result = await queryEngine.query(rewrittenQuery);
           const queryTime = performance.now() - queryStartTime;
           const totalTime = performance.now() - startTime;
-          console.log(
+          logger.debug(
             `[ReadDataAgent] [PERF] runQuery TOTAL took ${totalTime.toFixed(2)}ms (sync: ${syncTime.toFixed(2)}ms, query: ${queryTime.toFixed(2)}ms, rows: ${result.rows.length})`,
           );
 
@@ -1063,11 +1067,11 @@ export const readDataAgent = async (
                 columns: cachedResult.columns,
                 rows: cachedResult.rows,
               };
-              console.log(
+              logger.debug(
                 `[selectChartType] Retrieved full results from cache: ${cachedResult.rows.length} rows`,
               );
             } else {
-              console.warn(
+              logger.warn(
                 `[selectChartType] Query result not found in cache: ${queryId}, using provided queryResults`,
               );
             }
@@ -1138,11 +1142,11 @@ export const readDataAgent = async (
                 columns: cachedResult.columns,
                 rows: cachedResult.rows,
               };
-              console.log(
+              logger.debug(
                 `[generateChart] Retrieved full results from cache: ${cachedResult.rows.length} rows`,
               );
             } else {
-              console.warn(
+              logger.warn(
                 `[generateChart] Query result not found in cache: ${queryId}, using provided queryResults`,
               );
             }
@@ -1170,7 +1174,7 @@ export const readDataAgent = async (
           }
           const contextTime = performance.now() - contextStartTime;
           if (contextTime > 10) {
-            console.log(
+            logger.debug(
               `[ReadDataAgent] [PERF] generateChart loadBusinessContext took ${contextTime.toFixed(2)}ms`,
             );
           }
@@ -1185,7 +1189,7 @@ export const readDataAgent = async (
           });
           const generateTime = performance.now() - generateStartTime;
           const totalTime = performance.now() - startTime;
-          console.log(
+          logger.debug(
             `[ReadDataAgent] [PERF] generateChart TOTAL took ${totalTime.toFixed(2)}ms (context: ${contextTime.toFixed(2)}ms, generate: ${generateTime.toFixed(2)}ms)`,
           );
           return result;
@@ -1229,7 +1233,8 @@ export const readDataAgentActor = fromPromise(
       };
     };
   }) => {
-    console.log('[readDataAgentActor] Received input:', {
+    const logger = await getLogger();
+    logger.debug('[readDataAgentActor] Received input:', {
       conversationId: input.conversationId,
       promptSource: input.promptSource,
       intentNeedsSQL: input.intent?.needsSQL,

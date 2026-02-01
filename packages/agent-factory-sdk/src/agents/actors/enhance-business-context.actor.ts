@@ -16,6 +16,7 @@ import {
 import { findRelationshipsParallel } from '../../tools/utils/business-context.relationships';
 import { extractDataPatterns } from '../../tools/utils/business-context.patterns';
 import { getConfig } from '../../tools/utils/business-context.config';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface EnhanceBusinessContextInput {
   conversationDir: string;
@@ -150,7 +151,8 @@ async function enhanceBusinessContextFunction(
   await saveBusinessContext(input.conversationDir, context);
 
   const elapsed = Date.now() - startTime;
-  console.log(
+  const logger = await getLogger();
+  logger.debug(
     `[EnhanceBusinessContext] Enhanced context built in ${elapsed}ms for view: ${input.viewName}`,
   );
 
@@ -181,8 +183,10 @@ export function enhanceBusinessContextInBackground(
 
   // Skip if already in progress
   if (inFlightEnhancements.has(key)) {
-    console.debug(
-      `[EnhanceBusinessContext] Skipping duplicate enhancement for: ${input.viewName}`,
+    getLogger().then((l) =>
+      l.debug(
+        `[EnhanceBusinessContext] Skipping duplicate enhancement for: ${input.viewName}`,
+      ),
     );
     return;
   }
@@ -194,8 +198,9 @@ export function enhanceBusinessContextInBackground(
       .finally(() => {
         inFlightEnhancements.delete(key);
       })
-      .catch((error) => {
-        console.warn(
+      .catch(async (error) => {
+        const logger = await getLogger();
+        logger.warn(
           '[EnhanceBusinessContext] Background enhancement failed:',
           error,
         );

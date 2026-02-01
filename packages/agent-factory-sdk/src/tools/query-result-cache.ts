@@ -3,6 +3,7 @@
  * Stores full query results in memory to avoid injecting them into agent context
  * Tools can access full results via query ID
  */
+import { getLogger } from '@qwery/shared/logger';
 
 export interface QueryResult {
   columns: string[];
@@ -60,8 +61,10 @@ export function storeQueryResult(
     timestamp: Date.now(),
   });
 
-  console.log(
-    `[QueryResultCache] Stored query result: ${queryId} (${rows.length} rows)`,
+  getLogger().then((l) =>
+    l.debug(
+      `[QueryResultCache] Stored query result: ${queryId} (${rows.length} rows)`,
+    ),
   );
 
   return queryId;
@@ -78,11 +81,15 @@ export function getQueryResult(
   const result = cache.get(queryId);
 
   if (result) {
-    console.log(
-      `[QueryResultCache] Retrieved query result: ${queryId} (${result.rows.length} rows)`,
+    getLogger().then((l) =>
+      l.debug(
+        `[QueryResultCache] Retrieved query result: ${queryId} (${result.rows.length} rows)`,
+      ),
     );
   } else {
-    console.warn(`[QueryResultCache] Query result not found: ${queryId}`);
+    getLogger().then((l) =>
+      l.warn(`[QueryResultCache] Query result not found: ${queryId}`),
+    );
   }
 
   return result || null;
@@ -93,8 +100,10 @@ export function getQueryResult(
  */
 export function clearQueryResultCache(conversationId: string): void {
   queryResultCache.delete(conversationId);
-  console.log(
-    `[QueryResultCache] Cleared cache for conversation: ${conversationId}`,
+  getLogger().then((l) =>
+    l.debug(
+      `[QueryResultCache] Cleared cache for conversation: ${conversationId}`,
+    ),
   );
 }
 
@@ -114,8 +123,10 @@ export function cleanupOldResults(conversationId: string): void {
   }
 
   if (cleaned > 0) {
-    console.log(
-      `[QueryResultCache] Cleaned up ${cleaned} old query result(s) for conversation: ${conversationId}`,
+    getLogger().then((l) =>
+      l.debug(
+        `[QueryResultCache] Cleaned up ${cleaned} old query result(s) for conversation: ${conversationId}`,
+      ),
     );
   }
 }
