@@ -8,6 +8,7 @@ import {
   GSheetAttachmentStrategy,
   getGSheetDriverWithConnection,
 } from './datasource-attachment/strategies/gsheet-attachment-strategy';
+import { getParquetDriverWithConnection } from './datasource-attachment/strategies/parquet-attachment-strategy';
 import { getDatasourceDatabaseName } from './datasource-name-utils';
 import { getProviderMapping } from './provider-registry';
 import type {
@@ -111,6 +112,65 @@ export class DatasourceAttachmentService {
         } catch (error) {
           logger.debug(
             '[DatasourceAttachmentService] gsheet-csv driver.attach failed, falling back to strategy:',
+            error,
+          );
+        }
+      }
+    }
+
+    // For parquet-online: try driver.attach first (extension owns attach logic)
+    if (provider === 'parquet-online') {
+      const driverWithAttach = await getParquetDriverWithConnection(connection);
+      if (driverWithAttach) {
+        try {
+          const schemaName = getDatasourceDatabaseName(datasource);
+          const driverResult = await driverWithAttach.attach({
+            config: datasource.config,
+            schemaName,
+            conversationId,
+            workspace,
+          });
+          if (driverResult.tables.length > 0) {
+            const first = driverResult.tables[0]!;
+            let schemaDefinition: SimpleSchema | undefined;
+            try {
+              const escapedSchema = first.schema.replace(/"/g, '""');
+              const escapedTable = first.table.replace(/"/g, '""');
+              const describeReader = await connection.runAndReadAll(
+                `DESCRIBE "${escapedSchema}"."${escapedTable}"`,
+              );
+              await describeReader.readAll();
+              const rows = describeReader.getRowObjectsJS() as Array<{
+                column_name: string;
+                column_type: string;
+              }>;
+              schemaDefinition = {
+                databaseName: schemaName,
+                schemaName: first.schema,
+                tables: [
+                  {
+                    tableName: first.table,
+                    columns: rows.map((r) => ({
+                      columnName: r.column_name,
+                      columnType: r.column_type,
+                    })),
+                  },
+                ],
+              };
+            } catch {
+              // ignore
+            }
+            if (schemaDefinition) {
+              return {
+                viewName: first.path,
+                displayName: first.table,
+                schema: schemaDefinition,
+              };
+            }
+          }
+        } catch (error) {
+          logger.debug(
+            '[DatasourceAttachmentService] parquet-online driver.attach failed, falling back to strategy:',
             error,
           );
         }

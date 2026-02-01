@@ -6,5 +6,5 @@ export * from './gemini.prompt';
 export * from './greeting.prompt';
 export * from './openai.prompt';
 export * from './summarize-intent.prompt';
-export * from './todowrite.prompt';
-export * from './todoread.prompt';
+export * from '../../tools/prompts/todowrite.prompt';
+export * from '../../tools/prompts/todoread.prompt';

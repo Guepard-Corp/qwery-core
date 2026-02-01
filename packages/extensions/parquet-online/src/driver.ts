@@ -6,6 +6,9 @@ import type {
   IDataSourceDriver,
   DatasourceResultSet,
   DatasourceMetadata,
+  DriverAttachOptions,
+  DriverAttachResult,
+  DriverDetachOptions,
 } from '@qwery/extensions-sdk';
 import {
   DatasourceMetadataZodSchema,
@@ -280,6 +283,82 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         );
       } finally {
         conn.closeSync();
+      }
+    },
+
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'parquet-online attach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
+      const url = parsed.url;
+      if (!url) {
+        throw new Error(
+          'parquet-online attach requires url or connectionUrl in config',
+        );
+      }
+
+      await conn.run('INSTALL httpfs;');
+      await conn.run('LOAD httpfs;');
+
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const escapedCatalogForQuery = catalogName.replace(/'/g, "''");
+
+      // Use ATTACH to create a catalog (matches DuckDBNativeAttachmentStrategy and query path resolution)
+      // DuckDB resolves "catalog.table" as catalog; CREATE SCHEMA makes a schema, not a catalog
+      const dbListReader = await conn.runAndReadAll(
+        `SELECT name FROM pragma_database_list WHERE name = '${escapedCatalogForQuery}'`,
+      );
+      await dbListReader.readAll();
+      const existingDbs = dbListReader.getRowObjectsJS() as Array<{
+        name: string;
+      }>;
+      if (existingDbs.length === 0) {
+        await conn.run(`ATTACH ':memory:' AS "${escapedCatalog}"`);
+      }
+
+      const escapedViewName = VIEW_NAME.replace(/"/g, '""');
+      const escapedUrl = url.replace(/'/g, "''");
+      await conn.run(`
+        CREATE OR REPLACE VIEW "${escapedCatalog}"."${escapedViewName}" AS
+        SELECT * FROM read_parquet('${escapedUrl}')
+      `);
+
+      return {
+        tables: [
+          {
+            schema: catalogName,
+            table: VIEW_NAME,
+            path: `${catalogName}.${VIEW_NAME}`,
+          },
+        ],
+      };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'parquet-online detach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const tableNames = options.tableNames ?? [VIEW_NAME];
+      for (const table of tableNames) {
+        const escapedTable = table.replace(/"/g, '""');
+        await conn.run(
+          `DROP VIEW IF EXISTS "${escapedCatalog}"."${escapedTable}"`,
+        );
+      }
+      try {
+        await conn.run(`DETACH "${escapedCatalog}"`);
+      } catch {
+        // Catalog may already be detached (e.g. double detach)
       }
     },
 

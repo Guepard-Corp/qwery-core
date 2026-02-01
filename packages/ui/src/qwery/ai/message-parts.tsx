@@ -41,7 +41,18 @@ import {
   SourcesTrigger,
 } from '../../ai-elements/sources';
 import { useState, createContext, useMemo } from 'react';
-import { CopyIcon, RefreshCcwIcon, CheckIcon, Database } from 'lucide-react';
+import {
+  CopyIcon,
+  RefreshCcwIcon,
+  CheckIcon,
+  Database,
+  ListTodo,
+  ChevronDownIcon,
+  CheckCircle2Icon,
+  CircleDashedIcon,
+  XCircleIcon,
+  ArrowRightIcon,
+} from 'lucide-react';
 import { ToolUIPart, UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -145,6 +156,185 @@ export function TaskPart({ part, messageId, index }: TaskPartProps) {
             </TaskItem>
           );
         })}
+      </TaskContent>
+    </Task>
+  );
+}
+
+export type TodoItemUI = {
+  id: string;
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: string;
+};
+
+const TODO_STATUS_META: Record<
+  TodoItemUI['status'],
+  {
+    label: string;
+    badgeClass: string;
+    iconClass: string;
+    Icon: React.ComponentType<{ className?: string }>;
+    strikethrough: boolean;
+  }
+> = {
+  pending: {
+    label: 'Queued',
+    badgeClass: 'bg-muted/50 text-muted-foreground',
+    iconClass: 'text-muted-foreground',
+    Icon: CircleDashedIcon,
+    strikethrough: false,
+  },
+  in_progress: {
+    label: 'Running',
+    badgeClass: 'bg-primary/10 text-primary',
+    iconClass: 'text-primary',
+    Icon: ArrowRightIcon,
+    strikethrough: false,
+  },
+  completed: {
+    label: 'Done',
+    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    iconClass: 'text-emerald-600 dark:text-emerald-400',
+    Icon: CheckCircle2Icon,
+    strikethrough: true,
+  },
+  cancelled: {
+    label: 'Cancelled',
+    badgeClass: 'bg-destructive/10 text-destructive',
+    iconClass: 'text-destructive',
+    Icon: XCircleIcon,
+    strikethrough: true,
+  },
+};
+
+const DEFAULT_TODO_STATUS: TodoItemUI['status'] = 'pending';
+
+function getTodoStatusMeta(
+  status: string | undefined,
+): (typeof TODO_STATUS_META)[TodoItemUI['status']] {
+  const normalized =
+    status === 'in-progress'
+      ? 'in_progress'
+      : (status as TodoItemUI['status'] | undefined);
+  return (
+    (normalized && TODO_STATUS_META[normalized]) ??
+    TODO_STATUS_META[DEFAULT_TODO_STATUS]
+  );
+}
+
+function parseTodosFromPart(
+  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
+): TodoItemUI[] {
+  if (part.type === 'tool-todowrite') {
+    const input = part.input as { todos?: TodoItemUI[] } | null;
+    const todos = input?.todos;
+    return Array.isArray(todos) ? todos : [];
+  }
+  const output = part.output;
+  if (output == null) return [];
+  if (Array.isArray(output)) return output as TodoItemUI[];
+  if (typeof output === 'string') {
+    try {
+      const parsed = JSON.parse(output) as TodoItemUI[] | unknown;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  if (typeof output === 'object' && output !== null && 'todos' in output) {
+    const todos = (output as { todos: TodoItemUI[] }).todos;
+    return Array.isArray(todos) ? todos : [];
+  }
+  return [];
+}
+
+function todoPartTitle(
+  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
+  todos: TodoItemUI[],
+): string {
+  if (part.type === 'tool-todoread') return 'Todo list';
+  if (todos.length === 0) return 'Plan';
+  const allPending = todos.every((t) => t.status === 'pending');
+  const allCompleted = todos.every((t) => t.status === 'completed');
+  if (allPending) return 'Creating plan';
+  if (allCompleted) return 'Completing plan';
+  return 'Updating plan';
+}
+
+function todoPartSubtitle(todos: TodoItemUI[]): string | null {
+  if (todos.length === 0) return null;
+  const completed = todos.filter((t) => t.status === 'completed').length;
+  return `${completed} of ${todos.length} To-dos`;
+}
+
+export type TodoPartProps = {
+  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' };
+  messageId: string;
+  index: number;
+};
+
+export function TodoPart({ part, messageId, index }: TodoPartProps) {
+  const todos = parseTodosFromPart(part);
+  const title = todoPartTitle(part, todos);
+  const subtitle = todoPartSubtitle(todos);
+  const displayTitle = subtitle ?? title;
+
+  return (
+    <Task
+      key={`${messageId}-todo-${index}`}
+      className="group border-border bg-card hover:border-border/80 w-full rounded-xl border shadow-sm transition-colors"
+    >
+      <TaskTrigger title={displayTitle}>
+        <div className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-2 py-2 pr-1.5 text-sm transition-colors">
+          <div className="bg-primary/10 text-primary flex shrink-0 items-center justify-center rounded-md p-1.5">
+            <ListTodo className="size-3.5" />
+          </div>
+          <span className="min-w-0 flex-1 font-medium">{displayTitle}</span>
+          <ChevronDownIcon className="size-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+        </div>
+      </TaskTrigger>
+      <TaskContent>
+        <div className="pl-3">
+          {todos.length === 0 ? (
+            <p className="text-muted-foreground text-xs">No items yet</p>
+          ) : (
+            <ul className="space-y-0.5" data-component="todos">
+              {todos.map((todo) => {
+                const meta = getTodoStatusMeta(todo.status);
+                const StatusIcon = meta.Icon;
+                return (
+                  <li
+                    key={todo.id}
+                    className={cn(
+                      'flex items-center gap-2 py-1.5 text-sm',
+                      meta.strikethrough && 'text-muted-foreground',
+                    )}
+                    data-status={todo.status}
+                  >
+                    <div
+                      className={cn(
+                        'flex shrink-0 items-center justify-center rounded-full p-1',
+                        meta.badgeClass,
+                        meta.iconClass,
+                      )}
+                    >
+                      <StatusIcon className="size-3" />
+                    </div>
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1',
+                        meta.strikethrough && 'line-through',
+                      )}
+                    >
+                      {todo.content}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </TaskContent>
     </Task>
   );

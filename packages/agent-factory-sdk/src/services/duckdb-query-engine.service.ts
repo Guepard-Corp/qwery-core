@@ -17,6 +17,8 @@ import {
   getDatasourceType,
   type LoadedDatasource,
 } from '../tools/datasource-loader';
+import { getParquetDriverWithConnection } from '../tools/datasource-attachment/strategies/parquet-attachment-strategy';
+import { getGSheetDriverWithConnection } from '../tools/datasource-attachment/strategies/gsheet-attachment-strategy';
 import { getLogger } from '@qwery/shared/logger';
 
 // Connection type from DuckDB instance
@@ -340,6 +342,34 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     // Detach foreign databases
     for (const { datasource } of foreignDatabases) {
       try {
+        // gsheet-csv uses driver.attach (creates views), not ATTACH database
+        if (datasource.datasource_provider === 'gsheet-csv') {
+          const driverWithDetach = await getGSheetDriverWithConnection(
+            this.connection,
+          );
+          if (driverWithDetach?.detach) {
+            const schemaName = getDatasourceDatabaseName(datasource);
+            const escapedSchema = schemaName.replace(/'/g, "''");
+            const viewsReader = await this.connection.runAndReadAll(
+              `SELECT table_name FROM information_schema.views WHERE table_schema = '${escapedSchema}'`,
+            );
+            await viewsReader.readAll();
+            const views = viewsReader.getRowObjectsJS() as Array<{
+              table_name: string;
+            }>;
+            const tableNames = views.map((v) => v.table_name);
+            if (tableNames.length > 0) {
+              await driverWithDetach.detach({
+                config: datasource.config,
+                schemaName,
+                tableNames,
+              });
+            }
+            this.attachedDatasources.delete(datasource.id);
+            continue;
+          }
+        }
+
         const attachedDatabaseName = getDatasourceDatabaseName(datasource);
         const escapedDbName = attachedDatabaseName.replace(/"/g, '""');
         await this.connection.run(`DETACH "${escapedDbName}"`);
@@ -358,6 +388,23 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     // Drop views for DuckDB-native datasources
     for (const { datasource } of duckdbNative) {
       try {
+        // parquet-online uses driver.attach (creates views in schema)
+        if (datasource.datasource_provider === 'parquet-online') {
+          const driverWithDetach = await getParquetDriverWithConnection(
+            this.connection,
+          );
+          if (driverWithDetach?.detach) {
+            const schemaName = getDatasourceDatabaseName(datasource);
+            await driverWithDetach.detach({
+              config: datasource.config,
+              schemaName,
+              tableNames: ['data'],
+            });
+            this.attachedDatasources.delete(datasource.id);
+            continue;
+          }
+        }
+
         // Find all views associated with this datasource ID
         // The view names start with {datasource.id}_
         const viewsReader = await this.connection.runAndReadAll(`

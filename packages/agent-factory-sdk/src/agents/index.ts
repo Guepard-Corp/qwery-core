@@ -2,6 +2,7 @@ export * from './factory-agent';
 export * from './agent';
 export * from './ask-agent';
 export * from './query-agent';
+export * from './compaction-agent';
 export { prompt, loop, type AgentSessionPromptInput } from './agent-session';
 export {
   SessionCompaction,

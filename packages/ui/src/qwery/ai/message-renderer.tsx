@@ -8,10 +8,12 @@ import {
   TextPart,
   ReasoningPart,
   ToolPart,
+  TodoPart,
   SourcesPart,
   TaskUIPart,
 } from './message-parts';
 import { ToolUIPart as AIToolUIPart } from 'ai';
+import { getLastTodoPartIndex } from './utils/todo-parts';
 
 export interface MessageRendererProps {
   message: UIMessage;
@@ -40,10 +42,27 @@ function MessageRendererComponent({
       normalizeUIRole(message.role) === 'user') &&
     sourceParts.length > 0;
 
+  const lastTodoIndex = getLastTodoPartIndex(message.parts);
+
   return (
     <div key={message.id}>
       {hasSources && <SourcesPart parts={sourceParts} messageId={message.id} />}
+      {lastTodoIndex !== null && (
+        <TodoPart
+          key={`${message.id}-todo`}
+          part={
+            message.parts[lastTodoIndex] as AIToolUIPart & {
+              type: 'tool-todowrite' | 'tool-todoread';
+            }
+          }
+          messageId={message.id}
+          index={lastTodoIndex}
+        />
+      )}
       {message.parts.map((part, i: number) => {
+        if (part.type === 'tool-todowrite' || part.type === 'tool-todoread') {
+          return null;
+        }
         if (part.type === 'data-tasks') {
           const taskPart = part as TaskUIPart;
           return (
