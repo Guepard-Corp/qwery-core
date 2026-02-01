@@ -19,6 +19,7 @@ import {
   NotebookRepository,
   OrganizationRepository,
   ProjectRepository,
+  TodoRepository,
   UserRepository,
   UsageRepository,
 } from '@qwery/repository-in-memory';
@@ -42,6 +43,7 @@ export class CliContainer {
     conversation: new ConversationRepository(),
     message: new MessageRepository(),
     usage: new UsageRepository(),
+    todo: new TodoRepository(),
   };
 
   private readonly workspaceModeService = new CliWorkspaceModeService();

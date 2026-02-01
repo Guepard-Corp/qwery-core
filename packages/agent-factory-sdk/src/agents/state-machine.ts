@@ -24,6 +24,7 @@ import {
   trace,
   type SpanContext,
 } from '@opentelemetry/api';
+import { getLogger } from '@qwery/shared/logger';
 
 export const createStateMachine = (
   conversationId: string,
@@ -737,9 +738,11 @@ export const createStateMachine = (
                 const source = (
                   lastUserMessage?.metadata as { promptSource?: PromptSource }
                 )?.promptSource;
-                console.log(
-                  '[StateMachine] Extracted promptSource from metadata:',
-                  source,
+                getLogger().then((logger) =>
+                  logger.debug(
+                    '[StateMachine] Extracted promptSource from metadata:',
+                    source,
+                  ),
                 );
                 return source;
               },
@@ -790,13 +793,15 @@ export const createStateMachine = (
                       actions: assign({
                         intent: ({ event }) => {
                           const intent = event.output;
-                          console.log(
-                            '[StateMachine] Set intent from detection:',
-                            {
-                              intent: intent.intent,
-                              needsChart: intent.needsChart,
-                              needsSQL: intent.needsSQL,
-                            },
+                          getLogger().then((logger) =>
+                            logger.debug(
+                              '[StateMachine] Set intent from detection:',
+                              {
+                                intent: intent.intent,
+                                needsChart: intent.needsChart,
+                                needsSQL: intent.needsSQL,
+                              },
+                            ),
                           );
                           return intent;
                         },
@@ -810,13 +815,15 @@ export const createStateMachine = (
                       actions: assign({
                         intent: ({ event }) => {
                           const intent = event.output;
-                          console.log(
-                            '[StateMachine] Set intent from detection (greeting):',
-                            {
-                              intent: intent.intent,
-                              needsChart: intent.needsChart,
-                              needsSQL: intent.needsSQL,
-                            },
+                          getLogger().then((logger) =>
+                            logger.debug(
+                              '[StateMachine] Set intent from detection (greeting):',
+                              {
+                                intent: intent.intent,
+                                needsChart: intent.needsChart,
+                                needsSQL: intent.needsSQL,
+                              },
+                            ),
                           );
                           return intent;
                         },
@@ -830,13 +837,15 @@ export const createStateMachine = (
                       actions: assign({
                         intent: ({ event }) => {
                           const intent = event.output;
-                          console.log(
-                            '[StateMachine] Set intent from detection (readData):',
-                            {
-                              intent: intent.intent,
-                              needsChart: intent.needsChart,
-                              needsSQL: intent.needsSQL,
-                            },
+                          getLogger().then((logger) =>
+                            logger.debug(
+                              '[StateMachine] Set intent from detection (readData):',
+                              {
+                                intent: intent.intent,
+                                needsChart: intent.needsChart,
+                                needsSQL: intent.needsSQL,
+                              },
+                            ),
                           );
                           return intent;
                         },
@@ -850,13 +859,15 @@ export const createStateMachine = (
                       actions: assign({
                         intent: ({ event }) => {
                           const intent = event.output;
-                          console.log(
-                            '[StateMachine] Set intent from detection (system):',
-                            {
-                              intent: intent.intent,
-                              needsChart: intent.needsChart,
-                              needsSQL: intent.needsSQL,
-                            },
+                          getLogger().then((logger) =>
+                            logger.debug(
+                              '[StateMachine] Set intent from detection (system):',
+                              {
+                                intent: intent.intent,
+                                needsChart: intent.needsChart,
+                                needsSQL: intent.needsSQL,
+                              },
+                            ),
                           );
                           return intent;
                         },
@@ -934,10 +945,12 @@ export const createStateMachine = (
                       event.error instanceof Error
                         ? event.error.message
                         : String(event.error);
-                    console.error(
-                      'summarizeIntent error:',
-                      errorMsg,
-                      event.error,
+                    getLogger().then((logger) =>
+                      logger.error(
+                        'summarizeIntent error:',
+                        errorMsg,
+                        event.error,
+                      ),
                     );
                     return errorMsg;
                   },
@@ -970,7 +983,9 @@ export const createStateMachine = (
                       event.error instanceof Error
                         ? event.error.message
                         : String(event.error);
-                    console.error('greeting error:', errorMsg, event.error);
+                    getLogger().then((logger) =>
+                      logger.error('greeting error:', errorMsg, event.error),
+                    );
                     return errorMsg;
                   },
                   streamResult: undefined,
@@ -990,12 +1005,14 @@ export const createStateMachine = (
                       src: 'readDataAgentActor',
                       id: 'READ_DATA',
                       input: ({ context }: { context: AgentContext }) => {
-                        console.log(
-                          '[StateMachine] Passing to readDataAgentActor:',
-                          {
-                            promptSource: context.promptSource,
-                            intentNeedsSQL: context.intent.needsSQL,
-                          },
+                        getLogger().then((logger) =>
+                          logger.debug(
+                            '[StateMachine] Passing to readDataAgentActor:',
+                            {
+                              promptSource: context.promptSource,
+                              intentNeedsSQL: context.intent.needsSQL,
+                            },
+                          ),
                         );
                         return {
                           inputMessage: context.inputMessage,
@@ -1036,10 +1053,12 @@ export const createStateMachine = (
                                 event.error instanceof Error
                                   ? event.error.message
                                   : String(event.error);
-                              console.error(
-                                'readData error:',
-                                errorMsg,
-                                event.error,
+                              getLogger().then((logger) =>
+                                logger.error(
+                                  'readData error:',
+                                  errorMsg,
+                                  event.error,
+                                ),
                               );
                               return errorMsg;
                             },
@@ -1110,7 +1129,9 @@ export const createStateMachine = (
                       event.error instanceof Error
                         ? event.error.message
                         : String(event.error);
-                    console.error('systemInfo error:', errorMsg, event.error);
+                    getLogger().then((logger) =>
+                      logger.error('systemInfo error:', errorMsg, event.error),
+                    );
                     return errorMsg;
                   },
                   streamResult: undefined,

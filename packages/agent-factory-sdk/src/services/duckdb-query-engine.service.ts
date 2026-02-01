@@ -17,6 +17,7 @@ import {
   getDatasourceType,
   type LoadedDatasource,
 } from '../tools/datasource-loader';
+import { getLogger } from '@qwery/shared/logger';
 
 // Connection type from DuckDB instance
 type Connection = Awaited<ReturnType<DuckDBInstance['connect']>>;
@@ -193,7 +194,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
             configError instanceof Error
               ? configError.message
               : String(configError);
-          console.warn(`Failed to apply config ${key} = ${value}: ${errorMsg}`);
+          const logger = await getLogger();
+          logger.warn(`Failed to apply config ${key} = ${value}: ${errorMsg}`);
         }
       }
     }
@@ -233,7 +235,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     for (const { datasource } of foreignDatabases) {
       // Skip if already attached (optimization)
       if (this.attachedDatasources.has(datasource.id)) {
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DuckDBQueryEngine] Datasource ${datasource.id} already attached, skipping`,
         );
         continue;
@@ -247,7 +250,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           workspace,
         });
         this.attachedDatasources.add(datasource.id);
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DuckDBQueryEngine] Successfully attached datasource ${datasource.id}`,
         );
       } catch (error) {
@@ -262,7 +266,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         }
         // Log error but continue with other datasources
         const errorMessage = `Failed to attach datasource ${datasource.id}: ${errorMsg}`;
-        console.error(`[DuckDBQueryEngine] ${errorMessage}`);
+        const logger = await getLogger();
+        logger.error(`[DuckDBQueryEngine] ${errorMessage}`);
         attachmentErrors.push({ datasourceId: datasource.id, error: errorMsg });
       }
     }
@@ -271,7 +276,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
     for (const { datasource } of duckdbNative) {
       // Skip if already attached (optimization)
       if (this.attachedDatasources.has(datasource.id)) {
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DuckDBQueryEngine] Datasource ${datasource.id} already attached, skipping`,
         );
         continue;
@@ -285,21 +291,24 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
           workspace,
         });
         this.attachedDatasources.add(datasource.id);
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[DuckDBQueryEngine] Successfully created view for datasource ${datasource.id}`,
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         // Log error but continue with other datasources
         const errorMessage = `Failed to create view for datasource ${datasource.id}: ${errorMsg}`;
-        console.error(`[DuckDBQueryEngine] ${errorMessage}`);
+        const logger = await getLogger();
+        logger.error(`[DuckDBQueryEngine] ${errorMessage}`);
         attachmentErrors.push({ datasourceId: datasource.id, error: errorMsg });
       }
     }
 
     // Log summary of attachment results
     if (attachmentErrors.length > 0) {
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `[DuckDBQueryEngine] ${attachmentErrors.length} datasource(s) failed to attach:`,
         attachmentErrors.map((e) => `${e.datasourceId}: ${e.error}`).join(', '),
       );
@@ -338,7 +347,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
       } catch (error) {
         // DuckDB doesn't support DETACH IF EXISTS, so we catch errors
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `Failed to detach datasource ${datasource.id}: ${errorMsg}`,
         );
         // Continue with other datasources
@@ -368,7 +378,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         this.attachedDatasources.delete(datasource.id);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `Failed to drop views for datasource ${datasource.id}: ${errorMsg}`,
         );
         // Continue with other datasources
@@ -700,7 +711,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.warn(`Failed to query tables : ${errorMsg}`);
+        const logger = await getLogger();
+        logger.warn(`Failed to query tables : ${errorMsg}`);
       }
 
       // Collect column information for all tables
@@ -762,7 +774,8 @@ export class DuckDBQueryEngine extends AbstractQueryEngine {
         } catch (error) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
-          console.warn(
+          const logger = await getLogger();
+          logger.warn(
             `Failed to query columns for table ${table}: ${errorMsg}`,
           );
           // Skip columns for this table if query fails

@@ -26,9 +26,9 @@
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@qwery/shared": "workspace:*",
     "ai": "catalog:",
     "dotenv": "^16.6.1",
-    "tokenlens": "2.0.0-alpha.3",
     "zod": "catalog:"
   }
 }

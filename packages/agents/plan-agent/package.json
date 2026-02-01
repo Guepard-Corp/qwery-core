@@ -1,0 +1,32 @@
+{
+  "name": "@qwery/plan-agent",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
+    "lint:fix": "eslint --cache --cache-location ./node_modules/.cache/eslint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "prettier": "@qwery/prettier-config",
+  "exports": {},
+  "devDependencies": {
+    "@qwery/eslint-config": "workspace:*",
+    "@qwery/prettier-config": "workspace:*",
+    "@qwery/tailwind-config": "workspace:*",
+    "@qwery/tsconfig": "workspace:*",
+    "eslint": "^9.39.0",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

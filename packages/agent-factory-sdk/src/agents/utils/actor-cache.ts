@@ -1,6 +1,7 @@
 import { fromPromise } from 'xstate/actors';
 import type { PromiseActorLogic } from 'xstate';
 import { createActor } from 'xstate';
+import { getLogger } from '@qwery/shared/logger';
 
 interface CacheEntry<TOutput> {
   result: TOutput;
@@ -34,11 +35,13 @@ export function createCachedActor<TInput, TOutput>(
     const cached = cache.get(key);
 
     if (cached && Date.now() - cached.timestamp < ttl) {
-      console.debug(`[ActorCache] Cache hit for key: ${key}`);
+      const logger = await getLogger();
+      logger.debug(`[ActorCache] Cache hit for key: ${key}`);
       return cached.result;
     }
 
-    console.debug(`[ActorCache] Cache miss for key: ${key}, invoking actor`);
+    const logger = await getLogger();
+    logger.debug(`[ActorCache] Cache miss for key: ${key}, invoking actor`);
     // Create a temporary actor instance to invoke the original actor
     const tempActor = createActor(actor, { input });
     tempActor.start();

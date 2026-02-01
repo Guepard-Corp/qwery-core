@@ -38,7 +38,9 @@ export class DatasourceRepository extends IDatasourceRepository {
     try {
       const extension = await getDiscoveredDatasource(provider);
       if (extension) {
-        const fields = getSecretFields(extension.schema);
+        const fields = getSecretFields(
+          extension.schema as unknown as Parameters<typeof getSecretFields>[0],
+        );
         this.secretFieldsCache.set(provider, fields);
         return fields;
       }

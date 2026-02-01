@@ -22,6 +22,7 @@ import {
 } from '@qwery/telemetry/otel';
 import { AGENT_EVENTS } from '@qwery/telemetry/events/agent.events';
 import { context, trace, type SpanContext } from '@opentelemetry/api';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface FactoryAgentOptions {
   conversationSlug: string;
@@ -90,14 +91,16 @@ export class FactoryAgent {
 
     // NEW: Persist state on changes
     this.factoryActor.subscribe((state) => {
-      console.log('###Factory state:', state.value);
+      getLogger().then((logger) => logger.debug('Factory state:', state.value));
       if (state.status === 'active') {
         persistState(
           this.conversationSlug,
           state.snapshot,
           this.repositories,
         ).catch((err) => {
-          console.warn('[FactoryAgent] Failed to persist state:', err);
+          getLogger().then((logger) =>
+            logger.warn('[FactoryAgent] Failed to persist state:', err),
+          );
         });
       }
     });
@@ -128,7 +131,8 @@ export class FactoryAgent {
    * a streaming Response compatible with the AI SDK UI.
    */
   async respond(opts: { messages: UIMessage[] }): Promise<Response> {
-    console.log(
+    const logger = await getLogger();
+    logger.info(
       `Message received, factory state [${this.id}]:`,
       this.factoryActor.getSnapshot().value,
     );
@@ -176,13 +180,13 @@ export class FactoryAgent {
         lastMessage as UIMessage,
       ]);
       if (result.errors.length > 0) {
-        console.warn(
+        logger.warn(
           `[FactoryAgent] User message persistence failed for ${this.conversationSlug}:`,
           result.errors.map((e) => e.message).join(', '),
         );
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `[FactoryAgent] User message persistence threw for ${this.conversationSlug}:`,
         error instanceof Error ? error.message : String(error),
       );
@@ -323,14 +327,14 @@ export class FactoryAgent {
                 context.with(
                   trace.setSpan(context.active(), messageSpan),
                   () => {
-                    console.log(
+                    logger.debug(
                       `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
                     );
                     this.factoryActor.send({
                       type: 'USER_INPUT',
                       messages: opts.messages,
                     });
-                    console.log(
+                    logger.debug(
                       `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
                       this.factoryActor.getSnapshot().value,
                     );
@@ -339,14 +343,14 @@ export class FactoryAgent {
               },
             );
           } else {
-            console.log(
+            logger.debug(
               `[FactoryAgent ${this.id}] Sending USER_INPUT event with message: "${currentInputMessage}"`,
             );
             this.factoryActor.send({
               type: 'USER_INPUT',
               messages: opts.messages,
             });
-            console.log(
+            logger.debug(
               `[FactoryAgent ${this.id}] USER_INPUT sent, current state:`,
               this.factoryActor.getSnapshot().value,
             );
@@ -368,7 +372,7 @@ export class FactoryAgent {
           currentState.includes('detectIntent') ||
           currentState.includes('greeting')
         ) {
-          console.log(
+          logger.debug(
             `[FactoryAgent ${this.id}] State: ${currentState}, Changes: ${stateChangeCount}, HasError: ${!!ctx.error}, HasStreamResult: ${!!ctx.streamResult}`,
           );
         }
@@ -379,7 +383,7 @@ export class FactoryAgent {
         }
 
         if (ctx.error) {
-          console.error(
+          logger.error(
             `[FactoryAgent ${this.id}] Error in context:`,
             ctx.error,
           );
@@ -464,7 +468,7 @@ export class FactoryAgent {
         }
 
         if (currentState.includes('detectIntent') && stateChangeCount > 10) {
-          console.warn(
+          logger.warn(
             `[FactoryAgent ${this.id}] Appears stuck in detectIntent after ${stateChangeCount} state changes`,
           );
           return;
@@ -523,8 +527,9 @@ export class FactoryAgent {
                         );
                       usagePersistenceService
                         .persistUsage(totalUsage, ctx.model)
-                        .catch((error) => {
-                          console.error('Failed to persist usage:', error);
+                        .catch(async (error) => {
+                          const log = await getLogger();
+                          log.error('Failed to persist usage:', error);
                         });
                     }
 
@@ -540,13 +545,15 @@ export class FactoryAgent {
                           messages,
                         );
                       if (result.errors.length > 0) {
-                        console.warn(
+                        const log = await getLogger();
+                        log.warn(
                           `Failed to persist some assistant messages for conversation ${this.conversationSlug}:`,
                           result.errors.map((e) => e.message).join(', '),
                         );
                       }
                     } catch (error) {
-                      console.warn(
+                      const log = await getLogger();
+                      log.warn(
                         `Failed to persist messages for conversation ${this.conversationSlug}:`,
                         error instanceof Error ? error.message : String(error),
                       );

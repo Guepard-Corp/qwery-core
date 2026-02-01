@@ -1,5 +1,6 @@
 import type { Snapshot } from 'xstate';
 import type { Repositories } from '@qwery/domain/repositories';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * Persist state machine snapshot
@@ -14,12 +15,14 @@ export async function persistState(
     const _serialized = JSON.stringify(snapshot);
     // TODO: Store in database using repositories if needed
     // For now, we'll just log it
-    console.debug(
+    const logger = await getLogger();
+    logger.debug(
       `[StatePersistence] Persisting state for conversation: ${conversationId}`,
     );
     // await _repositories.conversation.update(conversationId, { stateSnapshot: _serialized });
   } catch (error) {
-    console.warn('[StatePersistence] Failed to persist state:', error);
+    const logger = await getLogger();
+    logger.warn('[StatePersistence] Failed to persist state:', error);
   }
 }
 
@@ -39,7 +42,8 @@ export async function loadPersistedState(
     // }
     return null;
   } catch (error) {
-    console.warn('[StatePersistence] Failed to load persisted state:', error);
+    const logger = await getLogger();
+    logger.warn('[StatePersistence] Failed to load persisted state:', error);
     return null;
   }
 }

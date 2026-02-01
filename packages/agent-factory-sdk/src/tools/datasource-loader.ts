@@ -12,6 +12,7 @@ import {
   getDuckDBNativeProviders,
   getDriverBasedProviders,
 } from './provider-registry';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * DuckDB-native datasources are extensions that use DuckDB internally
@@ -52,7 +53,8 @@ export async function loadDatasources(
     try {
       const datasource = await datasourceRepository.findById(datasourceId);
       if (!datasource) {
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `[DatasourceLoader] Datasource ${datasourceId} not found, skipping`,
         );
         continue;
@@ -64,7 +66,8 @@ export async function loadDatasources(
         type,
       });
     } catch (error) {
-      console.error(
+      const logger = await getLogger();
+      logger.error(
         `[DatasourceLoader] Failed to load datasource ${datasourceId}:`,
         error,
       );

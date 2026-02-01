@@ -192,12 +192,7 @@ function SidebarLayoutInner(
     repositories.message,
     conversationSlug,
     {
-      // Always fetch messages on notebook pages when we have a conversation slug (from URL or persisted)
       enabled: isNotebookPage && conversationSlug !== 'default',
-      // Refetch every 2 seconds when conversation exists to catch new messages
-      // This keeps messages up-to-date even when sidebar is closed
-      refetchInterval:
-        isNotebookPage && conversationSlug !== 'default' ? 2000 : undefined,
     },
   );
 

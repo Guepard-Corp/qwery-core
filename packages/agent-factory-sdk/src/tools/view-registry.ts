@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import type { SimpleSchema, SimpleColumn } from '@qwery/domain/entities';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface ViewRecord {
   viewName: string; // Technical name (unique, sanitized) - for foreign DBs, this is the queryable path like "attached_db.schema.table"
@@ -705,7 +706,8 @@ export const listAllTables = async (
         !errorMsg.includes('does not exist') &&
         !errorMsg.includes('permission')
       ) {
-        console.warn(
+        const logger = await getLogger();
+        logger.warn(
           `[ViewRegistry] Failed to query database ${dbName}: ${errorMsg}`,
         );
       }
@@ -771,7 +773,8 @@ export const cleanupOrphanedTempTables = async (
     }
   } catch (error) {
     // Log but don't throw
-    console.warn('[ViewRegistry] Failed to cleanup temp tables:', error);
+    const logger = await getLogger();
+    logger.warn('[ViewRegistry] Failed to cleanup temp tables:', error);
   }
 };
 

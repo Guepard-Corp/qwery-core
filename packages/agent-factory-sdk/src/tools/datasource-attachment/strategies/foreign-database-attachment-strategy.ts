@@ -8,6 +8,7 @@ import {
   getSupportedProviders,
 } from '../../provider-registry';
 import { getDatasourceDatabaseName } from '../../datasource-name-utils';
+import { getLogger } from '@qwery/shared/logger';
 
 export class ForeignDatabaseAttachmentStrategy implements AttachmentStrategy {
   canHandle(_provider: string): boolean {
@@ -87,7 +88,8 @@ export class ForeignDatabaseAttachmentStrategy implements AttachmentStrategy {
     // Attach the foreign database
     try {
       await conn.run(attachQuery);
-      console.log(
+      const logger = await getLogger();
+      logger.debug(
         `[ForeignDatabaseAttach] Attached ${attachedDatabaseName} (${mapping.duckdbType})`,
       );
     } catch (error) {
@@ -176,7 +178,8 @@ export class ForeignDatabaseAttachmentStrategy implements AttachmentStrategy {
           data_type: string;
         }>;
         const columnsTime = performance.now() - columnsStartTime;
-        console.log(
+        const logger = await getLogger();
+        logger.debug(
           `[ForeignDatabaseAttach] [PERF] Batch column query took ${columnsTime.toFixed(2)}ms (${allColumns.length} columns for ${userTables.length} tables)`,
         );
 
@@ -195,7 +198,8 @@ export class ForeignDatabaseAttachmentStrategy implements AttachmentStrategy {
     } catch (error) {
       // If batch query fails, fall back to individual DESCRIBE queries
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `[ForeignDatabaseAttach] Batch column query failed, falling back to individual DESCRIBE: ${errorMsg}`,
       );
     }
@@ -265,7 +269,8 @@ export class ForeignDatabaseAttachmentStrategy implements AttachmentStrategy {
       } catch (error) {
         // Log error but continue with other tables
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(
+        const logger = await getLogger();
+        logger.error(
           `[ForeignDatabaseAttach] Error processing table ${schemaName}.${tableName}: ${errorMsg}`,
         );
       }

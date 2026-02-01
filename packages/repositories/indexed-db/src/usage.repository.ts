@@ -59,6 +59,7 @@ export class UsageRepository extends IUsageRepository {
   private deserialize(data: Record<string, unknown>): Usage {
     return {
       ...data,
+      cost: (data.cost as number) ?? 0,
     } as Usage;
   }
 

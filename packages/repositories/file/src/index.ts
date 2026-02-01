@@ -6,6 +6,7 @@ export { NotebookRepository } from './notebook.repository.js';
 export { ConversationRepository } from './conversation.repository.js';
 export { MessageRepository } from './message.repository.js';
 export { UsageRepository } from './usage.repository.js';
+export { TodoRepository } from './todo.repository.js';
 
 export { NotFoundError, read, write, update, remove, list } from './storage.js';
 export { getStorageDir, setStorageDir, resetStorageDir } from './path.js';

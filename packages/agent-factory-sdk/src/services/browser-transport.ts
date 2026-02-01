@@ -6,6 +6,7 @@ import {
 } from 'ai';
 import { FactoryAgent } from '../agents/factory-agent';
 import { Repositories } from '@qwery/domain/repositories';
+import { getLogger } from '@qwery/shared/logger';
 
 type BrowserTransportOptions = {
   conversationSlug: string;
@@ -90,7 +91,8 @@ export class BrowserChatTransport implements ChatTransport<UIMessage> {
                   controller.enqueue(parsed);
                 } catch (parseError) {
                   // Skip invalid JSON
-                  console.warn('Failed to parse SSE data:', data, parseError);
+                  const logger = await getLogger();
+                  logger.warn('Failed to parse SSE data:', data, parseError);
                 }
               }
             }

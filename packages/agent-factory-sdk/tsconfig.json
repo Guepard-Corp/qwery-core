@@ -4,6 +4,7 @@
     "skipLibCheck": true,
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "baseUrl": ".",
+    "lib": ["ES2023", "dom", "dom.iterable"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "paths": {}

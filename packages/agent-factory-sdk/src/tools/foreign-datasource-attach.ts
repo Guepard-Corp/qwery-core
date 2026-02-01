@@ -3,6 +3,7 @@ import type { SimpleSchema } from '@qwery/domain/entities';
 import type { DuckDBInstance } from '@duckdb/node-api';
 import { datasourceAttachmentService } from './datasource-attachment-service';
 import { ForeignDatabaseAttachmentStrategy } from './datasource-attachment/strategies/foreign-database-attachment-strategy';
+import { getLogger } from '@qwery/shared/logger';
 
 // Connection type from DuckDB instance
 type Connection = Awaited<ReturnType<DuckDBInstance['connect']>>;
@@ -99,7 +100,8 @@ export async function attachAllForeignDatasourcesToConnection(opts: {
           !errorMsg.includes('already attached') &&
           !errorMsg.includes('already exists')
         ) {
-          console.warn(
+          const logger = await getLogger();
+          logger.warn(
             `[ReadDataAgent] Failed to attach datasource ${datasource.id}: ${errorMsg}`,
           );
         }
@@ -107,7 +109,8 @@ export async function attachAllForeignDatasourcesToConnection(opts: {
     }
   } catch (error) {
     // Log but don't fail - query might still work with other datasources
-    console.warn(
+    const logger = await getLogger();
+    logger.warn(
       '[ForeignDatasourceAttach] Failed to load datasources for attachment:',
       error,
     );

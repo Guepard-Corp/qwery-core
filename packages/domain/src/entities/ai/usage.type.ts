@@ -37,6 +37,7 @@ export const UsageSchema = z.object({
     .number()
     .describe('The total number of cached input tokens used')
     .default(0),
+  cost: z.number().describe('The cost in USD for this usage').default(0),
   contextSize: z
     .number()
     .describe('The used context size of the model')
@@ -79,6 +80,8 @@ export class UsageEntity extends Entity<number, typeof UsageSchema> {
   public reasoningTokens!: number;
   @Expose()
   public cachedInputTokens!: number;
+  @Expose()
+  public cost!: number;
   @Expose()
   public contextSize!: number;
 

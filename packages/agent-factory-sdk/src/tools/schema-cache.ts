@@ -3,6 +3,7 @@ import type { DatasourceMetadata } from '@qwery/domain/entities';
 import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
 import { getDatasourceType } from './datasource-loader';
 import { getTableNamingFormat } from './table-naming-utils';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface ColumnMetadata {
   columnName: string;
@@ -61,13 +62,14 @@ export class SchemaCacheManager {
       datasourceProviderMap,
     });
 
-    console.log(
+    const logger = await getLogger();
+    logger.debug(
       `[SchemaCache] Transformed metadata: ${schemas.size} schema(s) found, looking for database: ${databaseName}`,
     );
-    console.log(
+    logger.debug(
       `[SchemaCache] Schema keys: ${Array.from(schemas.keys()).join(', ')}`,
     );
-    console.log(
+    logger.debug(
       `[SchemaCache] Datasource database map: ${Array.from(
         datasourceDatabaseMap.entries(),
       )
@@ -127,13 +129,13 @@ export class SchemaCacheManager {
         });
         if (hasMatchingTable) {
           matchesDatabase = true;
-          console.log(
+          logger.debug(
             `[SchemaCache] Found DuckDB-native provider (${provider}) tables in ${dbName} database matching datasource ID`,
           );
         }
       }
 
-      console.log(
+      logger.debug(
         `[SchemaCache] Checking schema key: ${schemaKey} (dbName: ${dbName}, expected: ${databaseName}, matches: ${matchesDatabase})`,
       );
 
@@ -169,7 +171,7 @@ export class SchemaCacheManager {
               queryTablePath = `${datasourceName}.main.${baseTableName}`;
               displayTableName = tableName; // Keep the display format from transform service
 
-              console.log(
+              logger.debug(
                 `[SchemaCache] ClickHouse table: display="${displayTableName}", query="${queryTablePath}" (display schema: ${displaySchema})`,
               );
             }
@@ -191,11 +193,11 @@ export class SchemaCacheManager {
               this.queryPathMap = new Map();
             }
             this.queryPathMap.set(displayTableName, queryTablePath);
-            console.log(
+            logger.debug(
               `[SchemaCache] Stored query path mapping: ${displayTableName} -> ${queryTablePath}`,
             );
           } else {
-            console.log(
+            logger.debug(
               `[SchemaCache] No query path mapping needed: display="${displayTableName}", query="${queryTablePath || 'N/A'}"`,
             );
           }
@@ -211,16 +213,16 @@ export class SchemaCacheManager {
 
         if (schemaCache.size > 0) {
           datasourceCache.set(cacheSchemaName, schemaCache);
-          console.log(
+          logger.debug(
             `[SchemaCache] Cached schema ${cacheSchemaName} with ${schemaCache.size} table(s)`,
           );
         } else {
-          console.log(
+          logger.debug(
             `[SchemaCache] Schema ${cacheSchemaName} has no tables, skipping`,
           );
         }
       } else {
-        console.log(
+        logger.debug(
           `[SchemaCache] Schema ${schemaKey} doesn't match datasource database ${databaseName}, skipping`,
         );
       }
@@ -232,7 +234,7 @@ export class SchemaCacheManager {
     this.providerMap.set(datasourceId, provider);
     this.databaseNameMap.set(datasourceId, databaseName);
 
-    console.log(
+    logger.debug(
       `[SchemaCache] ✓ Cached datasource ${datasourceId}: ${datasourceCache.size} schema(s), ${totalTables} table(s), ${totalColumns} column(s)`,
     );
   }
@@ -383,8 +385,10 @@ export class SchemaCacheManager {
       }
       return table.tableName;
     });
-    console.log(
-      `[SchemaCache] getAllTablePaths for ${datasourceId}: ${paths.length} paths, sample: ${paths.slice(0, 3).join(', ')}`,
+    getLogger().then((l) =>
+      l.debug(
+        `[SchemaCache] getAllTablePaths for ${datasourceId}: ${paths.length} paths, sample: ${paths.slice(0, 3).join(', ')}`,
+      ),
     );
     return paths;
   }
@@ -440,34 +444,46 @@ export class SchemaCacheManager {
    * Returns the query path if the display path has a mapping, otherwise returns the original path
    */
   getQueryPathForDisplayPath(displayPath: string): string | null {
-    console.log(
-      `[SchemaCache] getQueryPathForDisplayPath called with: ${displayPath}`,
+    getLogger().then((l) =>
+      l.debug(
+        `[SchemaCache] getQueryPathForDisplayPath called with: ${displayPath}`,
+      ),
     );
-    console.log(`[SchemaCache] queryPathMap size: ${this.queryPathMap.size}`);
+    getLogger().then((l) =>
+      l.debug(`[SchemaCache] queryPathMap size: ${this.queryPathMap.size}`),
+    );
     if (this.queryPathMap.size > 0) {
       const entries = Array.from(this.queryPathMap.entries()).slice(0, 5);
-      console.log(
-        `[SchemaCache] queryPathMap entries (first 5): ${entries.map(([k, v]) => `${k}->${v}`).join(', ')}${this.queryPathMap.size > 5 ? '...' : ''}`,
+      getLogger().then((l) =>
+        l.debug(
+          `[SchemaCache] queryPathMap entries (first 5): ${entries.map(([k, v]) => `${k}->${v}`).join(', ')}${this.queryPathMap.size > 5 ? '...' : ''}`,
+        ),
       );
     }
 
     // Check if this display path has a query path mapping
     const queryPath = this.queryPathMap.get(displayPath);
     if (queryPath) {
-      console.log(
-        `[SchemaCache] ✓ Found mapping: ${displayPath} -> ${queryPath}`,
+      getLogger().then((l) =>
+        l.debug(
+          `[SchemaCache] ✓ Found mapping: ${displayPath} -> ${queryPath}`,
+        ),
       );
       return queryPath;
     }
 
-    console.log(`[SchemaCache] ✗ No mapping found for ${displayPath}`);
+    getLogger().then((l) =>
+      l.debug(`[SchemaCache] ✗ No mapping found for ${displayPath}`),
+    );
     // If no mapping found, check if it's already a query path or doesn't need rewriting
     // For ClickHouse, display paths have schema != 'main', query paths have schema == 'main'
     const parts = displayPath.split('.');
     if (parts.length === 3 && parts[1] !== 'main') {
       // This is a display path but no mapping found - might not be ClickHouse
-      console.log(
-        `[SchemaCache] Path has schema '${parts[1]}' (not 'main'), but no mapping found`,
+      getLogger().then((l) =>
+        l.debug(
+          `[SchemaCache] Path has schema '${parts[1]}' (not 'main'), but no mapping found`,
+        ),
       );
       return null;
     }
@@ -483,11 +499,15 @@ export class SchemaCacheManager {
     if (cached) {
       const schemas = this.getSchemas(datasourceId);
       const tables = this.getTables(datasourceId);
-      console.log(
-        `[SchemaCache] ✓ Cache HIT for datasource ${datasourceId}: ${schemas.length} schema(s), ${tables.length} table(s)`,
+      getLogger().then((l) =>
+        l.debug(
+          `[SchemaCache] ✓ Cache HIT for datasource ${datasourceId}: ${schemas.length} schema(s), ${tables.length} table(s)`,
+        ),
       );
     } else {
-      console.log(`[SchemaCache] ✗ Cache MISS for datasource ${datasourceId}`);
+      getLogger().then((l) =>
+        l.debug(`[SchemaCache] ✗ Cache MISS for datasource ${datasourceId}`),
+      );
     }
     return cached;
   }
@@ -502,8 +522,10 @@ export class SchemaCacheManager {
     this.providerMap.delete(datasourceId);
     this.databaseNameMap.delete(datasourceId);
     if (hadCache) {
-      console.log(
-        `[SchemaCache] ✓ Invalidated cache for datasource: ${datasourceId}`,
+      getLogger().then((l) =>
+        l.debug(
+          `[SchemaCache] ✓ Invalidated cache for datasource: ${datasourceId}`,
+        ),
       );
     }
   }
@@ -588,13 +610,17 @@ export function getSchemaCache(conversationId: string): SchemaCacheManager {
   if (!cache) {
     cache = new SchemaCacheManager();
     conversationCaches.set(conversationId, cache);
-    console.log(
-      `[SchemaCache] Created new cache instance for conversation: ${conversationId}`,
+    getLogger().then((l) =>
+      l.debug(
+        `[SchemaCache] Created new cache instance for conversation: ${conversationId}`,
+      ),
     );
   } else {
     const cachedCount = cache.getDatasources().length;
-    console.log(
-      `[SchemaCache] Using existing cache for conversation ${conversationId}: ${cachedCount} datasource(s) cached`,
+    getLogger().then((l) =>
+      l.debug(
+        `[SchemaCache] Using existing cache for conversation ${conversationId}: ${cachedCount} datasource(s) cached`,
+      ),
     );
   }
   return cache;
@@ -608,8 +634,10 @@ export function clearSchemaCache(conversationId: string): void {
   if (cache) {
     const cachedCount = cache.getDatasources().length;
     cache.clear();
-    console.log(
-      `[SchemaCache] ✓ Cleared cache for conversation ${conversationId} (${cachedCount} datasource(s) removed)`,
+    getLogger().then((l) =>
+      l.debug(
+        `[SchemaCache] ✓ Cleared cache for conversation ${conversationId} (${cachedCount} datasource(s) removed)`,
+      ),
     );
   }
   conversationCaches.delete(conversationId);

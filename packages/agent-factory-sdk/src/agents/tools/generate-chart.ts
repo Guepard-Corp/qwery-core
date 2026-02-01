@@ -9,6 +9,7 @@ import { SELECT_CHART_TYPE_PROMPT } from '../prompts/select-chart-type.prompt';
 import { GENERATE_CHART_CONFIG_PROMPT } from '../prompts/generate-chart-config.prompt';
 import type { BusinessContext } from '../../tools/types/business-context.types';
 import { getSupportedChartTypes } from '../config/supported-charts';
+import { getLogger } from '@qwery/shared/logger';
 
 export interface QueryResults {
   rows: Array<Record<string, unknown>>;
@@ -78,7 +79,8 @@ export async function selectChartType(
     const result = await Promise.race([generatePromise, timeoutPromise]);
     return result.object;
   } catch (error) {
-    console.error('[selectChartType] ERROR:', error);
+    const logger = await getLogger();
+    logger.error('[selectChartType] ERROR:', error);
     // Fallback to first supported chart type if selection fails
     const supportedTypes = getSupportedChartTypes();
     const fallbackType = supportedTypes[0] || 'bar';
@@ -132,7 +134,8 @@ export async function generateChartConfig(
     const result = await Promise.race([generatePromise, timeoutPromise]);
     return result.object;
   } catch (error) {
-    console.error('[generateChartConfig] ERROR:', error);
+    const logger = await getLogger();
+    logger.error('[generateChartConfig] ERROR:', error);
     throw new Error(
       `Failed to generate chart configuration: ${
         error instanceof Error ? error.message : String(error)

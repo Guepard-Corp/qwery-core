@@ -14,6 +14,7 @@ export * from './task.type';
 export * from './tool.type';
 export * from './agent-session.type';
 export * from './usage.type';
+export * from './todo.type';
 export {
   WorkspaceSchema as AgentWorkspaceSchema,
   WorkspaceEntity as AgentWorkspaceEntity,

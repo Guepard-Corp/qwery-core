@@ -1,5 +1,6 @@
 import { generateText } from 'ai';
 import { resolveModel, getDefaultModel } from './model-resolver';
+import { getLogger } from '@qwery/shared/logger';
 
 const GENERATE_TITLE_PROMPT = (userMessage: string, agentResponse?: string) => {
   const basePrompt = `Based on the following conversation exchange, generate a concise, descriptive title for this conversation. The title should be:
@@ -50,7 +51,8 @@ export async function generateConversationTitle(
 
     return cleanTitle || 'New Conversation';
   } catch (error) {
-    console.error('[generateConversationTitle] Error:', error);
+    const logger = await getLogger();
+    logger.error('[generateConversationTitle] Error:', error);
     return 'New Conversation';
   }
 }

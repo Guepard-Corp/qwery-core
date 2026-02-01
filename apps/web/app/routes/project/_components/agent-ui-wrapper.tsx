@@ -70,6 +70,7 @@ const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
       totalTokens: acc.totalTokens + curr.totalTokens,
       reasoningTokens: acc.reasoningTokens + curr.reasoningTokens,
       cachedInputTokens: acc.cachedInputTokens + curr.cachedInputTokens,
+      cost: acc.cost + (curr.cost ?? 0),
       maxContextSize: Math.max(acc.maxContextSize, curr.contextSize),
       modelId: curr.model,
     }),
@@ -79,37 +80,41 @@ const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
       totalTokens: 0,
       reasoningTokens: 0,
       cachedInputTokens: 0,
+      cost: 0,
       maxContextSize: 128_000,
       modelId: '',
     },
   );
 
+  const usageObj: NonNullable<QweryContextProps['usage']> = {
+    inputTokens: aggregated.inputTokens,
+    outputTokens: aggregated.outputTokens,
+    totalTokens: aggregated.totalTokens,
+    reasoningTokens: aggregated.reasoningTokens,
+    cachedInputTokens: aggregated.cachedInputTokens,
+    inputTokenDetails: {
+      noCacheTokens: Math.max(
+        0,
+        aggregated.inputTokens - aggregated.cachedInputTokens,
+      ),
+      cacheReadTokens: aggregated.cachedInputTokens,
+      cacheWriteTokens: undefined,
+    },
+    outputTokenDetails: {
+      textTokens: Math.max(
+        0,
+        aggregated.outputTokens - aggregated.reasoningTokens,
+      ),
+      reasoningTokens: aggregated.reasoningTokens,
+    },
+  };
   return {
     usedTokens: aggregated.totalTokens,
     maxTokens: aggregated.maxContextSize,
     modelId: aggregated.modelId || undefined,
-    usage: {
-      inputTokens: aggregated.inputTokens,
-      outputTokens: aggregated.outputTokens,
-      totalTokens: aggregated.totalTokens,
-      reasoningTokens: aggregated.reasoningTokens,
-      cachedInputTokens: aggregated.cachedInputTokens,
-      inputTokenDetails: {
-        noCacheTokens: Math.max(
-          0,
-          aggregated.inputTokens - aggregated.cachedInputTokens,
-        ),
-        cacheReadTokens: aggregated.cachedInputTokens,
-        cacheWriteTokens: undefined,
-      },
-      outputTokenDetails: {
-        textTokens: Math.max(
-          0,
-          aggregated.outputTokens - aggregated.reasoningTokens,
-        ),
-        reasoningTokens: aggregated.reasoningTokens,
-      },
-    },
+    usage: { ...usageObj, cost: aggregated.cost } as NonNullable<
+      QweryContextProps['usage']
+    >,
   };
 };
 

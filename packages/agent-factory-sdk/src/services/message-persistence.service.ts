@@ -11,6 +11,7 @@ import {
   uiRoleToMessageRole,
   type UIMessageRole,
 } from '@qwery/shared/message-role-utils';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * Validates if a string is a valid UUID format
@@ -67,14 +68,16 @@ export class MessagePersistenceService {
         resolvedCreatedBy = createdBy;
       }
     } catch (error) {
-      console.error(
+      const logger = await getLogger();
+      logger.error(
         'Error resolving conversation for message persistence:',
         error,
       );
     }
 
     if (!resolvedCreatedBy) {
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `MessagePersistenceService: no valid createdBy resolved for conversation '${this.conversationSlug}', skipping persistence`,
       );
       return { errors: [] };
@@ -96,7 +99,8 @@ export class MessagePersistenceService {
               continue;
             }
           } catch (error) {
-            console.error('Error checking if message already exists:', error);
+            const logger = await getLogger();
+            logger.error('Error checking if message already exists:', error);
           }
         }
 
