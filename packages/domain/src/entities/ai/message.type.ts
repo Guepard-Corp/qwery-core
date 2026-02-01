@@ -10,17 +10,75 @@ export enum MessageRole {
   SYSTEM = 'system',
 }
 
+const MessageContentPartSchema = z
+  .object({
+    type: z.string(),
+    text: z.string().optional(),
+    state: z.string().optional(),
+  })
+  .passthrough();
+
+export const MessageContentSchema = z
+  .object({
+    id: z.string().optional(),
+    role: z.string().optional(),
+    parts: z.array(MessageContentPartSchema).optional(),
+  })
+  .passthrough();
+
+export type MessageContent = z.infer<typeof MessageContentSchema>;
+
+const TokensSchema = z
+  .object({
+    input: z.number(),
+    output: z.number(),
+    reasoning: z.number().optional(),
+    cache: z
+      .object({
+        read: z.number(),
+        write: z.number(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export const MessageMetadataSchema = z
+  .object({
+    error: z.unknown().optional(),
+    modelId: z.string().optional(),
+    providerId: z.string().optional(),
+    cost: z.number().optional(),
+    tokens: TokensSchema.optional(),
+    parentId: z.string().optional(),
+    finish: z.string().optional(),
+    summary: z.boolean().optional(),
+    path: z
+      .object({
+        cwd: z.string(),
+        root: z.string(),
+      })
+      .optional(),
+    agent: z.string().optional(),
+    model: z
+      .object({
+        providerID: z.string(),
+        modelID: z.string(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export type MessageMetadata = z.infer<typeof MessageMetadataSchema>;
+
 export const MessageSchema = z.object({
   id: z.string().uuid().describe('The unique identifier for the action'),
   conversationId: z
     .string()
     .uuid()
     .describe('The unique identifier for the conversation'),
-  content: z.record(z.string(), z.any()).describe('The content of the message'),
+  content: MessageContentSchema.describe('The content of the message'),
   role: z.nativeEnum(MessageRole).describe('The role of the message'),
-  metadata: z
-    .record(z.string(), z.any())
-    .describe('The metadata of the message'),
+  metadata: MessageMetadataSchema.describe('The metadata of the message'),
   createdAt: z.date().describe('The date and time the message was created'),
   updatedAt: z
     .date()
@@ -38,11 +96,11 @@ export class MessageEntity extends Entity<string, typeof MessageSchema> {
   @Expose()
   public conversationId!: string;
   @Expose()
-  public content!: Record<string, unknown>;
+  public content!: MessageContent;
   @Expose()
   public role!: MessageRole;
   @Expose()
-  public metadata!: Record<string, unknown>;
+  public metadata!: MessageMetadata;
   @Expose()
   public createdAt!: Date;
   @Expose()
