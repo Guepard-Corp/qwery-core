@@ -279,6 +279,7 @@ function S3FieldsGrid({
 }) {
   const provider = useWatch({ control, name: 'provider', defaultValue: 'aws' });
   const showEndpoint = provider !== 'aws';
+  const isDigitalOcean = provider === 'digitalocean';
 
   return (
     <div className="grid gap-5 p-1">
@@ -337,12 +338,14 @@ function S3FieldsGrid({
         name="aws_access_key_id"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel className={LABEL_CLASS}>Access Key ID</FormLabel>
+            <FormLabel className={LABEL_CLASS}>
+              {isDigitalOcean ? 'Spaces Access Key ID' : 'Access Key ID'}
+            </FormLabel>
             <FormControl>
               <Input
                 {...field}
                 value={typeof field.value === 'string' ? field.value : ''}
-                placeholder="AWS_ACCESS_KEY_ID"
+                placeholder={isDigitalOcean ? 'DO00...' : 'AWS_ACCESS_KEY_ID'}
                 autoComplete="off"
                 className="bg-background/50"
               />
@@ -356,14 +359,18 @@ function S3FieldsGrid({
         name="aws_secret_access_key"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel className={LABEL_CLASS}>Secret Access Key</FormLabel>
+            <FormLabel className={LABEL_CLASS}>
+              {isDigitalOcean ? 'Spaces Secret Key' : 'Secret Access Key'}
+            </FormLabel>
             <FormControl>
               <PasswordInput
                 id="s3-secret-key"
                 label=""
                 value={typeof field.value === 'string' ? field.value : ''}
                 onChange={field.onChange}
-                placeholder="AWS_SECRET_ACCESS_KEY"
+                placeholder={
+                  isDigitalOcean ? 'Spaces secret key' : 'AWS_SECRET_ACCESS_KEY'
+                }
               />
             </FormControl>
             <FormMessage />
@@ -397,12 +404,18 @@ function S3FieldsGrid({
           name="endpoint_url"
           render={({ field }) => (
             <FormItem className="space-y-2">
-              <FormLabel className={LABEL_CLASS}>Endpoint URL</FormLabel>
+              <FormLabel className={LABEL_CLASS}>
+                {isDigitalOcean ? 'Endpoint URL (optional)' : 'Endpoint URL'}
+              </FormLabel>
               <FormControl>
                 <Input
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
-                  placeholder="https://nyc3.digitaloceanspaces.com"
+                  placeholder={
+                    isDigitalOcean
+                      ? 'https://fra1.digitaloceanspaces.com'
+                      : 'https://nyc3.digitaloceanspaces.com'
+                  }
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -417,12 +430,14 @@ function S3FieldsGrid({
         name="region"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel className={LABEL_CLASS}>Region</FormLabel>
+            <FormLabel className={LABEL_CLASS}>
+              {isDigitalOcean ? 'Spaces region' : 'Region'}
+            </FormLabel>
             <FormControl>
               <Input
                 {...field}
                 value={typeof field.value === 'string' ? field.value : ''}
-                placeholder="us-east-1"
+                placeholder={isDigitalOcean ? 'fra1' : 'us-east-1'}
                 autoComplete="off"
                 className="bg-background/50"
               />
@@ -436,12 +451,14 @@ function S3FieldsGrid({
         name="bucket"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel className={LABEL_CLASS}>Bucket</FormLabel>
+            <FormLabel className={LABEL_CLASS}>
+              {isDigitalOcean ? 'Space name' : 'Bucket'}
+            </FormLabel>
             <FormControl>
               <Input
                 {...field}
                 value={typeof field.value === 'string' ? field.value : ''}
-                placeholder="my-bucket"
+                placeholder={isDigitalOcean ? 'qwery' : 'my-bucket'}
                 autoComplete="off"
                 className="bg-background/50"
               />

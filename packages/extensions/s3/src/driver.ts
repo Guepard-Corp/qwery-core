@@ -37,8 +37,14 @@ const ConfigSchema = z
   })
   .refine(
     (data) =>
-      data.provider === 'aws' || (data.endpoint_url && data.endpoint_url.length > 0),
-    { message: 'endpoint_url is required for DigitalOcean, MinIO, and Other', path: ['endpoint_url'] },
+      data.provider === 'aws' ||
+      (data.endpoint_url && data.endpoint_url.length > 0) ||
+      (data.provider === 'digitalocean' && data.region?.length > 0),
+    {
+      message:
+        'Endpoint URL required for non-AWS, or set region for DigitalOcean',
+      path: ['endpoint_url'],
+    },
   )
   .transform((data) => {
     const trimmedPrefix = (data.prefix ?? '').replace(/^\/+|\/+$/g, '');
@@ -49,9 +55,15 @@ const ConfigSchema = z
       includes.length > 0 ? (includes[0] ?? defaultGlob).replace(/^\/+/, '') : defaultGlob;
     const pathPart = trimmedPrefix ? `${trimmedPrefix}/${includeGlob}` : includeGlob;
     const urlPattern = `s3://${data.bucket}/${pathPart}`;
-    const cacheKey = `${data.provider}|${data.region}|${data.endpoint_url ?? ''}|${data.aws_session_token ?? ''}|${data.bucket}|${trimmedPrefix}|${data.format}|${includeGlob}`;
+    const endpointUrl =
+      data.endpoint_url?.trim() ||
+      (data.provider === 'digitalocean' && data.region
+        ? `https://${data.region}.digitaloceanspaces.com`
+        : undefined);
+    const cacheKey = `${data.provider}|${data.region}|${endpointUrl ?? ''}|${data.aws_session_token ?? ''}|${data.bucket}|${trimmedPrefix}|${data.format}|${includeGlob}`;
     return {
       ...data,
+      endpoint_url: endpointUrl,
       prefix: trimmedPrefix,
       includeGlob,
       urlPattern,
@@ -83,9 +95,22 @@ async function configureS3Connection(
   const sessionToken = config.aws_session_token?.trim()
     ? escapeSingleQuotes(config.aws_session_token.trim())
     : null;
-  const endpoint = config.endpoint_url?.trim()
-    ? escapeSingleQuotes(config.endpoint_url.trim())
+  const endpointRaw = config.endpoint_url?.trim();
+  let endpointHost: string | null = endpointRaw
+    ? endpointRaw.replace(/^https?:\/\//, '').split('/')[0] ?? null
     : null;
+  if (endpointHost && config.provider === 'digitalocean') {
+    const parts = endpointHost.split('.');
+    if (
+      parts.length === 4 &&
+      parts[2] === 'digitaloceanspaces' &&
+      parts[3] === 'com'
+    ) {
+      endpointHost = parts.slice(1).join('.');
+    }
+  }
+  if (endpointHost) endpointHost = escapeSingleQuotes(endpointHost);
+  const isDigitalOcean = config.provider === 'digitalocean';
   const parts = [
     `TYPE s3`,
     `PROVIDER config`,
@@ -94,9 +119,9 @@ async function configureS3Connection(
     `REGION '${region}'`,
   ];
   if (sessionToken) parts.push(`SESSION_TOKEN '${sessionToken}'`);
-  if (endpoint) {
-    parts.push(`ENDPOINT '${endpoint}'`);
-    parts.push(`URL_STYLE 'path'`);
+  if (endpointHost) {
+    parts.push(`ENDPOINT '${endpointHost}'`);
+    parts.push(`URL_STYLE '${isDigitalOcean ? 'vhost' : 'path'}'`);
   }
   await conn.run(
     `CREATE OR REPLACE SECRET ${S3_SECRET_NAME} (${parts.join(', ')});`,
