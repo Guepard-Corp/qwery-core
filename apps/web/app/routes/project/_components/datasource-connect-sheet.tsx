@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Datasource } from '@qwery/domain/entities';
 import type { DatasourcePreviewRef } from './datasource-preview';
 
 import { Pencil, Shuffle, X } from 'lucide-react';
@@ -37,6 +38,7 @@ export interface DatasourceConnectSheetProps {
   extensionMeta: DatasourceExtension;
   onSuccess: () => void;
   onCancel: () => void;
+  existingDatasource?: Datasource;
   className?: string;
 }
 
@@ -48,13 +50,14 @@ export function DatasourceConnectSheet({
   extensionMeta,
   onSuccess,
   onCancel,
+  existingDatasource,
   className,
 }: DatasourceConnectSheetProps) {
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const [actionsReady, setActionsReady] = useState(false);
 
-  const [datasourceName, setDatasourceName] = useState(() =>
-    generateRandomName(),
+  const [datasourceName, setDatasourceName] = useState(
+    () => existingDatasource?.name ?? generateRandomName(),
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const [isHoveringName, setIsHoveringName] = useState(false);
@@ -69,11 +72,15 @@ export function DatasourceConnectSheet({
   const extension = useGetExtension(extensionId);
 
   useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- sync name when sheet opens (create vs edit) */
+    if (existingDatasource?.name) {
+      setDatasourceName(existingDatasource.name);
+    } else {
       setDatasourceName(generateRandomName());
     }
-  }, [open, extensionId]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [open, extensionId, existingDatasource?.name]);
 
   useEffect(() => {
     if (isEditingName && titleInputRef.current) {
@@ -110,11 +117,24 @@ export function DatasourceConnectSheet({
     setDatasourceName(generateRandomName());
   }, []);
 
-  const hasUnsavedChanges =
-    formValues !== null &&
-    Object.values(formValues).some(
-      (v) => v !== undefined && v !== null && v !== '',
+  const hasUnsavedChanges = useMemo(() => {
+    if (existingDatasource) {
+      const nameChanged =
+        datasourceName.trim() !== (existingDatasource.name ?? '').trim();
+      const configChanged =
+        formValues != null &&
+        existingDatasource.config != null &&
+        JSON.stringify(formValues) !==
+          JSON.stringify(existingDatasource.config);
+      return nameChanged || configChanged;
+    }
+    return (
+      formValues !== null &&
+      Object.values(formValues).some(
+        (v) => v !== undefined && v !== null && v !== '',
+      )
     );
+  }, [existingDatasource, datasourceName, formValues]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && hasUnsavedChanges) {
@@ -180,7 +200,9 @@ export function DatasourceConnectSheet({
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex min-w-0 items-baseline gap-2">
                   <span className="text-2xl font-semibold tracking-tight">
-                    Connect to {extensionMeta.name}
+                    {existingDatasource
+                      ? `Edit ${extensionMeta.name} connection`
+                      : `Connect to ${extensionMeta.name}`}
                   </span>
                   <DatasourceDocsLink
                     docsUrl={extension.data?.docsUrl}
@@ -204,16 +226,18 @@ export function DatasourceConnectSheet({
                         className="min-w-[120px] flex-1 border-0 bg-transparent px-0 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         placeholder="Name..."
                       />
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 shrink-0"
-                        onClick={handleRandomizeName}
-                        aria-label="Randomize name"
-                      >
-                        <Shuffle className="h-4 w-4" />
-                      </Button>
+                      {!existingDatasource && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          onClick={handleRandomizeName}
+                          aria-label="Randomize name"
+                        >
+                          <Shuffle className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="icon"
@@ -230,19 +254,21 @@ export function DatasourceConnectSheet({
                       <span className="text-foreground min-w-0 truncate text-lg font-medium">
                         {datasourceName || 'Untitled datasource'}
                       </span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className={cn(
-                          'h-8 w-8 shrink-0 transition-opacity',
-                          isHoveringName ? 'opacity-100' : 'opacity-0',
-                        )}
-                        onClick={handleRandomizeName}
-                        aria-label="Randomize name"
-                      >
-                        <Shuffle className="h-4 w-4" />
-                      </Button>
+                      {!existingDatasource && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className={cn(
+                            'h-8 w-8 shrink-0 transition-opacity',
+                            isHoveringName ? 'opacity-100' : 'opacity-0',
+                          )}
+                          onClick={handleRandomizeName}
+                          aria-label="Randomize name"
+                        >
+                          <Shuffle className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="icon"
@@ -284,6 +310,7 @@ export function DatasourceConnectSheet({
                   onDatasourceNameChange={setDatasourceName}
                   onFormValuesChange={setFormValues}
                   onTestConnectionLoadingChange={setIsTestConnectionLoading}
+                  existingDatasource={existingDatasource}
                 />
               </div>
               {formValues && extension.data?.supportsPreview && (

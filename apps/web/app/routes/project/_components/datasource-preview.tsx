@@ -501,17 +501,20 @@ export const DatasourcePreview = forwardRef<
                 >
                   <RefreshCw className="size-3.5" />
                 </Button>
-                {displayUrl && (
-                  <a
-                    href={displayUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 flex h-7 w-7 items-center justify-center rounded border backdrop-blur-sm transition-colors"
-                    title="Open in new tab"
-                  >
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                )}
+                {displayUrl &&
+                  !(
+                    isGoogleSheets && publicationStatus === 'not-published'
+                  ) && (
+                    <a
+                      href={displayUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 flex h-7 w-7 items-center justify-center rounded border backdrop-blur-sm transition-colors"
+                      title="Open in new tab"
+                    >
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  )}
                 {(isJsonOnline ||
                   isParquetOnline ||
                   (dsType === 'gsheet' && !!jsonData)) &&
