@@ -36,14 +36,18 @@ export default function QweryContext(props: QweryContextProps) {
         ? 'text-orange-500'
         : '';
 
+  const hoverOpen = percentage > 0 ? undefined : false;
+
   return (
     <Context
       maxTokens={maxTokens}
       modelId={props.modelId}
+      open={hoverOpen}
       usage={props.usage}
       usedTokens={usedTokens}
     >
       <ContextTrigger className={colorClass} />
+      {percentage > 0 && (
       <ContextContent>
         <ContextContentHeader />
         <ContextContentBody>
@@ -54,6 +58,7 @@ export default function QweryContext(props: QweryContextProps) {
         </ContextContentBody>
         <ContextContentFooter />
       </ContextContent>
+      )}
     </Context>
   );
 }
