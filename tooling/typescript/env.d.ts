@@ -15,6 +15,3 @@ interface ImportMetaEnv {
   VITE_LANGUAGE_PRIORITY: string;
 }
 
-declare module '@qwery/extension-s3';
-
-

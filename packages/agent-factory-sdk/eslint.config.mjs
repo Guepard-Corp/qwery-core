@@ -1,3 +1,3 @@
 import eslintConfigBase from '@qwery/eslint-config/base.js';
 
-export default eslintConfigBase;
+export default [{ ignores: ['scripts/**'] }, ...eslintConfigBase];
