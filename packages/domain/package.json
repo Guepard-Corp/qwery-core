@@ -14,7 +14,6 @@
   },
   "exports": {
     "./entities": {
-      "node": "./dist/entities/index.js",
       "types": "./src/entities/index.ts",
       "default": "./src/entities/index.ts"
     },
