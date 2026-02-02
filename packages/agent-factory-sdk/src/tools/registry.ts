@@ -3,7 +3,7 @@ import { z } from 'zod/v3';
 import type { Tool } from 'ai';
 import type { ToolInfo, ToolContext, Model, ToolExecute } from './tool';
 import type { AgentInfoWithId } from '../agents/agent';
-import { AskAgent, QueryAgent, CompactionAgent } from '../agents';
+import { AskAgent, QueryAgent, CompactionAgent, SummaryAgent } from '../agents';
 import { TodoWriteTool, TodoReadTool } from './todo';
 import { WebFetchTool } from './webfetch';
 import { GetSchemaTool } from './get-schema';
@@ -33,6 +33,7 @@ function registerAgents() {
   agents.set(AskAgent.id, AskAgent);
   agents.set(QueryAgent.id, QueryAgent);
   agents.set(CompactionAgent.id, CompactionAgent);
+  agents.set(SummaryAgent.id, SummaryAgent);
 }
 
 registerTools();

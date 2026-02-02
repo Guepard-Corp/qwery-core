@@ -5,6 +5,7 @@ import {
   SYSTEM_PROMPT_ANTHROPIC,
   SYSTEM_PROMPT_GEMINI,
   SYSTEM_PROMPT_OPENAI,
+  SYSTEM_PROMPT_OPENAI_CODEX,
 } from '../agents/prompts';
 
 export type SystemContext = {
@@ -19,13 +20,12 @@ export type SystemContext = {
  */
 export const SystemPrompt = {
   instructions(): string {
-    return '';
+    return SYSTEM_PROMPT_OPENAI_CODEX;
   },
 
   provider(model: Model): string {
     const id = (model.api?.id ?? model.apiId ?? model.id).toLowerCase();
-    if (id.includes('gpt-5') || id.includes('gpt-4'))
-      return SYSTEM_PROMPT_OPENAI;
+    if (id.includes('gpt-5')) return SYSTEM_PROMPT_OPENAI_CODEX;
     if (id.includes('gpt-') || id.includes('o1') || id.includes('o3'))
       return SYSTEM_PROMPT_OPENAI;
     if (id.includes('gemini-')) return SYSTEM_PROMPT_GEMINI;
