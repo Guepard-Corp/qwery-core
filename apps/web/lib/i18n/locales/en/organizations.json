@@ -18,6 +18,7 @@
   "name_placeholder": "Enter organization name",
   "description": "Description",
   "description_placeholder": "Enter project description (optional)",
+  "optional": "optional",
   "billing_email_label": "Billing Email",
   "billing_email_placeholder": "billing@example.com",
   "create_button": "Create",

@@ -1,8 +1,10 @@
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { useConversation } from '~/lib/mutations/use-conversation';
+import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
 import { useState, useMemo } from 'react';
@@ -17,14 +19,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
 import { Button } from '@qwery/ui/button';
-import {
-  GetConversationsByProjectIdService,
-  GetProjectBySlugService,
-} from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
-
-import type { Route } from '~/types/app/routes/project/conversation/+types/index';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -49,57 +43,29 @@ function formatRelativeTime(date: Date): string {
   return `${day} ${month} ${year} at ${timeStr}`;
 }
 
-export async function loader(args: Route.LoaderArgs) {
-  const slug = args.params.slug;
-  if (!slug) {
-    return { project: null, conversations: [] };
-  }
-
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getProjectService = new GetProjectBySlugService(repositories.project);
-  const getConversationsService = new GetConversationsByProjectIdService(
-    repositories.conversation,
-  );
-
-  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
-    null;
-
-  try {
-    project = await getProjectService.execute(slug);
-  } catch (error) {
-    if (error instanceof DomainException) {
-      return { project: null, conversations: [] };
-    }
-    throw error;
-  }
-
-  const conversations = project
-    ? await getConversationsService.execute(project.id)
-    : [];
-
-  return {
-    project,
-    conversations,
-  };
-}
-
-export default function ConversationIndexPage(props: Route.ComponentProps) {
-  const { workspace, repositories } = useWorkspace();
+export default function ConversationIndexPage() {
+  const { repositories, workspace } = useWorkspace();
+  const { projectId, project, isLoading: isProjectLoading } = useProject();
   const navigate = useNavigate();
-  const { project, conversations } = props.loaderData;
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
 
+  const { data: allConversations = [], isLoading: isLoadingConversations } =
+    useGetConversationsByProject(
+      repositories.conversation,
+      projectId ?? undefined,
+    );
+
   const sortedConversations = useMemo(
     () =>
-      [...(conversations ?? [])].sort((a, b) => {
+      [...allConversations].sort((a, b) => {
         const dateA =
           a.updatedAt instanceof Date ? a.updatedAt : new Date(a.updatedAt);
         const dateB =
           b.updatedAt instanceof Date ? b.updatedAt : new Date(b.updatedAt);
         return dateB.getTime() - dateA.getTime();
       }),
-    [conversations],
+    [allConversations],
   );
 
   const paginatedConversations = useMemo(() => {
@@ -122,7 +88,7 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
         `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     },
-    project?.id ?? workspace.projectId,
+    projectId,
   );
 
   const handleConversationClick = (conv: { slug: string }) => {
@@ -130,7 +96,7 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
   };
 
   const handleNewChat = () => {
-    if (!project) {
+    if (!projectId || !project) {
       toast.error('Project not found');
       return;
     }
@@ -146,7 +112,7 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
     }
 
     createConversationMutation.mutate({
-      projectId: project.id,
+      projectId,
       taskId: uuidv4(),
       title: 'New Conversation',
       seedMessage: '',
@@ -154,6 +120,8 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
       createdBy: workspace.userId,
     });
   };
+
+  const isLoading = isLoadingConversations || isProjectLoading;
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] w-full flex-col items-center px-4 py-12">
@@ -275,7 +243,7 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
             size="lg"
             variant="outline"
             className="gap-2"
-            disabled={createConversationMutation.isPending || !project}
+            disabled={createConversationMutation.isPending || isLoading || !project}
           >
             <Plus className="size-4" />
             Start a new conversation

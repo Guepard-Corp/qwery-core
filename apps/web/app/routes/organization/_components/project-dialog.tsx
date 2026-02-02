@@ -264,18 +264,19 @@ export function ProjectDialog({
   }, [open, project, form]);
 
   const onSubmit = (data: ProjectFormData) => {
+    const description = data.description?.trim() || undefined;
     if (isEditing && project) {
       updateMutation.mutate({
         id: project.id,
         name: data.name,
-        description: data.description,
+        description,
         updatedBy: workspace.userId || 'system',
       });
     } else {
       createMutation.mutate({
         organizationId,
         name: data.name,
-        description: data.description,
+        description,
         createdBy: workspace.userId || 'system',
       });
     }
@@ -350,6 +351,9 @@ export function ProjectDialog({
                 <FormItem className="space-y-2.5">
                   <FormLabel className="text-sm font-medium">
                     <Trans i18nKey="organizations:description" />
+                    <span className="text-muted-foreground ml-1.5">
+                      (<Trans i18nKey="organizations:optional" />)
+                    </span>
                   </FormLabel>
                   <FormControl>
                     <Textarea

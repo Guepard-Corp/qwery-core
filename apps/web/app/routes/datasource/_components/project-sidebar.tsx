@@ -18,6 +18,7 @@ import { createNavigationConfig } from '~/config/project.navigation.config';
 import { createPath } from '~/config/qwery.navigation.config';
 import { Shortcuts } from '@qwery/ui/shortcuts';
 import { useTelemetry, PROJECT_EVENTS } from '@qwery/telemetry';
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import {
@@ -39,7 +40,8 @@ import { Loader2, Plus } from 'lucide-react';
 
 export function ProjectSidebar() {
   const navigate = useNavigate();
-  const { workspace, repositories } = useWorkspace();
+  const { projectId } = useProject();
+  const { repositories } = useWorkspace();
   const telemetry = useTelemetry();
   const params = useParams();
   const slug = params.slug as string;
@@ -47,7 +49,8 @@ export function ProjectSidebar() {
   const notebookRepository = repositories.notebook;
   const notebooks = useGetNotebooksByProjectId(
     notebookRepository,
-    workspace.projectId,
+    projectId ?? '',
+    { enabled: !!projectId },
   );
   const notebooksList = useMemo(() => notebooks?.data ?? [], [notebooks?.data]);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -74,7 +77,7 @@ export function ProjectSidebar() {
 
   const _handleDeleteNotebook = useCallback(
     async (notebook: NotebookOutput) => {
-      if (!workspace.projectId) {
+      if (!projectId) {
         toast.error('Unable to resolve project context for deletion');
         return;
       }
@@ -83,18 +86,18 @@ export function ProjectSidebar() {
         await deleteNotebookMutation.mutateAsync({
           id: notebook.id,
           slug: notebook.slug,
-          projectId: workspace.projectId,
+          projectId,
         });
         toast.success('Notebook deleted');
       } catch {
         // errors handled in mutation onError
       }
     },
-    [deleteNotebookMutation, workspace.projectId],
+    [deleteNotebookMutation, projectId],
   );
 
   const handleConfirmDeleteAll = useCallback(async () => {
-    if (!workspace.projectId || notebooksList.length === 0) {
+    if (!projectId || notebooksList.length === 0) {
       setShowDeleteAllDialog(false);
       return;
     }
@@ -105,7 +108,7 @@ export function ProjectSidebar() {
         await deleteNotebookMutation.mutateAsync({
           id: notebook.id,
           slug: notebook.slug,
-          projectId: workspace.projectId,
+          projectId,
         });
       }
       toast.success('All notebooks deleted');
@@ -116,7 +119,7 @@ export function ProjectSidebar() {
       setIsBulkDeleting(false);
       setShowDeleteAllDialog(false);
     }
-  }, [deleteNotebookMutation, notebooksList, workspace.projectId]);
+  }, [deleteNotebookMutation, notebooksList, projectId]);
 
   const generateNotebookTitle = useCallback(() => {
     const base = 'Untitled notebook';
@@ -137,17 +140,17 @@ export function ProjectSidebar() {
   }, [notebooksList]);
 
   const handleCreateNotebook = useCallback(() => {
-    if (!workspace.projectId) {
+    if (!projectId) {
       toast.error('Unable to resolve project context for notebook creation');
       return;
     }
     createNotebookMutation.mutate({
-      projectId: workspace.projectId,
+      projectId,
       title: generateNotebookTitle(),
     });
-  }, [createNotebookMutation, generateNotebookTitle, workspace.projectId]);
+  }, [createNotebookMutation, generateNotebookTitle, projectId]);
 
-  const _notebookGroupAction = workspace.projectId ? (
+  const _notebookGroupAction = projectId ? (
     <span
       className="flex h-full w-full items-center justify-center"
       onClick={(event) => {

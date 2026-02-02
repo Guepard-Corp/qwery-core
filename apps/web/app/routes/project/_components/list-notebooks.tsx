@@ -51,6 +51,7 @@ import {
 } from '@qwery/ui/table';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import type { NotebookOutput } from '@qwery/domain/usecases';
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 
@@ -68,7 +69,8 @@ export function ListNotebooks({
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
-  const { workspace, repositories } = useWorkspace();
+  const { projectId } = useProject();
+  const { repositories } = useWorkspace();
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) =>
@@ -167,9 +169,9 @@ export function ListNotebooks({
   };
 
   const handleCreateNotebook = () => {
-    if (!workspace.projectId) return;
+    if (!projectId) return;
     createNotebookMutation.mutate({
-      projectId: workspace.projectId,
+      projectId,
       title: 'Untitled notebook',
     });
   };

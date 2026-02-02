@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useRef } from 'react';
 import { ConversationHistory, useAgentStatus } from '@qwery/ui/ai';
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
 import { Conversation } from '@qwery/domain/entities';
@@ -17,14 +18,11 @@ import { toast } from 'sonner';
 export function ProjectConversationHistory() {
   const navigate = useNavigate();
   const { repositories, workspace } = useWorkspace();
+  const { projectId, projectSlug } = useProject();
   const location = useLocation();
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
   const { isProcessing, processingConversationSlug } = useAgentStatus();
 
-  const projectId = workspace.projectId as string | undefined;
-
-  const projectSlugMatch = location.pathname.match(/^\/prj\/([^/]+)/);
-  const projectSlug = projectSlugMatch?.[1];
   const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
   const currentConversationSlug = conversationSlugMatch?.[1];
 
@@ -43,7 +41,7 @@ export function ProjectConversationHistory() {
         `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     },
-    workspace.projectId as string | undefined,
+    projectId,
   );
 
   const updateConversationMutation = useUpdateConversation(

@@ -18,6 +18,7 @@ import {
 } from '@qwery/agent-factory-sdk';
 import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
 import { convertMessages } from '~/lib/utils/messages-converter';
+import { useProjectOptional } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
 import type { QweryContextProps } from '@qwery/ui/ai';
@@ -262,11 +263,13 @@ export const AgentUIWrapper = forwardRef<
       : conversationDatasources;
   }, [cellDatasource, pendingDatasources, conversationDatasources]);
 
-  // Fetch datasources for the current project
+  const projectContext = useProjectOptional();
+  const datasourceProjectId =
+    projectContext?.projectId ?? workspace.projectId ?? '';
   const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
-    workspace.projectId || '',
-    { enabled: !!workspace.projectId },
+    datasourceProjectId,
+    { enabled: !!datasourceProjectId },
   );
 
   // Fetch extension metadata for datasource icons

@@ -1,52 +1,21 @@
 import { useEffect, useState } from 'react';
 
-import {
-  GetNotebooksByProjectIdService,
-  GetProjectBySlugService,
-} from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
-
-import type { Route } from '~/types/app/routes/project/notebooks/+types/index';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { useProject } from '~/lib/context/project-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 
 import { ListNotebooks } from '../_components/list-notebooks';
 
-export async function loader(args: Route.LoaderArgs) {
-  const slug = args.params.slug;
-  if (!slug) {
-    return { project: null, notebooks: [] };
-  }
+export default function ProjectNotebooksPage() {
+  const { repositories } = useWorkspace();
+  const { projectId } = useProject();
 
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getProjectService = new GetProjectBySlugService(repositories.project);
-  const getNotebooksService = new GetNotebooksByProjectIdService(
+  const notebooks = useGetNotebooksByProjectId(
     repositories.notebook,
+    projectId ?? '',
+    { enabled: !!projectId },
   );
 
-  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
-    null;
-
-  try {
-    project = await getProjectService.execute(slug);
-  } catch (error) {
-    if (error instanceof DomainException) {
-      return { project: null, notebooks: [] };
-    }
-    throw error;
-  }
-
-  const notebooks = project
-    ? await getNotebooksService.execute(project.id)
-    : [];
-
-  return {
-    project,
-    notebooks,
-  };
-}
-
-export default function ProjectNotebooksPage(props: Route.ComponentProps) {
-  const { notebooks } = props.loaderData;
   const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
     [],
   );
@@ -87,7 +56,7 @@ export default function ProjectNotebooksPage(props: Route.ComponentProps) {
   return (
     <div className="flex h-full flex-col">
       <ListNotebooks
-        notebooks={notebooks ?? []}
+        notebooks={notebooks.data ?? []}
         unsavedNotebookSlugs={unsavedNotebookSlugs}
       />
     </div>
