@@ -30,6 +30,7 @@ import { Button } from '@qwery/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -87,8 +88,13 @@ const s3FormSchema = z
   .refine(
     (data) =>
       data.provider === 'aws' ||
-      (data.endpoint_url && data.endpoint_url.trim().length > 0),
-    { message: 'Endpoint URL required for non-AWS', path: ['endpoint_url'] },
+      (data.endpoint_url && data.endpoint_url.trim().length > 0) ||
+      (data.provider === 'digitalocean' && data.region?.trim().length > 0),
+    {
+      message:
+        'Endpoint URL required for non-AWS, or set region for DigitalOcean Spaces',
+      path: ['endpoint_url'],
+    },
   );
 
 type S3FormValues = z.infer<typeof s3FormSchema>;
@@ -127,6 +133,7 @@ function S3DatasourceForm({
   const watched = useWatch({ control: form.control });
   const provider = (watched?.provider as string) ?? 'aws';
   const showEndpoint = provider !== 'aws';
+  const isDigitalOcean = provider === 'digitalocean';
 
   useEffect(() => {
     onFormReady((watched ?? form.getValues()) as Record<string, unknown>);
@@ -181,16 +188,24 @@ function S3DatasourceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
-                  Endpoint URL
+                  {isDigitalOcean ? 'Endpoint URL (optional)' : 'Endpoint URL'}
                 </FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     value={typeof field.value === 'string' ? field.value : ''}
-                    placeholder="https://nyc3.digitaloceanspaces.com"
+                    placeholder={
+                      isDigitalOcean
+                        ? 'https://fra1.digitaloceanspaces.com'
+                        : 'https://nyc3.digitaloceanspaces.com'
+                    }
                     className="bg-background/50"
                   />
                 </FormControl>
+                <FormDescription className="text-muted-foreground text-xs">
+                  {isDigitalOcean &&
+                    'Leave empty to derive from region (https://<region>.digitaloceanspaces.com)'}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -203,13 +218,13 @@ function S3DatasourceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
-                  Bucket
+                  {isDigitalOcean ? 'Space name' : 'Bucket'}
                 </FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     value={typeof field.value === 'string' ? field.value : ''}
-                    placeholder="my-bucket"
+                    placeholder={isDigitalOcean ? 'qwery' : 'my-bucket'}
                     className="bg-background/50"
                   />
                 </FormControl>
@@ -223,13 +238,13 @@ function S3DatasourceForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
-                  Region
+                  {isDigitalOcean ? 'Spaces region' : 'Region'}
                 </FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     value={typeof field.value === 'string' ? field.value : ''}
-                    placeholder="us-east-1"
+                    placeholder={isDigitalOcean ? 'fra1' : 'us-east-1'}
                     className="bg-background/50"
                   />
                 </FormControl>
@@ -244,7 +259,7 @@ function S3DatasourceForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
-                Access Key ID
+                {isDigitalOcean ? 'Spaces Access Key ID' : 'Access Key ID'}
               </FormLabel>
               <FormControl>
                 <Input
@@ -266,7 +281,7 @@ function S3DatasourceForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
-                Secret Access Key
+                {isDigitalOcean ? 'Spaces Secret Key' : 'Secret Access Key'}
               </FormLabel>
               <FormControl>
                 <Input
@@ -542,8 +557,13 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         return 'Please select file format (Parquet or JSON)';
       }
       const s3Provider = config.provider as string | undefined;
-      if (s3Provider && s3Provider !== 'aws' && !config.endpoint_url) {
-        return 'Endpoint URL is required for DigitalOcean, MinIO, and Other';
+      if (
+        s3Provider &&
+        s3Provider !== 'aws' &&
+        !config.endpoint_url &&
+        !(s3Provider === 'digitalocean' && config.region)
+      ) {
+        return 'Endpoint URL required for MinIO/Other, or set region for DigitalOcean Spaces';
       }
     } else if (
       provider !== 'duckdb' &&
@@ -637,7 +657,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         values.aws_secret_access_key &&
         values.format;
       const providerOk =
-        values.provider === 'aws' || (values.provider && values.endpoint_url);
+        values.provider === 'aws' ||
+        (values.provider && values.endpoint_url) ||
+        (values.provider === 'digitalocean' && values.region);
       return !!(hasCreds && providerOk);
     }
     if (

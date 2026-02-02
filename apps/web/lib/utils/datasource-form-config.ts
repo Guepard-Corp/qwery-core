@@ -395,10 +395,12 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
       .refine(
         (c) =>
           (c.provider as string) === 'aws' ||
-          !!((c.provider as string) && (c.endpoint_url as string)?.trim()),
+          !!((c.provider as string) && (c.endpoint_url as string)?.trim()) ||
+          ((c.provider as string) === 'digitalocean' &&
+            (c.region as string)?.trim()),
         {
           message:
-            'Endpoint URL is required for DigitalOcean, MinIO, and Other',
+            'Endpoint URL required for non-AWS, or set region for DigitalOcean Spaces',
         },
       ),
     isValid: (v) => {
@@ -410,29 +412,42 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
         v.format;
       const providerOk =
         v.provider === 'aws' ||
-        (v.provider && (v.endpoint_url as string)?.trim());
+        (v.provider && (v.endpoint_url as string)?.trim()) ||
+        (v.provider === 'digitalocean' && v.region);
       return !!(hasCreds && providerOk);
     },
     getValidationError: (v) => {
-      if (!v.bucket) return 'Provide an S3 bucket name';
-      if (!v.region) return 'Provide an S3 region';
+      if (!v.bucket) return 'Provide an S3 bucket (or Space name)';
+      if (!v.region) return 'Provide an S3 region (or Spaces region)';
       if (!v.aws_access_key_id || !v.aws_secret_access_key)
         return 'Provide access key ID and secret access key';
       if (!v.format || !['parquet', 'json'].includes(v.format as string))
         return 'Select file format (Parquet or JSON)';
       const p = v.provider as string | undefined;
-      if (p && p !== 'aws' && !(v.endpoint_url as string)?.trim())
-        return 'Endpoint URL is required for DigitalOcean, MinIO, and Other';
+      if (
+        p &&
+        p !== 'aws' &&
+        !(v.endpoint_url as string)?.trim() &&
+        !(p === 'digitalocean' && (v.region as string)?.trim())
+      )
+        return 'Endpoint URL required for MinIO/Other, or set region for DigitalOcean Spaces';
       return null;
     },
     normalize: (c) => {
+      const p = (c.provider ?? 'aws') as string;
+      const region = (c.region ?? '') as string;
+      const endpointUrl =
+        (c.endpoint_url as string)?.trim() ||
+        (p === 'digitalocean' && region
+          ? `https://${region}.digitaloceanspaces.com`
+          : undefined);
       const normalized: Record<string, unknown> = {
         provider: c.provider ?? 'aws',
         aws_access_key_id: c.aws_access_key_id,
         aws_secret_access_key: c.aws_secret_access_key,
         aws_session_token: (c.aws_session_token as string)?.trim() || undefined,
         region: c.region,
-        endpoint_url: (c.endpoint_url as string)?.trim() || undefined,
+        endpoint_url: endpointUrl,
         bucket: c.bucket,
         prefix: (c.prefix as string)?.trim() || undefined,
         format: c.format ?? 'parquet',

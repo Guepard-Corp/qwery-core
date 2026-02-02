@@ -859,11 +859,11 @@
           },
           "region": {
             "type": "string",
-            "description": "Region (e.g. us-east-1)"
+            "description": "Region (e.g. us-east-1, or DigitalOcean Spaces region: fra1, nyc3)"
           },
           "endpoint_url": {
             "type": "string",
-            "description": "Custom endpoint (required for DigitalOcean, MinIO, other)",
+            "description": "Custom endpoint (required for MinIO/other). For DigitalOcean optional: omit to use https://<region>.digitaloceanspaces.com",
             "format": "uri"
           },
           "bucket": {
