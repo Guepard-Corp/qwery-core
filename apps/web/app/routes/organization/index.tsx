@@ -1,38 +1,57 @@
-import { useParams } from 'react-router';
-
 import { Trans } from '@qwery/ui/trans';
 
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetOrganization } from '~/lib/queries/use-get-organizations';
-import { useGetProjects } from '~/lib/queries/use-get-projects';
+import {
+  GetOrganizationBySlugService,
+  GetProjectsByOrganizationIdService,
+} from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
+
+import type { Route } from '~/types/app/routes/organization/+types/index';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListProjects } from './_components/list-projects';
 
-export default function OrganizationPage() {
-  const params = useParams();
+export async function loader({ params }: Route.LoaderArgs) {
   const slug = params.slug as string;
-  const { repositories } = useWorkspace();
-
-  const organization = useGetOrganization(repositories.organization, slug);
-  const projects = useGetProjects(
-    repositories.project,
-    organization.data?.id ?? '',
-  );
-  const isLoading = organization.isLoading || projects.isLoading;
-
-  if (isLoading) {
-    return (
-      <div className="p-2 lg:p-4">
-        <div className="flex items-center justify-center py-16">
-          <p className="text-muted-foreground">
-            <Trans i18nKey="organizations:loading" />
-          </p>
-        </div>
-      </div>
-    );
+  if (!slug) {
+    return { organization: null, projects: [] };
   }
 
-  if (!organization.data) {
+  const repositories = await getRepositoriesForLoader();
+  const getOrgService = new GetOrganizationBySlugService(
+    repositories.organization,
+  );
+  const getProjectsService = new GetProjectsByOrganizationIdService(
+    repositories.project,
+  );
+
+  let organization: Awaited<
+    ReturnType<GetOrganizationBySlugService['execute']>
+  > | null = null;
+
+  try {
+    organization = await getOrgService.execute(slug);
+  } catch (error) {
+    if (error instanceof DomainException) {
+      return { organization: null, projects: [] };
+    }
+    throw error;
+  }
+
+  const projects = organization
+    ? await getProjectsService.execute(organization.id)
+    : [];
+
+  return {
+    organization,
+    projects,
+  };
+}
+
+export default function OrganizationPage(props: Route.ComponentProps) {
+  const { organization, projects } = props.loaderData;
+
+  if (!organization) {
     return (
       <div className="p-2 lg:p-4">
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -50,8 +69,8 @@ export default function OrganizationPage() {
   return (
     <div className="h-full">
       <ListProjects
-        projects={projects.data ?? []}
-        organizationId={organization.data?.id ?? ''}
+        projects={projects ?? []}
+        organizationId={organization.id}
       />
     </div>
   );

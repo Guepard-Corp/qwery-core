@@ -55,7 +55,6 @@ export class CliContainer {
       this.workspaceModeService,
       this.repositories.organization,
       this.repositories.project,
-      this.repositories.notebook,
     ),
     getProjects: new GetProjectsByOrganizationIdService(
       this.repositories.project,

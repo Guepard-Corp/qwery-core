@@ -25,75 +25,13 @@ type Pages = {
       "*": string;
     };
   };
-  "/api/chat/:slug": {
-    params: {
-      "slug": string;
-    };
-  };
-  "/api/organizations": {
+  "/api/init": {
     params: {};
-  };
-  "/api/organizations/search": {
-    params: {};
-  };
-  "/api/organizations/bulk": {
-    params: {};
-  };
-  "/api/organizations/:id": {
-    params: {
-      "id": string;
-    };
-  };
-  "/api/projects": {
-    params: {};
-  };
-  "/api/projects/search": {
-    params: {};
-  };
-  "/api/projects/bulk": {
-    params: {};
-  };
-  "/api/projects/:id": {
-    params: {
-      "id": string;
-    };
-  };
-  "/api/datasources/:id?": {
-    params: {
-      "id"?: string;
-    };
   };
   "/api/driver/command": {
     params: {};
   };
   "/api/extensions/registry": {
-    params: {};
-  };
-  "/api/notebooks": {
-    params: {};
-  };
-  "/api/notebooks/:id": {
-    params: {
-      "id": string;
-    };
-  };
-  "/api/conversations": {
-    params: {};
-  };
-  "/api/conversations/:id": {
-    params: {
-      "id": string;
-    };
-  };
-  "/api/conversations/project/:projectId": {
-    params: {
-      "projectId": string;
-    };
-  };
-  "/api/messages": {
-    params: {};
-  };
-  "/api/usage": {
     params: {};
   };
   "/api/notebook/prompt": {
@@ -192,7 +130,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/chat/:slug" | "/api/organizations" | "/api/organizations/search" | "/api/organizations/bulk" | "/api/organizations/:id" | "/api/projects" | "/api/projects/search" | "/api/projects/bulk" | "/api/projects/:id" | "/api/datasources/:id?" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebooks" | "/api/notebooks/:id" | "/api/conversations" | "/api/conversations/:id" | "/api/conversations/project/:projectId" | "/api/messages" | "/api/usage" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
+    page: "/" | "/version" | "/healthcheck" | "/qwery/*" | "/api/init" | "/api/driver/command" | "/api/extensions/registry" | "/api/notebook/prompt" | "/api/notebook/query" | "/organizations" | "/org/:slug" | "/prj/:slug" | "/notebook/:slug" | "/prj/:slug/notebooks" | "/prj/:slug/ds" | "/prj/:slug/ds/new" | "/prj/:slug/ds/:id/new" | "/prj/:slug/playground" | "/prj/:slug/c" | "/c/:slug" | "/ds/:slug" | "/ds/:slug/tables" | "/ds/:slug/tables/:id" | "/ds/:slug/schema" | "/ds/:slug/settings" | "/*";
   };
   "routes/version.ts": {
     id: "routes/version";
@@ -206,45 +144,9 @@ type RouteFiles = {
     id: "routes/ingest.$";
     page: "/qwery/*";
   };
-  "routes/api/chat.ts": {
-    id: "routes/api/chat";
-    page: "/api/chat/:slug";
-  };
-  "routes/api/organization/get-all-organizations.ts": {
-    id: "routes/api/organization/get-all-organizations";
-    page: "/api/organizations";
-  };
-  "routes/api/organization/search.ts": {
-    id: "routes/api/organization/search";
-    page: "/api/organizations/search";
-  };
-  "routes/api/organization/bulk.ts": {
-    id: "routes/api/organization/bulk";
-    page: "/api/organizations/bulk";
-  };
-  "routes/api/organization/organization.ts": {
-    id: "routes/api/organization/organization";
-    page: "/api/organizations/:id";
-  };
-  "routes/api/project/get-all-projects.ts": {
-    id: "routes/api/project/get-all-projects";
-    page: "/api/projects";
-  };
-  "routes/api/project/search.ts": {
-    id: "routes/api/project/search";
-    page: "/api/projects/search";
-  };
-  "routes/api/project/bulk.ts": {
-    id: "routes/api/project/bulk";
-    page: "/api/projects/bulk";
-  };
-  "routes/api/project/project.ts": {
-    id: "routes/api/project/project";
-    page: "/api/projects/:id";
-  };
-  "routes/api/datasource/datasource.ts": {
-    id: "routes/api/datasource/datasource";
-    page: "/api/datasources/:id?";
+  "routes/api/init.ts": {
+    id: "routes/api/init";
+    page: "/api/init";
   };
   "routes/api/driver/command.ts": {
     id: "routes/api/driver/command";
@@ -253,34 +155,6 @@ type RouteFiles = {
   "routes/api/extensions/registry.ts": {
     id: "routes/api/extensions/registry";
     page: "/api/extensions/registry";
-  };
-  "routes/api/notebook/get-all-notebooks.ts": {
-    id: "routes/api/notebook/get-all-notebooks";
-    page: "/api/notebooks";
-  };
-  "routes/api/notebook/notebook.ts": {
-    id: "routes/api/notebook/notebook";
-    page: "/api/notebooks/:id";
-  };
-  "routes/api/conversation/get-all-conversations.ts": {
-    id: "routes/api/conversation/get-all-conversations";
-    page: "/api/conversations";
-  };
-  "routes/api/conversation/conversation.ts": {
-    id: "routes/api/conversation/conversation";
-    page: "/api/conversations/:id";
-  };
-  "routes/api/conversations/project/$projectId.ts": {
-    id: "routes/api/conversations/project/$projectId";
-    page: "/api/conversations/project/:projectId";
-  };
-  "routes/api/conversation/get-messages.ts": {
-    id: "routes/api/conversation/get-messages";
-    page: "/api/messages";
-  };
-  "routes/api/usage/usage.ts": {
-    id: "routes/api/usage/usage";
-    page: "/api/usage";
   };
   "routes/api/notebook/prompt.ts": {
     id: "routes/api/notebook/prompt";
@@ -389,25 +263,9 @@ type RouteModules = {
   "routes/version": typeof import("./app/routes/version.ts");
   "routes/healthcheck": typeof import("./app/routes/healthcheck.ts");
   "routes/ingest.$": typeof import("./app/routes/ingest.$.ts");
-  "routes/api/chat": typeof import("./app/routes/api/chat.ts");
-  "routes/api/organization/get-all-organizations": typeof import("./app/routes/api/organization/get-all-organizations.ts");
-  "routes/api/organization/search": typeof import("./app/routes/api/organization/search.ts");
-  "routes/api/organization/bulk": typeof import("./app/routes/api/organization/bulk.ts");
-  "routes/api/organization/organization": typeof import("./app/routes/api/organization/organization.ts");
-  "routes/api/project/get-all-projects": typeof import("./app/routes/api/project/get-all-projects.ts");
-  "routes/api/project/search": typeof import("./app/routes/api/project/search.ts");
-  "routes/api/project/bulk": typeof import("./app/routes/api/project/bulk.ts");
-  "routes/api/project/project": typeof import("./app/routes/api/project/project.ts");
-  "routes/api/datasource/datasource": typeof import("./app/routes/api/datasource/datasource.ts");
+  "routes/api/init": typeof import("./app/routes/api/init.ts");
   "routes/api/driver/command": typeof import("./app/routes/api/driver/command.ts");
   "routes/api/extensions/registry": typeof import("./app/routes/api/extensions/registry.ts");
-  "routes/api/notebook/get-all-notebooks": typeof import("./app/routes/api/notebook/get-all-notebooks.ts");
-  "routes/api/notebook/notebook": typeof import("./app/routes/api/notebook/notebook.ts");
-  "routes/api/conversation/get-all-conversations": typeof import("./app/routes/api/conversation/get-all-conversations.ts");
-  "routes/api/conversation/conversation": typeof import("./app/routes/api/conversation/conversation.ts");
-  "routes/api/conversations/project/$projectId": typeof import("./app/routes/api/conversations/project/$projectId.ts");
-  "routes/api/conversation/get-messages": typeof import("./app/routes/api/conversation/get-messages.ts");
-  "routes/api/usage/usage": typeof import("./app/routes/api/usage/usage.ts");
   "routes/api/notebook/prompt": typeof import("./app/routes/api/notebook/prompt.ts");
   "routes/api/notebook/query": typeof import("./app/routes/api/notebook/query.ts");
   "routes/layout/layout": typeof import("./app/routes/layout/layout.tsx");

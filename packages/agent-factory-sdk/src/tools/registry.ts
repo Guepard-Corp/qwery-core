@@ -12,6 +12,7 @@ import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
+import { getMcpTools } from '../mcp/client.js';
 
 const todowriteInputSchema = jsonSchema<{
   todos: Array<{
@@ -75,6 +76,16 @@ export type GetContextOptions = {
   abortSignal?: AbortSignal;
 };
 
+export type ForAgentOptions = {
+  mcpServerUrl?: string;
+  mcpNamePrefix?: string;
+};
+
+export type ForAgentResult = {
+  tools: Record<string, Tool>;
+  close?: () => Promise<void>;
+};
+
 async function resolveTool(
   info: ToolInfo,
   initCtx?: { agent?: { id: string } },
@@ -122,7 +133,8 @@ export const Registry = {
       agentId: string,
       model: Model,
       getContext: (options: GetContextOptions) => ToolContext,
-    ): Promise<Record<string, Tool>> {
+      forAgentOptions?: ForAgentOptions,
+    ): Promise<ForAgentResult> {
       const agent = agents.get(agentId);
       if (!agent) {
         throw new Error(`Agent not found: ${agentId}`);
@@ -207,7 +219,18 @@ export const Registry = {
         });
       }
 
-      return result;
+      const mcpServerUrl = forAgentOptions?.mcpServerUrl;
+      if (mcpServerUrl) {
+        const { tools: mcpTools, close } = await getMcpTools(mcpServerUrl, {
+          namePrefix: forAgentOptions?.mcpNamePrefix,
+        });
+        return {
+          tools: { ...result, ...mcpTools },
+          close,
+        };
+      }
+
+      return { tools: result };
     },
   },
   agents: {

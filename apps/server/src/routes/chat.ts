@@ -162,6 +162,9 @@ User request: ${cleanText}`;
         messages: processedMessages,
       });
 
+      const mcpServerUrl =
+        process.env.QWERY_MCP_SERVER_URL ?? `${new URL(c.req.url).origin}/mcp`;
+
       const response = await prompt({
         conversationSlug: slug,
         messages: validatedMessages,
@@ -170,6 +173,7 @@ User request: ${cleanText}`;
         repositories,
         telemetry,
         generateTitle: true,
+        mcpServerUrl,
       });
 
       return response;

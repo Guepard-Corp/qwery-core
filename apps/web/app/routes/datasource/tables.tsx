@@ -9,25 +9,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@qwery/ui/select';
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetDatasourceMetadata } from '~/lib/queries/use-get-datasource-metadata';
 import type { Table, Column } from '@qwery/domain/entities';
 
 import type { Route } from './+types/tables';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
-export default function TablesPage(_props: Route.ComponentProps) {
+export async function loader({ params }: Route.LoaderArgs) {
+  const slug = params.slug as string;
+  if (!slug) {
+    return { datasource: null };
+  }
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) {
+      return { datasource: null };
+    }
+    throw error;
+  }
+}
+
+export default function TablesPage(props: Route.ComponentProps) {
   const params = useParams();
   const slug = params.slug as string;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { repositories } = useWorkspace();
+  const { datasource } = props.loaderData;
   const [selectedSchema, setSelectedSchema] = useState<string>('all');
-
-  const { data: datasource } = useGetDatasourceBySlug(
-    repositories.datasource,
-    slug,
-  );
 
   const { data: metadata, isLoading } = useGetDatasourceMetadata(datasource, {
     enabled: !!datasource,
@@ -68,6 +86,18 @@ export default function TablesPage(_props: Route.ComponentProps) {
     const tablePath = `/ds/${slug}/tables/${tableData.id}`;
     navigate(tablePath);
   };
+
+  if (!datasource) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground text-sm">
+          {t('datasource.tables.error', {
+            defaultValue: 'Datasource not found',
+          })}
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

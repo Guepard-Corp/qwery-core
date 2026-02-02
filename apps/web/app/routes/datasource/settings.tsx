@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as React from 'react';
 
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Pencil } from 'lucide-react';
@@ -37,14 +37,34 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import {
   getDatasourcesByProjectIdKey,
   getDatasourcesKey,
-  useGetDatasourceBySlug,
 } from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
-export default function ProjectDatasourceViewPage() {
-  const navigate = useNavigate();
-  const params = useParams();
+import type { Route } from './+types/settings';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+
+export async function loader({ params }: Route.LoaderArgs) {
   const slug = params.slug as string;
+  if (!slug) return { datasource: null };
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) return { datasource: null };
+    throw error;
+  }
+}
+
+export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
@@ -58,13 +78,15 @@ export default function ProjectDatasourceViewPage() {
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
-
-  // Load datasource by slug
-  const datasource = useGetDatasourceBySlug(datasourceRepository, slug);
+  const datasourceFromLoader = props.loaderData.datasource;
+  const datasource = {
+    data: datasourceFromLoader,
+    isLoading: false,
+  };
 
   // Load extension once datasource is loaded
   const extension = useGetExtension(
-    datasource?.data?.datasource_provider || '',
+    datasourceFromLoader?.datasource_provider || '',
   );
 
   // Focus input when editing starts
@@ -76,10 +98,10 @@ export default function ProjectDatasourceViewPage() {
   }, [isEditingName]);
 
   React.useEffect(() => {
-    if (datasource.data?.name) {
-      setDatasourceName(datasource.data.name);
+    if (datasourceFromLoader?.name) {
+      setDatasourceName(datasourceFromLoader.name);
     }
-  }, [datasource.data]);
+  }, [datasourceFromLoader]);
 
   const handleNameSave = () => {
     if (datasourceName.trim()) {
@@ -115,11 +137,11 @@ export default function ProjectDatasourceViewPage() {
     },
   );
 
-  if (datasource.isLoading || extension.isLoading) {
+  if (extension.isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (!datasource.data) {
+  if (!datasourceFromLoader) {
     return <div>Datasource not found</div>;
   }
 

@@ -6,7 +6,6 @@ import {
   IOrganizationRepository,
   IProjectRepository,
   IUserRepository,
-  INotebookRepository,
 } from '../../repositories';
 import {
   InitWorkspaceUseCase,
@@ -18,11 +17,7 @@ import {
   WorkspaceInput,
 } from '../../usecases';
 import { WorkspaceModeEnum } from '../../enums';
-import {
-  CreateOrganizationService,
-  CreateProjectService,
-  CreateNotebookService,
-} from '..';
+import { CreateOrganizationService, CreateProjectService } from '..';
 
 function createAnonymousUser(): User {
   const now = new Date();
@@ -68,7 +63,6 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
     private readonly workspaceRuntimeUseCase: WorkspaceRuntimeUseCase,
     private readonly organizationRepository?: IOrganizationRepository,
     private readonly projectRepository?: IProjectRepository,
-    private readonly notebookRepository?: INotebookRepository,
   ) {}
 
   public async execute(port: WorkspaceInput): Promise<WorkspaceOutput> {
@@ -141,22 +135,6 @@ export class InitWorkspaceService implements InitWorkspaceUseCase {
           user.id,
           this.projectRepository,
         );
-      }
-    }
-
-    if (project != null && this.notebookRepository) {
-      const notebooks = await this.notebookRepository.findByProjectId(
-        project.id,
-      );
-      if (!notebooks || notebooks.length === 0) {
-        const createNotebookUseCase = new CreateNotebookService(
-          this.notebookRepository,
-        );
-        await createNotebookUseCase.execute({
-          projectId: project.id,
-          title: 'Default Notebook',
-          description: 'Default notebook created automatically',
-        });
       }
     }
 

@@ -73,6 +73,8 @@ pnpm dev
 
 The web app will be available at `http://localhost:3000`
 
+**Using apps/web with apps/server**: To have the web app use the API server (file repositories) instead of in-app API routes, start the server (`pnpm --filter server dev`, port 4096) and set `VITE_API_URL=http://localhost:4096/api` in `apps/web/.env`. Then start the web app (`pnpm --filter web dev`). Flow: Web Browser → SSR/Loader → apps/server Hono.
+
 ### Desktop Application
 
 ```bash

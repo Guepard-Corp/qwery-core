@@ -41,8 +41,36 @@ import {
   useGetDatasourceBySlug,
 } from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
-export default function ProjectDatasourceViewPage() {
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+
+export async function loader({
+  params,
+}: {
+  params: Record<string, string | undefined>;
+}) {
+  const slug = params.slug as string;
+  if (!slug) return { datasource: null };
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) return { datasource: null };
+    throw error;
+  }
+}
+
+export default function ProjectDatasourceViewPage(props?: {
+  loaderData?: { datasource: Awaited<ReturnType<typeof loader>>['datasource'] };
+}) {
   const navigate = useNavigate();
   const params = useParams();
   const slug = params.slug as string;
@@ -59,9 +87,14 @@ export default function ProjectDatasourceViewPage() {
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const { repositories } = useWorkspace();
   const datasourceRepository = repositories.datasource;
-
-  // Load datasource by slug
-  const datasource = useGetDatasourceBySlug(datasourceRepository, slug);
+  const datasourceFromQuery = useGetDatasourceBySlug(
+    datasourceRepository,
+    slug,
+  );
+  const datasourceFromLoader = props?.loaderData?.datasource;
+  const datasource = datasourceFromLoader
+    ? { data: datasourceFromLoader, isLoading: false }
+    : datasourceFromQuery;
 
   // Load extension once datasource is loaded
   const extension = useGetExtension(

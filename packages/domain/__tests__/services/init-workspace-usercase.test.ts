@@ -4,16 +4,11 @@ import { Roles } from '../../src/common/roles';
 import type { Organization } from '../../src/entities';
 import type { Project } from '../../src/entities';
 import type { User } from '../../src/entities';
-import type { Notebook } from '../../src/entities';
 import { WorkspaceRuntimeEnum } from '../../src/enums/workspace-mode';
 import type { IOrganizationRepository } from '../../src/repositories';
 import type { IProjectRepository } from '../../src/repositories';
 import type { IUserRepository } from '../../src/repositories';
-import type { INotebookRepository } from '../../src/repositories';
-import {
-  CreateOrganizationService,
-  InitWorkspaceService,
-} from '../../src/services';
+import { InitWorkspaceService } from '../../src/services';
 import type { WorkspaceRuntimeUseCase } from '../../src/usecases';
 
 // Mock in-memory repositories
@@ -129,50 +124,6 @@ class MockProjectRepository implements IProjectRepository {
 
   async delete(id: string) {
     return this.projects.delete(id);
-  }
-
-  shortenId(id: string) {
-    return id.slice(0, 8);
-  }
-}
-
-class MockNotebookRepository implements INotebookRepository {
-  private notebooks = new Map<string, Notebook>();
-
-  async findAll() {
-    return Array.from(this.notebooks.values());
-  }
-
-  async findById(id: string) {
-    return this.notebooks.get(id) ?? null;
-  }
-
-  async findBySlug(slug: string) {
-    const notebooks = Array.from(this.notebooks.values());
-    return notebooks.find((n) => n.slug === slug) ?? null;
-  }
-
-  async findByProjectId(projectId: string) {
-    const notebooks = Array.from(this.notebooks.values());
-    const filtered = notebooks.filter((n) => n.projectId === projectId);
-    return filtered.length > 0 ? filtered : null;
-  }
-
-  async create(entity: Notebook) {
-    this.notebooks.set(entity.id, entity);
-    return entity;
-  }
-
-  async update(entity: Notebook) {
-    if (!this.notebooks.has(entity.id)) {
-      throw new Error(`Notebook with id ${entity.id} not found`);
-    }
-    this.notebooks.set(entity.id, entity);
-    return entity;
-  }
-
-  async delete(id: string) {
-    return this.notebooks.delete(id);
   }
 
   shortenId(id: string) {
@@ -598,100 +549,6 @@ describe('InitWorkspaceService', () => {
       // Should create default project when findById fails
       expect(result.project).toBeDefined();
       expect(result.project?.name).toBe('Default Project');
-    });
-  });
-
-  describe('notebook handling', () => {
-    it('should create default notebook when project exists and no notebooks found', async () => {
-      const notebookRepository = new MockNotebookRepository();
-      const serviceWithNotebook = new InitWorkspaceService(
-        userRepository,
-        workspaceModeUseCase,
-        organizationRepository,
-        projectRepository,
-        notebookRepository,
-      );
-
-      const result = await serviceWithNotebook.execute({ userId: '' });
-
-      expect(result.project).toBeDefined();
-      const notebooks = await notebookRepository.findByProjectId(
-        result.project!.id,
-      );
-      expect(notebooks).not.toBeNull();
-      expect(notebooks!.length).toBeGreaterThan(0);
-      expect(notebooks?.[0]?.title).toBe('Default Notebook');
-    });
-
-    it('should not create notebook when notebooks already exist', async () => {
-      const notebookRepository = new MockNotebookRepository();
-      const serviceWithNotebook = new InitWorkspaceService(
-        userRepository,
-        workspaceModeUseCase,
-        organizationRepository,
-        projectRepository,
-        notebookRepository,
-      );
-
-      // Create a project first
-      const result1 = await serviceWithNotebook.execute({ userId: '' });
-      const projectId = result1.project!.id;
-
-      // Get initial notebook count
-      const initialNotebooks =
-        await notebookRepository.findByProjectId(projectId);
-      const initialCount = initialNotebooks?.length ?? 0;
-
-      // Execute again - should not create another notebook
-      await serviceWithNotebook.execute({ userId: '' });
-
-      const finalNotebooks =
-        await notebookRepository.findByProjectId(projectId);
-      expect(finalNotebooks?.length).toBe(initialCount);
-    });
-
-    it('should not create notebook when notebookRepository is not provided', async () => {
-      const result = await service.execute({ userId: '' });
-
-      expect(result.project).toBeDefined();
-      // Service should work fine without notebook repository
-      expect(result).toBeDefined();
-    });
-
-    it('should handle organization without id when creating project', async () => {
-      const notebookRepository = new MockNotebookRepository();
-      const serviceWithNotebook = new InitWorkspaceService(
-        userRepository,
-        workspaceModeUseCase,
-        organizationRepository,
-        projectRepository,
-        notebookRepository,
-      );
-
-      // Create an organization with empty string id to test the fallback (line 123: organization.id || uuidv4())
-      const orgUseCase = new CreateOrganizationService(organizationRepository);
-      const newOrg = await orgUseCase.execute({
-        name: 'Test Org',
-        userId: userId,
-        createdBy: userId,
-      });
-
-      // Mock findAll to return the org with empty id
-      const originalFindAll = organizationRepository.findAll;
-      organizationRepository.findAll = vi.fn().mockResolvedValue([newOrg]);
-
-      try {
-        const result = await serviceWithNotebook.execute({ userId: '' });
-        // Should still create project successfully using uuidv4() fallback (line 123)
-        expect(result.project).toBeDefined();
-        expect(result.project?.organizationId).toBeDefined();
-        // The organizationId should be a valid UUID (from uuidv4() fallback)
-        expect(result.project?.organizationId).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-        );
-      } finally {
-        organizationRepository.findAll = originalFindAll;
-      }
     });
   });
 });

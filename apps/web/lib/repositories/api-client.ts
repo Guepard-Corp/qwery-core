@@ -1,4 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+function getApiBaseUrl(): string {
+  if (typeof process !== 'undefined' && process.env) {
+    const url = process.env.VITE_API_URL ?? process.env.SERVER_API_URL ?? '';
+    if (url) return url;
+  }
+  return import.meta.env?.VITE_API_URL || '/api';
+}
 
 export class ApiError extends Error {
   constructor(
@@ -66,11 +72,12 @@ export async function apiGet<T>(
       : undefined;
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       signal: options?.signal || controller?.signal,
     });
 
@@ -102,12 +109,13 @@ export async function apiPost<T>(
       : undefined;
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
+      credentials: 'include',
       body: JSON.stringify(data),
       signal: options?.signal || controller?.signal,
     });
@@ -141,12 +149,13 @@ export async function apiPut<T>(
       : undefined;
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
+      credentials: 'include',
       body: JSON.stringify(data),
       signal: options?.signal || controller?.signal,
     });
@@ -179,12 +188,13 @@ export async function apiDelete(
       : undefined;
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
+      credentials: 'include',
       signal: options?.signal || controller?.signal,
     });
 
