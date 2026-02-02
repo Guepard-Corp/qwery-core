@@ -5,7 +5,7 @@ import {
 } from '@qwery/domain/common';
 import type { Message } from '@qwery/domain/entities';
 import { IMessageRepository } from '@qwery/domain/repositories';
-import { apiGet, apiPost } from './api-client';
+import { apiGet } from './api-client';
 
 export class MessageRepository extends IMessageRepository {
   async findAll(_options?: RepositoryFindOptions): Promise<Message[]> {
@@ -76,27 +76,8 @@ export class MessageRepository extends IMessageRepository {
     return result;
   }
 
-  async create(entity: Message): Promise<Message> {
-    // Extract CreateMessageInput from Message entity
-    const {
-      id: _id,
-      conversationId,
-      createdAt: _createdAt,
-      updatedAt: _updatedAt,
-      updatedBy: _updatedBy,
-      ...input
-    } = entity;
-
-    // Call the API with conversationId (API will resolve to slug internally)
-    const result = await apiPost<Message>('/messages', {
-      conversationId,
-      content: input.content,
-      role: input.role,
-      metadata: input.metadata,
-      createdBy: input.createdBy,
-    });
-
-    return result;
+  async create(_entity: Message): Promise<Message> {
+    throw new Error('Message update is handled by agents, not the frontend');
   }
 
   async update(_entity: Message): Promise<Message> {

@@ -1,13 +1,10 @@
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { useParams, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { useConversation } from '~/lib/mutations/use-conversation';
-import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
-import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
-import { Conversation } from '@qwery/domain/entities';
 import { useState, useMemo } from 'react';
 import {
   MessageCircle,
@@ -20,8 +17,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
 import { Button } from '@qwery/ui/button';
-import { Skeleton } from '@qwery/ui/skeleton';
-import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
+import {
+  GetConversationsByProjectIdService,
+  GetProjectBySlugService,
+} from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
+
+import type { Route } from '~/types/app/routes/project/conversation/+types/index';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -46,30 +49,57 @@ function formatRelativeTime(date: Date): string {
   return `${day} ${month} ${year} at ${timeStr}`;
 }
 
-export default function ConversationIndexPage() {
+export async function loader({ params }: Route.LoaderArgs) {
+  const slug = params.slug as string;
+  if (!slug) {
+    return { project: null, conversations: [] };
+  }
+
+  const repositories = await getRepositoriesForLoader();
+  const getProjectService = new GetProjectBySlugService(repositories.project);
+  const getConversationsService = new GetConversationsByProjectIdService(
+    repositories.conversation,
+  );
+
+  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
+    null;
+
+  try {
+    project = await getProjectService.execute(slug);
+  } catch (error) {
+    if (error instanceof DomainException) {
+      return { project: null, conversations: [] };
+    }
+    throw error;
+  }
+
+  const conversations = project
+    ? await getConversationsService.execute(project.id)
+    : [];
+
+  return {
+    project,
+    conversations,
+  };
+}
+
+export default function ConversationIndexPage(props: Route.ComponentProps) {
   const { workspace, repositories } = useWorkspace();
   const navigate = useNavigate();
-  const projectSlug = useParams().slug;
+  const { project, conversations } = props.loaderData;
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
 
-  const project = useGetProjectBySlug(repositories.project, projectSlug || '');
-  const { data: allConversations = [], isLoading: isLoadingConversations } =
-    useGetConversationsByProject(
-      repositories.conversation,
-      workspace.projectId,
-    );
-
   const sortedConversations = useMemo(
     () =>
-      allConversations.sort((a, b) => {
+      [...(conversations ?? [])].sort((a, b) => {
         const dateA =
           a.updatedAt instanceof Date ? a.updatedAt : new Date(a.updatedAt);
         const dateB =
           b.updatedAt instanceof Date ? b.updatedAt : new Date(b.updatedAt);
         return dateB.getTime() - dateA.getTime();
       }),
-    [allConversations],
+    [conversations],
   );
 
   const paginatedConversations = useMemo(() => {
@@ -92,15 +122,15 @@ export default function ConversationIndexPage() {
         `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     },
-    workspace.projectId,
+    project?.id ?? workspace.projectId,
   );
 
-  const handleConversationClick = (conversation: Conversation) => {
-    navigate(createPath(pathsConfig.app.conversation, conversation.slug));
+  const handleConversationClick = (conv: { slug: string }) => {
+    navigate(createPath(pathsConfig.app.conversation, conv.slug));
   };
 
   const handleNewChat = () => {
-    if (!project.data) {
+    if (!project) {
       toast.error('Project not found');
       return;
     }
@@ -116,8 +146,8 @@ export default function ConversationIndexPage() {
     }
 
     createConversationMutation.mutate({
-      projectId: project.data.id,
-      taskId: uuidv4(), // TODO: Create or get actual task
+      projectId: project.id,
+      taskId: uuidv4(),
       title: 'New Conversation',
       seedMessage: '',
       datasources: [],
@@ -125,61 +155,33 @@ export default function ConversationIndexPage() {
     });
   };
 
-  const isLoading = isLoadingConversations || project.isLoading;
-
   return (
     <div className="flex min-h-[calc(100vh-8rem)] w-full flex-col items-center px-4 py-12">
       <div className="mx-auto w-full max-w-4xl space-y-12">
-        {/* Welcome Header - Fixed height to prevent layout shifts */}
         <div className="flex h-48 flex-col items-center justify-center">
-          {isLoading ? (
-            <div className="space-y-4 text-center">
-              <div className="flex justify-center">
-                <Skeleton className="size-16 rounded-full" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="mx-auto h-10 w-80" />
-                <Skeleton className="mx-auto h-6 w-64" />
+          <div className="space-y-4 text-center">
+            <div className="flex justify-center">
+              <div className="flex size-16 items-center justify-center rounded-full bg-[#ffcb51]/10">
+                <Sparkles className="size-8 text-[#ffcb51]" />
               </div>
             </div>
-          ) : (
-            <div className="space-y-4 text-center">
-              <div className="flex justify-center">
-                <div className="flex size-16 items-center justify-center rounded-full bg-[#ffcb51]/10">
-                  <Sparkles className="size-8 text-[#ffcb51]" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight">
-                  Start a new conversation
-                </h1>
-                <p className="text-muted-foreground text-lg">
-                  Ask anything or describe what you&apos;d like to explore
-                </p>
-              </div>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold tracking-tight">
+                Start a new conversation
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Ask anything or describe what you&apos;d like to explore
+              </p>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Recent Conversations List */}
         <div className="flex min-h-[400px] flex-col">
-          {isLoadingConversations ? (
+          {sortedConversations.length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-2">
                 <ClockIcon className="text-muted-foreground size-4" />
                 <h2 className="text-muted-foreground my-2 text-sm font-semibold tracking-wide uppercase">
-                  Recent Conversations
-                </h2>
-              </div>
-              <div className="mx-auto w-full max-w-2xl">
-                <LoadingSkeleton variant="list" count={4} />
-              </div>
-            </div>
-          ) : sortedConversations.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center gap-2">
-                <ClockIcon className="text-muted-foreground size-4" />
-                <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
                   Recent Conversations
                 </h2>
               </div>
@@ -218,7 +220,6 @@ export default function ConversationIndexPage() {
                 })}
               </div>
 
-              {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-4 pt-4">
                   <Button
@@ -268,22 +269,17 @@ export default function ConversationIndexPage() {
           )}
         </div>
 
-        {/* New Chat Button */}
         <div className="flex justify-center">
-          {isLoading ? (
-            <Skeleton className="h-11 w-56" />
-          ) : (
-            <Button
-              onClick={handleNewChat}
-              size="lg"
-              variant="outline"
-              className="gap-2"
-              disabled={createConversationMutation.isPending}
-            >
-              <Plus className="size-4" />
-              Start a new conversation
-            </Button>
-          )}
+          <Button
+            onClick={handleNewChat}
+            size="lg"
+            variant="outline"
+            className="gap-2"
+            disabled={createConversationMutation.isPending || !project}
+          >
+            <Plus className="size-4" />
+            Start a new conversation
+          </Button>
         </div>
       </div>
     </div>

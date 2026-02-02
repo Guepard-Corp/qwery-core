@@ -48,7 +48,7 @@ async function runAskAgentTurn(
     ask: async () => {},
     metadata: async () => {},
   });
-  const tools = await Registry.tools.forAgent(
+  const { tools } = await Registry.tools.forAgent(
     'ask',
     modelForRegistry,
     getContext,

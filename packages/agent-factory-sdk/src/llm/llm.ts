@@ -23,6 +23,7 @@ export type StreamInput = {
   maxOutputTokens?: number;
   maxSteps?: number;
   context?: { cwd?: string; date?: string };
+  onFinish?: () => void | Promise<void>;
 };
 
 export type StreamOutput = ReturnType<typeof streamText>;
@@ -83,6 +84,7 @@ export const LLM = {
       ...(input.tools !== undefined && Object.keys(input.tools).length > 0
         ? { stopWhen: stepCountIs(input.maxSteps ?? 5) }
         : {}),
+      ...(input.onFinish !== undefined ? { onFinish: input.onFinish } : {}),
     };
     if (prompt !== undefined) {
       return streamText({ ...streamParams, prompt });

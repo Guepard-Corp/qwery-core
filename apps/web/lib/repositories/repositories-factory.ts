@@ -1,16 +1,43 @@
-import { Repositories } from '@qwery/domain/repositories';
+import type { Repositories } from '@qwery/domain/repositories';
+import type {
+  IUserRepository,
+  ITodoRepository,
+} from '@qwery/domain/repositories';
 
-// Detect if we're in a server/API context (Node.js environment)
 const IS_SERVER = typeof process !== 'undefined' && process.env !== undefined;
 
 const DATABASE_PROVIDER = (import.meta.env?.VITE_DATABASE_PROVIDER ||
   'indexed-db') as 'indexed-db' | 'sqlite';
 
+function createUnsupportedUserRepository(): IUserRepository {
+  const unsupported = (): never => {
+    throw new Error('Unsupported');
+  };
+  return {
+    findAll: unsupported,
+    findById: unsupported,
+    findBySlug: unsupported,
+    create: unsupported,
+    update: unsupported,
+    delete: unsupported,
+    shortenId: (id: string) => id,
+  };
+}
+
+function createUnsupportedTodoRepository(): ITodoRepository {
+  const unsupported = (): never => {
+    throw new Error('Unsupported');
+  };
+  return {
+    findByConversationId: unsupported,
+    upsertByConversationId: unsupported,
+  };
+}
+
 export async function createRepositories(): Promise<Repositories> {
-  // When used in API routes (server context), always use SQLite repositories directly
+  // Node (SSR/loaders): use API repositories that call apps/server; no direct file/SQLite access
   if (IS_SERVER) {
     const {
-      UserRepository,
       ConversationRepository,
       DatasourceRepository,
       NotebookRepository,
@@ -18,25 +45,22 @@ export async function createRepositories(): Promise<Repositories> {
       ProjectRepository,
       MessageRepository,
       UsageRepository,
-      TodoRepository,
-    } = await import('@qwery/repository-sqlite');
-
-    const DB_PATH = process.env.VITE_DATABASE_PATH || undefined;
+    } = await import('./index');
 
     return {
-      user: new UserRepository(DB_PATH),
-      organization: new OrganizationRepository(DB_PATH),
-      project: new ProjectRepository(DB_PATH),
-      datasource: new DatasourceRepository(DB_PATH),
-      notebook: new NotebookRepository(DB_PATH),
-      conversation: new ConversationRepository(DB_PATH),
-      message: new MessageRepository(DB_PATH),
-      usage: new UsageRepository(DB_PATH),
-      todo: new TodoRepository(DB_PATH),
+      user: createUnsupportedUserRepository(),
+      organization: new OrganizationRepository(),
+      project: new ProjectRepository(),
+      datasource: new DatasourceRepository(),
+      notebook: new NotebookRepository(),
+      conversation: new ConversationRepository(),
+      message: new MessageRepository(),
+      usage: new UsageRepository(),
+      todo: createUnsupportedTodoRepository(),
     };
   }
 
-  // Browser context: use IndexedDB or API repositories based on STORAGE_ADAPTER
+  // Browser (or Node without server URL): use IndexedDB or API repositories
   if (DATABASE_PROVIDER === 'sqlite') {
     // When using SQLite, use API repositories that call the backend API
     // (which uses SQLite repositories on the server)

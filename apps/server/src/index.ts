@@ -9,6 +9,7 @@ const server = Bun.serve({
   port: PORT,
   hostname: HOSTNAME,
   fetch: app.fetch,
+  idleTimeout: 120,
 });
 
 console.log(`[Server] Listening on http://${server.hostname}:${server.port}`);

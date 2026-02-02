@@ -1,37 +1,52 @@
-import { Skeleton } from '@qwery/ui/skeleton';
-import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useEffect, useState } from 'react';
 
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
-import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
+import {
+  GetNotebooksByProjectIdService,
+  GetProjectBySlugService,
+} from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
+
+import type { Route } from '~/types/app/routes/project/notebooks/+types/index';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListNotebooks } from '../_components/list-notebooks';
 
-export default function ProjectNotebooksPage() {
-  const { repositories, workspace } = useWorkspace();
-  const params = useParams();
-  const projectSlug = params.slug;
+export async function loader({ params }: Route.LoaderArgs) {
+  const slug = params.slug as string;
+  if (!slug) {
+    return { project: null, notebooks: [] };
+  }
 
-  // Get project by slug to ensure we have the correct projectId
-  const projectBySlug = useGetProjectBySlug(
-    repositories.project,
-    projectSlug || '',
-  );
-
-  // Use projectId from the fetched project, fallback to workspace.projectId
-  const projectId = useMemo(() => {
-    return projectBySlug.data?.id || workspace.projectId;
-  }, [projectBySlug.data?.id, workspace.projectId]);
-
-  const notebooks = useGetNotebooksByProjectId(
+  const repositories = await getRepositoriesForLoader();
+  const getProjectService = new GetProjectBySlugService(repositories.project);
+  const getNotebooksService = new GetNotebooksByProjectIdService(
     repositories.notebook,
-    projectId as string,
-    {
-      enabled: !!projectId,
-    },
   );
 
+  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
+    null;
+
+  try {
+    project = await getProjectService.execute(slug);
+  } catch (error) {
+    if (error instanceof DomainException) {
+      return { project: null, notebooks: [] };
+    }
+    throw error;
+  }
+
+  const notebooks = project
+    ? await getNotebooksService.execute(project.id)
+    : [];
+
+  return {
+    project,
+    notebooks,
+  };
+}
+
+export default function ProjectNotebooksPage(props: Route.ComponentProps) {
+  const { notebooks } = props.loaderData;
   const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
     [],
   );
@@ -71,18 +86,10 @@ export default function ProjectNotebooksPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {notebooks.isLoading && (
-        <div className="p-6 lg:p-10">
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
-
-      {!notebooks.isLoading && (
-        <ListNotebooks
-          notebooks={notebooks.data || []}
-          unsavedNotebookSlugs={unsavedNotebookSlugs}
-        />
-      )}
+      <ListNotebooks
+        notebooks={notebooks ?? []}
+        unsavedNotebookSlugs={unsavedNotebookSlugs}
+      />
     </div>
   );
 }

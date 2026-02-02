@@ -1,24 +1,24 @@
-import { Skeleton } from '@qwery/ui/skeleton';
+import type { Organization } from '@qwery/domain/entities';
+import { GetOrganizationsService } from '@qwery/domain/services';
 
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
+import type { Route } from '~/types/app/routes/organizations/+types/index';
+import { createRepositories } from '~/lib/repositories/repositories-factory';
 
 import { ListOrganizations } from './_components/list-organizations';
 
-export default function OrganizationsPage() {
-  const { repositories } = useWorkspace();
-  const organizations = useGetOrganizations(repositories.organization);
+export async function loader(_args: Route.LoaderArgs) {
+  const repositories = await createRepositories();
+  const useCase = new GetOrganizationsService(repositories.organization);
+  const organizations = await useCase.execute();
+  return { organizations: organizations as Organization[] };
+}
+
+export default function OrganizationsPage(props: Route.ComponentProps) {
+  const { organizations } = props.loaderData;
 
   return (
     <div className="h-full">
-      {organizations.isLoading && (
-        <div className="flex h-full items-center justify-center">
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
-      {!organizations.isLoading && (
-        <ListOrganizations organizations={organizations.data ?? []} />
-      )}
+      <ListOrganizations organizations={organizations ?? []} />
     </div>
   );
 }

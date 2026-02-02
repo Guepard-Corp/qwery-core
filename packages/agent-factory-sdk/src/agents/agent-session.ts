@@ -48,6 +48,8 @@ export type AgentSessionPromptInput = {
   }) => void | Promise<void>;
   /** Optional: max steps for multi-step tool execution. Overrides agent steps. Default: 5. */
   maxSteps?: number;
+  /** Optional: MCP server URL (e.g. qwery server base + /mcp). When set, MCP tools are merged with agent tools. */
+  mcpServerUrl?: string;
 };
 
 const DEFAULT_AGENT_ID = 'query';
@@ -97,6 +99,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     onAsk,
     onToolMetadata,
     maxSteps: inputMaxSteps,
+    mcpServerUrl,
   } = input;
   const agentId = inputAgentId ?? DEFAULT_AGENT_ID;
 
@@ -280,10 +283,11 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       },
     });
 
-    const tools = await Registry.tools.forAgent(
+    const { tools, close: closeMcp } = await Registry.tools.forAgent(
       agentId,
       modelForRegistry,
       getContext,
+      { mcpServerUrl },
     );
 
     const reminderContext = {
@@ -350,6 +354,11 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       maxSteps: inputMaxSteps ?? agentInfo.steps ?? 5,
       abortSignal: abortController.signal,
       systemPrompt: systemPromptForLlm,
+      onFinish: closeMcp
+        ? async () => {
+            await closeMcp();
+          }
+        : undefined,
     });
 
     const streamResponse = result.toUIMessageStreamResponse({

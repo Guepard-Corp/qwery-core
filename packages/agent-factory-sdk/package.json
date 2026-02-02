@@ -20,6 +20,7 @@
     "./config": "./src/config/index.ts",
     "./config/node": "./src/config/node.ts",
     "./llm": "./src/llm/index.ts",
+    "./mcp": "./src/mcp/index.ts",
     "./tools/datasource-name-utils": "./src/tools/datasource-name-utils.ts",
     "./tools/datasource-loader": "./src/tools/datasource-loader.ts",
     "./services/duckdb-query-engine.service": "./src/services/duckdb-query-engine.service.ts"
@@ -28,6 +29,7 @@
     "@ai-sdk/amazon-bedrock": "^3.0.61",
     "@ai-sdk/anthropic": "^2.0.49",
     "@ai-sdk/azure": "^2.0.73",
+    "@ai-sdk/mcp": "^1.0.0",
     "@ai-sdk/openai": "^3.0.21",
     "@ai-sdk/openai-compatible": "^1.0.0",
     "@ai-sdk/react": "^3.0.60",

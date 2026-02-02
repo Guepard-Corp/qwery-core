@@ -163,12 +163,6 @@ qwery.db-journal
 qwery.db-wal
 qwery-db-*
 
-# Workspace directories (DuckDB databases and view registries)
-**/workspace/
-packages/agent-factory-sdk/workspace/
-apps/cli/workspace/
-apps/web/workspace/
-
 # Test files (temporary test scripts)
 test-*.txt
 test-*.ts
@@ -186,3 +180,5 @@ packages/agent-factory-sdk/test-business-context/.vscode/
 **/packages/agent-factory-sdk/evals
 test.db
 qwery.db
+
+starlight

@@ -30,6 +30,7 @@ export type RunAgentToCompletionInput = {
   abortSignal: AbortSignal;
   maxSteps?: number;
   datasources?: string[];
+  mcpServerUrl?: string;
   onAsk?: (req: AskRequest) => Promise<void>;
   onToolMetadata?: (input: ToolMetadataInput) => void | Promise<void>;
 };
@@ -58,6 +59,7 @@ export async function runAgentToCompletion(
     abortSignal,
     maxSteps = 5,
     datasources,
+    mcpServerUrl,
     onAsk,
     onToolMetadata,
   } = input;
@@ -131,10 +133,11 @@ export async function runAgentToCompletion(
     },
   });
 
-  const tools = await Registry.tools.forAgent(
+  const { tools, close: closeMcp } = await Registry.tools.forAgent(
     agentId,
     modelForRegistry,
     getContext,
+    { mcpServerUrl },
   );
 
   const reminderContext = {
@@ -176,6 +179,11 @@ export async function runAgentToCompletion(
     maxSteps,
     abortSignal,
     systemPrompt: agentInfo.systemPrompt,
+    onFinish: closeMcp
+      ? async () => {
+          await closeMcp();
+        }
+      : undefined,
   });
 
   let finishedMessages: UIMessage[] = [];

@@ -15,6 +15,13 @@ export * from './config';
 export * from './tools/tool';
 export * from './tools/registry';
 
+// Export MCP client (for advanced use; Registry.tools.forAgent uses it when mcpServerUrl is set)
+export {
+  getMcpTools,
+  type GetMcpToolsOptions,
+  type GetMcpToolsResult,
+} from './mcp/index.js';
+
 // Reexport AI SDK
 export type { UIMessage } from 'ai';
 export {

@@ -5,24 +5,38 @@ import {
   Columns,
   type ColumnListItem,
 } from '@qwery/ui/qwery/datasource/columns';
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetDatasourceMetadata } from '~/lib/queries/use-get-datasource-metadata';
 import type { Column, Table } from '@qwery/domain/entities';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from './+types/table';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
-export default function TablePage(_props: Route.ComponentProps) {
+export async function loader({ params }: Route.LoaderArgs) {
+  const slug = params.slug as string;
+  if (!slug) return { datasource: null };
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) return { datasource: null };
+    throw error;
+  }
+}
+
+export default function TablePage(props: Route.ComponentProps) {
   const params = useParams();
   const slug = params.slug as string;
   const tableId = params.id as string;
   const { t } = useTranslation();
-  const { repositories } = useWorkspace();
-
-  const { data: datasource } = useGetDatasourceBySlug(
-    repositories.datasource,
-    slug,
-  );
+  const { datasource } = props.loaderData;
 
   const { data: metadata, isLoading } = useGetDatasourceMetadata(datasource, {
     enabled: !!datasource,
