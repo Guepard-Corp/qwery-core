@@ -46,10 +46,10 @@ export default function NotebookPage() {
   const navigate = useNavigate();
   const notebookRepository = repositories.notebook;
   const datasourceRepository = repositories.datasource;
-  const project = useGetProjectById(
-    repositories.project,
-    workspace.projectId || '',
-  );
+  const notebook = useGetNotebook(notebookRepository, slug);
+  const notebookProjectId =
+    notebook.data?.projectId ?? workspace.projectId ?? '';
+  const project = useGetProjectById(repositories.project, notebookProjectId);
 
   // Store query results by cell ID
   const [cellResults, setCellResults] = useState<
@@ -62,14 +62,10 @@ export default function NotebookPage() {
   // Track which cell is currently loading
   const [loadingCellId, setLoadingCellId] = useState<number | null>(null);
 
-  // Load notebook
-  const notebook = useGetNotebook(notebookRepository, slug);
-
-  // Load conversation for this notebook
   const notebookConversation = useGetNotebookConversation(
     repositories.conversation,
     notebook.data?.id,
-    workspace.projectId || undefined,
+    notebookProjectId || undefined,
   );
 
   // Switch conversation when notebook changes
@@ -97,10 +93,10 @@ export default function NotebookPage() {
     // Removing it would cause the sidebar to close unnecessarily
   }, [notebookConversation.data?.slug, navigate]);
 
-  // Load datasources
   const savedDatasources = useGetDatasourcesByProjectId(
     datasourceRepository,
-    workspace.projectId as string,
+    notebookProjectId,
+    { enabled: !!notebookProjectId },
   );
 
   const { data: extensions = [] } = useGetDatasourceExtensions();
@@ -381,7 +377,7 @@ export default function NotebookPage() {
           id: conversationId,
           slug: '', // Repository will generate slug
           title: notebookTitle,
-          projectId: workspace.projectId || '',
+          projectId: notebookProjectId || '',
           taskId: uuidv4(),
           datasources: [datasourceId],
           createdAt: now,
@@ -658,10 +654,12 @@ export default function NotebookPage() {
           title: changes.title ?? normalizedNotebook.title,
         };
       }
-      // Update unsaved state immediately
       updateUnsavedState();
+      if (changes.title !== undefined) {
+        handleSave();
+      }
     },
-    [normalizedNotebook, updateUnsavedState],
+    [normalizedNotebook, updateUnsavedState, handleSave],
   );
 
   // Ctrl+S keyboard shortcut to save notebook
@@ -829,7 +827,7 @@ export default function NotebookPage() {
       return;
     }
 
-    const projectId = normalizedNotebook.projectId || workspace.projectId;
+    const projectId = normalizedNotebook.projectId || notebookProjectId;
 
     if (!projectId) {
       toast.error('Unable to resolve project context for deletion');
@@ -841,7 +839,7 @@ export default function NotebookPage() {
       slug: normalizedNotebook.slug,
       projectId,
     });
-  }, [deleteNotebookMutation, normalizedNotebook, workspace.projectId]);
+  }, [deleteNotebookMutation, normalizedNotebook, notebookProjectId]);
 
   useEffect(() => {
     if (!normalizedNotebook?.updatedAt) {

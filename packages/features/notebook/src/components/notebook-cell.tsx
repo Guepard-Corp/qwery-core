@@ -669,7 +669,7 @@ function NotebookCellComponent({
         {isQueryCell && cell.title && cell.title.trim().length > 0 && (
           <div
             className={cn(
-              'border-border flex min-h-[44px] items-center justify-between rounded-t-xl border-b bg-transparent px-3 py-2',
+              'border-border flex min-h-[44px] items-center justify-between rounded-none border-b bg-transparent px-3 py-2',
               !isEditingTitle && 'cursor-grab active:cursor-grabbing',
             )}
             onMouseEnter={() => setIsHoveringTitle(true)}
@@ -783,7 +783,7 @@ function NotebookCellComponent({
         {/* Cell content */}
         <div
           className={cn(
-            'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-transparent',
+            'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-transparent',
             isTextCell && 'min-h-[180px]',
             isQueryCell && 'min-h-[240px]',
             isPromptCell && 'min-h-[200px]',
@@ -850,7 +850,7 @@ function NotebookCellComponent({
                       dropCursor: false,
                       allowMultipleSelections: false,
                     }}
-                    className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
+                    className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:rounded-none [&_.cm-gutter]:rounded-none [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:rounded-none [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
                     data-test="notebook-sql-editor"
                   />
                 </div>
