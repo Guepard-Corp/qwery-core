@@ -100,6 +100,11 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {

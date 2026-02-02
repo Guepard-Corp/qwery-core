@@ -29,11 +29,5 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
-    proxy: {
-      "/docs": {
-        target: "http://localhost:5001",
-        changeOrigin: true,
-      },
-    },
   },
 });
