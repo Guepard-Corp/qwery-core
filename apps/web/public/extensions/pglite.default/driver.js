@@ -11239,8 +11239,15 @@ var coerce = {
 };
 var NEVER = INVALID;
 
+// packages/extensions-sdk/dist/types.js
+var ExtensionScope;
+(function(ExtensionScope2) {
+  ExtensionScope2["DATASOURCE"] = "datasource";
+  ExtensionScope2["DRIVER"] = "driver";
+})(ExtensionScope || (ExtensionScope = {}));
+
 // packages/domain/src/entities/index.ts
-var import_reflect_metadata = __toESM(require_Reflect());
+var import_reflect_metadata = __toESM(require_Reflect(), 1);
 
 // packages/domain/src/common/code.ts
 var Code = class {

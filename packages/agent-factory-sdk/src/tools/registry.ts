@@ -1,4 +1,4 @@
-import { tool } from 'ai';
+import { tool, jsonSchema } from 'ai';
 import { z } from 'zod/v3';
 import type { Tool } from 'ai';
 import type { ToolInfo, ToolContext, Model, ToolExecute } from './tool';
@@ -12,6 +12,37 @@ import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
+
+const todowriteInputSchema = jsonSchema<{
+  todos: Array<{
+    id: string;
+    content: string;
+    status: string;
+    priority: string;
+  }>;
+}>({
+  type: 'object',
+  properties: {
+    todos: {
+      type: 'array',
+      description: 'The updated todo list',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          content: { type: 'string' },
+          status: {
+            type: 'string',
+            enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+          },
+          priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+        required: ['id', 'content', 'status', 'priority'],
+      },
+    },
+  },
+  required: ['todos'],
+});
 
 const tools = new Map<string, ToolInfo>();
 const agents = new Map<string, AgentInfoWithId>();
@@ -126,9 +157,13 @@ export const Registry = {
 
       for (const info of byModel) {
         const resolved = await resolveTool(info, initCtx);
+        const inputSchema =
+          resolved.id === 'todowrite'
+            ? todowriteInputSchema
+            : resolved.parameters;
         result[resolved.id] = tool({
           description: resolved.description,
-          inputSchema: resolved.parameters,
+          inputSchema,
           execute: async (args, options) => {
             resolved.parameters.parse(args);
             const context = getContext({

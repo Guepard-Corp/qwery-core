@@ -2,7 +2,9 @@
   "name": "@qwery/extensions-sdk",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-dist-imports.mjs",
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
@@ -12,8 +14,13 @@
     "test:watch": "vitest"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "dependencies": {
     "@qwery/domain": "workspace:*",
     "zod": "catalog:"

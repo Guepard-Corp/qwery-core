@@ -13,7 +13,8 @@ export type FormConfigPreset =
   | 'apiKey'
   | 'fileUrl'
   | 'sharedLink'
-  | 'embeddable';
+  | 'embeddable'
+  | 's3';
 
 export interface DatasourceFormConfigPayload {
   preset: FormConfigPreset;
@@ -30,6 +31,10 @@ export interface DatasourceFormConfigPayload {
     username: string;
     password: string;
     connectionString: string;
+    endpoint_url: string;
+    region: string;
+    prefix: string;
+    includes: string;
   }>;
   fieldLabels?: Partial<{
     host: string;
@@ -38,6 +43,16 @@ export interface DatasourceFormConfigPayload {
     username: string;
     password: string;
     connectionString: string;
+    provider: string;
+    endpoint_url: string;
+    aws_access_key_id: string;
+    aws_secret_access_key: string;
+    region: string;
+    bucket: string;
+    prefix: string;
+    format: string;
+    includes: string;
+    excludes: string;
   }>;
   normalizedKey?: string;
   acceptedKeys?: string[];

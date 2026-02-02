@@ -30,6 +30,7 @@ const DATASOURCE_TAGS: Record<string, string[]> = {
   'gsheet-csv': ['Files', 'SaaS'],
   'json-online': ['Files'],
   'parquet-online': ['Files'],
+  s3: ['Files', 'Storage'],
 
   // APIs / SaaS
   'youtube-data-api-v3': ['API'],

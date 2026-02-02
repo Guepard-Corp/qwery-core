@@ -254,20 +254,22 @@ export function GenericBreadcrumb({
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {visibleNodes.map((node, index) => (
+        {visibleNodes.flatMap((node, index) => [
+          ...(index > 0
+            ? [
+                <BreadcrumbSeparator key={`sep-${node.current?.id ?? index}`}>
+                  <ChevronRight className="h-4 w-4" />
+                </BreadcrumbSeparator>,
+              ]
+            : []),
           <BreadcrumbItem key={node.current?.id ?? index}>
-            {index > 0 && (
-              <BreadcrumbSeparator>
-                <ChevronRight className="h-4 w-4" />
-              </BreadcrumbSeparator>
-            )}
             <NodeDropdown
               config={node}
               loadingLabel={loadingLabel}
               noResultsLabel={noResultsLabel}
             />
-          </BreadcrumbItem>
-        ))}
+          </BreadcrumbItem>,
+        ])}
       </BreadcrumbList>
     </Breadcrumb>
   );

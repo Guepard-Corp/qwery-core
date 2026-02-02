@@ -28,6 +28,7 @@
     "@qwery/csrf": "workspace:*",
     "@qwery/datasources": "workspace:*",
     "@qwery/domain": "workspace:*",
+    "@qwery/extension-s3": "workspace:*",
     "@qwery/extensions-loader": "workspace:*",
     "@qwery/extensions-sdk": "workspace:*",
     "@qwery/i18n": "workspace:*",

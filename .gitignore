@@ -71,6 +71,11 @@ web_modules/
 .env.*
 !.env.example
 
+# Local test scripts with credentials (DO Spaces, etc.)
+scripts/test-do-spaces-duckdb.sql
+packages/agent-factory-sdk/scripts/explore-do-spaces.mjs
+packages/agent-factory-sdk/scripts/upload-test-parquet-do.mjs
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

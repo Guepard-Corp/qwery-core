@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "paths": {}
+    "paths": {
+      "@qwery/extension-s3": ["../extensions/s3/dist/driver.d.ts"]
+    }
   },
   "include": [
     "src/**/*"

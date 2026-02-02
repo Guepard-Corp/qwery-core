@@ -1,0 +1,126 @@
+{
+  "name": "@qwery/extension-s3",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/driver.js",
+  "types": "./dist/driver.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/driver.d.ts",
+      "default": "./dist/driver.js"
+    }
+  },
+  "scripts": {
+    "lint": "echo \"no lint configured\"",
+    "test": "vitest run --coverage --passWithNoTests",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "contributes": {
+    "datasources": [
+      {
+        "id": "s3",
+        "name": "S3 Object Storage",
+        "description": "Connect to S3-compatible storage (AWS, DigitalOcean, MinIO) and query Parquet or JSON files with wildcard filtering",
+        "icon": "media/s3.svg",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": [
+                "aws",
+                "digitalocean",
+                "minio",
+                "other"
+              ],
+              "description": "S3-compatible provider (endpoint URL required for non-AWS)"
+            },
+            "aws_access_key_id": {
+              "type": "string",
+              "description": "Access key ID"
+            },
+            "aws_secret_access_key": {
+              "type": "string",
+              "description": "Secret access key",
+              "format": "password"
+            },
+            "aws_session_token": {
+              "type": "string",
+              "description": "Session token (optional, for temporary credentials)"
+            },
+            "region": {
+              "type": "string",
+              "description": "Region (e.g. us-east-1, or DigitalOcean Spaces region: fra1, nyc3)"
+            },
+            "endpoint_url": {
+              "type": "string",
+              "description": "Custom endpoint (required for MinIO/other). For DigitalOcean optional: omit to use https://<region>.digitaloceanspaces.com",
+              "format": "uri"
+            },
+            "bucket": {
+              "type": "string",
+              "description": "Bucket name"
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Prefix/folder inside bucket",
+              "default": ""
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "parquet",
+                "json"
+              ],
+              "description": "File format to read (Parquet or JSON)"
+            },
+            "includes": {
+              "type": "array",
+              "description": "Wildcard include patterns (e.g. **/*.parquet). First used.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "excludes": {
+              "type": "array",
+              "description": "Wildcard exclude patterns",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "provider",
+            "aws_access_key_id",
+            "aws_secret_access_key",
+            "region",
+            "bucket",
+            "format"
+          ]
+        },
+        "drivers": [
+          "s3.duckdb"
+        ]
+      }
+    ],
+    "drivers": [
+      {
+        "id": "s3.duckdb",
+        "name": "DuckDB (Node)",
+        "description": "Node driver for S3 Parquet/JSON with wildcard support",
+        "runtime": "node",
+        "entry": "./dist/driver.js"
+      }
+    ]
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.2-r.1",
+    "@qwery/extensions-sdk": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vitest/coverage-istanbul": "catalog:",
+    "vitest": "catalog:"
+  }
+}
