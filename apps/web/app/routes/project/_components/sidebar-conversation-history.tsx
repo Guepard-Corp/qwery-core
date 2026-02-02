@@ -90,6 +90,23 @@ export function SidebarConversationHistory({
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [isRecentsOpen, setIsRecentsOpen] = useState(true);
+  const initialOpenSetRef = useRef(false);
+
+  useEffect(() => {
+    if (!projectSlug) return;
+    initialOpenSetRef.current = false;
+  }, [projectSlug]);
+
+  useEffect(() => {
+    if (isLoading || initialOpenSetRef.current) return;
+    initialOpenSetRef.current = true;
+    const hasAny =
+      conversations.length > 0 ||
+      (currentConversationId &&
+        conversations.some((c) => c.id === currentConversationId));
+    setIsRecentsOpen(!!hasAny);
+  }, [isLoading, conversations.length, currentConversationId, conversations]);
+
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('bookmarked-conversations');
@@ -906,6 +923,13 @@ export function SidebarNotebookHistory({
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [isRecentsOpen, setIsRecentsOpen] = useState(true);
+  const initialOpenSetRef = useRef(false);
+
+  useEffect(() => {
+    if (!projectSlug) return;
+    initialOpenSetRef.current = false;
+  }, [projectSlug]);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -946,6 +970,12 @@ export function SidebarNotebookHistory({
   );
 
   const hasNotebooks = filteredNotebooks.length > 0 || currentNotebook !== null;
+
+  useEffect(() => {
+    if (isLoading || initialOpenSetRef.current) return;
+    initialOpenSetRef.current = true;
+    setIsRecentsOpen(!!hasNotebooks);
+  }, [isLoading, hasNotebooks]);
 
   const handleStartEdit = (notebookId: string, currentTitle: string) => {
     setEditingId(notebookId);
