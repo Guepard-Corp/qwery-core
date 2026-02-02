@@ -9,5 +9,5 @@ export const CompactionAgent = Agent.define('compaction', {
   hidden: true,
   systemPrompt: COMPACTION_PROMPT,
   steps: 1,
-  options: {},
+  options: { tools: { '*': false } },
 });

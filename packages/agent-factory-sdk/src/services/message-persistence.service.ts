@@ -104,11 +104,20 @@ export class MessagePersistenceService {
           }
         }
 
+        const hasMetadata =
+          message.metadata &&
+          typeof message.metadata === 'object' &&
+          Object.keys(message.metadata).length > 0;
+        const metadataInput = hasMetadata
+          ? { metadata: message.metadata as Record<string, unknown> }
+          : {};
+
         await useCase.execute({
           input: {
             content: convertUIMessageToContent(message),
             role: uiRoleToMessageRole(message.role),
             createdBy: resolvedCreatedBy,
+            ...metadataInput,
           },
           conversationSlug: this.conversationSlug,
         });

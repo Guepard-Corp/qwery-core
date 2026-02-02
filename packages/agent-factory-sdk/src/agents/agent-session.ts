@@ -24,6 +24,7 @@ import { getDatasourceDatabaseName } from '../tools/datasource-name-utils';
 import { insertReminders } from './insert-reminders';
 import { LLM } from '../llm/llm';
 import { Provider } from '../llm/provider';
+import { SystemPrompt } from '../llm/system';
 import { v4 as uuidv4 } from 'uuid';
 
 export type AgentSessionPromptInput = {
@@ -116,20 +117,20 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
   while (true) {
     const msgs = await filterCompacted(messagesApi.stream(conversationId));
-    const { lastUser, lastAssistant, lastFinished, tasks } = deriveState(msgs);
+    const { lastUser, lastFinished, tasks } = deriveState(msgs);
 
-    const finish = lastAssistant
-      ? (lastAssistant.info as { finish?: string }).finish
-      : undefined;
+    const lastMsg = msgs.at(-1);
+    const lastMsgFinish =
+      lastMsg?.info.role === 'assistant'
+        ? (lastMsg.info as { finish?: string }).finish
+        : undefined;
     const exitCondition =
-      lastAssistant &&
-      finish &&
-      finish !== 'tool-calls' &&
-      finish !== 'unknown' &&
-      lastUser &&
-      lastUser.info.id < lastAssistant.info.id;
+      lastMsg?.info.role === 'assistant' &&
+      lastMsgFinish &&
+      lastMsgFinish !== 'tool-calls' &&
+      lastMsgFinish !== 'unknown';
     if (exitCondition) {
-      break;
+      //break;
     }
 
     step += 1;
@@ -156,6 +157,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         conversationSlug,
         abort: abortController.signal,
         auto: (task as { auto: boolean }).auto,
+        repositories,
       });
       if (result === 'stop') break;
       continue;
@@ -191,9 +193,10 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       };
       await SessionCompaction.create({
         conversationSlug,
-        agent: userInfo?.agent ?? '',
-        model: userInfo?.model ?? { providerID: '', modelID: model },
+        agent: userInfo?.agent ?? agentId,
+        model: userInfo?.model ?? model,
         auto: true,
+        repositories,
       });
       continue;
     }
@@ -329,17 +332,57 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       }
     }
 
+    const systemPromptForLlm =
+      agentInfo.systemPrompt !== undefined && agentInfo.systemPrompt !== ''
+        ? [
+            SystemPrompt.provider(providerModel),
+            ...(await SystemPrompt.environment(providerModel)),
+            agentInfo.systemPrompt,
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : agentInfo.systemPrompt;
+
     const result = await LLM.stream({
       model,
       messages: messagesForLlm,
       tools,
       maxSteps: inputMaxSteps ?? agentInfo.steps ?? 5,
       abortSignal: abortController.signal,
-      systemPrompt: agentInfo.systemPrompt,
+      systemPrompt: systemPromptForLlm,
     });
 
     const streamResponse = result.toUIMessageStreamResponse({
       generateMessageId: () => uuidv4(),
+      messageMetadata: ({
+        part,
+      }: {
+        part: {
+          type: string;
+          totalUsage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            reasoningTokens?: number;
+            cachedInputTokens?: number;
+          };
+        };
+      }) => {
+        if (part.type === 'finish' && part.totalUsage) {
+          const raw = part.totalUsage;
+          return {
+            tokens: {
+              input: raw.inputTokens ?? 0,
+              output: raw.outputTokens ?? 0,
+              reasoning: raw.reasoningTokens ?? 0,
+              cache: {
+                read: raw.cachedInputTokens ?? 0,
+                write: 0,
+              },
+            },
+            finish: 'stop',
+          };
+        }
+      },
       onFinish: async ({ messages: finishedMessages }) => {
         const totalUsage = await result.totalUsage;
         const usagePersistenceService = new UsagePersistenceService(
@@ -354,6 +397,35 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             const log = await getLogger();
             log.error('[AgentSession] Failed to persist usage:', error);
           });
+
+        const lastAssistant = [...finishedMessages]
+          .reverse()
+          .find((m) => m.role === 'assistant');
+        if (lastAssistant && totalUsage) {
+          const raw = totalUsage as {
+            inputTokens?: number;
+            outputTokens?: number;
+            reasoningTokens?: number;
+            cachedInputTokens?: number;
+          };
+          const meta =
+            lastAssistant.metadata && typeof lastAssistant.metadata === 'object'
+              ? (lastAssistant.metadata as Record<string, unknown>)
+              : {};
+          lastAssistant.metadata = {
+            ...meta,
+            tokens: {
+              input: raw.inputTokens ?? 0,
+              output: raw.outputTokens ?? 0,
+              reasoning: raw.reasoningTokens ?? 0,
+              cache: {
+                read: raw.cachedInputTokens ?? 0,
+                write: 0,
+              },
+            },
+            finish: 'stop',
+          };
+        }
 
         const persistence = new MessagePersistenceService(
           repositories.message,
@@ -485,7 +557,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     break;
   }
 
-  await SessionCompaction.prune({ conversationSlug });
+  await SessionCompaction.prune({ conversationSlug, repositories });
 
   if (responseToReturn !== null) return responseToReturn;
   return new Response(null, { status: 204 });
