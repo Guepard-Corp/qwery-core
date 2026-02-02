@@ -4,10 +4,16 @@ import {
   CreateOrUpdateTodoService,
   GetTodoByConversationService,
 } from '@qwery/domain/services';
-import { TodoItemSchema } from '@qwery/domain/entities';
 import { Tool } from './tool';
 import { TODOWRITE_DESCRIPTION } from './prompts/todowrite.prompt';
 import { TODOREAD_DESCRIPTION } from './prompts/todoread.prompt';
+
+const TodoItemSchemaForTool = z.object({
+  id: z.string(),
+  content: z.string(),
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  priority: z.enum(['high', 'medium', 'low']),
+});
 
 function getRepositories(ctx: {
   extra?: Record<string, unknown>;
@@ -19,7 +25,7 @@ function getRepositories(ctx: {
 export const TodoWriteTool = Tool.define('todowrite', {
   description: TODOWRITE_DESCRIPTION,
   parameters: z.object({
-    todos: z.array(TodoItemSchema).describe('The updated todo list'),
+    todos: z.array(TodoItemSchemaForTool).describe('The updated todo list'),
   }),
   async execute(params, ctx) {
     const repositories = getRepositories(ctx);
