@@ -22,7 +22,14 @@ import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 import { useToolVariant } from './tool-variant-context';
 import { Switch } from '../../shadcn/switch';
-import { PlusIcon, SettingsIcon } from 'lucide-react';
+import {
+  ArrowUp,
+  ImageIcon,
+  PaperclipIcon,
+  PlusIcon,
+  SquareIcon,
+  XIcon,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,24 +108,27 @@ function PromptInputContent(props: QweryPromptInputProps) {
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
-          <PromptInputButton
-            aria-label="Add attachments"
-            onClick={() => attachments.openFileDialog()}
-          >
-            <PlusIcon className="size-4" />
-          </PromptInputButton>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <PromptInputButton aria-label="Settings">
-                <SettingsIcon className="size-4" />
+              <PromptInputButton aria-label="Add or attach">
+                <PlusIcon className="size-4" />
               </PromptInputButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem disabled className="gap-2">
+                <ImageIcon className="size-4" />
+                <span>Add image/video</span>
+              </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                }}
-                className="flex items-center justify-between gap-3 py-2"
+                className="gap-2"
+                onSelect={() => attachments.openFileDialog()}
+              >
+                <PaperclipIcon className="size-4" />
+                <span>Attach file</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="flex cursor-default items-center justify-between gap-3 py-2"
               >
                 <span className="text-sm">Minimal Tool UI</span>
                 <Switch
@@ -158,6 +168,8 @@ function PromptInputContent(props: QweryPromptInputProps) {
               ))}
             </PromptInputSelectContent>
           </PromptInputSelect>
+        </PromptInputTools>
+        <div className="flex shrink-0 items-center gap-1">
           <QweryContext
             usedTokens={
               typeof props.usage?.usedTokens === 'number' &&
@@ -174,8 +186,6 @@ function PromptInputContent(props: QweryPromptInputProps) {
             usage={props.usage?.usage}
             modelId={props.usage?.modelId ?? props.model}
           />
-        </PromptInputTools>
-        <div className="shrink-0">
           <PromptInputSubmit
             disabled={
               props.stopDisabled ||
@@ -200,7 +210,15 @@ function PromptInputContent(props: QweryPromptInputProps) {
                 props.onStop();
               }
             }}
-          />
+          >
+            {isResponseInProgress(props.status) && !props.stopDisabled ? (
+              <SquareIcon className="size-4" />
+            ) : props.status === 'error' ? (
+              <XIcon className="size-4" />
+            ) : (
+              <ArrowUp className="size-4" />
+            )}
+          </PromptInputSubmit>
         </div>
       </PromptInputFooter>
     </>
