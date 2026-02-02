@@ -17490,8 +17490,15 @@ var coerce = {
 };
 var NEVER = INVALID;
 
+// packages/extensions-sdk/dist/types.js
+var ExtensionScope;
+(function(ExtensionScope2) {
+  ExtensionScope2["DATASOURCE"] = "datasource";
+  ExtensionScope2["DRIVER"] = "driver";
+})(ExtensionScope || (ExtensionScope = {}));
+
 // packages/domain/src/entities/index.ts
-var import_reflect_metadata = __toESM(require_Reflect());
+var import_reflect_metadata = __toESM(require_Reflect(), 1);
 
 // packages/domain/src/common/code.ts
 var Code = class {
@@ -20922,15 +20929,13 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
-// packages/extensions-sdk/src/timeout-utils.ts
+// packages/extensions-sdk/dist/timeout-utils.js
 var DEFAULT_CONNECTION_TEST_TIMEOUT_MS = 3e4;
 async function withTimeout(promise, timeoutMs, errorMessage) {
   let timeoutId;
   const timeoutPromise = new Promise((_2, reject) => {
     timeoutId = setTimeout(() => {
-      reject(
-        new Error(errorMessage ?? `Operation timed out after ${timeoutMs}ms`)
-      );
+      reject(new Error(errorMessage !== null && errorMessage !== void 0 ? errorMessage : `Operation timed out after ${timeoutMs}ms`));
     }, timeoutMs);
   });
   try {

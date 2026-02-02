@@ -18,6 +18,12 @@ type DriverModule = {
 
 type DriverImportFn = () => Promise<DriverModule>;
 
+function getDriverFactoryFromModule(mod: DriverModule): unknown {
+  const m = mod as Record<string, unknown>;
+  const factory = m.driverFactory ?? m.default;
+  return typeof factory === 'function' ? factory : undefined;
+}
+
 const loadedDrivers = new Set<string>();
 
 /**
@@ -60,6 +66,9 @@ const driverImports = new Map<string, DriverImportFn>([
     'parquet-online.duckdb',
     () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
   ],
+
+  // S3 Object Storage (Parquet/JSON with wildcards)
+  ['s3.duckdb', () => import('@qwery/extension-s3') as Promise<DriverModule>],
 
   // PostgreSQL (used by postgresql, postgresql-supabase, postgresql-neon)
   [
@@ -127,33 +136,36 @@ export async function getDriverInstance(
   // Load and register if not already loaded
   if (!loadedDrivers.has(driver.id)) {
     loadedDrivers.add(driver.id);
+    try {
+      let mod: DriverModule;
 
-    let mod: DriverModule;
+      if (driver.runtime === 'node') {
+        mod = await loadDriverModule(driver.id);
+      } else {
+        const entry = driver.entry ?? './dist/driver.js';
+        const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
+        const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
+        const dynamicImport = new Function('url', 'return import(url)');
+        mod = await dynamicImport(url);
+      }
 
-    // Load the module based on runtime
-    if (driver.runtime === 'node') {
-      mod = await loadDriverModule(driver.id);
-    } else {
-      // Browser driver - load from public directory
-      const entry = driver.entry ?? './dist/driver.js';
-      const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
-      const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
-      const dynamicImport = new Function('url', 'return import(url)');
-      mod = await dynamicImport(url);
-    }
+      const driverFactory = getDriverFactoryFromModule(mod);
 
-    // Get driver factory directly from module
-    const driverFactory =
-      (mod as Record<string, unknown>).driverFactory ??
-      (mod as Record<string, unknown>).default;
-
-    if (typeof driverFactory === 'function') {
-      factory = driverFactory as DriverFactory;
-      datasources.registerDriver(driver.id, factory, driver.runtime ?? 'node');
-    } else {
-      throw new Error(
-        `Driver ${driver.id} did not export a driverFactory or default function`,
-      );
+      if (typeof driverFactory === 'function') {
+        factory = driverFactory as DriverFactory;
+        datasources.registerDriver(
+          driver.id,
+          factory,
+          driver.runtime ?? 'node',
+        );
+      } else {
+        throw new Error(
+          `Driver ${driver.id} did not export a driverFactory or default function`,
+        );
+      }
+    } catch (err) {
+      loadedDrivers.delete(driver.id);
+      throw err;
     }
   }
 
@@ -233,37 +245,36 @@ export async function getExtension(
       // Load and register if not already loaded
       if (!loadedDrivers.has(driver.id)) {
         loadedDrivers.add(driver.id);
+        try {
+          let mod: DriverModule;
 
-        let mod: DriverModule;
+          if (driver.runtime === 'node') {
+            mod = await loadDriverModule(driver.id);
+          } else {
+            const entry = driver.entry ?? './dist/driver.js';
+            const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
+            const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
+            const dynamicImport = new Function('url', 'return import(url)');
+            mod = await dynamicImport(url);
+          }
 
-        // Load the module based on runtime
-        if (driver.runtime === 'node') {
-          mod = await loadDriverModule(driver.id);
-        } else {
-          // Browser driver - load from public directory
-          const entry = driver.entry ?? './dist/driver.js';
-          const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
-          const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
-          const dynamicImport = new Function('url', 'return import(url)');
-          mod = await dynamicImport(url);
-        }
+          const driverFactory = getDriverFactoryFromModule(mod);
 
-        // Get driver factory directly from module
-        const driverFactory =
-          (mod as Record<string, unknown>).driverFactory ??
-          (mod as Record<string, unknown>).default;
-
-        if (typeof driverFactory === 'function') {
-          factory = driverFactory as DriverFactory;
-          datasources.registerDriver(
-            driver.id,
-            factory,
-            driver.runtime ?? 'node',
-          );
-        } else {
-          throw new Error(
-            `Driver ${driver.id} did not export a driverFactory or default function`,
-          );
+          if (typeof driverFactory === 'function') {
+            factory = driverFactory as DriverFactory;
+            datasources.registerDriver(
+              driver.id,
+              factory,
+              driver.runtime ?? 'node',
+            );
+          } else {
+            throw new Error(
+              `Driver ${driver.id} did not export a driverFactory or default function`,
+            );
+          }
+        } catch (err) {
+          loadedDrivers.delete(driver.id);
+          throw err;
         }
       }
 

@@ -6387,8 +6387,15 @@ var coerce = {
 };
 var NEVER = INVALID;
 
+// packages/extensions-sdk/dist/types.js
+var ExtensionScope;
+(function(ExtensionScope2) {
+  ExtensionScope2["DATASOURCE"] = "datasource";
+  ExtensionScope2["DRIVER"] = "driver";
+})(ExtensionScope || (ExtensionScope = {}));
+
 // packages/domain/src/entities/index.ts
-var import_reflect_metadata = __toESM(require_Reflect());
+var import_reflect_metadata = __toESM(require_Reflect(), 1);
 
 // packages/domain/src/common/code.ts
 var Code = class {
@@ -9819,7 +9826,7 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
-// packages/extensions-sdk/src/connection-string-utils.ts
+// packages/extensions-sdk/dist/connection-string-utils.js
 function extractGenericUrl(config, keys) {
   for (const key of keys) {
     const value = config[key];
@@ -9897,11 +9904,23 @@ function cleanPostgresConnectionUrl(connectionUrl) {
   try {
     const url = new URL(connectionUrl);
     url.searchParams.delete("channel_binding");
+    const sslmode = url.searchParams.get("sslmode");
+    if (sslmode === "disable") {
+      url.searchParams.set("sslmode", "prefer");
+    } else if (!sslmode) {
+      url.searchParams.set("sslmode", "prefer");
+    }
     return url.toString();
-  } catch {
+  } catch (_a) {
     let cleaned = connectionUrl;
     cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, "");
     cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, "");
+    if (cleaned.includes("sslmode=disable")) {
+      cleaned = cleaned.replace(/sslmode=disable/g, "sslmode=prefer");
+    } else if (!cleaned.includes("sslmode=")) {
+      const separator = cleaned.includes("?") ? "&" : "?";
+      cleaned += `${separator}sslmode=prefer`;
+    }
     return cleaned;
   }
 }
@@ -9931,52 +9950,42 @@ function extractConnectionUrl(config, providerId) {
     case "postgresql":
     case "postgres":
       if (!fields.host) {
-        throw new Error(
-          "PostgreSQL datasource requires connectionUrl or host in config"
-        );
+        throw new Error("PostgreSQL datasource requires connectionUrl or host in config");
       }
       return buildPostgresConnectionUrl(fields);
     case "mysql":
       if (!fields.host) {
-        throw new Error(
-          "MySQL datasource requires connectionUrl or host in config"
-        );
+        throw new Error("MySQL datasource requires connectionUrl or host in config");
       }
       return buildMysqlConnectionUrl(fields);
     case "clickhouse-node":
     case "clickhouse-web":
     case "clickhouse":
       if (!fields.host) {
-        throw new Error(
-          "ClickHouse datasource requires connectionUrl or host in config"
-        );
+        throw new Error("ClickHouse datasource requires connectionUrl or host in config");
       }
       return buildClickHouseConnectionUrl(fields);
     case "sqlite":
     case "duckdb": {
       const path = extractPath(config, ["path", "database", "connectionUrl"]);
       if (!path) {
-        throw new Error(
-          "SQLite/DuckDB datasource requires path, database, or connectionUrl in config"
-        );
+        throw new Error("SQLite/DuckDB datasource requires path, database, or connectionUrl in config");
       }
       return path;
     }
     default:
-      throw new Error(
-        `Unsupported provider for connection string extraction: ${providerId}`
-      );
+      throw new Error(`Unsupported provider for connection string extraction: ${providerId}`);
   }
 }
 
 // packages/extensions/clickhouse-web/dist/driver.js
 var ConfigSchema = external_exports.object({
-  connectionUrl: external_exports.string().url().optional(),
+  connectionUrl: external_exports.string().url().describe("secret:true").optional(),
   host: external_exports.string().optional(),
   port: external_exports.number().int().min(1).max(65535).optional(),
   username: external_exports.string().optional(),
   user: external_exports.string().optional(),
-  password: external_exports.string().optional(),
+  password: external_exports.string().describe("secret:true").optional(),
   database: external_exports.string().optional()
 }).refine((data) => data.connectionUrl || data.host, {
   message: "Either connectionUrl or host must be provided"

@@ -23,11 +23,29 @@ import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
 import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
 import { FormRenderer } from '@qwery/ui/form-renderer';
 import { Button } from '@qwery/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@qwery/ui/select';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
+import { z } from 'zod/v3';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -39,6 +57,322 @@ import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { DATASOURCES } from '~/lib/datasources-loader';
 
 import type { Route } from './+types/new';
+
+const S3_PROVIDERS = [
+  { value: 'aws', label: 'AWS S3' },
+  { value: 'digitalocean', label: 'DigitalOcean Spaces' },
+  { value: 'minio', label: 'MinIO' },
+  { value: 'other', label: 'Other (S3-compatible)' },
+] as const;
+
+const S3_FORMATS = [
+  { value: 'parquet', label: 'Parquet' },
+  { value: 'json', label: 'JSON' },
+] as const;
+
+const s3FormSchema = z
+  .object({
+    provider: z.enum(['aws', 'digitalocean', 'minio', 'other']),
+    endpoint_url: z.string().optional(),
+    aws_access_key_id: z.string().min(1, 'Required'),
+    aws_secret_access_key: z.string().min(1, 'Required'),
+    aws_session_token: z.string().optional(),
+    region: z.string().min(1, 'Required'),
+    bucket: z.string().min(1, 'Required'),
+    prefix: z.string().optional(),
+    format: z.enum(['parquet', 'json']),
+    includes: z.array(z.string()).optional(),
+    excludes: z.array(z.string()).optional(),
+  })
+  .refine(
+    (data) =>
+      data.provider === 'aws' ||
+      (data.endpoint_url && data.endpoint_url.trim().length > 0),
+    { message: 'Endpoint URL required for non-AWS', path: ['endpoint_url'] },
+  );
+
+type S3FormValues = z.infer<typeof s3FormSchema>;
+
+function S3DatasourceForm({
+  onSubmit,
+  formId,
+  onFormReady,
+  onValidityChange,
+}: {
+  onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
+  formId: string;
+  onFormReady: (values: Record<string, unknown>) => void;
+  onValidityChange: (valid: boolean) => void;
+}) {
+  const defaultValues: S3FormValues = {
+    provider: 'aws',
+    format: 'parquet',
+    prefix: '',
+    region: '',
+    bucket: '',
+    aws_access_key_id: '',
+    aws_secret_access_key: '',
+    aws_session_token: '',
+    endpoint_url: '',
+    includes: [],
+    excludes: [],
+  };
+
+  const form = useForm<S3FormValues>({
+    resolver: zodResolver(s3FormSchema),
+    defaultValues,
+    mode: 'onChange',
+  });
+
+  const watched = useWatch({ control: form.control });
+  const provider = (watched?.provider as string) ?? 'aws';
+  const showEndpoint = provider !== 'aws';
+
+  useEffect(() => {
+    onFormReady((watched ?? form.getValues()) as Record<string, unknown>);
+  }, [watched, onFormReady, form]);
+
+  useEffect(() => {
+    onValidityChange(form.formState.isValid);
+  }, [form.formState.isValid, form.formState.errors, onValidityChange]);
+
+  return (
+    <Form {...form}>
+      <form
+        id={formId}
+        onSubmit={form.handleSubmit((v) =>
+          onSubmit(v as Record<string, unknown>),
+        )}
+        className="space-y-5"
+      >
+        <FormField
+          control={form.control}
+          name="provider"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                Provider
+              </FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={typeof field.value === 'string' ? field.value : 'aws'}
+              >
+                <FormControl>
+                  <SelectTrigger className="bg-background/50">
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {S3_PROVIDERS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {showEndpoint && (
+          <FormField
+            control={form.control}
+            name="endpoint_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                  Endpoint URL
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={typeof field.value === 'string' ? field.value : ''}
+                    placeholder="https://nyc3.digitaloceanspaces.com"
+                    className="bg-background/50"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="bucket"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                  Bucket
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={typeof field.value === 'string' ? field.value : ''}
+                    placeholder="my-bucket"
+                    className="bg-background/50"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="region"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                  Region
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={typeof field.value === 'string' ? field.value : ''}
+                    placeholder="us-east-1"
+                    className="bg-background/50"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="aws_access_key_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                Access Key ID
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={typeof field.value === 'string' ? field.value : ''}
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Access key"
+                  className="bg-background/50"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="aws_secret_access_key"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                Secret Access Key
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={typeof field.value === 'string' ? field.value : ''}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Secret key"
+                  className="bg-background/50"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="prefix"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                Prefix (optional)
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={typeof field.value === 'string' ? field.value : ''}
+                  placeholder="folder/ or leave empty"
+                  className="bg-background/50"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="format"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                File format
+              </FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={
+                  typeof field.value === 'string' ? field.value : 'parquet'
+                }
+              >
+                <FormControl>
+                  <SelectTrigger className="bg-background/50">
+                    <SelectValue placeholder="Parquet or JSON" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {S3_FORMATS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="includes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-[13px] font-bold tracking-wider uppercase">
+                Include pattern (optional)
+              </FormLabel>
+              <FormControl>
+                <Input
+                  value={
+                    Array.isArray(field.value)
+                      ? field.value.join(', ')
+                      : typeof field.value === 'string'
+                        ? field.value
+                        : ''
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    field.onChange(
+                      v
+                        ? v
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                        : [],
+                    );
+                  }}
+                  placeholder="**/*.parquet or **/*.json (first used)"
+                  className="bg-background/50"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </form>
+    </Form>
+  );
+}
 
 export async function loader({ params }: Route.LoaderArgs) {
   const extension = DATASOURCES.find((ds) => ds.id === params.id);
@@ -196,14 +530,20 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         return 'Please provide a Parquet file URL (url or connectionUrl)';
       }
     } else if (provider === 's3') {
-      if (!config.bucket) {
-        return 'Please provide an S3 bucket name';
-      }
-      if (!config.region) {
-        return 'Please provide an S3 region';
-      }
+      if (!config.bucket) return 'Please provide an S3 bucket name';
+      if (!config.region) return 'Please provide an S3 region';
       if (!config.aws_access_key_id || !config.aws_secret_access_key) {
-        return 'Please provide AWS access key ID and secret access key';
+        return 'Please provide access key ID and secret access key';
+      }
+      if (
+        !config.format ||
+        !['parquet', 'json'].includes(config.format as string)
+      ) {
+        return 'Please select file format (Parquet or JSON)';
+      }
+      const s3Provider = config.provider as string | undefined;
+      if (s3Provider && s3Provider !== 'aws' && !config.endpoint_url) {
+        return 'Endpoint URL is required for DigitalOcean, MinIO, and Other';
       }
     } else if (
       provider !== 'duckdb' &&
@@ -232,16 +572,17 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     }
     if (provider === 's3') {
       const normalized: Record<string, unknown> = {
+        provider: config.provider ?? 'aws',
         aws_access_key_id: config.aws_access_key_id,
         aws_secret_access_key: config.aws_secret_access_key,
         region: config.region,
         endpoint_url: config.endpoint_url,
         bucket: config.bucket,
         prefix: config.prefix,
+        format: config.format ?? 'parquet',
         includes: config.includes,
         excludes: config.excludes,
       };
-
       Object.keys(normalized).forEach((key) => {
         const value = normalized[key];
         if (
@@ -252,7 +593,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
           delete normalized[key];
         }
       });
-
       return normalized;
     }
     if (
@@ -290,12 +630,15 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       return !!(values.url || values.connectionUrl);
     }
     if (provider === 's3') {
-      return !!(
+      const hasCreds =
         values.bucket &&
         values.region &&
         values.aws_access_key_id &&
-        values.aws_secret_access_key
-      );
+        values.aws_secret_access_key &&
+        values.format;
+      const providerOk =
+        values.provider === 'aws' || (values.provider && values.endpoint_url);
+      return !!(hasCreds && providerOk);
     }
     if (
       provider === 'duckdb' ||
@@ -499,15 +842,23 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             <div className="bg-background p-5">
-              {extension.data?.schema && (
-                <FormRenderer
-                  schema={extension.data.schema}
-                  onSubmit={handleSubmit}
-                  formId="datasource-form"
-                  onFormReady={setFormValues}
-                  onValidityChange={setIsFormValid}
-                />
-              )}
+              {extension.data?.schema &&
+                (extensionId === 's3' ? (
+                  <S3DatasourceForm
+                    onSubmit={handleSubmit}
+                    formId="datasource-form"
+                    onFormReady={setFormValues}
+                    onValidityChange={setIsFormValid}
+                  />
+                ) : (
+                  <FormRenderer
+                    schema={extension.data.schema}
+                    onSubmit={handleSubmit}
+                    formId="datasource-form"
+                    onFormReady={setFormValues}
+                    onValidityChange={setIsFormValid}
+                  />
+                ))}
             </div>
 
             <div className="border-border/40 bg-muted/10 flex items-center justify-between border-t px-5 py-4">

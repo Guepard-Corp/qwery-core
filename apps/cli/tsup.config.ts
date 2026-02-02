@@ -25,7 +25,8 @@ export default defineConfig({
     /^@opentelemetry\/.*/,
     // Externalize gRPC packages to avoid ESM bundling issues
     '@grpc/grpc-js',
+    '@qwery/extension-s3',
   ],
-  noExternal: [/^@qwery\/.*$/],
+  noExternal: [/^@qwery\/(?!extension-s3$).*/],
 });
 
