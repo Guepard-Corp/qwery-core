@@ -4,7 +4,7 @@ import {
   TaskItem,
   TaskItemFile,
   TaskTrigger,
-} from '../../ai-elements/task';
+} from '../../ai-elements';
 import {
   Message,
   MessageContent,
@@ -302,7 +302,7 @@ export function TodoPart({ part, messageId, index }: TodoPartProps) {
             <ul className="space-y-0.5" data-component="todos">
               {todos.map((todo) => {
                 const meta = getTodoStatusMeta(todo.status);
-                const StatusIcon = meta.Icon;
+                const StatusIcon = meta.Icon ?? CircleDashedIcon;
                 return (
                   <li
                     key={todo.id}

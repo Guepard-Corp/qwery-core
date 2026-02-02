@@ -12,6 +12,11 @@ export type Model = {
   id: string;
   api: { id: string; npm: string; url: string };
   apiId?: string;
+  limit?: {
+    context: number;
+    output: number;
+    input?: number;
+  };
 };
 
 type SDKWithLanguageModel = { languageModel(modelId: string): LanguageModel };
@@ -61,11 +66,23 @@ function buildProviders(
     const models: Record<string, Model> = {};
     for (const [modelKey, m] of Object.entries(raw.models ?? {})) {
       const modelId = (m as ManifestModel).id ?? modelKey;
+      const rawLimit = (m as ManifestModel).limit as
+        | { context?: number; output?: number; input?: number }
+        | undefined;
       const model: Model = {
         providerID,
         id: modelKey,
         api: { id: modelId, npm, url: apiUrl },
         apiId: modelId,
+        ...(rawLimit?.context !== undefined || rawLimit?.output !== undefined
+          ? {
+              limit: {
+                context: rawLimit?.context ?? 0,
+                output: rawLimit?.output ?? 0,
+                ...(rawLimit?.input !== undefined && { input: rawLimit.input }),
+              },
+            }
+          : {}),
       };
       models[modelKey] = model;
     }
