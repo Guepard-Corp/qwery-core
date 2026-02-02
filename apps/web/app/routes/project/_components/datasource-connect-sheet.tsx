@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DatasourcePreviewRef } from './datasource-preview';
 
 import { Pencil, Shuffle, X } from 'lucide-react';
-import { Sheet, SheetContent } from '@qwery/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@qwery/ui/sheet';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { cn } from '@qwery/ui/utils';
@@ -25,7 +25,8 @@ import {
 import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 
-const SHEET_Z = 'z-[100]';
+const SHEET_OVERLAY_Z = 'z-[100]';
+const SHEET_CONTENT_Z = 'z-[101]';
 
 export interface DatasourceConnectSheetProps {
   open: boolean;
@@ -151,13 +152,16 @@ export function DatasourceConnectSheet({
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="right"
-          overlayClassName={SHEET_Z}
+          overlayClassName={SHEET_OVERLAY_Z}
           className={cn(
             'flex h-full w-full flex-col gap-0 p-0 sm:max-w-xl',
-            SHEET_Z,
+            SHEET_CONTENT_Z,
             className,
           )}
         >
+          <SheetTitle className="sr-only">
+            Connect to {extensionMeta.name}
+          </SheetTitle>
           <div
             className="shrink-0 space-y-3 px-4 pt-6 pr-12 pb-3"
             onMouseEnter={() => setIsHoveringName(true)}
@@ -267,8 +271,8 @@ export function DatasourceConnectSheet({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-3 pb-6">
-              <div className="shrink-0">
+            <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-3 pb-6">
+              <div className="min-h-0 shrink-0">
                 <DatasourceConnectForm
                   extensionId={extensionId}
                   projectSlug={projectSlug}
@@ -303,7 +307,7 @@ export function DatasourceConnectSheet({
               actionsRef.current = el;
               setActionsReady(!!el);
             }}
-            className="bg-background shrink-0 px-4 py-4"
+            className="bg-background relative z-10 shrink-0 px-4 py-4"
           />
         </SheetContent>
       </Sheet>

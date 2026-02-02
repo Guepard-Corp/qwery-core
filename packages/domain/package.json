@@ -2,7 +2,9 @@
   "name": "@qwery/domain",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-dist-imports.mjs",
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "test": "vitest run --logHeapUsage --coverage --silent",
@@ -11,7 +13,11 @@
     "typecheck": "tsc --noEmit"
   },
   "exports": {
-    "./entities": "./src/entities/index.ts",
+    "./entities": {
+      "node": "./dist/entities/index.js",
+      "types": "./src/entities/index.ts",
+      "default": "./src/entities/index.ts"
+    },
     "./exceptions": "./src/exceptions/index.ts",
     "./repositories": "./src/repositories/index.ts",
     "./common": "./src/common/index.ts",

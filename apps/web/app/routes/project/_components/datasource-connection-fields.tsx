@@ -16,6 +16,13 @@ import {
 } from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
 import { Switch } from '@qwery/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@qwery/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@qwery/ui/tabs';
 import { Textarea } from '@qwery/ui/textarea';
 import { cn } from '@qwery/ui/utils';
@@ -226,6 +233,7 @@ function getConnectionValueKey(
   formConfig?: DatasourceFormConfigPayload | null,
 ): string {
   if (formConfig?.preset === 'embeddable') return 'database';
+  if (formConfig?.preset === 's3') return 'bucket';
   switch (connectionFieldKind) {
     case 'apiKey':
       return 'apiKey';
@@ -236,6 +244,305 @@ function getConnectionValueKey(
     default:
       return 'connectionUrl';
   }
+}
+
+const S3_FIELD_KEYS = [
+  'provider',
+  'format',
+  'aws_access_key_id',
+  'aws_secret_access_key',
+  'aws_session_token',
+  'endpoint_url',
+  'region',
+  'bucket',
+  'prefix',
+  'includes',
+  'excludes',
+] as const;
+
+const S3_PROVIDERS = [
+  { value: 'aws', label: 'AWS S3' },
+  { value: 'digitalocean', label: 'DigitalOcean Spaces' },
+  { value: 'minio', label: 'MinIO' },
+  { value: 'other', label: 'Other (S3-compatible)' },
+] as const;
+
+const S3_FORMATS = [
+  { value: 'parquet', label: 'Parquet' },
+  { value: 'json', label: 'JSON' },
+] as const;
+
+function S3FieldsGrid({
+  control,
+}: {
+  control: React.ComponentProps<typeof FormField>['control'];
+}) {
+  const provider = useWatch({ control, name: 'provider', defaultValue: 'aws' });
+  const showEndpoint = provider !== 'aws';
+
+  return (
+    <div className="grid gap-5 p-1">
+      <FormField
+        control={control}
+        name="provider"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Provider</FormLabel>
+            <Select
+              value={(field.value as string) || 'aws'}
+              onValueChange={(v) => field.onChange(v)}
+            >
+              <SelectTrigger className="bg-background/50" id={field.name}>
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent className="z-[110]" position="popper">
+                {S3_PROVIDERS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="format"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>File format</FormLabel>
+            <Select
+              value={(field.value as string) || 'parquet'}
+              onValueChange={(v) => field.onChange(v)}
+            >
+              <SelectTrigger className="bg-background/50" id={field.name}>
+                <SelectValue placeholder="Parquet or JSON" />
+              </SelectTrigger>
+              <SelectContent className="z-[110]" position="popper">
+                {S3_FORMATS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="aws_access_key_id"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Access Key ID</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+                placeholder="AWS_ACCESS_KEY_ID"
+                autoComplete="off"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="aws_secret_access_key"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Secret Access Key</FormLabel>
+            <FormControl>
+              <PasswordInput
+                id="s3-secret-key"
+                label=""
+                value={typeof field.value === 'string' ? field.value : ''}
+                onChange={field.onChange}
+                placeholder="AWS_SECRET_ACCESS_KEY"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="aws_session_token"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>
+              Session token (optional, for temporary credentials)
+            </FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+                placeholder="AWS_SESSION_TOKEN"
+                autoComplete="off"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      {showEndpoint && (
+        <FormField
+          control={control}
+          name="endpoint_url"
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel className={LABEL_CLASS}>Endpoint URL</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={typeof field.value === 'string' ? field.value : ''}
+                  placeholder="https://nyc3.digitaloceanspaces.com"
+                  autoComplete="off"
+                  className="bg-background/50"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+      <FormField
+        control={control}
+        name="region"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Region</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+                placeholder="us-east-1"
+                autoComplete="off"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="bucket"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Bucket</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+                placeholder="my-bucket"
+                autoComplete="off"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="prefix"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>Prefix (optional)</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+                placeholder="folder/ or leave empty"
+                autoComplete="off"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="includes"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>
+              Include patterns (optional)
+            </FormLabel>
+            <FormControl>
+              <Input
+                value={
+                  Array.isArray(field.value)
+                    ? field.value.join(', ')
+                    : typeof field.value === 'string'
+                      ? field.value
+                      : ''
+                }
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  field.onChange(
+                    v
+                      ? v
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  );
+                }}
+                placeholder="**/*.parquet or **/*.json"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="excludes"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel className={LABEL_CLASS}>
+              Exclude patterns (optional)
+            </FormLabel>
+            <FormControl>
+              <Input
+                value={
+                  Array.isArray(field.value)
+                    ? field.value.join(', ')
+                    : typeof field.value === 'string'
+                      ? field.value
+                      : ''
+                }
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  field.onChange(
+                    v
+                      ? v
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  );
+                }}
+                placeholder="**/skip/**"
+                className="bg-background/50"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
 }
 
 const DEFAULT_KEYS = [
@@ -251,8 +558,37 @@ const DEFAULT_KEYS = [
   'jsonUrl',
 ] as const;
 
-function defaultValues(): Record<string, string> {
-  return Object.fromEntries(DEFAULT_KEYS.map((k) => [k, '']));
+const S3_DEFAULT_KEYS = [
+  'provider',
+  'format',
+  'aws_access_key_id',
+  'aws_secret_access_key',
+  'aws_session_token',
+  'endpoint_url',
+  'region',
+  'bucket',
+  'prefix',
+  'includes',
+  'excludes',
+] as const;
+
+function defaultValues(extensionId?: string): Record<string, unknown> {
+  if (extensionId === 's3') {
+    return {
+      ...Object.fromEntries(DEFAULT_KEYS.map((k) => [k, ''])),
+      provider: 'aws',
+      format: 'parquet',
+      ...Object.fromEntries(
+        S3_DEFAULT_KEYS.filter((k) => k !== 'provider' && k !== 'format').map(
+          (k) => [k, k === 'includes' || k === 'excludes' ? [] : ''],
+        ),
+      ),
+    };
+  }
+  return Object.fromEntries(DEFAULT_KEYS.map((k) => [k, ''])) as Record<
+    string,
+    unknown
+  >;
 }
 
 function asSubmitRecord(
@@ -322,7 +658,7 @@ export function DatasourceConnectionFields({
 
   const form = useForm<Record<string, unknown>>({
     defaultValues: {
-      ...defaultValues(),
+      ...defaultValues(extensionId),
       ...(config.showSslToggle ? { ssl: false } : {}),
     } as Record<string, unknown>,
     resolver: providerResolver,
@@ -401,6 +737,7 @@ export function DatasourceConnectionFields({
   } = config;
 
   const showTabs = showDetailsTab && showConnectionStringTab;
+  const isS3 = extensionId === 's3';
 
   const prevValuesRef = useRef<string>('');
   useEffect(() => {
@@ -425,8 +762,16 @@ export function DatasourceConnectionFields({
         detailsValues.ssl = currentValues.ssl;
       }
       submitRecord = asSubmitRecord(detailsValues);
+    } else if (isS3) {
+      const s3Values: Record<string, unknown> = {};
+      S3_FIELD_KEYS.forEach((key) => {
+        const v = currentValues[key];
+        if (v === undefined || v === '') return;
+        if (Array.isArray(v) && v.length === 0) return;
+        s3Values[key] = v;
+      });
+      submitRecord = asSubmitRecord(s3Values);
     } else {
-      // No tabs or single tab mode - submit all
       submitRecord = asSubmitRecord(currentValues);
     }
 
@@ -441,6 +786,7 @@ export function DatasourceConnectionFields({
     showTabs,
     connectionValueKey,
     showSslToggle,
+    isS3,
     onFormReady,
   ]);
 
@@ -458,7 +804,9 @@ export function DatasourceConnectionFields({
 
   const content = (
     <div className={cn('space-y-4', className)}>
-      {showTabs ? (
+      {isS3 ? (
+        <S3FieldsGrid control={form.control} />
+      ) : showTabs ? (
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
@@ -524,6 +872,38 @@ export function DatasourceConnectionFields({
             />
           </TabsContent>
         </Tabs>
+      ) : showConnectionStringTab ? (
+        <FormField
+          control={form.control}
+          name={connectionValueKey}
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel className={LABEL_CLASS}>{connectionLabel}</FormLabel>
+              <FormControl>
+                {isConnectionSingleLine ? (
+                  <Input
+                    type={
+                      connectionFieldKind === 'apiKey' ? 'password' : 'text'
+                    }
+                    {...field}
+                    value={typeof field.value === 'string' ? field.value : ''}
+                    placeholder={placeholders.connectionString}
+                    autoComplete="off"
+                    className="bg-background/50"
+                  />
+                ) : (
+                  <Textarea
+                    {...field}
+                    value={typeof field.value === 'string' ? field.value : ''}
+                    placeholder={placeholders.connectionString}
+                    className="bg-background/50 min-h-[140px] font-mono text-sm"
+                  />
+                )}
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       ) : showConnectionStringTab ? (
         <FormField
           control={form.control}
