@@ -9,6 +9,7 @@ import {
   getGSheetDriverWithConnection,
 } from './datasource-attachment/strategies/gsheet-attachment-strategy';
 import { getParquetDriverWithConnection } from './datasource-attachment/strategies/parquet-attachment-strategy';
+import { getS3DriverWithConnection } from './datasource-attachment/strategies/s3-attachment-strategy';
 import { getDatasourceDatabaseName } from './datasource-name-utils';
 import { getProviderMapping } from './provider-registry';
 import type {
@@ -174,6 +175,69 @@ export class DatasourceAttachmentService {
             error,
           );
         }
+      }
+    }
+
+    // For s3: try driver.attach first (extension owns attach logic)
+    if (provider === 's3') {
+      const driverWithAttach = await getS3DriverWithConnection(connection);
+      if (!driverWithAttach) {
+        throw new Error(
+          'S3 extension driver not found or does not implement attach. Ensure the S3 extension is built and loaded.',
+        );
+      }
+      try {
+        const schemaName = getDatasourceDatabaseName(datasource);
+        const driverResult = await driverWithAttach.attach({
+          config: datasource.config,
+          schemaName,
+          conversationId,
+          workspace,
+        });
+        if (driverResult.tables.length > 0) {
+          const first = driverResult.tables[0]!;
+          let schemaDefinition: SimpleSchema | undefined;
+          try {
+            const escapedSchema = first.schema.replace(/"/g, '""');
+            const escapedTable = first.table.replace(/"/g, '""');
+            const describeReader = await connection.runAndReadAll(
+              `DESCRIBE "${escapedSchema}"."${escapedTable}"`,
+            );
+            await describeReader.readAll();
+            const rows = describeReader.getRowObjectsJS() as Array<{
+              column_name: string;
+              column_type: string;
+            }>;
+            schemaDefinition = {
+              databaseName: schemaName,
+              schemaName: first.schema,
+              tables: [
+                {
+                  tableName: first.table,
+                  columns: rows.map((r) => ({
+                    columnName: r.column_name,
+                    columnType: r.column_type,
+                  })),
+                },
+              ],
+            };
+          } catch {
+            // ignore
+          }
+          if (schemaDefinition) {
+            return {
+              viewName: first.path,
+              displayName: first.table,
+              schema: schemaDefinition,
+            };
+          }
+        }
+      } catch (error) {
+        logger.debug(
+          '[DatasourceAttachmentService] s3 driver.attach failed:',
+          error,
+        );
+        throw error;
       }
     }
 

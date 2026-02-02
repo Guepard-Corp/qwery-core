@@ -6,6 +6,9 @@ import type {
   IDataSourceDriver,
   DatasourceResultSet,
   DatasourceMetadata,
+  DriverAttachOptions,
+  DriverAttachResult,
+  DriverDetachOptions,
 } from '@qwery/extensions-sdk';
 import {
   DatasourceMetadataZodSchema,
@@ -107,6 +110,16 @@ function buildViewSql(config: DriverConfig): string {
     return `CREATE OR REPLACE VIEW "${escapedViewName}" AS SELECT * FROM read_parquet('${escapedUrl}')`;
   }
   return `CREATE OR REPLACE VIEW "${escapedViewName}" AS SELECT * FROM read_json_auto('${escapedUrl}')`;
+}
+
+function buildViewSqlInCatalog(config: DriverConfig, catalogName: string): string {
+  const escapedUrl = escapeSingleQuotes(config.urlPattern);
+  const escapedCatalog = catalogName.replace(/"/g, '""');
+  const escapedViewName = VIEW_NAME.replace(/"/g, '""');
+  if (config.format === 'parquet') {
+    return `CREATE OR REPLACE VIEW "${escapedCatalog}"."${escapedViewName}" AS SELECT * FROM read_parquet('${escapedUrl}')`;
+  }
+  return `CREATE OR REPLACE VIEW "${escapedCatalog}"."${escapedViewName}" AS SELECT * FROM read_json_auto('${escapedUrl}')`;
 }
 
 export function makeS3Driver(context: DriverContext): IDataSourceDriver {
@@ -309,6 +322,67 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
         );
       } finally {
         conn.closeSync();
+      }
+    },
+
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          's3 attach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const escapedCatalogForQuery = catalogName.replace(/'/g, "''");
+
+      await configureS3Connection(conn, parsed);
+
+      const dbListReader = await conn.runAndReadAll(
+        `SELECT name FROM pragma_database_list WHERE name = '${escapedCatalogForQuery}'`,
+      );
+      await dbListReader.readAll();
+      const existingDbs = dbListReader.getRowObjectsJS() as Array<{
+        name: string;
+      }>;
+      if (existingDbs.length === 0) {
+        await conn.run(`ATTACH ':memory:' AS "${escapedCatalog}"`);
+      }
+
+      await conn.run(buildViewSqlInCatalog(parsed, catalogName));
+
+      return {
+        tables: [
+          {
+            schema: catalogName,
+            table: VIEW_NAME,
+            path: `${catalogName}.${VIEW_NAME}`,
+          },
+        ],
+      };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          's3 detach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const tableNames = options.tableNames ?? [VIEW_NAME];
+      for (const table of tableNames) {
+        const escapedTable = table.replace(/"/g, '""');
+        await conn.run(
+          `DROP VIEW IF EXISTS "${escapedCatalog}"."${escapedTable}"`,
+        );
+      }
+      try {
+        await conn.run(`DETACH "${escapedCatalog}"`);
+      } catch {
+        // Catalog may already be detached
       }
     },
 
