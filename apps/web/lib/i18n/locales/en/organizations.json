@@ -36,6 +36,7 @@
   "create_project_description": "Create a new project to organize your work and collaborate with your team.",
   "selected_count": "{{count}} selected",
   "selected_count_plural": "{{count}} selected",
+  "selected": "Selected",
   "delete": "Delete",
   "organization_not_found": "Organization not found",
   "organization_not_found_description": "The organization you're looking for doesn't exist or has been removed.",

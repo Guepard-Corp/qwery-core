@@ -48,7 +48,7 @@ export default function WelcomePage() {
 
   const createPlaygroundMutation = usePlayground(
     repositories.datasource,
-    () => {},
+    () => { },
     (error) => {
       toast.error(
         error instanceof Error ? error.message : 'Failed to create playground',
@@ -82,8 +82,8 @@ export default function WelcomePage() {
   );
 
   useEffect(() => {
-    const targetText = 'query';
-    const finalText = 'qwery';
+    const targetText = 'Query';
+    const finalText = 'Qwery';
     let currentIndex = 0;
     let timeoutId: NodeJS.Timeout;
 
@@ -274,7 +274,7 @@ export default function WelcomePage() {
                 className="bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
               >
                 <ArrowUp className="size-4" />
-                <span className="hidden sm:inline">qwery</span>
+                <span className="hidden sm:inline">Ask AI</span>
               </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>

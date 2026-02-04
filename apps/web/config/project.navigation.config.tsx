@@ -1,4 +1,4 @@
-import { Database, Home, Notebook } from 'lucide-react';
+import { Database, Home, MessageCircle, Notebook } from 'lucide-react';
 import { z } from 'zod';
 
 import { NavigationConfigSchema } from '@qwery/ui/navigation-schema';
@@ -25,6 +25,12 @@ const getRoutes = (slug: string | undefined) => {
           label: 'common:routes.projectDashboard',
           path: createPath(pathsConfig.app.project, slug),
           Icon: <Home className={iconClasses} />,
+          end: true,
+        },
+        {
+          label: 'common:routes.projectConversation',
+          path: createPath(pathsConfig.app.projectConversation, slug),
+          Icon: <MessageCircle className={iconClasses} />,
           end: true,
         },
         {

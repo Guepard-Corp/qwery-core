@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
 import {
   ChevronLeftIcon,
@@ -41,6 +42,7 @@ export function ListPlaygrounds({
 }: {
   playgrounds: Playground[];
 }) {
+  const { t } = useTranslation(['playgrounds']);
   const params = useParams();
   const project_id = params.slug as string;
   const navigate = useNavigate();
@@ -117,7 +119,7 @@ export function ListPlaygrounds({
 
   return (
     <TooltipProvider>
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+      <div className="w-full px-8 py-8 lg:px-16">
         {/* SECTION 1: HERO & SEARCH 
         Centered layout for a "Marketplace" feel.
       */}
@@ -127,12 +129,11 @@ export function ListPlaygrounds({
           </div>
 
           <h1 className="text-foreground mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            Start with a Template
+            {t('playgrounds:title')}
           </h1>
 
           <p className="text-muted-foreground mb-8 max-w-xl text-lg leading-relaxed">
-            Choose a pre-configured playground to jumpstart your project.
-            Includes schema, sample data, and query examples.
+            {t('playgrounds:description')}
           </p>
 
           <div
@@ -145,7 +146,7 @@ export function ListPlaygrounds({
             <Input
               ref={searchInputRef}
               type="text"
-              placeholder="Search templates..."
+              placeholder={t('playgrounds:search_placeholder')}
               className="h-full flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -172,11 +173,10 @@ export function ListPlaygrounds({
                 <Command className="text-muted-foreground h-8 w-8 opacity-50" />
               </div>
               <h3 className="text-foreground text-lg font-medium">
-                No playgrounds found
+                {t('playgrounds:empty_title')}
               </h3>
               <p className="text-muted-foreground mt-1 text-sm">
-                We couldn&apos;t find a template matching &quot;{searchQuery}
-                &quot;
+                {t('playgrounds:empty_subtitle')}
               </p>
               <Button
                 variant="link"
@@ -342,7 +342,10 @@ export function ListPlaygrounds({
                     <ChevronLeftIcon className="h-4 w-4" />
                   </Button>
                   <span className="text-muted-foreground min-w-[100px] text-center text-sm font-medium">
-                    Page {effectiveCurrentPage} of {totalPages}
+                    {t('common:pageOfPages', {
+                      page: effectiveCurrentPage,
+                      total: totalPages,
+                    })}
                   </span>
                   <Button
                     variant="outline"

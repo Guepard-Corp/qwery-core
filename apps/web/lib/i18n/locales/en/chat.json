@@ -1,0 +1,16 @@
+{
+    "title": "Chats",
+    "search_placeholder": "Search conversations...",
+    "new_chat": "New Chat",
+    "no_conversations": "No conversations found",
+    "no_conversations_description": "Pick up where you left off or start a new conversation",
+    "renamed_success": "Conversation renamed to \"{{title}}\"",
+    "update_success": "Conversation title updated",
+    "delete_success": "Conversation deleted",
+    "delete_bulk_success": "Deleted {{count}} conversation",
+    "delete_bulk_success_plural": "Deleted {{count}} conversations",
+    "delete_error": "Failed to delete conversation",
+    "delete_bulk_error": "Failed to delete {{count}} conversation",
+    "delete_bulk_error_plural": "Failed to delete {{count}} conversations",
+    "project_not_found": "Project not found"
+}
