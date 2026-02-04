@@ -17,20 +17,31 @@ describe('createConversation', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns slug when server returns valid JSON', async () => {
+  it('returns id, slug, datasources when server returns valid JSON', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ slug: 'conv-abc-123' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      new Response(
+        JSON.stringify({
+          id: 'uuid-123',
+          slug: 'conv-abc-123',
+          datasources: [],
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
     );
 
     const result = await createConversation(
-      'http://localhost:4096',
+      'http://localhost:4096/api',
       'Test',
       'hello',
     );
-    expect(result).toEqual({ slug: 'conv-abc-123' });
+    expect(result).toEqual({
+      id: 'uuid-123',
+      slug: 'conv-abc-123',
+      datasources: [],
+    });
   });
 
   it('throws helpful error when server returns HTML instead of JSON', async () => {

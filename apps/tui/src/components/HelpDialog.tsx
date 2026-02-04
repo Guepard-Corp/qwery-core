@@ -10,11 +10,15 @@ const KEYBINDINGS = [
   { key: 'ctrl+l', desc: 'Conversations' },
   { key: 'ctrl+n', desc: 'New conversation' },
   { key: 'ctrl+s', desc: 'Stash current prompt' },
+  { key: 'ctrl+v', desc: 'Paste from clipboard' },
   { key: 'ctrl+?', desc: 'Help' },
   { key: 'escape', desc: 'Back / Cancel' },
   { key: 'enter', desc: 'Submit' },
   { key: 'tab', desc: 'Switch mode' },
-  { key: 'up/down', desc: 'Prompt history (when input empty)' },
+  { key: 'tab / ctrl+up', desc: 'Focus tools (chat)' },
+  { key: 'enter (on tool)', desc: 'Expand / collapse tool' },
+  { key: 'ctrl+down / esc', desc: 'Unfocus tools' },
+  { key: 'up/down', desc: 'Prompt history or move tool focus' },
   { key: 'ctrl+c', desc: 'Quit' },
 ];
 

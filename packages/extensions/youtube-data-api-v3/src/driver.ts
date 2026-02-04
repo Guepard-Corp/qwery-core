@@ -18,7 +18,7 @@ import {
 const ConfigSchema = z.object({
   apiKey: z.string().min(1, 'apiKey is required').describe('secret:true'),
   channelId: z.string().min(1, 'channelId is required'),
-  maxResults: z.number().int().positive().max(50).default(25),
+  maxResults: z.coerce.number().int().positive().max(50).default(25),
   publishedAfter: z.string().datetime().optional(),
   publishedBefore: z.string().datetime().optional(),
 });

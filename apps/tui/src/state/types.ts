@@ -9,7 +9,9 @@ export type DialogType =
   | 'export'
   | 'stash'
   | 'agent'
-  | 'model';
+  | 'model'
+  | 'datasources'
+  | 'add_datasource';
 
 export interface MeshStatus {
   servers: number;
@@ -37,6 +39,12 @@ export interface ChatMessage {
   timestamp?: number;
 }
 
+export interface Workspace {
+  projectId: string | null;
+  userId: string;
+  username: string;
+}
+
 export interface Conversation {
   id: string;
   slug?: string;
@@ -44,6 +52,7 @@ export interface Conversation {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+  datasources?: string[];
 }
 
 export interface CommandItem {
@@ -52,6 +61,14 @@ export interface CommandItem {
   category: string;
   action?: string;
 }
+
+export interface ProjectDatasource {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
+export type StreamingToolCall = { name: string; status: ToolCallStatus };
 
 export interface AppState {
   width: number;
@@ -65,12 +82,18 @@ export interface AppState {
   commandPaletteSearch: string;
   commandPaletteItems: CommandItem[];
   commandPaletteSelected: number;
+  workspace: Workspace | null;
+  projectDatasources: ProjectDatasource[];
   conversations: Conversation[];
   currentConversationId: string | null;
   chatInput: string;
   agentBusy: boolean;
   loaderPhase: number;
   pendingUserMessage: string;
+  streamingAgentContent: string;
+  streamingToolCalls: StreamingToolCall[];
+  expandedToolKeys: Record<string, boolean>;
+  focusedToolFlatIndex: number | null;
   meshStatus: MeshStatus | null;
   promptHistory: string[];
   promptHistoryIndex: number;
@@ -84,6 +107,25 @@ export interface AppState {
   themeDialogSelected: number;
   agentDialogSelected: number;
   modelDialogSelected: number;
+  datasourcesDialogSelected: number;
+  pendingConversationDatasourceSync: string | null;
+  addDatasourceStep: 'type' | 'form';
+  addDatasourceTypeIds: string[];
+  addDatasourceTypeNames: string[];
+  addDatasourceTypeSelected: number;
+  addDatasourceTypeId: string | null;
+  addDatasourceName: string;
+  addDatasourceConnection: string;
+  addDatasourceFormSelected: number;
+  pendingAddDatasource: {
+    typeId: string;
+    name: string;
+    connection: string;
+  } | null;
+  addDatasourceValidationError: string | null;
+  addDatasourceTestStatus: 'idle' | 'pending' | 'ok' | 'error';
+  addDatasourceTestMessage: string;
+  addDatasourceTestRequest: boolean;
 }
 
 export function getCurrentConversation(state: AppState): Conversation | null {

@@ -6,6 +6,10 @@ import { TextAttributes } from '@opentui/core';
 interface ChatMessageProps {
   msg: ChatMessageType;
   width?: number;
+  messageIndex: number;
+  toolMetas: { toolIndex: number; flatIndex: number }[];
+  expandedToolKeys: Record<string, boolean>;
+  focusedToolFlatIndex: number | null;
 }
 
 function renderMarkdownLine(
@@ -88,7 +92,14 @@ function renderMarkdownLine(
   return elements;
 }
 
-export function ChatMessage({ msg, width }: ChatMessageProps) {
+export function ChatMessage({
+  msg,
+  width,
+  messageIndex,
+  toolMetas,
+  expandedToolKeys,
+  focusedToolFlatIndex,
+}: ChatMessageProps) {
   const { messageInfoStyle, modelNameStyle, statusDotStyle, colors } =
     useStyles();
 
@@ -114,9 +125,22 @@ export function ChatMessage({ msg, width }: ChatMessageProps) {
 
   return (
     <box flexDirection="column">
-      {msg.toolCalls.map((tool, i) => (
-        <ToolCallBlock key={i} tool={tool} />
-      ))}
+      {msg.toolCalls.map((tool, i) => {
+        const meta = toolMetas.find((m) => m.toolIndex === i);
+        const toolKey =
+          messageIndex >= 0 ? `${messageIndex}_${i}` : `stream_${i}`;
+        const isExpanded = expandedToolKeys[toolKey] ?? false;
+        const isFocused =
+          meta !== undefined && focusedToolFlatIndex === meta.flatIndex;
+        return (
+          <ToolCallBlock
+            key={i}
+            tool={tool}
+            isExpanded={isExpanded}
+            isFocused={isFocused}
+          />
+        );
+      })}
       {msg.content && (
         <box
           flexDirection="column"

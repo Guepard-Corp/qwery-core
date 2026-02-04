@@ -18,7 +18,7 @@ const ConfigSchema = z
   .object({
     connectionUrl: z.string().url().describe('secret:true').optional(),
     host: z.string().optional(),
-    port: z.number().int().min(1).max(65535).optional(),
+    port: z.coerce.number().int().min(1).max(65535).optional(),
     username: z.string().optional(),
     user: z.string().optional(),
     password: z.string().describe('secret:true').optional(),

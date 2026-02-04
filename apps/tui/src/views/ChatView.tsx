@@ -6,6 +6,7 @@ import { Loader } from '../components/Loader.tsx';
 import { ChatInput } from '../components/ChatInput.tsx';
 import { ChatStatusBar } from '../components/ChatStatusBar.tsx';
 import { Sidebar } from '../components/Sidebar.tsx';
+import { useStyles } from '../theme/index.ts';
 
 const SIDEBAR_WIDTH = 36;
 
@@ -18,20 +19,98 @@ export function ChatView({ state }: ChatViewProps) {
   const messages = conv?.messages ?? [];
   const title = conv?.title ?? 'New Conversation';
   const mainWidth = state.width - SIDEBAR_WIDTH;
+  const { colors, messageInfoStyle } = useStyles();
+
+  const attachedNames =
+    conv?.datasources?.length && state.projectDatasources.length
+      ? conv.datasources
+          .map(
+            (id) =>
+              state.projectDatasources.find((d) => d.id === id)?.name ?? id,
+          )
+          .filter(Boolean)
+      : [];
+
+  let flatIdx = 0;
+  const toolMetasByMessage: Record<
+    number,
+    { toolIndex: number; flatIndex: number }[]
+  > = {};
+  messages.forEach((msg, i) => {
+    if (msg.role === 'assistant' && msg.toolCalls.length > 0) {
+      toolMetasByMessage[i] = msg.toolCalls.map((_, j) => ({
+        toolIndex: j,
+        flatIndex: flatIdx++,
+      }));
+    }
+  });
+
+  const showStreaming =
+    state.agentBusy &&
+    (state.streamingAgentContent.length > 0 ||
+      state.streamingToolCalls.length > 0);
+  const streamingMsg = showStreaming
+    ? {
+        role: 'assistant' as const,
+        content: state.streamingAgentContent,
+        toolCalls: state.streamingToolCalls.map((t) => ({
+          name: t.name,
+          args: '',
+          status: t.status,
+        })),
+        model: '',
+        duration: '',
+      }
+    : null;
 
   return (
     <box flexDirection="row" width={state.width} height={state.height}>
       <box flexDirection="column" flexGrow={1} width={mainWidth}>
         <ChatTitleBar title={title} width={mainWidth} />
+        {attachedNames.length > 0 && (
+          <>
+            <box height={1} />
+            <box
+              flexDirection="row"
+              paddingLeft={1}
+              paddingRight={1}
+              paddingTop={0}
+              paddingBottom={0}
+            >
+              <text {...messageInfoStyle}>Datasources: </text>
+              <text fg={colors.cyan}>{attachedNames.join(', ')}</text>
+            </box>
+          </>
+        )}
         <box height={1} />
         <scrollbox flexDirection="column" flexGrow={1}>
           {messages.map((msg, i) => (
             <box key={i} flexDirection="column">
-              <ChatMessage msg={msg} width={mainWidth - 2} />
+              <ChatMessage
+                msg={msg}
+                width={mainWidth - 2}
+                messageIndex={i}
+                toolMetas={toolMetasByMessage[i] ?? []}
+                expandedToolKeys={state.expandedToolKeys}
+                focusedToolFlatIndex={state.focusedToolFlatIndex}
+              />
               {i < messages.length - 1 ? <box height={1} /> : null}
             </box>
           ))}
-          {state.agentBusy && (
+          {streamingMsg && (
+            <>
+              <box height={1} />
+              <ChatMessage
+                msg={streamingMsg}
+                width={mainWidth - 2}
+                messageIndex={-1}
+                toolMetas={[]}
+                expandedToolKeys={state.expandedToolKeys}
+                focusedToolFlatIndex={state.focusedToolFlatIndex}
+              />
+            </>
+          )}
+          {state.agentBusy && !showStreaming && (
             <>
               <box height={1} />
               <Loader phase={state.loaderPhase} />

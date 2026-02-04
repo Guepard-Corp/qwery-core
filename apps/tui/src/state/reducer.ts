@@ -4,14 +4,47 @@ import type {
   CommandItem,
   Conversation,
   DialogType,
+  Workspace,
 } from './types.ts';
+import { getCurrentConversation } from './types.ts';
 import { themeIds } from '../theme/themes.ts';
 
 export type Action =
   | { type: 'key'; key: string }
   | { type: 'loader_tick' }
   | { type: 'agent_response_ready'; prompt: string; response: ChatMessage }
+  | {
+      type: 'agent_stream_chunk';
+      content: string;
+      toolCalls: AppState['streamingToolCalls'];
+    }
   | { type: 'set_conversation_slug'; conversationId: string; slug: string }
+  | {
+      type: 'set_conversation_server';
+      conversationId: string;
+      serverConv: { id: string; slug: string; datasources?: string[] };
+    }
+  | { type: 'set_workspace'; workspace: Workspace }
+  | {
+      type: 'set_project_datasources';
+      datasources: AppState['projectDatasources'];
+    }
+  | { type: 'attach_datasource'; conversationId: string; datasourceId: string }
+  | { type: 'detach_datasource'; conversationId: string; datasourceId: string }
+  | { type: 'clear_pending_datasource_sync' }
+  | { type: 'set_pending_datasource_sync'; conversationId: string }
+  | { type: 'set_add_datasource_type_ids'; ids: string[]; names: string[] }
+  | {
+      type: 'submit_add_datasource';
+      typeId: string;
+      name: string;
+      connection: string;
+    }
+  | {
+      type: 'add_datasource_created';
+      datasources: AppState['projectDatasources'];
+    }
+  | { type: 'add_datasource_failed' }
   | { type: 'mesh_status'; servers: number; workers: number; jobs: number }
   | { type: 'resize'; width: number; height: number }
   | { type: 'open_dialog'; dialog: DialogType }
@@ -31,6 +64,14 @@ export type Action =
       filename: string;
       thinking: boolean;
       toolDetails: boolean;
+    }
+  | { type: 'insert_text'; text: string }
+  | { type: 'set_add_datasource_validation_error'; error: string | null }
+  | { type: 'set_add_datasource_test_request' }
+  | {
+      type: 'set_add_datasource_test_result';
+      status: 'idle' | 'pending' | 'ok' | 'error';
+      message: string;
     };
 
 function generateId(): string {
@@ -60,6 +101,20 @@ function updateCurrentConversation(
   };
 }
 
+function getCurrentConversationToolKeys(state: AppState): string[] {
+  const conv = getCurrentConversation(state);
+  if (!conv) return [];
+  const keys: string[] = [];
+  conv.messages.forEach((msg, msgIdx) => {
+    if (msg.role === 'assistant' && msg.toolCalls.length > 0) {
+      msg.toolCalls.forEach((_, toolIdx) => {
+        keys.push(`${msgIdx}_${toolIdx}`);
+      });
+    }
+  });
+  return keys;
+}
+
 function createConversation(
   title: string,
   firstMessage: ChatMessage,
@@ -83,6 +138,13 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!state.agentBusy) return state;
       return { ...state, loaderPhase: state.loaderPhase + 1 };
 
+    case 'agent_stream_chunk':
+      return {
+        ...state,
+        streamingAgentContent: action.content,
+        streamingToolCalls: action.toolCalls,
+      };
+
     case 'agent_response_ready': {
       if (!state.agentBusy || !state.pendingUserMessage) return state;
       const newState = updateCurrentConversation(state, (conv) => ({
@@ -94,6 +156,8 @@ export function reducer(state: AppState, action: Action): AppState {
         ...newState,
         pendingUserMessage: '',
         agentBusy: false,
+        streamingAgentContent: '',
+        streamingToolCalls: [],
       };
     }
 
@@ -105,6 +169,108 @@ export function reducer(state: AppState, action: Action): AppState {
         ),
       };
     }
+
+    case 'set_conversation_server': {
+      return {
+        ...state,
+        currentConversationId:
+          state.currentConversationId === action.conversationId
+            ? action.serverConv.id
+            : state.currentConversationId,
+        conversations: state.conversations.map((c) =>
+          c.id === action.conversationId
+            ? {
+                ...c,
+                id: action.serverConv.id,
+                slug: action.serverConv.slug,
+                datasources: action.serverConv.datasources ?? c.datasources,
+              }
+            : c,
+        ),
+      };
+    }
+
+    case 'set_workspace':
+      return { ...state, workspace: action.workspace };
+
+    case 'set_project_datasources':
+      return { ...state, projectDatasources: action.datasources };
+
+    case 'attach_datasource': {
+      return {
+        ...state,
+        conversations: state.conversations.map((c) =>
+          c.id === action.conversationId
+            ? {
+                ...c,
+                datasources: [
+                  ...(c.datasources ?? []),
+                  ...(c.datasources?.includes(action.datasourceId)
+                    ? []
+                    : [action.datasourceId]),
+                ],
+              }
+            : c,
+        ),
+      };
+    }
+
+    case 'detach_datasource': {
+      return {
+        ...state,
+        conversations: state.conversations.map((c) =>
+          c.id === action.conversationId
+            ? {
+                ...c,
+                datasources: (c.datasources ?? []).filter(
+                  (id) => id !== action.datasourceId,
+                ),
+              }
+            : c,
+        ),
+      };
+    }
+
+    case 'set_pending_datasource_sync':
+      return {
+        ...state,
+        pendingConversationDatasourceSync: action.conversationId,
+      };
+
+    case 'clear_pending_datasource_sync':
+      return { ...state, pendingConversationDatasourceSync: null };
+
+    case 'set_add_datasource_type_ids':
+      return {
+        ...state,
+        addDatasourceTypeIds: action.ids,
+        addDatasourceTypeNames: action.names,
+      };
+
+    case 'submit_add_datasource':
+      return {
+        ...state,
+        pendingAddDatasource: {
+          typeId: action.typeId,
+          name: action.name,
+          connection: action.connection,
+        },
+      };
+
+    case 'add_datasource_created':
+      return {
+        ...state,
+        activeDialog: 'none',
+        pendingAddDatasource: null,
+        projectDatasources: action.datasources,
+        addDatasourceStep: 'type',
+        addDatasourceTypeId: null,
+        addDatasourceName: '',
+        addDatasourceConnection: '',
+      };
+
+    case 'add_datasource_failed':
+      return { ...state, pendingAddDatasource: null };
 
     case 'mesh_status':
       return {
@@ -130,6 +296,7 @@ export function reducer(state: AppState, action: Action): AppState {
         chatInput: '',
         input: '',
         activeDialog: 'none',
+        focusedToolFlatIndex: null,
       };
 
     case 'switch_conversation': {
@@ -142,6 +309,7 @@ export function reducer(state: AppState, action: Action): AppState {
         currentScreen: 'chat',
         currentConversationId: action.conversationId,
         activeDialog: 'none',
+        focusedToolFlatIndex: null,
       };
     }
 
@@ -151,6 +319,25 @@ export function reducer(state: AppState, action: Action): AppState {
           return reducer(state, { type: 'new_conversation' });
         case 'show_conversations':
           return { ...state, activeDialog: 'conversations' };
+        case 'show_datasources':
+          return {
+            ...state,
+            activeDialog: 'datasources',
+            datasourcesDialogSelected: 0,
+          };
+        case 'show_add_datasource':
+          return {
+            ...state,
+            activeDialog: 'add_datasource',
+            addDatasourceStep: 'type',
+            addDatasourceTypeIds: [],
+            addDatasourceTypeNames: [],
+            addDatasourceTypeSelected: 0,
+            addDatasourceTypeId: null,
+            addDatasourceName: '',
+            addDatasourceConnection: '',
+            addDatasourceFormSelected: 0,
+          };
         case 'show_help':
           return { ...state, activeDialog: 'help' };
         case 'show_theme': {
@@ -267,6 +454,51 @@ export function reducer(state: AppState, action: Action): AppState {
         exportThinking: action.thinking,
         exportToolDetails: action.toolDetails,
       };
+  }
+
+  if (action.type === 'set_add_datasource_validation_error') {
+    return { ...state, addDatasourceValidationError: action.error };
+  }
+  if (action.type === 'set_add_datasource_test_request') {
+    return { ...state, addDatasourceTestRequest: true };
+  }
+  if (action.type === 'set_add_datasource_test_result') {
+    return {
+      ...state,
+      addDatasourceTestStatus: action.status,
+      addDatasourceTestMessage: action.message,
+      addDatasourceTestRequest: false,
+    };
+  }
+  if (action.type === 'insert_text') {
+    const text = action.text;
+    if (!text) return state;
+    if (
+      state.activeDialog === 'add_datasource' &&
+      state.addDatasourceStep === 'form'
+    ) {
+      const sel = state.addDatasourceFormSelected;
+      if (sel >= 2) return state;
+      return {
+        ...state,
+        ...(sel === 0
+          ? { addDatasourceName: state.addDatasourceName + text }
+          : { addDatasourceConnection: state.addDatasourceConnection + text }),
+      };
+    }
+    if (state.activeDialog === 'command') {
+      return {
+        ...state,
+        commandPaletteSearch: state.commandPaletteSearch + text,
+      };
+    }
+    if (state.currentScreen === 'chat') {
+      return { ...state, chatInput: state.chatInput + text };
+    }
+    if (state.activeDialog === 'none') {
+      return { ...state, input: state.input + text };
+    }
+    return state;
   }
 
   // key action
@@ -471,16 +703,267 @@ function handleDialogKey(state: AppState, key: string): AppState {
     }
   }
 
+  if (state.activeDialog === 'datasources') {
+    const conv =
+      state.conversations.find((c) => c.id === state.currentConversationId) ??
+      null;
+    const attachedIds = conv?.datasources ?? [];
+    const available = state.projectDatasources.filter(
+      (d) => !attachedIds.includes(d.id),
+    );
+    const attachedItems = attachedIds.map((id) => ({
+      id,
+      name: state.projectDatasources.find((d) => d.id === id)?.name ?? id,
+      attached: true,
+    }));
+    const availableItems = available.map((d) => ({
+      id: d.id,
+      name: d.name,
+      attached: false,
+    }));
+    const items = [...attachedItems, ...availableItems];
+
+    if (key === 'up') {
+      return {
+        ...state,
+        datasourcesDialogSelected: Math.max(
+          0,
+          state.datasourcesDialogSelected - 1,
+        ),
+      };
+    }
+    if (key === 'down') {
+      const maxIdx = items.length > 0 ? items.length - 1 : 0;
+      return {
+        ...state,
+        datasourcesDialogSelected: Math.min(
+          maxIdx,
+          state.datasourcesDialogSelected + 1,
+        ),
+      };
+    }
+    if (key === 'enter' && conv) {
+      const item = items[state.datasourcesDialogSelected];
+      if (!item) return state;
+      const newState = item.attached
+        ? reducer(state, {
+            type: 'detach_datasource',
+            conversationId: conv.id,
+            datasourceId: item.id,
+          })
+        : reducer(state, {
+            type: 'attach_datasource',
+            conversationId: conv.id,
+            datasourceId: item.id,
+          });
+      return {
+        ...newState,
+        pendingConversationDatasourceSync: conv.id,
+      };
+    }
+  }
+
+  if (state.activeDialog === 'add_datasource') {
+    if (state.addDatasourceStep === 'type') {
+      const ids = state.addDatasourceTypeIds;
+      if (key === 'up') {
+        return {
+          ...state,
+          addDatasourceTypeSelected: Math.max(
+            0,
+            state.addDatasourceTypeSelected - 1,
+          ),
+        };
+      }
+      if (key === 'down') {
+        const maxIdx = ids.length > 0 ? ids.length - 1 : 0;
+        return {
+          ...state,
+          addDatasourceTypeSelected: Math.min(
+            maxIdx,
+            state.addDatasourceTypeSelected + 1,
+          ),
+        };
+      }
+      if (key === 'enter' && ids[state.addDatasourceTypeSelected]) {
+        const typeId = ids[state.addDatasourceTypeSelected]!;
+        const typeName =
+          state.addDatasourceTypeNames[state.addDatasourceTypeSelected] ??
+          typeId;
+        return {
+          ...state,
+          addDatasourceStep: 'form',
+          addDatasourceTypeId: typeId,
+          addDatasourceName: typeName,
+          addDatasourceFormSelected: 0,
+          addDatasourceValidationError: null,
+          addDatasourceTestStatus: 'idle',
+          addDatasourceTestMessage: '',
+        };
+      }
+    } else {
+      if (key === 'escape') {
+        return {
+          ...state,
+          addDatasourceStep: 'type',
+          addDatasourceTypeId: null,
+          addDatasourceName: '',
+          addDatasourceConnection: '',
+          addDatasourceFormSelected: 0,
+          addDatasourceValidationError: null,
+          addDatasourceTestStatus: 'idle',
+          addDatasourceTestMessage: '',
+        };
+      }
+      const sel = state.addDatasourceFormSelected;
+      const maxFormSel = 4;
+
+      if (key === 'up') {
+        return {
+          ...state,
+          addDatasourceFormSelected: sel <= 0 ? maxFormSel : sel - 1,
+        };
+      }
+      if (key === 'down') {
+        return {
+          ...state,
+          addDatasourceFormSelected: sel >= maxFormSel ? 0 : sel + 1,
+        };
+      }
+      if (key === 'left' && sel >= 2) {
+        return {
+          ...state,
+          addDatasourceFormSelected: sel <= 2 ? 4 : sel - 1,
+        };
+      }
+      if (key === 'right' && sel >= 2) {
+        return {
+          ...state,
+          addDatasourceFormSelected: sel >= 4 ? 2 : sel + 1,
+        };
+      }
+      if (key === 'enter') {
+        if (sel === 2) {
+          return { ...state, addDatasourceTestRequest: true };
+        }
+        if (sel === 3) {
+          const typeId = state.addDatasourceTypeId;
+          if (!typeId) {
+            return {
+              ...state,
+              addDatasourceValidationError: 'No datasource type selected.',
+            };
+          }
+          if (!state.workspace?.projectId) {
+            return {
+              ...state,
+              addDatasourceValidationError:
+                'No project. Restart TUI to initialize workspace.',
+            };
+          }
+          return reducer(state, {
+            type: 'submit_add_datasource',
+            typeId,
+            name: state.addDatasourceName.trim() || typeId,
+            connection: state.addDatasourceConnection,
+          });
+        }
+        if (sel === 4) {
+          return {
+            ...state,
+            activeDialog: 'none',
+            addDatasourceStep: 'type',
+            addDatasourceTypeId: null,
+            addDatasourceName: '',
+            addDatasourceConnection: '',
+            addDatasourceFormSelected: 0,
+            addDatasourceValidationError: null,
+            addDatasourceTestStatus: 'idle',
+            addDatasourceTestMessage: '',
+          };
+        }
+        return state;
+      }
+      if (sel >= 2) return state;
+      if (key === 'backspace') {
+        return {
+          ...state,
+          ...(sel === 0
+            ? { addDatasourceName: state.addDatasourceName.slice(0, -1) }
+            : {
+                addDatasourceConnection: state.addDatasourceConnection.slice(
+                  0,
+                  -1,
+                ),
+              }),
+        };
+      }
+      if (key.length === 1) {
+        return {
+          ...state,
+          ...(sel === 0
+            ? { addDatasourceName: state.addDatasourceName + key }
+            : { addDatasourceConnection: state.addDatasourceConnection + key }),
+        };
+      }
+    }
+  }
+
   return state;
 }
 
 function handleChatKey(state: AppState, key: string): AppState {
   if (key === 'ctrl+c') return state; // quit handled by app
+
+  const toolKeys = getCurrentConversationToolKeys(state);
+  const toolCount = toolKeys.length;
+
+  if (state.focusedToolFlatIndex !== null) {
+    if (key === 'escape') {
+      return { ...state, focusedToolFlatIndex: null };
+    }
+    if (key === 'up') {
+      return {
+        ...state,
+        focusedToolFlatIndex: Math.max(0, state.focusedToolFlatIndex - 1),
+      };
+    }
+    if (key === 'down') {
+      return {
+        ...state,
+        focusedToolFlatIndex:
+          toolCount > 0
+            ? Math.min(toolCount - 1, state.focusedToolFlatIndex + 1)
+            : 0,
+      };
+    }
+    if (key === 'enter') {
+      const keyAt = toolKeys[state.focusedToolFlatIndex];
+      if (keyAt) {
+        const next = {
+          ...state.expandedToolKeys,
+          [keyAt]: !state.expandedToolKeys[keyAt],
+        };
+        return { ...state, expandedToolKeys: next };
+      }
+    }
+    return state;
+  }
+
   if (key === 'escape') {
     if (state.agentBusy) {
       return { ...state, agentBusy: false, pendingUserMessage: '' };
     }
     return { ...state, currentScreen: 'home' };
+  }
+  if (key === 'tab' && state.chatInput === '' && toolCount > 0) {
+    return { ...state, focusedToolFlatIndex: 0 };
+  }
+  if (key === 'ctrl+up' && toolCount > 0) {
+    return { ...state, focusedToolFlatIndex: 0 };
+  }
+  if (key === 'ctrl+down') {
+    return { ...state, focusedToolFlatIndex: null };
   }
   if (key === 'ctrl+p') {
     return {
