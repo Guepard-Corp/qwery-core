@@ -18,7 +18,7 @@ export function ChatStatusBar({ width, mesh }: ChatStatusBarProps) {
       <text {...keyStyle}>ctrl+t</text>
       <text {...keyDescStyle}> variants </text>
       <text {...keyStyle}>tab</text>
-      <text {...keyDescStyle}> agents </text>
+      <text {...keyDescStyle}> tools </text>
       <text {...keyStyle}>ctrl+p</text>
       <text {...keyDescStyle}> commands</text>
     </box>
