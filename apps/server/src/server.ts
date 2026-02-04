@@ -9,6 +9,7 @@ import { createConversationsRoutes } from './routes/conversations';
 import { createOrganizationsRoutes } from './routes/organizations';
 import { createProjectsRoutes } from './routes/projects';
 import { createDatasourcesRoutes } from './routes/datasources';
+import { createDriverRoutes } from './routes/driver';
 import { createMessagesRoutes } from './routes/messages';
 import { createNotebooksRoutes } from './routes/notebooks';
 import { createUsageRoutes } from './routes/usage';
@@ -73,6 +74,7 @@ export function createApp() {
   api.route('/organizations', createOrganizationsRoutes(getRepositories));
   api.route('/projects', createProjectsRoutes(getRepositories));
   api.route('/datasources', createDatasourcesRoutes(getRepositories));
+  api.route('/driver', createDriverRoutes());
   api.route('/chat', createChatRoutes());
   api.route('/conversations', createConversationsRoutes());
   api.route('/messages', createMessagesRoutes(getRepositories));
