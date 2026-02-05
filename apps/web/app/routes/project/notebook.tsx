@@ -54,6 +54,12 @@ export default function NotebookPage() {
   // Store query errors by cell ID
   const [cellErrors, setCellErrors] = useState<Map<number, string>>(new Map());
 
+  // Reset execution status on page/notebook load
+  useEffect(() => {
+    setCellResults(new Map());
+    setCellErrors(new Map());
+  }, [slug]);
+
   // Track which cell is currently loading
   const [loadingCellId, setLoadingCellId] = useState<number | null>(null);
 
@@ -366,8 +372,10 @@ export default function NotebookPage() {
 
       if (existingConversation) {
         conversationSlug = existingConversation.slug;
-        // Update datasources if needed
-        if (!existingConversation.datasources?.includes(datasourceId)) {
+        if (
+          datasourceId &&
+          !existingConversation.datasources?.includes(datasourceId)
+        ) {
           const updatedConversation =
             await updateConversationMutation.mutateAsync({
               id: existingConversation.id,
@@ -375,12 +383,11 @@ export default function NotebookPage() {
                 ...(existingConversation.datasources || []),
                 datasourceId,
               ],
-              updatedBy: workspace.userId || 'system',
+              updatedBy: workspace.username || workspace.userId || 'system',
             });
           conversationSlug = updatedConversation.slug;
         }
       } else {
-        // Create new conversation
         const { v4: uuidv4 } = await import('uuid');
         const notebookTitle = `Notebook - ${notebook.data.id}`;
 
@@ -388,21 +395,18 @@ export default function NotebookPage() {
           title: notebookTitle,
           projectId: notebookProjectId || '',
           taskId: uuidv4(),
-          datasources: [datasourceId],
+          datasources: datasourceId ? [datasourceId] : [],
           seedMessage: '',
           createdBy: workspace.userId || 'system',
         });
         conversationSlug = newConversation.slug;
       }
 
-      // Open sidebar and send message through chat interface for proper streaming
-      // Pass cellType and cellId so the chat API can set notebookCellType in metadata
-      // Always pass actualCellType to ensure it's never undefined
       openSidebar(conversationSlug, {
-        datasourceId,
-        messageToSend: query, // This will be sent through chat interface and stream properly
-        notebookCellType: actualCellType, // Always pass cellType (either 'query' or 'prompt')
-        cellId, // Pass cellId to track which cell is loading
+        ...(datasourceId && { datasourceId }),
+        messageToSend: query,
+        notebookCellType: actualCellType,
+        cellId,
       });
 
       // Loading state will be synced with chat interface streaming state
@@ -1083,6 +1087,9 @@ export default function NotebookPage() {
           workspaceMode={workspace.mode}
           hasUnsavedChanges={hasUnsavedChangesState}
           isNotebookLoading={isNotebookLoading}
+          onNoDatasourceError={() =>
+            toast.error('Select a datasource first to run the prompt')
+          }
         />
       )}
     </div>

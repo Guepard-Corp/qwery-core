@@ -16,6 +16,7 @@ import { i18nResolver } from '~/lib/i18n/i18n.resolver';
 import { getI18nSettings } from '~/lib/i18n/i18n.settings';
 
 import { AgentsProvider } from './agents-provider';
+import { GlobalKeyHandler } from './global-key-handler';
 import { ReactQueryProvider } from './react-query-provider';
 import { WorkspaceProvider } from './workspace-provider';
 import { TelemetryProvider } from '@qwery/telemetry';
@@ -45,6 +46,7 @@ export function RootProviders(
 
           <ClientOnly>
             <GlobalLoader displaySpinner={false} />
+            <GlobalKeyHandler />
           </ClientOnly>
           <ReactQueryProvider>
             <ReactQueryDevtools initialIsOpen={false} />
