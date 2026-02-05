@@ -255,7 +255,7 @@ export function ListNotebooks({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     !isGridView &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -282,7 +282,7 @@ export function ListNotebooks({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     sortCriterion === 'date' &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -334,7 +334,7 @@ export function ListNotebooks({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     sortCriterion === 'name' &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -403,9 +403,9 @@ export function ListNotebooks({
             <p className="text-muted-foreground text-sm">
               {searchQuery
                 ? t(
-                  'no_notebooks_description',
-                  'Try adjusting your search query',
-                )
+                    'no_notebooks_description',
+                    'Try adjusting your search query',
+                  )
                 : t('no_notebooks_empty', 'No notebooks have been created yet')}
             </p>
           </div>

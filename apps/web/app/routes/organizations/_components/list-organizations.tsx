@@ -285,7 +285,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       isGridView &&
-                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -306,7 +306,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       !isGridView &&
-                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -335,7 +335,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       sortCriterion === 'date' &&
-                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">
@@ -387,7 +387,7 @@ export function ListOrganizations({
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       sortCriterion === 'name' &&
-                      'text-foreground bg-[#ffcb51]/10 font-medium',
+                        'text-foreground bg-[#ffcb51]/10 font-medium',
                     )}
                   >
                     <div className="flex items-center gap-2.5">

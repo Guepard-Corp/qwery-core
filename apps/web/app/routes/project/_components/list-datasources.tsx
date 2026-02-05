@@ -96,7 +96,7 @@ export function ListDatasources({
 
   const createPlaygroundMutation = usePlayground(
     repositories.datasource,
-    () => { },
+    () => {},
     (error) => {
       toast.error(
         error instanceof Error ? error.message : 'Failed to create playground',
@@ -337,7 +337,7 @@ export function ListDatasources({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     !isGridView &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -364,7 +364,7 @@ export function ListDatasources({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     groupByProvider &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -393,7 +393,7 @@ export function ListDatasources({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     sortCriterion === 'date' &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -445,7 +445,7 @@ export function ListDatasources({
                   className={cn(
                     'flex cursor-pointer items-center justify-between px-3 py-2.5',
                     sortCriterion === 'name' &&
-                    'text-foreground bg-[#ffcb51]/10 font-medium',
+                      'text-foreground bg-[#ffcb51]/10 font-medium',
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -624,8 +624,8 @@ export function ListDatasources({
                             {items.map((datasource) => {
                               const logo = datasource.datasource_provider
                                 ? pluginLogoMap.get(
-                                  datasource.datasource_provider,
-                                )
+                                    datasource.datasource_provider,
+                                  )
                                 : undefined;
                               const formattedDateTime = formatRelativeTime(
                                 new Date(datasource.createdAt),

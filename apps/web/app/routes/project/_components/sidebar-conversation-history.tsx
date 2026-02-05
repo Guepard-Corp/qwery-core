@@ -41,7 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@qwery/ui/dropdown-menu';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Input } from '@qwery/ui/input';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
@@ -851,22 +851,6 @@ export function SidebarConversationHistory({
                       );
                     })}
                   </SidebarMenu>
-
-                  {/* View all chats button */}
-                  {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
-                      <Link
-                        to={createPath(
-                          pathsConfig.app.projectConversation,
-                          projectSlug,
-                        )}
-                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
-                      >
-                        <Trans i18nKey="common:sidebar.viewAllChats" />
-                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )}
             </SidebarGroupContent>
@@ -1416,22 +1400,6 @@ export function SidebarNotebookHistory({
                       );
                     })}
                   </SidebarMenu>
-
-                  {/* View all notebooks button */}
-                  {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
-                      <Link
-                        to={createPath(
-                          pathsConfig.app.projectNotebooks,
-                          projectSlug,
-                        )}
-                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
-                      >
-                        <Trans i18nKey="common:sidebar.viewAllNotebooks" />
-                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )}
             </SidebarGroupContent>

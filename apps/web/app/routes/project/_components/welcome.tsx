@@ -48,7 +48,7 @@ export default function WelcomePage() {
 
   const createPlaygroundMutation = usePlayground(
     repositories.datasource,
-    () => { },
+    () => {},
     (error) => {
       toast.error(
         error instanceof Error ? error.message : 'Failed to create playground',

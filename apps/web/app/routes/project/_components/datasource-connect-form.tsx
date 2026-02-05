@@ -635,10 +635,7 @@ export function DatasourceConnectForm({
             if (!isDeleting) setIsDeleteDialogOpen(open);
           }}
         >
-          <AlertDialogContent
-            className="z-[200]"
-            overlayClassName="z-[200]"
-          >
+          <AlertDialogContent className="z-[200]" overlayClassName="z-[200]">
             <AlertDialogHeader>
               <AlertDialogTitle>
                 <Trans i18nKey="datasources:deleteConfirmTitle" />

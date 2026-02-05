@@ -257,7 +257,9 @@ export default function ConversationIndexPage() {
               isLoading={isLoading}
               currentConversationId={currentConversationId}
               isProcessing={isProcessing}
-              processingConversationSlug={processingConversationSlug || undefined}
+              processingConversationSlug={
+                processingConversationSlug || undefined
+              }
               onConversationSelect={onConversationSelect}
               onNewConversation={onNewConversation}
               onConversationEdit={onConversationEdit}
