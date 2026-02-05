@@ -82,6 +82,7 @@ interface NotebookUIProps {
     cellId: number,
     query: string,
     datasourceId: string,
+    cellType?: 'query' | 'prompt',
   ) => void;
   onCellsChange?: (cells: NotebookCellData[]) => void;
   onNotebookChange?: (notebook: Partial<Notebook>) => void;
@@ -94,6 +95,7 @@ interface NotebookUIProps {
   workspaceMode?: WorkspaceModeEnum;
   hasUnsavedChanges?: boolean;
   isNotebookLoading?: boolean;
+  onNoDatasourceError?: () => void;
 }
 
 // Visual indicator for duplication mode
@@ -143,6 +145,9 @@ const SortableCell = React.memo(function SortableCellComponent({
   isDuplicating,
   totalCellCount,
   isNotebookLoading,
+  cellIndex,
+  hasAgentResponse,
+  onNoDatasourceError,
 }: {
   cell: NotebookCellData;
   onQueryChange: (cellId: number, query: string) => void;
@@ -153,6 +158,7 @@ const SortableCell = React.memo(function SortableCellComponent({
     cellId: number,
     query: string,
     datasourceId: string,
+    cellType?: 'query' | 'prompt',
   ) => void;
   datasources: NotebookDatasourceInfo[];
   result?: DatasourceResultSet | null;
@@ -171,6 +177,9 @@ const SortableCell = React.memo(function SortableCellComponent({
   isDuplicating?: boolean;
   totalCellCount: number;
   isNotebookLoading?: boolean;
+  cellIndex?: number;
+  hasAgentResponse?: boolean;
+  onNoDatasourceError?: () => void;
 }) {
   const {
     attributes,
@@ -227,8 +236,8 @@ const SortableCell = React.memo(function SortableCellComponent({
   );
 
   const handleRunQueryWithAgent = useCallback(
-    (query: string, datasourceId: string, _cellType?: 'query' | 'prompt') => {
-      onRunQueryWithAgent?.(cell.cellId, query, datasourceId);
+    (query: string, datasourceId: string, cellType?: 'query' | 'prompt') => {
+      onRunQueryWithAgent?.(cell.cellId, query, datasourceId, cellType);
     },
     [cell.cellId, onRunQueryWithAgent],
   );
@@ -301,6 +310,9 @@ const SortableCell = React.memo(function SortableCellComponent({
         onCloseAiPopup={onCloseAiPopup}
         totalCellCount={totalCellCount}
         isNotebookLoading={isNotebookLoading}
+        cellIndex={cellIndex}
+        hasAgentResponse={hasAgentResponse}
+        onNoDatasourceError={onNoDatasourceError}
       />
     </div>
   );
@@ -593,6 +605,7 @@ export function NotebookUI({
   workspaceMode,
   hasUnsavedChanges = false,
   isNotebookLoading = false,
+  onNoDatasourceError,
 }: NotebookUIProps) {
   // Initialize cells from notebook or initialCells, default to empty array
   const [cells, setCells] = React.useState<NotebookCellData[]>(() => {
@@ -620,6 +633,14 @@ export function NotebookUI({
     cellId: number;
     position: { x: number; y: number };
   } | null>(null);
+
+  const [promptCellsWithResponse, setPromptCellsWithResponse] = useState<
+    Set<number>
+  >(new Set());
+
+  useEffect(() => {
+    setPromptCellsWithResponse(new Set());
+  }, []);
 
   const handleOpenAiPopup = useCallback(
     (cellId: number, position: { x: number; y: number }) => {
@@ -1021,8 +1042,11 @@ export function NotebookUI({
       cellId: number,
       query: string,
       datasourceId: string,
-      _cellType?: 'query' | 'prompt',
+      cellType?: 'query' | 'prompt',
     ) => {
+      if (cellType === 'prompt') {
+        setPromptCellsWithResponse((prev) => new Set(prev).add(cellId));
+      }
       onRunQueryWithAgent?.(cellId, query, datasourceId);
     },
     [onRunQueryWithAgent],
@@ -1383,6 +1407,7 @@ export function NotebookUI({
                   <React.Fragment key={cell.cellId}>
                     <SortableCell
                       cell={cell}
+                      cellIndex={index}
                       onQueryChange={handleQueryChange}
                       onTitleChange={handleTitleChange}
                       onDatasourceChange={handleDatasourceChange}
@@ -1390,7 +1415,7 @@ export function NotebookUI({
                       onRunQueryWithAgent={handleRunQueryWithAgent}
                       datasources={allDatasources}
                       result={cellResults.get(cell.cellId)}
-                      error={undefined}
+                      error={cellError}
                       isLoading={isLoading}
                       onMoveUp={handleMoveCellUp}
                       onMoveDown={handleMoveCellDown}
@@ -1407,18 +1432,11 @@ export function NotebookUI({
                         isDuplicating && activeId === cell.cellId.toString()
                       }
                       isNotebookLoading={isNotebookLoading}
+                      hasAgentResponse={promptCellsWithResponse.has(
+                        cell.cellId,
+                      )}
+                      onNoDatasourceError={onNoDatasourceError}
                     />
-                    {/* Error Display - Between cells */}
-                    {cell.cellType === 'query' && cellError && (
-                      <div className="py-2">
-                        <Alert variant="destructive" className="m-4">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription className="font-mono text-sm">
-                            {cellError}
-                          </AlertDescription>
-                        </Alert>
-                      </div>
-                    )}
                     {index < cells.length - 1 && (
                       <CellDivider
                         onAddCell={(type) => handleAddCell(cell.cellId, type)}
