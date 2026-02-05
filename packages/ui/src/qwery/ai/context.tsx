@@ -48,16 +48,16 @@ export default function QweryContext(props: QweryContextProps) {
     >
       <ContextTrigger className={colorClass} />
       {percentage > 0 && (
-      <ContextContent>
-        <ContextContentHeader />
-        <ContextContentBody>
-          <ContextInputUsage />
-          <ContextOutputUsage />
-          <ContextReasoningUsage />
-          <ContextCacheUsage />
-        </ContextContentBody>
-        <ContextContentFooter />
-      </ContextContent>
+        <ContextContent>
+          <ContextContentHeader />
+          <ContextContentBody>
+            <ContextInputUsage />
+            <ContextOutputUsage />
+            <ContextReasoningUsage />
+            <ContextCacheUsage />
+          </ContextContentBody>
+          <ContextContentFooter />
+        </ContextContent>
       )}
     </Context>
   );

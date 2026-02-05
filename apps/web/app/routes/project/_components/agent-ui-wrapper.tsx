@@ -11,6 +11,16 @@ import {
 } from 'react';
 import QweryAgentUI from '@qwery/ui/agent-ui';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@qwery/ui/alert-dialog';
+import {
   SUPPORTED_MODELS,
   transportFactory,
   type UIMessage,
@@ -31,10 +41,11 @@ import { useUpdateConversation } from '~/lib/mutations/use-conversation';
 import { useSubmitFeedback } from '~/lib/mutations/use-submit-feedback';
 import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
 import { PROMPT_SOURCE, NOTEBOOK_CELL_TYPE } from '@qwery/agent-factory-sdk';
-import { useAgentStatus } from '@qwery/ui/ai';
+import { useAgentStatus, formatRelativeTime } from '@qwery/ui/ai';
 import type { FeedbackPayload } from '@qwery/ui/ai';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { createDatasourceViewPath } from '~/config/project.navigation.config';
 
 type SendMessageFn = (
   message: { text: string },
@@ -58,6 +69,7 @@ export interface AgentUIWrapperProps {
   conversationSlug: string;
   initialMessages?: MessageOutput[];
   isMessagesLoading?: boolean;
+  initialSuggestions?: string[];
 }
 
 const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
@@ -127,7 +139,12 @@ export const AgentUIWrapper = forwardRef<
   AgentUIWrapperRef,
   AgentUIWrapperProps
 >(function AgentUIWrapper(
-  { conversationSlug, initialMessages, isMessagesLoading = false },
+  {
+    conversationSlug,
+    initialMessages,
+    isMessagesLoading = false,
+    initialSuggestions,
+  },
   ref,
 ) {
   const { t } = useTranslation('common');
@@ -191,28 +208,30 @@ export const AgentUIWrapper = forwardRef<
   // Track if we've already initialized datasource from cell to prevent overwriting user selections
   const initializedCellDatasourceRef = useRef<string | null>(null);
 
+  const [noDatasourceDialogOpen, setNoDatasourceDialogOpen] = useState(false);
+  const [pendingSuggestionText, setPendingSuggestionText] = useState<
+    string | null
+  >(null);
+  const noDatasourceResolveRef = useRef<((value: boolean) => void) | null>(
+    null,
+  );
+
   // Mutation to update conversation datasources
   const updateConversation = useUpdateConversation(repositories.conversation);
 
-  // Update conversation when cell datasource is provided (initial setup)
-  // This runs once when cellDatasource is first set, before any messages are sent
-  // CRITICAL: Only runs once per cellDatasource value to avoid overwriting user selections
+  // Set pending datasources for immediate UI update when cell datasource changes.
+  // The actual conversation update happens atomically in sendMessage to avoid
+  // a race condition where concurrent updateConversation.mutate calls cause
+  // React Query to swallow the sendMessage's resolve callback (2-click bug).
   useEffect(() => {
-    // Only initialize if:
-    // 1. We have a cell datasource
-    // 2. We haven't already initialized for this cell datasource
-    // 3. Conversation is loaded
     if (
       cellDatasource &&
       conversation?.id &&
       initializedCellDatasourceRef.current !== cellDatasource &&
       !conversationDatasources.includes(cellDatasource)
     ) {
-      // Mark as initialized to prevent re-running when conversationDatasources changes
       initializedCellDatasourceRef.current = cellDatasource;
 
-      // Update conversation to include cell datasource immediately
-      // This ensures the datasource is set before the message is sent
       updateConversation.mutate(
         {
           id: conversation.id,
@@ -221,31 +240,25 @@ export const AgentUIWrapper = forwardRef<
         },
         {
           onSuccess: () => {
-            // Set pending datasources to ensure UI reflects the change immediately
             setPendingDatasources([cellDatasource]);
           },
         },
       );
-    } else if (cellDatasource && !conversation?.id) {
-      // If conversation not loaded yet, set pending datasources for immediate UI update
-      // Use requestAnimationFrame to defer state update outside of effect
+    } else if (cellDatasource) {
+      if (initializedCellDatasourceRef.current !== cellDatasource) {
+        initializedCellDatasourceRef.current = cellDatasource;
+      }
       requestAnimationFrame(() => {
         setPendingDatasources([cellDatasource]);
       });
-    }
-
-    // Reset initialization tracking when cellDatasource is cleared
-    if (!cellDatasource) {
+    } else {
       initializedCellDatasourceRef.current = null;
     }
   }, [
     cellDatasource,
     conversation?.id,
-    // CRITICAL: Only check conversationDatasources for the initial condition check
-    // The ref prevents re-running when conversationDatasources changes due to user selection
     conversationDatasources,
     updateConversation,
-    workspace.username,
     workspace.userId,
   ]);
 
@@ -333,13 +346,6 @@ export const AgentUIWrapper = forwardRef<
           const currentNotebookCellType = getNotebookCellType();
           const currentCellId = getCellId();
 
-          console.log('[AgentUIWrapper] sendMessage called with context:', {
-            currentCellDs,
-            currentNotebookCellType,
-            currentCellId,
-            textPreview: text.substring(0, 50),
-          });
-
           // Determine datasources to use - prioritize cellDatasource
           const datasourcesToUse = currentCellDs
             ? [currentCellDs]
@@ -347,15 +353,14 @@ export const AgentUIWrapper = forwardRef<
               ? selectedDatasources
               : undefined;
 
-          // CRITICAL: Update conversation datasources BEFORE sending message
-          // The agent uses conversation datasources, not message metadata
-          // We must wait for this to complete to ensure the API uses the correct datasource
+          // Update conversation datasources BEFORE sending message.
+          // Uses mutateAsync so the returned Promise is independent of any
+          // concurrent mutate() calls (avoids the 2-click race condition).
           if (
             datasourcesToUse &&
             datasourcesToUse.length > 0 &&
             conversation?.id
           ) {
-            // Check if datasources need to be updated by comparing IDs
             const currentSorted = [...conversationDatasources].sort();
             const newSorted = [...datasourcesToUse].sort();
             const datasourcesChanged =
@@ -363,39 +368,23 @@ export const AgentUIWrapper = forwardRef<
               !currentSorted.every((dsId, index) => dsId === newSorted[index]);
 
             if (datasourcesChanged) {
-              // Update conversation with new datasources - wait for it to complete
-              await new Promise<void>((resolve) => {
-                updateConversation.mutate(
-                  {
-                    id: conversation.id,
-                    datasources: datasourcesToUse,
-                    updatedBy: workspace.userId,
-                  },
-                  {
-                    onSuccess: () => {
-                      // Set pending datasources after successful update
-                      setPendingDatasources(datasourcesToUse);
-                      resolve();
-                    },
-                    onError: (error) => {
-                      // Even if update fails, set pending datasources for UI
-                      setPendingDatasources(datasourcesToUse);
-                      console.error(
-                        'Failed to update conversation datasources:',
-                        error,
-                      );
-                      // Continue anyway - the datasource in the body will still be used
-                      resolve();
-                    },
-                  },
+              try {
+                await updateConversation.mutateAsync({
+                  id: conversation.id,
+                  datasources: datasourcesToUse,
+                  updatedBy: workspace.username || workspace.userId || 'system',
+                });
+              } catch (error) {
+                console.error(
+                  'Failed to update conversation datasources:',
+                  error,
                 );
-              });
+              }
+              setPendingDatasources(datasourcesToUse);
             } else {
-              // Datasources already correct, just set pending for UI
               setPendingDatasources(datasourcesToUse);
             }
           } else if (currentCellDs) {
-            // If conversation not loaded yet, just set pending datasources
             setPendingDatasources([currentCellDs]);
           }
 
@@ -412,24 +401,9 @@ export const AgentUIWrapper = forwardRef<
 
           if (hasNotebookContext) {
             messageMetadata.promptSource = PROMPT_SOURCE.INLINE;
-            // Always include notebookCellType if we have notebook context
-            // Default to 'prompt' if not explicitly set (for paste button visibility)
             messageMetadata.notebookCellType =
               currentNotebookCellType || NOTEBOOK_CELL_TYPE.PROMPT;
-            console.log(
-              '[AgentUIWrapper] Preparing message with notebook context:',
-              {
-                promptSource: PROMPT_SOURCE.INLINE,
-                notebookCellType: messageMetadata.notebookCellType,
-                cellId: currentCellId,
-                cellDatasource: currentCellDs,
-                textPreview: text.substring(0, 50),
-              },
-            );
 
-            // Capture notebook context in state when sending message
-            // This ensures context is available when tool output arrives
-            // Always set context if we have notebook indicators (for paste button visibility)
             if (currentCellId !== undefined && currentCellDs) {
               setNotebookContextState({
                 cellId: currentCellId,
@@ -438,12 +412,6 @@ export const AgentUIWrapper = forwardRef<
                 datasourceId: currentCellDs,
               });
             }
-          } else {
-            console.log('[AgentUIWrapper] No notebook context detected:', {
-              currentCellDs,
-              currentNotebookCellType,
-              currentCellId,
-            });
           }
 
           // Don't clear context immediately - keep it for paste functionality
@@ -495,11 +463,6 @@ export const AgentUIWrapper = forwardRef<
                       ...messageMetadata, // Our metadata takes precedence
                     },
                   };
-                  const updatedMessage = updated[lastUserMessageIndex];
-                  console.log('[AgentUIWrapper] Updated message metadata:', {
-                    messageId: updatedMessage?.id,
-                    metadata: updatedMessage?.metadata,
-                  });
                   return updated;
                 }
                 return prev;
@@ -626,6 +589,39 @@ export const AgentUIWrapper = forwardRef<
     ],
   );
 
+  const onBeforeSuggestionSend = useCallback(
+    (
+      text: string,
+      metadata?: { requiresDatasource?: boolean },
+    ): Promise<boolean> => {
+      console.log('[SuggestionFlow] onBeforeSuggestionSend', {
+        text: text?.slice(0, 50),
+        metadata,
+        selectedCount: selectedDatasources?.length ?? 0,
+      });
+      if (
+        metadata?.requiresDatasource &&
+        (!selectedDatasources || selectedDatasources.length === 0)
+      ) {
+        console.log('[SuggestionFlow] showing no-datasource dialog');
+        setPendingSuggestionText(text);
+        return new Promise((resolve) => {
+          noDatasourceResolveRef.current = resolve;
+          setNoDatasourceDialogOpen(true);
+        });
+      }
+      return Promise.resolve(true);
+    },
+    [selectedDatasources],
+  );
+
+  const handleNoDatasourceDialogClose = useCallback((proceed: boolean) => {
+    noDatasourceResolveRef.current?.(proceed);
+    noDatasourceResolveRef.current = null;
+    setPendingSuggestionText(null);
+    setNoDatasourceDialogOpen(false);
+  }, []);
+
   // Determine if we're loading - check if messages or conversation are loading
   // initialMessages being undefined means messages haven't loaded yet
   const isLoading =
@@ -665,7 +661,44 @@ export const AgentUIWrapper = forwardRef<
 
   const notebookContext = notebookContextState;
 
-  // Get paste handler from context
+  const getDatasourceTooltip = useCallback(
+    (idOrSlug: string) => {
+      const ds =
+        datasourceItems.find((d) => d.id === idOrSlug) ??
+        datasourceItems.find((d) => d.slug === idOrSlug);
+      if (!ds) return '';
+      const primary = ds.datasource_provider
+        ? `${ds.name} (${ds.datasource_provider})`
+        : ds.name;
+      const date =
+        ds.updatedAt instanceof Date
+          ? ds.updatedAt
+          : ds.createdAt instanceof Date
+            ? ds.createdAt
+            : ds.updatedAt
+              ? new Date(ds.updatedAt)
+              : ds.createdAt
+                ? new Date(ds.createdAt)
+                : null;
+      const modified = date ? ` · Modified ${formatRelativeTime(date)}` : '';
+      return `${primary}${modified}`;
+    },
+    [datasourceItems],
+  );
+
+  const handleDatasourceNameClick = useCallback(
+    (idOrSlug: string, _name: string) => {
+      const ds =
+        datasourceItems.find((d) => d.id === idOrSlug) ??
+        datasourceItems.find((d) => d.slug === idOrSlug);
+      if (ds?.slug) {
+        const path = createDatasourceViewPath(ds.slug);
+        window.open(path, '_blank', 'noopener,noreferrer');
+      }
+    },
+    [datasourceItems],
+  );
+
   const pasteHandler = getSqlPasteHandler();
 
   // Sync loading state with notebook when processing state changes
@@ -675,6 +708,7 @@ export const AgentUIWrapper = forwardRef<
   }, [isProcessing, getCellId, notifyLoadingStateChange]);
 
   return (
+<<<<<<< HEAD
     <QweryAgentUI
       transport={transport}
       initialMessages={convertMessages(initialMessages)}
@@ -693,5 +727,53 @@ export const AgentUIWrapper = forwardRef<
       isLoading={isLoading}
       conversationSlug={conversationSlug}
     />
+=======
+    <>
+      <QweryAgentUI
+        transport={transport}
+        initialMessages={convertedInitialMessages}
+        models={SUPPORTED_MODELS as { name: string; value: string }[]}
+        usage={convertUsage(usage)}
+        emitFinish={handleEmitFinish}
+        datasources={datasourceItems}
+        selectedDatasources={selectedDatasources}
+        onDatasourceSelectionChange={handleDatasourceSelectionChange}
+        pluginLogoMap={pluginLogoMap}
+        datasourcesLoading={datasources.isLoading}
+        onSendMessageReady={handleSendMessageReady}
+        onPasteToNotebook={pasteHandler || undefined}
+        onSubmitFeedback={handleSubmitFeedback}
+        notebookContext={notebookContext}
+        isLoading={isLoading}
+        conversationSlug={conversationSlug}
+      />
+      <AlertDialog
+        open={noDatasourceDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleNoDatasourceDialogClose(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No datasource attached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You haven&apos;t attached any datasource for this request. The
+              agent may not be able to fulfill: &quot;
+              {pendingSuggestionText ?? 'this suggestion'}
+              &quot;. Do you want to proceed anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleNoDatasourceDialogClose(true)}
+            >
+              Proceed anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+>>>>>>> d5c40cf6 (feat(agent-ui): no-datasource dialog, initialSuggestions, init fix)
   );
 });
