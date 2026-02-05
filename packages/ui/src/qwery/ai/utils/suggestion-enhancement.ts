@@ -1,5 +1,10 @@
+import {
+  parseSuggestionWithMetadata,
+  type SuggestionMatch,
+  type SuggestionMetadata,
+} from './suggestion-pattern';
+
 const STREAMDOWN_RENDER_DELAY = 100;
-const SCROLL_DELAY = 100;
 
 export function generateSuggestionId(suggestionText: string): string {
   const cleanText = suggestionText.trim().replace(/^[•\-*\d+.)]\s*/, '');
@@ -39,8 +44,8 @@ export function cleanSuggestionPatterns(container: HTMLElement): void {
     const text = textNode.textContent || '';
     if (text.includes('{{suggestion:')) {
       const cleaned = text.replace(
-        /\{\{suggestion:\s*((?:(?!\}\}).)+)\}\}/g,
-        '$1',
+        /\{\{suggestion:\s*((?:(?!\}\})[\s\S])+)\}\}/g,
+        (_, content: string) => parseSuggestionWithMetadata(content).text,
       );
       textNode.textContent = cleaned;
     }
@@ -51,6 +56,7 @@ export interface SuggestionButtonHandlers {
   onClick: (
     suggestionText: string,
     sourceSuggestionId: string | undefined,
+    metadata?: SuggestionMetadata,
   ) => void;
 }
 
@@ -58,20 +64,14 @@ export interface SuggestionButtonConfig {
   suggestionText: string;
   suggestionId: string;
   handlers: SuggestionButtonHandlers;
+  metadata?: SuggestionMetadata;
 }
 
-export function createSuggestionButton(
-  element: Element,
-  config: SuggestionButtonConfig,
-): { cleanup: () => void } {
-  const { suggestionText, suggestionId, handlers } = config;
-
-  if (element.querySelector('[data-suggestion-button]')) {
-    return { cleanup: () => {} };
-  }
-
-  element.setAttribute('data-suggestion-id', suggestionId);
-
+function createSuggestionButtonElement(
+  suggestionText: string,
+  suggestionId: string,
+  handlers: SuggestionButtonHandlers,
+): { container: HTMLSpanElement; cleanup: () => void } {
   const buttonContainer = document.createElement('span');
   buttonContainer.setAttribute('data-suggestion-button', 'true');
   buttonContainer.style.cssText =
@@ -127,14 +127,24 @@ export function createSuggestionButton(
     );
     const sourceSuggestionId =
       suggestionElement?.getAttribute('data-suggestion-id') || undefined;
+    const metadata: SuggestionMetadata | undefined =
+      suggestionElement?.getAttribute('data-requires-datasource') === 'true'
+        ? { requiresDatasource: true }
+        : undefined;
 
-    handlers.onClick(cleanSuggestionText, sourceSuggestionId);
+    console.log('[SuggestionFlow] button click', {
+      text: cleanSuggestionText?.slice(0, 50),
+      sourceSuggestionId,
+      metadata,
+      dataRequires: suggestionElement?.getAttribute('data-requires-datasource'),
+    });
+    handlers.onClick(cleanSuggestionText, sourceSuggestionId, metadata);
   });
 
   buttonContainer.appendChild(button);
-  element.appendChild(buttonContainer);
 
   return {
+    container: buttonContainer,
     cleanup: () => {
       button.removeEventListener('mouseenter', handleButtonHover);
       button.removeEventListener('mouseleave', handleButtonLeave);
@@ -142,16 +152,172 @@ export function createSuggestionButton(
   };
 }
 
-export function scrollToConversationBottom(): void {
-  setTimeout(() => {
-    const conversationElement = document.querySelector('[role="log"]');
-    if (conversationElement) {
-      conversationElement.scrollTo({
-        top: conversationElement.scrollHeight,
-        behavior: 'smooth',
-      });
+export interface CreateSuggestionButtonOptions {
+  omitText?: boolean;
+}
+
+export function createSuggestionButton(
+  element: Element,
+  config: SuggestionButtonConfig,
+  options?: CreateSuggestionButtonOptions,
+): { cleanup: () => void } {
+  const { suggestionText, suggestionId, handlers, metadata } = config;
+
+  if (element.querySelector('[data-suggestion-button]')) {
+    return { cleanup: () => {} };
+  }
+
+  element.setAttribute('data-suggestion-id', suggestionId);
+  if (metadata?.requiresDatasource) {
+    element.setAttribute('data-requires-datasource', 'true');
+  }
+
+  if (options?.omitText) {
+    element.textContent = '';
+  }
+
+  const { container, cleanup } = createSuggestionButtonElement(
+    suggestionText,
+    suggestionId,
+    handlers,
+  );
+  element.appendChild(container);
+
+  return { cleanup };
+}
+
+export interface InjectMultipleSuggestionButtonsOptions {
+  omitText?: boolean;
+}
+
+export function injectMultipleSuggestionButtons(
+  element: Element,
+  matches: SuggestionMatch[],
+  handlers: SuggestionButtonHandlers,
+  generateSuggestionId: (text: string) => string,
+  options?: InjectMultipleSuggestionButtonsOptions,
+): { cleanup: () => void } {
+  if (
+    matches.length === 0 ||
+    element.querySelector('[data-suggestion-button]')
+  ) {
+    return { cleanup: () => {} };
+  }
+
+  const omitText = options?.omitText ?? false;
+  const fullText = element.textContent || '';
+  const fragment = document.createDocumentFragment();
+  const cleanups: Array<() => void> = [];
+
+  if (omitText) {
+    const wrapper = document.createElement('span');
+    wrapper.setAttribute('data-suggestion-buttons-only', 'true');
+    wrapper.style.display = 'inline-flex';
+    wrapper.style.flexWrap = 'wrap';
+    wrapper.style.gap = '0.5rem';
+    wrapper.style.alignItems = 'center';
+
+    for (const match of matches) {
+      const span = document.createElement('span');
+      span.setAttribute('data-suggestion-id', generateSuggestionId(match.text));
+      if (match.metadata?.requiresDatasource) {
+        span.setAttribute('data-requires-datasource', 'true');
+      }
+      span.style.display = 'inline-flex';
+      span.style.alignItems = 'center';
+
+      const { container, cleanup } = createSuggestionButtonElement(
+        match.text,
+        generateSuggestionId(match.text),
+        handlers,
+      );
+      span.appendChild(container);
+      cleanups.push(cleanup);
+      wrapper.appendChild(span);
     }
-  }, SCROLL_DELAY);
+
+    element.textContent = '';
+    element.appendChild(wrapper);
+  } else {
+    let prevEnd = 0;
+
+    for (const match of matches) {
+      if (prevEnd < match.startIndex) {
+        const between = fullText.slice(prevEnd, match.startIndex);
+        if (prevEnd === 0) {
+          fragment.appendChild(document.createTextNode(between));
+        } else {
+          fragment.appendChild(document.createTextNode(', '));
+        }
+      }
+
+      const span = document.createElement('span');
+      span.setAttribute('data-suggestion-id', generateSuggestionId(match.text));
+      if (match.metadata?.requiresDatasource) {
+        span.setAttribute('data-requires-datasource', 'true');
+      }
+      span.style.display = 'inline';
+
+      span.appendChild(document.createTextNode(match.text));
+      span.style.cursor = 'pointer';
+      span.style.textDecoration = 'underline';
+      span.title = 'Send suggestion';
+      span.setAttribute('aria-label', 'Send suggestion');
+
+      const handleClick = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let cleanSuggestionText = match.text.trim();
+        cleanSuggestionText = cleanSuggestionText.replace(
+          /^[•\-*\d+.)]\s*/,
+          '',
+        );
+
+        const suggestionElement = (e.target as HTMLElement).closest(
+          '[data-suggestion-id]',
+        );
+        const sourceSuggestionId =
+          suggestionElement?.getAttribute('data-suggestion-id') || undefined;
+        const metadata: SuggestionMetadata | undefined =
+          suggestionElement?.getAttribute('data-requires-datasource') === 'true'
+            ? { requiresDatasource: true }
+            : undefined;
+
+        handlers.onClick(cleanSuggestionText, sourceSuggestionId, metadata);
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleClick(e as unknown as MouseEvent);
+        }
+      };
+
+      span.addEventListener('click', handleClick);
+      span.addEventListener('keydown', handleKeyDown);
+
+      cleanups.push(() => {
+        span.removeEventListener('click', handleClick);
+        span.removeEventListener('keydown', handleKeyDown);
+      });
+
+      fragment.appendChild(span);
+      prevEnd = match.endIndex;
+    }
+
+    if (prevEnd < fullText.length) {
+      fragment.appendChild(document.createTextNode(fullText.slice(prevEnd)));
+    }
+
+    element.textContent = '';
+    element.appendChild(fragment);
+  }
+
+  return {
+    cleanup: () => {
+      cleanups.forEach((c) => c());
+    },
+  };
 }
 
 export { STREAMDOWN_RENDER_DELAY };

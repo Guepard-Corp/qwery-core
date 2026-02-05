@@ -83,6 +83,8 @@ export interface MarkdownContextValue {
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   messages?: UIMessage[];
   currentMessageId?: string;
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 export const MarkdownContext = createContext<MarkdownContextValue>({});
@@ -200,6 +202,8 @@ export interface TextPartProps {
   onRegenerate?: () => void;
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   messages?: UIMessage[];
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 export function TextPart({
@@ -211,6 +215,8 @@ export function TextPart({
   onRegenerate,
   sendMessage,
   messages,
+  onDatasourceNameClick,
+  getDatasourceTooltip,
 }: TextPartProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [currentHeading, setCurrentHeading] = useState('');
@@ -237,7 +243,13 @@ export function TextPart({
 
   return (
     <MarkdownProvider
-      value={{ sendMessage, messages, currentMessageId: messageId }}
+      value={{
+        sendMessage,
+        messages,
+        currentMessageId: messageId,
+        onDatasourceNameClick,
+        getDatasourceTooltip,
+      }}
     >
       <HeadingContext.Provider value={headingContextValue}>
         <Message
@@ -290,6 +302,8 @@ export interface ReasoningPartProps {
   isStreaming: boolean;
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   messages?: UIMessage[];
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 export function ReasoningPart({
@@ -299,6 +313,8 @@ export function ReasoningPart({
   isStreaming,
   sendMessage,
   messages,
+  onDatasourceNameClick,
+  getDatasourceTooltip,
 }: ReasoningPartProps) {
   const [currentHeading, setCurrentHeading] = useState('');
 
@@ -312,7 +328,13 @@ export function ReasoningPart({
 
   return (
     <MarkdownProvider
-      value={{ sendMessage, messages, currentMessageId: messageId }}
+      value={{
+        sendMessage,
+        messages,
+        currentMessageId: messageId,
+        onDatasourceNameClick,
+        getDatasourceTooltip,
+      }}
     >
       <HeadingContext.Provider value={headingContextValue}>
         <Reasoning
@@ -551,6 +573,9 @@ export interface ToolPartProps {
   part: ToolUIPart;
   messageId: string;
   index: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpenWhenUncontrolled?: boolean;
   onViewSheet?: (sheetName: string) => void;
   onDeleteSheets?: (sheetNames: string[]) => void;
   onRenameSheet?: (oldSheetName: string, newSheetName: string) => void;
@@ -572,6 +597,9 @@ export function ToolPart({
   part,
   messageId,
   index,
+  open,
+  onOpenChange,
+  defaultOpenWhenUncontrolled,
   onPasteToNotebook,
   notebookContext,
 }: ToolPartProps) {
@@ -985,10 +1013,16 @@ export function ToolPart({
   // Hide input section for runQuery (we show SQL in SQLQueryVisualizer)
   const showInput = part.input != null && part.type !== 'tool-runQuery';
 
+  const isControlled = open !== undefined;
   return (
     <Tool
       key={`${messageId}-${index}`}
-      defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
+      {...(isControlled
+        ? { open, onOpenChange }
+        : {
+            defaultOpen:
+              defaultOpenWhenUncontrolled ?? TOOL_UI_CONFIG.DEFAULT_OPEN,
+          })}
       variant={variant}
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',

@@ -1,9 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { FileText } from 'lucide-react';
+import { ChevronDown, FileText } from 'lucide-react';
 import { CodeBlock, CodeBlockCopyButton } from '../../ai-elements/code-block';
 import { Button } from '../../shadcn/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../../shadcn/collapsible';
 import { cn } from '../../lib/utils';
 import { DataGrid } from './data-grid';
 
@@ -49,14 +54,23 @@ export function SQLQueryVisualizer({
       )}
 
       {result?.result && (
-        <div className="border-border/50 overflow-hidden rounded-lg border">
-          <DataGrid
-            columns={result.result.columns}
-            rows={result.result.rows}
-            pageSize={10}
-            className="rounded-none border-0 shadow-none"
-          />
-        </div>
+        <Collapsible
+          defaultOpen
+          className="border-border/50 overflow-hidden rounded-lg border"
+        >
+          <CollapsibleTrigger className="border-border/50 hover:bg-muted/50 flex w-full items-center justify-between gap-2 border-b px-3 py-2 text-left text-sm font-medium transition-colors [&[data-state=open]>svg]:rotate-180">
+            <span>Results ({result.result.rows?.length ?? 0} rows)</span>
+            <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform duration-200" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <DataGrid
+              columns={result.result.columns}
+              rows={result.result.rows}
+              pageSize={10}
+              className="rounded-none border-0 shadow-none"
+            />
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );
