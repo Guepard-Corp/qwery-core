@@ -1,13 +1,13 @@
 'use client';
 
-import { Button } from '../shadcn/button';
+import { Button } from '../../shadcn/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '../shadcn/collapsible';
-import { ScrollArea } from '../shadcn/scroll-area';
-import { cn } from '../lib/utils';
+} from '../../shadcn/collapsible';
+import { ScrollArea } from '../../shadcn/scroll-area';
+import { cn } from '../../lib/utils';
 import { ChevronDownIcon, PaperclipIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
@@ -193,7 +193,6 @@ export const QueueList = ({
   </ScrollArea>
 );
 
-// QueueSection - collapsible section container
 export type QueueSectionProps = ComponentProps<typeof Collapsible>;
 
 export const QueueSection = ({
@@ -204,7 +203,6 @@ export const QueueSection = ({
   <Collapsible className={cn(className)} defaultOpen={defaultOpen} {...props} />
 );
 
-// QueueSectionTrigger - section header/trigger
 export type QueueSectionTriggerProps = ComponentProps<'button'>;
 
 export const QueueSectionTrigger = ({
@@ -215,7 +213,7 @@ export const QueueSectionTrigger = ({
   <CollapsibleTrigger asChild>
     <button
       className={cn(
-        'group bg-muted/40 text-muted-foreground hover:bg-muted flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+        'group bg-muted/40 text-muted-foreground hover:bg-muted flex w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md text-left text-sm font-medium transition-colors',
         className,
       )}
       type="button"
@@ -226,7 +224,6 @@ export const QueueSectionTrigger = ({
   </CollapsibleTrigger>
 );
 
-// QueueSectionLabel - label content with icon and count
 export type QueueSectionLabelProps = ComponentProps<'span'> & {
   count?: number;
   label: string;
@@ -240,16 +237,17 @@ export const QueueSectionLabel = ({
   className,
   ...props
 }: QueueSectionLabelProps) => (
-  <span className={cn('flex items-center gap-2', className)} {...props}>
-    <ChevronDownIcon className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
+  <span className={cn('flex w-full items-center gap-2', className)} {...props}>
+    <span className="inline-flex size-4 shrink-0 items-center justify-center">
+      <ChevronDownIcon className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
+    </span>
     {icon}
-    <span>
+    <span className="min-w-0 flex-1 truncate">
       {count} {label}
     </span>
   </span>
 );
 
-// QueueSectionContent - collapsible content area
 export type QueueSectionContentProps = ComponentProps<
   typeof CollapsibleContent
 >;
