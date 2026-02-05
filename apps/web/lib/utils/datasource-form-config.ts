@@ -98,7 +98,7 @@ const stringOrUndefined = z.union([z.string(), z.undefined()]);
 const baseConfigSchema = z.record(z.unknown()).and(
   z.object({
     host: stringOrUndefined.optional(),
-    port: stringOrUndefined.optional(),
+    port: z.coerce.number().int().min(1).max(65535).optional(),
     database: stringOrUndefined.optional(),
     username: stringOrUndefined.optional(),
     password: stringOrUndefined.optional(),
