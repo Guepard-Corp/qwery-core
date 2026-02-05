@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
-
 import type { Preview } from '@storybook/react';
 import { ThemeProvider } from 'next-themes';
 
 import '../../../apps/web/styles/global.css';
+import { ToolVariantProvider } from '../../../packages/ui/src/qwery/ai/tool-variant-context';
 
 const ThemeWrapper = ({
   children,
@@ -26,13 +25,12 @@ const ThemeWrapper = ({
 };
 
 const wrapper = (Story: any, context: any) => {
-  const theme =
-    context?.globals?.backgrounds?.value == '#333' ? 'dark' : 'light';
-  console.log('theme', theme);
-
+  const theme = context?.globals?.theme ?? 'light';
   return (
-    <ThemeWrapper theme={theme as string}>
-      <Story />
+    <ThemeWrapper theme={theme}>
+      <ToolVariantProvider>
+        <Story />
+      </ToolVariantProvider>
     </ThemeWrapper>
   );
 };
@@ -41,6 +39,24 @@ const decorators = [wrapper];
 
 const preview: Preview = {
   decorators,
+  globalTypes: {
+    theme: {
+      name: 'Theme',
+      description: 'Light or dark mode',
+      toolbar: {
+        title: 'Theme',
+        icon: 'circlehollow',
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'dark', title: 'Dark' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    theme: 'light',
+  },
   parameters: {
     controls: {
       matchers: {
