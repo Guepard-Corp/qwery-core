@@ -1,4 +1,6 @@
 import type { ToolCall, ToolCallStatus } from '../state/types.ts';
+import { parseChartConfig } from '../types/chart.ts';
+import { AsciiChart } from './AsciiChart.tsx';
 import { useStyles } from '../theme/index.ts';
 import { TextAttributes } from '@opentui/core';
 
@@ -46,6 +48,8 @@ function getToolIcon(name: string): string {
   if (lower === 'webfetch' || lower === 'fetch') return '🌐';
   if (lower === 'grep' || lower === 'search') return '🔍';
   if (lower === 'glob' || lower === 'list') return '📁';
+  if (lower === 'generatechart') return '📊';
+  if (lower === 'selectcharttype') return '📈';
   return '%';
 }
 
@@ -61,6 +65,10 @@ export function ToolCallBlock({
   const expandIcon = isExpanded ? '▼' : '▶';
   const hasDetails =
     (tool.args?.length ?? 0) > 0 || (tool.output?.length ?? 0) > 0;
+  const chartConfig =
+    tool.name === 'generateChart' && tool.status !== 'error' && tool.output
+      ? parseChartConfig(tool.output)
+      : null;
 
   return (
     <box flexDirection="column">
@@ -94,7 +102,7 @@ export function ToolCallBlock({
           paddingLeft={1}
           paddingRight={1}
         >
-          {tool.args ? (
+          {tool.args && tool.name !== 'generateChart' ? (
             <box flexDirection="column" marginBottom={1}>
               <text fg={colors.dimGray}>Args:</text>
               <text fg={colors.white} wrapMode="char">
@@ -106,15 +114,21 @@ export function ToolCallBlock({
           ) : null}
           {tool.output != null ? (
             <box flexDirection="column">
-              <text fg={colors.dimGray}>Output:</text>
-              <text
-                fg={tool.status === 'error' ? colors.red : colors.white}
-                wrapMode="char"
-              >
-                {tool.output.length > 1000
-                  ? tool.output.slice(0, 1000) + '…'
-                  : tool.output}
-              </text>
+              {chartConfig ? (
+                <AsciiChart config={chartConfig} />
+              ) : (
+                <>
+                  <text fg={colors.dimGray}>Output:</text>
+                  <text
+                    fg={tool.status === 'error' ? colors.red : colors.white}
+                    wrapMode="char"
+                  >
+                    {tool.output.length > 1000
+                      ? tool.output.slice(0, 1000) + '…'
+                      : tool.output}
+                  </text>
+                </>
+              )}
             </box>
           ) : null}
         </box>

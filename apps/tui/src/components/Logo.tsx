@@ -10,9 +10,9 @@ const LOGO_LINES = [
 ];
 
 export function Logo() {
-  const { logoDim, logoBright } = useStyles();
+  const { logoDim, logoBright, messageInfoStyle } = useStyles();
   return (
-    <box flexDirection="column">
+    <box flexDirection="column" alignItems="center">
       {LOGO_LINES.map((line, i) => {
         const runes = [...line];
         const midPoint = Math.floor(runes.length * 0.6);
@@ -25,6 +25,8 @@ export function Logo() {
           </box>
         );
       })}
+      <box height={1} />
+      <text {...messageInfoStyle}>Ask your data. Get insights.</text>
     </box>
   );
 }

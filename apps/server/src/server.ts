@@ -12,6 +12,7 @@ import { createDatasourcesRoutes } from './routes/datasources';
 import { createDriverRoutes } from './routes/driver';
 import { createMessagesRoutes } from './routes/messages';
 import { createNotebooksRoutes } from './routes/notebooks';
+import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
@@ -79,6 +80,7 @@ export function createApp() {
   api.route('/conversations', createConversationsRoutes());
   api.route('/messages', createMessagesRoutes(getRepositories));
   api.route('/notebooks', createNotebooksRoutes(getRepositories));
+  api.route('/notebook/query', createNotebookQueryRoutes(getRepositories));
   api.route('/usage', createUsageRoutes(getRepositories));
   app.route('/api', api);
 

@@ -8,6 +8,7 @@ import { initialState } from './state/initial.ts';
 import { reducer, keyEventToKeyString } from './state/reducer.ts';
 import { MainView } from './views/MainView.tsx';
 import { ChatView } from './views/ChatView.tsx';
+import { NotebookView } from './views/NotebookView.tsx';
 import { CommandPaletteView } from './views/CommandPaletteView.tsx';
 import { HelpDialog } from './components/HelpDialog.tsx';
 import { ConversationsDialog } from './components/ConversationsDialog.tsx';
@@ -17,6 +18,8 @@ import { AgentDialog } from './components/AgentDialog.tsx';
 import { ModelDialog } from './components/ModelDialog.tsx';
 import { DatasourcesDialog } from './components/DatasourcesDialog.tsx';
 import { AddDatasourceDialog } from './components/AddDatasourceDialog.tsx';
+import { NotebooksDialog } from './components/NotebooksDialog.tsx';
+import { NewNotebookNameDialog } from './components/NewNotebookNameDialog.tsx';
 import {
   ExportDialog,
   writeConversationToFile,
@@ -29,6 +32,12 @@ import {
   updateConversation,
   sendChatMessage,
   parseStreamToChatMessageStreaming,
+  getConversationsByProjectId,
+  getMessages,
+  getNotebooks,
+  createNotebook,
+  updateNotebook,
+  runNotebookQuery,
   getDatasources,
   createDatasource,
   testConnection,
@@ -95,16 +104,35 @@ function AppContent({ state, dispatch }: AppContentProps) {
       .then((root) => initWorkspace(apiBase(root)))
       .then((workspace) => {
         if (!cancelled) dispatch({ type: 'set_workspace', workspace });
-        return workspace;
-      })
-      .then((workspace) => {
-        if (cancelled || !workspace?.projectId) return;
-        return ensureServerRunning().then((root) =>
-          getDatasources(apiBase(root), workspace.projectId!).then((list) => {
+        if (cancelled || !workspace.projectId) return;
+        const base = apiBase();
+        const projectId = workspace.projectId;
+        return Promise.all([
+          getConversationsByProjectId(base, projectId).then((list) => {
+            if (cancelled) return;
+            const conversations = list.map((c) => ({
+              id: c.id,
+              slug: c.slug,
+              title: c.title,
+              messages: [] as import('./state/types').ChatMessage[],
+              createdAt: new Date(c.createdAt).getTime(),
+              updatedAt: new Date(c.updatedAt).getTime(),
+              datasources: c.datasources ?? [],
+            }));
+            dispatch({ type: 'set_conversations', conversations });
+          }),
+          getNotebooks(base, projectId).then((list) => {
+            if (!cancelled)
+              dispatch({
+                type: 'set_notebooks',
+                notebooks: list as import('./state/types').TuiNotebook[],
+              });
+          }),
+          getDatasources(base, projectId).then((list) => {
             if (!cancelled)
               dispatch({ type: 'set_project_datasources', datasources: list });
           }),
-        );
+        ]);
       })
       .catch((err) => {
         if (!cancelled)
@@ -117,6 +145,232 @@ function AppContent({ state, dispatch }: AppContentProps) {
       cancelled = true;
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!state.requestNewConversation) return;
+    if (!state.workspace?.projectId) {
+      dispatch({ type: 'open_dialog', dialog: 'conversations' });
+      dispatch({ type: 'clear_request_new_conversation' });
+      return;
+    }
+    let cancelled = false;
+    ensureServerRunning()
+      .then((root) =>
+        createConversation(apiBase(root), 'New Conversation', '', {
+          projectId: state.workspace!.projectId!,
+        }),
+      )
+      .then((created) => {
+        if (cancelled) return;
+        dispatch({
+          type: 'add_conversation_and_switch',
+          conversation: {
+            id: created.id,
+            slug: created.slug,
+            title: 'New Conversation',
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            datasources: created.datasources ?? [],
+          },
+        });
+      })
+      .catch(() => {
+        if (!cancelled) dispatch({ type: 'new_conversation' });
+      })
+      .finally(() => {
+        if (!cancelled) dispatch({ type: 'clear_request_new_conversation' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, state.requestNewConversation, state.workspace?.projectId]);
+
+  useEffect(() => {
+    if (!state.requestNewNotebook) return;
+    if (!state.workspace?.projectId) {
+      dispatch({ type: 'open_dialog', dialog: 'notebooks' });
+      dispatch({
+        type: 'set_notebook_create_error',
+        error: 'No project. Open web app first to init.',
+      });
+      dispatch({ type: 'clear_request_new_notebook' });
+      return;
+    }
+    dispatch({ type: 'set_notebook_create_error', error: null });
+    let cancelled = false;
+    const title = state.pendingNewNotebookTitle ?? 'Untitled notebook';
+    ensureServerRunning()
+      .then((root) =>
+        createNotebook(apiBase(root), {
+          projectId: state.workspace!.projectId!,
+          title,
+          createdBy: state.workspace?.userId,
+        }),
+      )
+      .then((created) => {
+        if (cancelled) return;
+        const nb = created as import('./state/types').TuiNotebook;
+        dispatch({
+          type: 'set_notebooks',
+          notebooks: [nb, ...state.projectNotebooks],
+        });
+        dispatch({ type: 'open_notebook', notebook: nb });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Create failed';
+          dispatch({ type: 'set_notebook_create_error', error: msg });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) dispatch({ type: 'clear_request_new_notebook' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dispatch,
+    state.requestNewNotebook,
+    state.pendingNewNotebookTitle,
+    state.workspace?.projectId,
+    state.projectNotebooks,
+  ]);
+
+  useEffect(() => {
+    const conv = getCurrentConversation(state);
+    if (
+      !conv?.slug ||
+      conv.messages.length > 0 ||
+      state.currentScreen !== 'chat'
+    )
+      return;
+    let cancelled = false;
+    ensureServerRunning()
+      .then((root) => getMessages(apiBase(root), conv.slug!))
+      .then((messages) => {
+        if (!cancelled)
+          dispatch({
+            type: 'set_conversation_messages',
+            conversationId: conv.id,
+            messages,
+          });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dispatch,
+    state.currentConversationId,
+    state.currentScreen,
+    state.conversations,
+  ]);
+
+  useEffect(() => {
+    const cellId = state.notebookCellLoading;
+    const nb = state.currentNotebook;
+    if (cellId == null || !nb || !state.workspace?.projectId) return;
+    const cell = nb.cells.find((c) => c.cellId === cellId);
+    if (!cell || cell.cellType !== 'query') {
+      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      return;
+    }
+    if (!cell.datasources?.[0]) {
+      dispatch({
+        type: 'notebook_cell_error',
+        cellId,
+        error: 'Set a datasource for this cell (Ctrl+D)',
+      });
+      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      return;
+    }
+    if (!cell.query?.trim()) {
+      dispatch({
+        type: 'notebook_cell_error',
+        cellId,
+        error: 'Enter a query first',
+      });
+      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      return;
+    }
+    let cancelled = false;
+    ensureServerRunning()
+      .then((root) => {
+        const base = apiBase(root);
+        return getConversationsByProjectId(base, state.workspace!.projectId!);
+      })
+      .then((convs) => {
+        if (cancelled) return;
+        const conv = convs.find((c) => c.title === `Notebook - ${nb.id}`);
+        if (!conv?.id) {
+          dispatch({
+            type: 'notebook_cell_result',
+            cellId,
+            result: null,
+          });
+          dispatch({
+            type: 'notebook_cell_error',
+            cellId,
+            error: 'Notebook conversation not found. Save and reopen notebook.',
+          });
+          dispatch({ type: 'notebook_cell_loading', cellId: null });
+          return;
+        }
+        const datasourceId = cell.datasources[0];
+        if (!datasourceId) return;
+        const conversationId = conv.slug?.trim() || conv.id;
+        return ensureServerRunning().then((root) =>
+          runNotebookQuery(apiBase(root), {
+            conversationId,
+            query: cell.query!.trim(),
+            datasourceId,
+          }),
+        );
+      })
+      .then((result) => {
+        if (cancelled || result === undefined) return;
+        if (result.success && result.data) {
+          dispatch({ type: 'notebook_cell_error', cellId, error: null });
+          dispatch({
+            type: 'notebook_cell_result',
+            cellId,
+            result: {
+              rows: result.data.rows,
+              headers: result.data.headers.map((h) => ({
+                name: h.name,
+              })),
+            },
+          });
+        } else {
+          dispatch({
+            type: 'notebook_cell_error',
+            cellId,
+            error: result.error ?? 'Query failed',
+          });
+          dispatch({ type: 'notebook_cell_result', cellId, result: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Run failed';
+          dispatch({ type: 'notebook_cell_error', cellId, error: msg });
+          dispatch({ type: 'notebook_cell_result', cellId, result: null });
+        }
+      })
+      .finally(() => {
+        if (!cancelled)
+          dispatch({ type: 'notebook_cell_loading', cellId: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dispatch,
+    state.notebookCellLoading,
+    state.currentNotebook,
+    state.workspace?.projectId,
+  ]);
 
   useEffect(() => {
     const convId = state.pendingConversationDatasourceSync;
@@ -143,6 +397,42 @@ function AppContent({ state, dispatch }: AppContentProps) {
       cancelled = true;
     };
   }, [dispatch, state.pendingConversationDatasourceSync, state.conversations]);
+
+  useEffect(() => {
+    const nb = state.currentNotebook;
+    if (!nb || !state.notebookPendingSave) return;
+    let cancelled = false;
+    ensureServerRunning()
+      .then((root) =>
+        updateNotebook(apiBase(root), nb.id, {
+          cells: nb.cells.map((c) => ({
+            cellId: c.cellId,
+            cellType: c.cellType,
+            query: c.query,
+            datasources: c.datasources ?? [],
+            isActive: c.isActive,
+            runMode: c.runMode,
+            title: c.title,
+          })),
+        }),
+      )
+      .then((updated) => {
+        if (!cancelled)
+          dispatch({ type: 'set_current_notebook', notebook: updated });
+        if (!cancelled) dispatch({ type: 'clear_notebook_pending_save' });
+      })
+      .catch(() => {
+        if (!cancelled) dispatch({ type: 'clear_notebook_pending_save' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dispatch,
+    state.currentNotebook?.id,
+    state.currentNotebook?.cells,
+    state.notebookPendingSave,
+  ]);
 
   useEffect(() => {
     if (
@@ -472,7 +762,7 @@ function AppContent({ state, dispatch }: AppContentProps) {
     return (
       <ConversationsDialog
         conversations={state.conversations}
-        selectedId={state.currentConversationId}
+        selectedIndex={state.conversationsDialogSelected}
         width={state.width}
         height={state.height}
       />
@@ -493,6 +783,20 @@ function AppContent({ state, dispatch }: AppContentProps) {
   if (state.activeDialog === 'datasources') {
     return <DatasourcesDialog state={state} />;
   }
+  if (state.activeDialog === 'notebooks') {
+    return (
+      <NotebooksDialog
+        notebooks={state.projectNotebooks}
+        selectedIndex={state.notebooksDialogSelected}
+        width={state.width}
+        height={state.height}
+        createError={state.notebookCreateError}
+      />
+    );
+  }
+  if (state.activeDialog === 'new_notebook_name') {
+    return <NewNotebookNameDialog state={state} />;
+  }
   if (state.activeDialog === 'add_datasource') {
     return <AddDatasourceDialog state={state} />;
   }
@@ -500,9 +804,11 @@ function AppContent({ state, dispatch }: AppContentProps) {
     return <ExportDialog state={state} />;
   }
 
-  // Render main screens
   if (state.currentScreen === 'chat') {
     return <ChatView state={state} />;
+  }
+  if (state.currentScreen === 'notebook') {
+    return <NotebookView state={state} />;
   }
   return <MainView state={state} />;
 }
