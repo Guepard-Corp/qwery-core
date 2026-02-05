@@ -25,7 +25,14 @@ import {
   PromptInputProvider,
   usePromptInputController,
 } from '../ai-elements/prompt-input';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import { useChat, type UIMessage as AiSdkUIMessage } from '@ai-sdk/react';
 import { useAgentStatus } from './ai/agent-status-context';
 import { useCompletionSound } from './ai/utils/notification-sound';
@@ -78,6 +85,19 @@ import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 import type { FeedbackPayload } from './ai/feedback-types';
+import {
+  SuggestionBadges,
+  SuggestionBadgesSkeleton,
+} from './ai/suggestion-badges';
+import {
+  extractAllSuggestionMatches,
+  type SuggestionMetadata,
+} from './ai/utils/suggestion-pattern';
+import {
+  getTextContentFromMessage,
+  getContextMessages,
+} from './ai/utils/message-context';
+import { isChatActive, isChatIdle } from './ai/utils/chat-status';
 
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
@@ -101,6 +121,8 @@ export interface QweryAgentUIProps {
     model: string,
   ) => void;
   onMessagesChange?: (messages: UIMessage[]) => void;
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
   isLoading?: boolean;
   onPasteToNotebook?: (
     sqlQuery: string,
@@ -118,6 +140,11 @@ export interface QweryAgentUIProps {
     messageId: string,
     feedback: FeedbackPayload,
   ) => Promise<void>;
+  initialSuggestions?: string[];
+  onBeforeSuggestionSend?: (
+    text: string,
+    metadata?: import('./ai/utils/suggestion-pattern').SuggestionMetadata,
+  ) => Promise<boolean>;
 }
 
 type UseChatTransport = NonNullable<
@@ -148,6 +175,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     notebookContext,
     conversationSlug,
     onSubmitFeedback,
+    initialSuggestions,
+    onBeforeSuggestionSend,
+    onDatasourceNameClick,
+    getDatasourceTooltip,
   } = props;
 
   const notebookContextRef = useRef(notebookContext);
@@ -198,6 +229,28 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     model: models[0]?.value ?? '',
     webSearch: false,
   });
+
+  const [showSuggestionBadges, setShowSuggestionBadges] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const v = localStorage.getItem('qwery-show-suggestion-badges');
+      return v !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(
+        'qwery-show-suggestion-badges',
+        String(showSuggestionBadges),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [showSuggestionBadges]);
 
   const transportInstance = useMemo(
     () => transport(state.model),
@@ -289,26 +342,9 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
   }, [status, emitFinish]);
 
-  // Scroll to bottom instantly when loading completes
   useEffect(() => {
-    if (previousIsLoadingRef.current && !isLoading && messages.length > 0) {
-      requestAnimationFrame(() => {
-        const container = conversationContainerRef.current;
-        if (container) {
-          const scrollContainer = container.querySelector(
-            '[role="log"]',
-          ) as HTMLElement;
-          if (
-            scrollContainer &&
-            scrollContainer.scrollHeight > scrollContainer.clientHeight
-          ) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-          }
-        }
-      });
-    }
     previousIsLoadingRef.current = isLoading;
-  }, [isLoading, messages.length]);
+  }, [isLoading]);
 
   const previousInitialMessagesRef = useRef<UIMessage[] | undefined>(undefined);
   const previousConversationSlugRef = useRef<string | undefined>(
@@ -417,6 +453,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollToBottomRef = useRef<(() => void) | null>(null);
   const conversationContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const viewSheetRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
@@ -429,7 +466,68 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     messageId: string;
     messageText: string;
   }>({ open: false, messageId: '', messageText: '' });
+  const [badgesVisibleAfterDelay, setBadgesVisibleAfterDelay] = useState(false);
+  const [badgesLoadDelayPassed, setBadgesLoadDelayPassed] = useState(false);
+  const [badgesFadingOut, setBadgesFadingOut] = useState(false);
+  const [badgesFadeToZero, setBadgesFadeToZero] = useState(false);
+  const [badgesRevealing, setBadgesRevealing] = useState(false);
+  const prevShowBadgesRef = useRef(false);
+  const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
   const previousIsLoadingRef = useRef(isLoading);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [isSentinelInView, setIsSentinelInView] = useState(false);
+
+  useLayoutEffect(() => {
+    if (messages.length === 0) return;
+
+    setIsSentinelInView(false);
+    const observerRef = { current: null as IntersectionObserver | null };
+    const rafId = requestAnimationFrame(() => {
+      const sentinel = sentinelRef.current;
+      const root =
+        scrollContainerRef.current ?? conversationContainerRef.current;
+      if (!sentinel || !root) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry) {
+            setIsSentinelInView(entry.isIntersecting);
+          }
+        },
+        {
+          root,
+          threshold: 0,
+          rootMargin: '0px 0px -100px 0px',
+        },
+      );
+      observerRef.current = observer;
+      observer.observe(sentinel);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      observerRef.current?.disconnect();
+    };
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (isLoading || messages.length > 0 || !initialSuggestions?.length) {
+      setBadgesVisibleAfterDelay(false);
+      return;
+    }
+    const t = setTimeout(() => setBadgesVisibleAfterDelay(true), 500);
+    return () => clearTimeout(t);
+  }, [isLoading, messages.length, initialSuggestions?.length]);
+
+  useEffect(() => {
+    if (isLoading || messages.length === 0) {
+      setBadgesLoadDelayPassed(false);
+      return;
+    }
+    const t = setTimeout(() => setBadgesLoadDelayPassed(true), 500);
+    return () => clearTimeout(t);
+  }, [isLoading, messages.length]);
 
   const handleEditCancel = useCallback(() => {
     setEditingMessageId(null);
@@ -488,20 +586,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       });
     }
 
-    setTimeout(() => {
-      regenerate();
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 0);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 100);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 300);
-      });
-    }, 0);
+    regenerate();
+    scrollToBottomRef.current?.();
   }, [
     editingMessageId,
     editText,
@@ -578,20 +664,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       }
     }
 
-    setTimeout(() => {
-      regenerate();
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 0);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 100);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 300);
-      });
-    }, 0);
+    regenerate();
+    scrollToBottomRef.current?.();
   }, [
     editingMessageId,
     editText,
@@ -653,20 +727,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       }
     }
 
-    setTimeout(() => {
-      regenerate();
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 0);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 100);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 300);
-      });
-    }, 0);
+    regenerate();
+    scrollToBottomRef.current?.();
   }, [
     messages,
     regenerate,
@@ -708,6 +770,145 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     );
   }, [messages]);
 
+  const badgeSuggestions = useMemo(() => {
+    type Item = { text: string; metadata?: SuggestionMetadata };
+    let list: Item[] = [];
+    if (messages.length === 0 && initialSuggestions?.length) {
+      list = initialSuggestions.map((text) => ({ text }));
+    } else if (lastAssistantMessage) {
+      const text = getTextContentFromMessage(lastAssistantMessage);
+      const matches = extractAllSuggestionMatches(text);
+      if (matches.length > 0) {
+        list = matches.map((m) => ({
+          text: m.text,
+          metadata: m.metadata,
+        }));
+      }
+    }
+    return list.slice(0, 3);
+  }, [messages.length, initialSuggestions, lastAssistantMessage]);
+
+  const lastMessageHasSuggestions =
+    messages.length > 0 && badgeSuggestions.length > 0;
+
+  const handleBadgeSuggestionClick = useCallback(
+    async (cleanSuggestionText: string, metadata?: SuggestionMetadata) => {
+      console.log('[agent-ui] handleBadgeSuggestionClick', {
+        text: cleanSuggestionText,
+        metadataJson: JSON.stringify(metadata ?? {}),
+        metadata,
+      });
+      const ok =
+        onBeforeSuggestionSend === undefined
+          ? true
+          : await onBeforeSuggestionSend(cleanSuggestionText, metadata);
+      if (!ok) return;
+      let messageText = cleanSuggestionText;
+      const { lastAssistantResponse, parentConversationId } =
+        getContextMessages(messages, lastAssistantMessage?.id);
+      if (lastAssistantResponse || parentConversationId) {
+        const contextData = JSON.stringify({
+          lastAssistantResponse,
+          parentConversationId,
+        });
+        messageText = `__QWERY_CONTEXT__${contextData}__QWERY_CONTEXT_END__${cleanSuggestionText}`;
+      }
+      sendMessage({ text: messageText }, {});
+      scrollToBottomRef.current?.();
+    },
+    [
+      messages,
+      lastAssistantMessage?.id,
+      sendMessage,
+      scrollToBottomRef,
+      onBeforeSuggestionSend,
+    ],
+  );
+
+  const showBadges =
+    !isLoading &&
+    isChatIdle(status) &&
+    badgeSuggestions.length > 0 &&
+    (messages.length === 0
+      ? badgesVisibleAfterDelay
+      : isSentinelInView && badgesLoadDelayPassed);
+
+  const showBadgeSlotVisible =
+    showBadges ||
+    (messages.length === 0 &&
+      ((isLoading && initialSuggestions?.length) ||
+        (badgeSuggestions.length > 0 &&
+          initialSuggestions?.length &&
+          !badgesVisibleAfterDelay)));
+
+  useEffect(() => {
+    if (
+      prevShowBadgesRef.current &&
+      !showBadges &&
+      badgeSuggestions.length > 0
+    ) {
+      setBadgesFadingOut(true);
+      setBadgesFadeToZero(false);
+    }
+    if (
+      !prevShowBadgesRef.current &&
+      showBadges &&
+      badgeSuggestions.length > 0
+    ) {
+      setBadgesRevealing(true);
+    }
+    prevShowBadgesRef.current = showBadges;
+  }, [showBadges, badgeSuggestions.length]);
+
+  useEffect(() => {
+    if (!badgesRevealing) return;
+    const t = setTimeout(() => setBadgesRevealing(false), 300);
+    return () => clearTimeout(t);
+  }, [badgesRevealing]);
+
+  useEffect(() => {
+    if (!badgesFadingOut) return;
+    const id = requestAnimationFrame(() => setBadgesFadeToZero(true));
+    return () => cancelAnimationFrame(id);
+  }, [badgesFadingOut]);
+
+  useEffect(() => {
+    if (!badgesFadeToZero) return;
+    const t = setTimeout(() => {
+      setBadgesFadingOut(false);
+      setBadgesFadeToZero(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [badgesFadeToZero]);
+
+  const handleAtBottomChange = useCallback((atBottom: boolean) => {
+    setIsScrollAtBottom(atBottom);
+  }, []);
+
+  const lastToolPartKey = useMemo(() => {
+    const lastMsg = messages.at(-1);
+    if (!lastMsg) return null;
+    for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
+      const p = lastMsg.parts[i];
+      if (p?.type && String(p.type).startsWith('tool-')) {
+        return `${lastMsg.id}-${i}`;
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const [openToolPartKey, setOpenToolPartKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lastToolPartKey) setOpenToolPartKey(lastToolPartKey);
+  }, [lastToolPartKey]);
+
+  const handleToolPartOpenChange = useCallback((key: string | null) => {
+    setOpenToolPartKey(key);
+  }, []);
+
+  const effectiveOpenToolPartKey = openToolPartKey ?? lastToolPartKey;
+
   const prevViewSheetCountRef = useRef(0);
 
   useEffect(() => {
@@ -720,13 +921,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     ) {
       const lastEntry = viewSheetEntries[viewSheetEntries.length - 1];
       if (lastEntry && lastEntry[1]) {
-        const lastViewSheetElement = lastEntry[1];
-        setTimeout(() => {
-          lastViewSheetElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-        }, 300);
+        lastEntry[1].scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
       }
     }
 
@@ -737,7 +935,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     <PromptInputProvider initialInput={state.input}>
       <div
         ref={containerRef}
-        className="relative mx-auto flex h-full w-full max-w-4xl min-w-0 flex-col overflow-x-hidden p-6"
+        className="relative flex h-full w-full flex-col overflow-x-hidden"
       >
         <div
           ref={conversationContainerRef}
@@ -797,10 +995,18 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     sendMessage={sendMessage}
                     onPasteToNotebook={onPasteToNotebook}
                     onSubmitFeedback={onSubmitFeedback}
+                    openToolPartKey={openToolPartKey}
+                    onToolPartOpenChange={handleToolPartOpenChange}
+                    onAtBottomChange={handleAtBottomChange}
+                    contentSentinelRef={sentinelRef}
+                    scrollerRef={scrollContainerRef}
+                    onBeforeSuggestionSend={onBeforeSuggestionSend}
+                    onDatasourceNameClick={onDatasourceNameClick}
+                    getDatasourceTooltip={getDatasourceTooltip}
                     renderScrollButton={(scrollToBottom, isAtBottom) =>
                       !isAtBottom ? (
                         <Button
-                          className="absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full"
+                          className="absolute bottom-4 left-[50%] z-50 translate-x-[-50%] rounded-full shadow-lg"
                           onClick={scrollToBottom}
                           size="icon"
                           type="button"
@@ -815,7 +1021,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
               )}
             </div>
           ) : (
-            <Conversation className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
+            <Conversation
+              ref={conversationContainerRef}
+              className="min-h-0 min-w-0 flex-1 overflow-x-hidden"
+            >
               <ConversationContent className="max-w-full min-w-0 overflow-x-hidden">
                 {isLoading ? (
                   <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -1164,7 +1373,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                   className="w-full max-w-full min-w-0"
                                                 >
                                                   <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                    <div className="overflow-wrap-anywhere break-words">
+                                                    <div className="overflow-wrap-anywhere wrap-break-words">
                                                       {part.text}
                                                     </div>
                                                   </MessageContent>
@@ -1181,12 +1390,27 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 className="w-full max-w-full min-w-0"
                                               >
                                                 <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                  <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                  <div className="overflow-wrap-anywhere wrap-break-words inline-flex min-w-0 items-baseline gap-0.5">
                                                     <StreamdownWithSuggestions
                                                       sendMessage={sendMessage}
                                                       messages={messages}
                                                       currentMessageId={
                                                         message.id
+                                                      }
+                                                      disabled={
+                                                        !isChatIdle(status)
+                                                      }
+                                                      isLastAgentResponse={
+                                                        isLastAssistantMessage
+                                                      }
+                                                      onBeforeSuggestionSend={
+                                                        onBeforeSuggestionSend
+                                                      }
+                                                      onDatasourceNameClick={
+                                                        onDatasourceNameClick
+                                                      }
+                                                      getDatasourceTooltip={
+                                                        getDatasourceTooltip
                                                       }
                                                     >
                                                       {part.text}
@@ -1207,6 +1431,21 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                       messages={messages}
                                                       currentMessageId={
                                                         message.id
+                                                      }
+                                                      disabled={
+                                                        !isChatIdle(status)
+                                                      }
+                                                      isLastAgentResponse={
+                                                        isLastAssistantMessage
+                                                      }
+                                                      onBeforeSuggestionSend={
+                                                        onBeforeSuggestionSend
+                                                      }
+                                                      onDatasourceNameClick={
+                                                        onDatasourceNameClick
+                                                      }
+                                                      getDatasourceTooltip={
+                                                        getDatasourceTooltip
                                                       }
                                                     >
                                                       {part.text}
@@ -1241,29 +1480,30 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                               </Button>
                                             )}
                                             {normalizeUIRole(message.role) ===
-                                              'user' && (
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                  const { text: cleanText } =
-                                                    parseMessageWithContext(
-                                                      part.text,
+                                              'user' &&
+                                              !isChatActive(status) && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() => {
+                                                    const { text: cleanText } =
+                                                      parseMessageWithContext(
+                                                        part.text,
+                                                      );
+                                                    handleEditStart(
+                                                      message.id,
+                                                      cleanText,
+                                                      messageDatasources?.map(
+                                                        (ds) => ds.id,
+                                                      ) ?? [],
                                                     );
-                                                  handleEditStart(
-                                                    message.id,
-                                                    cleanText,
-                                                    messageDatasources?.map(
-                                                      (ds) => ds.id,
-                                                    ) ?? [],
-                                                  );
-                                                }}
-                                                className="h-7 w-7"
-                                                title="Edit"
-                                              >
-                                                <PencilIcon className="size-3" />
-                                              </Button>
-                                            )}
+                                                  }}
+                                                  className="h-7 w-7"
+                                                  title="Edit"
+                                                >
+                                                  <PencilIcon className="size-3" />
+                                                </Button>
+                                              )}
                                             <Button
                                               variant="ghost"
                                               size="icon"
@@ -1353,10 +1593,12 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                           `tool-${toolPart.toolName}`,
                                         )
                                       : getUserFriendlyToolName(toolPart.type);
+                                  const isLastPart =
+                                    i === message.parts.length - 1;
                                   return (
                                     <Tool
                                       key={`${message.id}-${i}`}
-                                      defaultOpen={false}
+                                      defaultOpen={isLastPart}
                                       variant="default"
                                     >
                                       <ToolHeader
@@ -1378,14 +1620,21 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                 }
 
                                 // Use ToolPart component for completed tools (includes visualizers)
-                                // Use ref to ensure notebook context persists even if prop changes during re-render
-                                // This prevents paste button from disappearing when messages reset
+                                const toolPartKey = `${message.id}-${i}`;
                                 return (
                                   <ToolPart
-                                    key={`${message.id}-${i}`}
+                                    key={toolPartKey}
                                     part={toolPart}
                                     messageId={message.id}
                                     index={i}
+                                    open={
+                                      effectiveOpenToolPartKey === toolPartKey
+                                    }
+                                    onOpenChange={(open) =>
+                                      handleToolPartOpenChange(
+                                        open ? toolPartKey : null,
+                                      )
+                                    }
                                     onPasteToNotebook={onPasteToNotebook}
                                     notebookContext={currentNotebookContext}
                                   />
@@ -1401,52 +1650,94 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                 {(status === 'submitted' ||
                   (status === 'streaming' &&
                     (!lastAssistantHasText || !lastMessageIsAssistant))) && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden duration-300">
-                    <BotAvatar
-                      size={6}
-                      isLoading={true}
-                      className="mt-1 shrink-0"
-                    />
-                    <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                      <Message
-                        from="assistant"
-                        className="w-full max-w-full min-w-0"
-                      >
-                        <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                          <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                            <MessageResponse></MessageResponse>
-                          </div>
-                        </MessageContent>
-                      </Message>
+                  <div className="mx-auto w-full max-w-4xl px-6">
+                    <div className="animate-in fade-in slide-in-from-bottom-4 flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden duration-300">
+                      <BotAvatar
+                        size={6}
+                        isLoading={true}
+                        className="mt-1 shrink-0"
+                      />
+                      <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                        <Message
+                          from="assistant"
+                          className="w-full max-w-full min-w-0"
+                        >
+                          <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                            <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                              <MessageResponse></MessageResponse>
+                            </div>
+                          </MessageContent>
+                        </Message>
+                      </div>
                     </div>
                   </div>
                 )}
+                <div ref={sentinelRef} className="h-px w-full" />
+                <div className="h-32 w-full" aria-hidden />
               </ConversationContent>
-              <ConversationScrollButton />
+              <ConversationScrollButton className="bottom-4" />
               <ScrollToBottomRefSetter scrollRef={scrollToBottomRef} />
             </Conversation>
           )}
         </div>
 
-        <div className="shrink-0">
-          <PromptInputInner
-            sendMessage={sendMessage}
-            state={state}
-            setState={setState}
-            textareaRef={textareaRef}
-            status={status}
-            stop={stop}
-            setMessages={setMessages}
-            messages={messages}
-            models={models}
-            usage={usage}
-            datasources={datasources}
-            selectedDatasources={selectedDatasources}
-            onDatasourceSelectionChange={onDatasourceSelectionChange}
-            pluginLogoMap={pluginLogoMap}
-            datasourcesLoading={datasourcesLoading}
-            scrollToBottomRef={scrollToBottomRef}
-          />
+        <div className="bg-background border-border/10 relative z-40 shrink-0 border-t">
+          {(messages.length === 0 &&
+            ((isLoading && initialSuggestions?.length) ||
+              badgeSuggestions.length > 0)) ||
+          lastMessageHasSuggestions ||
+          badgesFadingOut ? (
+            <div
+              className={cn(
+                'absolute right-0 bottom-full left-0 z-50 flex justify-center pb-3 transition-all duration-300 ease-out',
+                badgesRevealing &&
+                  'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                badgesFadingOut
+                  ? badgesFadeToZero
+                    ? 'pointer-events-none translate-y-0 opacity-0'
+                    : 'translate-y-0 opacity-100'
+                  : showBadgeSlotVisible
+                    ? 'translate-y-0 opacity-100'
+                    : 'pointer-events-none invisible translate-y-4 opacity-0',
+                !showSuggestionBadges &&
+                  'pointer-events-none translate-y-2 opacity-0',
+              )}
+              data-test="suggestion-badges-container"
+            >
+              {isLoading && !badgesFadingOut ? (
+                <SuggestionBadgesSkeleton />
+              ) : (showBadges || badgesFadingOut) &&
+                badgeSuggestions.length > 0 ? (
+                <SuggestionBadges
+                  suggestions={badgeSuggestions}
+                  onSuggestionClick={handleBadgeSuggestionClick}
+                  disabled={badgesFadingOut || !showSuggestionBadges}
+                />
+              ) : null}
+            </div>
+          ) : null}
+          <div className="mx-auto w-full max-w-4xl px-6 pb-6">
+            <PromptInputInner
+              sendMessage={sendMessage}
+              state={state}
+              setState={setState}
+              textareaRef={textareaRef}
+              status={status}
+              stop={stop}
+              setMessages={setMessages}
+              messages={messages}
+              models={models}
+              usage={usage}
+              datasources={datasources}
+              selectedDatasources={selectedDatasources}
+              onDatasourceSelectionChange={onDatasourceSelectionChange}
+              pluginLogoMap={pluginLogoMap}
+              datasourcesLoading={datasourcesLoading}
+              scrollToBottomRef={scrollToBottomRef}
+              showSuggestionBadges={showSuggestionBadges}
+              onShowSuggestionBadgesChange={setShowSuggestionBadges}
+            />
+          </div>
         </div>
       </div>
 
@@ -1523,6 +1814,8 @@ function PromptInputInner({
   pluginLogoMap,
   datasourcesLoading,
   scrollToBottomRef,
+  showSuggestionBadges,
+  onShowSuggestionBadgesChange,
 }: {
   sendMessage: ReturnType<typeof useChat>['sendMessage'];
   state: { input: string; model: string; webSearch: boolean };
@@ -1542,37 +1835,11 @@ function PromptInputInner({
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
   scrollToBottomRef: React.RefObject<(() => void) | null>;
+  showSuggestionBadges?: boolean;
+  onShowSuggestionBadgesChange?: (value: boolean) => void;
 }) {
   const attachments = usePromptInputAttachments();
   const controller = usePromptInputController();
-  const previousMessagesLengthRef = useRef(_messages.length);
-
-  // Scroll to bottom when a new user message is added
-  useEffect(() => {
-    const currentLength = _messages.length;
-    const previousLength = previousMessagesLengthRef.current;
-
-    if (currentLength > previousLength) {
-      const lastMessage = _messages[_messages.length - 1];
-      // Only scroll if the new message is from the user
-      if (lastMessage && lastMessage.role === 'user') {
-        // Use multiple timeouts to ensure DOM is updated
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            scrollToBottomRef.current?.();
-          }, 0);
-          setTimeout(() => {
-            scrollToBottomRef.current?.();
-          }, 100);
-          setTimeout(() => {
-            scrollToBottomRef.current?.();
-          }, 300);
-        });
-      }
-    }
-
-    previousMessagesLengthRef.current = currentLength;
-  }, [_messages, scrollToBottomRef]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     if (status === 'streaming' || status === 'submitted') {
@@ -1586,17 +1853,11 @@ function PromptInputInner({
       return;
     }
 
-    // Clear input immediately on submit (button click or Enter press)
     controller.textInput.clear();
     setState((prev) => ({ ...prev, input: '' }));
 
-    // Scroll immediately when submitting
-    requestAnimationFrame(() => {
-      scrollToBottomRef.current?.();
-    });
-
     try {
-      await sendMessage(
+      const sendPromise = sendMessage(
         {
           text: message.text || 'Sent with attachments',
           files: message.files,
@@ -1612,24 +1873,13 @@ function PromptInputInner({
           },
         },
       );
+      const scrollToBottom = () => scrollToBottomRef.current?.();
+      requestAnimationFrame(scrollToBottom);
+      setTimeout(scrollToBottom, 150);
+      await sendPromise;
       attachments.clear();
-      // Scroll again after message is sent to ensure we're at bottom
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 0);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 100);
-        setTimeout(() => {
-          scrollToBottomRef.current?.();
-        }, 300);
-      });
-      // Don't clear input here - it's already cleared on submit
-      // The input should only be cleared on explicit user action (submit button or Enter)
     } catch {
       toast.error('Failed to send message. Please try again.');
-      // On error, restore the input so user can retry
       if (message.text) {
         setState((prev) => ({ ...prev, input: message.text }));
       }
@@ -1660,6 +1910,8 @@ function PromptInputInner({
       onDatasourceSelectionChange={onDatasourceSelectionChange}
       pluginLogoMap={pluginLogoMap}
       datasourcesLoading={datasourcesLoading}
+      showSuggestionBadges={showSuggestionBadges}
+      onShowSuggestionBadgesChange={onShowSuggestionBadgesChange}
     />
   );
 }

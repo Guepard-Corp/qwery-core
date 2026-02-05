@@ -11,7 +11,16 @@ import {
 import { Button } from '../../shadcn/button';
 import { sortByModifiedDesc } from '@qwery/shared/utils';
 import { cn } from '../../lib/utils';
-import { MessageCircle, Pencil, Check, X, Trash2 } from 'lucide-react';
+import {
+  MessageCircle,
+  Plus,
+  Pencil,
+  Check,
+  X,
+  Edit,
+  Trash2,
+  Loader2,
+} from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,24 +67,25 @@ export function ConversationList({
   isProcessing: _isProcessing = false,
   processingConversationSlug,
   onConversationSelect,
-  onNewConversation: _onNewConversation,
+  onNewConversation,
   onConversationEdit,
   onConversationDelete,
   onConversationsDelete,
   className,
   showHeader = true,
-  searchPlaceholder: _searchPlaceholder = 'Search conversations...',
-  showNewButton: _showNewButton = true,
+  searchPlaceholder = 'Search conversations...',
+  showNewButton = true,
   searchQuery: externalSearchQuery,
-  onSearchQueryChange: _onSearchQueryChange,
+  onSearchQueryChange,
   isEditMode: externalEditMode,
   onEditModeChange,
 }: ConversationListProps) {
-  const [internalSearchQuery, _setInternalSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const searchQuery =
     externalSearchQuery !== undefined
       ? externalSearchQuery
       : internalSearchQuery;
+  const setSearchQuery = onSearchQueryChange || setInternalSearchQuery;
 
   const [internalEditMode, setInternalEditMode] = useState(false);
   const isEditMode =
@@ -86,7 +96,8 @@ export function ConversationList({
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [visibleCount, _setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
@@ -95,14 +106,15 @@ export function ConversationList({
   }, [conversations, currentConversationId]);
 
   const allConversations = useMemo(() => {
-    const filtered = conversations.filter((c) => {
-      const isNotCurrent = c.id !== currentConversationId;
-      const matchesSearch = c.title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      return isNotCurrent && matchesSearch;
-    });
-    return sortByModifiedDesc(filtered);
+    return conversations
+      .filter((c) => {
+        const isNotCurrent = c.id !== currentConversationId;
+        const matchesSearch = c.title
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        return isNotCurrent && matchesSearch;
+      })
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }, [conversations, currentConversationId, searchQuery]);
 
   const visibleConversations = useMemo(() => {
@@ -120,9 +132,23 @@ export function ConversationList({
     return sortTimeGroups(groupedConversations);
   }, [groupedConversations]);
 
+  const hasMore = allConversations.length > visibleCount;
+
   const handleConversationSelect = (conversationSlug: string) => {
     if (!isEditMode) {
       onConversationSelect?.(conversationSlug);
+    }
+  };
+
+  const handleNewConversation = () => {
+    onNewConversation?.();
+  };
+
+  const handleToggleEditMode = () => {
+    const nextMode = !isEditMode;
+    setIsEditMode(nextMode);
+    if (!nextMode) {
+      setSelectedIds(new Set());
     }
   };
 
@@ -221,6 +247,14 @@ export function ConversationList({
       previousTitlesRef.current.set(conversation.id, currentTitle);
     });
   }, [conversations]);
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));
+      setIsLoadingMore(false);
+    }, 100);
+  };
 
   const isSearching = searchQuery.trim().length > 0;
 

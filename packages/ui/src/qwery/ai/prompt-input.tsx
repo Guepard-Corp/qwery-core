@@ -57,6 +57,8 @@ export interface QweryPromptInputProps {
   datasources?: DatasourceItem[];
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
+  showSuggestionBadges?: boolean;
+  onShowSuggestionBadgesChange?: (value: boolean) => void;
 }
 
 /* eslint-disable react-hooks/refs -- React Compiler false positive: props are not refs */
@@ -138,6 +140,18 @@ function PromptInputContent(props: QweryPromptInputProps) {
                   }}
                 />
               </DropdownMenuItem>
+              {props.onShowSuggestionBadgesChange != null && (
+                <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
+                  className="flex cursor-default items-center justify-between gap-3 py-2"
+                >
+                  <span className="text-sm">Show suggestion badges</span>
+                  <Switch
+                    checked={props.showSuggestionBadges !== false}
+                    onCheckedChange={props.onShowSuggestionBadgesChange}
+                  />
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {props.datasources &&
@@ -227,7 +241,7 @@ function PromptInputContent(props: QweryPromptInputProps) {
 
 export default function QweryPromptInput(props: QweryPromptInputProps) {
   return (
-    <PromptInput onSubmit={props.onSubmit} className="mt-4" globalDrop multiple>
+    <PromptInput onSubmit={props.onSubmit} globalDrop multiple>
       <PromptInputContent {...props} />
     </PromptInput>
   );
