@@ -4,6 +4,7 @@ import type {
   CommandItem,
   Conversation,
   DialogType,
+  TuiNotebook,
   Workspace,
 } from './types.ts';
 import { getCurrentConversation } from './types.ts';
@@ -50,6 +51,15 @@ export type Action =
   | { type: 'open_dialog'; dialog: DialogType }
   | { type: 'close_dialog' }
   | { type: 'new_conversation' }
+  | { type: 'set_conversations'; conversations: Conversation[] }
+  | {
+      type: 'set_conversation_messages';
+      conversationId: string;
+      messages: ChatMessage[];
+    }
+  | { type: 'add_conversation_and_switch'; conversation: Conversation }
+  | { type: 'request_new_conversation' }
+  | { type: 'clear_request_new_conversation' }
   | { type: 'switch_conversation'; conversationId: string }
   | { type: 'execute_command'; action: string }
   | { type: 'set_theme'; themeId: string }
@@ -72,7 +82,37 @@ export type Action =
       type: 'set_add_datasource_test_result';
       status: 'idle' | 'pending' | 'ok' | 'error';
       message: string;
-    };
+    }
+  | { type: 'set_notebooks'; notebooks: TuiNotebook[] }
+  | { type: 'set_current_notebook'; notebook: TuiNotebook | null }
+  | { type: 'open_notebook'; notebook: TuiNotebook }
+  | { type: 'close_notebook' }
+  | {
+      type: 'notebook_cell_result';
+      cellId: number;
+      result: { rows: unknown[]; headers: { name: string }[] } | null;
+    }
+  | { type: 'notebook_cell_loading'; cellId: number | null }
+  | { type: 'run_notebook_cell'; cellId: number }
+  | { type: 'notebook_focus_cell'; index: number }
+  | { type: 'update_notebook_cell_query'; cellId: number; query: string }
+  | { type: 'add_notebook_cell' }
+  | {
+      type: 'set_notebook_cell_datasource';
+      cellId: number;
+      datasourceIds: string[];
+    }
+  | { type: 'set_notebook_pending_save' }
+  | { type: 'clear_notebook_pending_save' }
+  | { type: 'open_new_notebook_name_dialog' }
+  | { type: 'submit_new_notebook_name'; title: string }
+  | { type: 'request_new_notebook' }
+  | { type: 'update_notebook_cell_title'; cellId: number; title: string }
+  | { type: 'start_editing_cell_title'; cellId: number }
+  | { type: 'stop_editing_cell_title' }
+  | { type: 'clear_request_new_notebook' }
+  | { type: 'notebook_cell_error'; cellId: number; error: string | null }
+  | { type: 'set_notebook_create_error'; error: string | null };
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
@@ -299,6 +339,214 @@ export function reducer(state: AppState, action: Action): AppState {
         focusedToolFlatIndex: null,
       };
 
+    case 'set_conversations':
+      return { ...state, conversations: action.conversations };
+
+    case 'set_conversation_messages': {
+      const conversations = state.conversations.map((c) =>
+        c.id === action.conversationId
+          ? { ...c, messages: action.messages, updatedAt: Date.now() }
+          : c,
+      );
+      return { ...state, conversations };
+    }
+
+    case 'add_conversation_and_switch':
+      return {
+        ...state,
+        conversations: [action.conversation, ...state.conversations],
+        currentConversationId: action.conversation.id,
+        currentScreen: 'chat',
+        chatInput: '',
+        input: '',
+        activeDialog: 'none',
+        focusedToolFlatIndex: null,
+      };
+
+    case 'request_new_conversation':
+      return { ...state, requestNewConversation: true, activeDialog: 'none' };
+
+    case 'clear_request_new_conversation':
+      return { ...state, requestNewConversation: false };
+
+    case 'set_notebooks':
+      return { ...state, projectNotebooks: action.notebooks };
+
+    case 'set_current_notebook':
+      return { ...state, currentNotebook: action.notebook };
+
+    case 'open_notebook': {
+      const openCells = action.notebook.cells;
+      const firstQuery = openCells[0]?.query ?? '';
+      return {
+        ...state,
+        currentNotebook: action.notebook,
+        currentScreen: 'notebook',
+        activeDialog: 'none',
+        notebookFocusedCellIndex: 0,
+        notebookCellInput: firstQuery,
+      };
+    }
+
+    case 'close_notebook':
+      return {
+        ...state,
+        currentNotebook: null,
+        currentScreen:
+          state.currentScreen === 'notebook' ? 'home' : state.currentScreen,
+        notebookCellResults: {},
+        notebookCellErrors: {},
+        notebookCellLoading: null,
+        notebookCellInput: '',
+        notebookCellDatasourcePickerOpen: false,
+        notebookCellDatasourcePickerSelected: 0,
+      };
+
+    case 'notebook_cell_result': {
+      const next = { ...state.notebookCellResults };
+      if (action.result) {
+        next[String(action.cellId)] = action.result;
+      } else {
+        delete next[String(action.cellId)];
+      }
+      return {
+        ...state,
+        notebookCellResults: next,
+        notebookCellLoading: null,
+      };
+    }
+
+    case 'notebook_cell_loading':
+      return { ...state, notebookCellLoading: action.cellId };
+
+    case 'run_notebook_cell':
+      return { ...state, notebookCellLoading: action.cellId };
+
+    case 'notebook_focus_cell': {
+      const nb = state.currentNotebook;
+      const query = nb?.cells[action.index]?.query ?? '';
+      return {
+        ...state,
+        notebookFocusedCellIndex: action.index,
+        notebookCellInput: query,
+      };
+    }
+    case 'update_notebook_cell_query': {
+      const nb = state.currentNotebook;
+      if (!nb) return state;
+      const cells = nb.cells.map((c) =>
+        c.cellId === action.cellId ? { ...c, query: action.query } : c,
+      );
+      return {
+        ...state,
+        currentNotebook: { ...nb, cells },
+      };
+    }
+    case 'add_notebook_cell': {
+      const nb = state.currentNotebook;
+      if (!nb) return state;
+      const maxId = Math.max(0, ...nb.cells.map((c) => c.cellId));
+      const newCell = {
+        cellId: maxId + 1,
+        cellType: 'query' as const,
+        query: '',
+        datasources: [] as string[],
+        isActive: true,
+        runMode: 'default' as const,
+      };
+      const cells = [...nb.cells, newCell];
+      const newIdx = cells.length - 1;
+      return {
+        ...state,
+        currentNotebook: { ...nb, cells },
+        notebookFocusedCellIndex: newIdx,
+        notebookCellInput: '',
+        notebookPendingSave: true,
+      };
+    }
+    case 'set_notebook_cell_datasource': {
+      const nb = state.currentNotebook;
+      if (!nb) return state;
+      const cells = nb.cells.map((c) =>
+        c.cellId === action.cellId
+          ? { ...c, datasources: [...action.datasourceIds] }
+          : c,
+      );
+      return {
+        ...state,
+        currentNotebook: { ...nb, cells },
+        notebookPendingSave: true,
+      };
+    }
+    case 'set_notebook_pending_save':
+      return { ...state, notebookPendingSave: true };
+    case 'clear_notebook_pending_save':
+      return { ...state, notebookPendingSave: false };
+
+    case 'open_new_notebook_name_dialog':
+      return {
+        ...state,
+        activeDialog: 'new_notebook_name',
+        newNotebookNameInput: 'Untitled notebook',
+      };
+    case 'submit_new_notebook_name':
+      return {
+        ...state,
+        activeDialog: 'none',
+        requestNewNotebook: true,
+        pendingNewNotebookTitle: action.title.trim() || 'Untitled notebook',
+      };
+    case 'request_new_notebook':
+      return { ...state, requestNewNotebook: true, activeDialog: 'none' };
+
+    case 'clear_request_new_notebook':
+      return {
+        ...state,
+        requestNewNotebook: false,
+        pendingNewNotebookTitle: null,
+      };
+    case 'update_notebook_cell_title': {
+      const nb = state.currentNotebook;
+      if (!nb) return state;
+      const cells = nb.cells.map((c) =>
+        c.cellId === action.cellId ? { ...c, title: action.title } : c,
+      );
+      return {
+        ...state,
+        currentNotebook: { ...nb, cells },
+        notebookEditingCellTitle: null,
+        notebookPendingSave: true,
+      };
+    }
+    case 'start_editing_cell_title': {
+      const nb = state.currentNotebook;
+      const cell = nb?.cells.find((c) => c.cellId === action.cellId);
+      return {
+        ...state,
+        notebookEditingCellTitle: action.cellId,
+        notebookCellTitleInput: cell?.title ?? '',
+      };
+    }
+    case 'stop_editing_cell_title':
+      return {
+        ...state,
+        notebookEditingCellTitle: null,
+      };
+
+    case 'notebook_cell_error': {
+      const next = { ...state.notebookCellErrors };
+      if (action.error) next[String(action.cellId)] = action.error;
+      else delete next[String(action.cellId)];
+      return {
+        ...state,
+        notebookCellErrors: next,
+        notebookCellLoading: null,
+      };
+    }
+
+    case 'set_notebook_create_error':
+      return { ...state, notebookCreateError: action.error };
+
     case 'switch_conversation': {
       const conv = state.conversations.find(
         (c) => c.id === action.conversationId,
@@ -316,9 +564,13 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'execute_command': {
       switch (action.action) {
         case 'new_conversation':
-          return reducer(state, { type: 'new_conversation' });
+          return reducer(state, { type: 'request_new_conversation' });
         case 'show_conversations':
-          return { ...state, activeDialog: 'conversations' };
+          return {
+            ...state,
+            activeDialog: 'conversations',
+            conversationsDialogSelected: 0,
+          };
         case 'show_datasources':
           return {
             ...state,
@@ -338,6 +590,19 @@ export function reducer(state: AppState, action: Action): AppState {
             addDatasourceConnection: '',
             addDatasourceFormSelected: 0,
           };
+        case 'show_notebooks':
+          return {
+            ...state,
+            activeDialog: 'notebooks',
+            notebooksDialogSelected: 0,
+            notebookCreateError: null,
+          };
+        case 'new_notebook':
+          return reducer(state, { type: 'open_new_notebook_name_dialog' });
+        case 'new_notebook_cell':
+          if (state.currentScreen === 'notebook' && state.currentNotebook)
+            return reducer(state, { type: 'add_notebook_cell' });
+          return state;
         case 'show_help':
           return { ...state, activeDialog: 'help' };
         case 'show_theme': {
@@ -492,8 +757,23 @@ export function reducer(state: AppState, action: Action): AppState {
         commandPaletteSearch: state.commandPaletteSearch + text,
       };
     }
+    if (state.activeDialog === 'new_notebook_name') {
+      return {
+        ...state,
+        newNotebookNameInput: state.newNotebookNameInput + text,
+      };
+    }
     if (state.currentScreen === 'chat') {
       return { ...state, chatInput: state.chatInput + text };
+    }
+    if (state.currentScreen === 'notebook') {
+      if (state.notebookEditingCellTitle != null) {
+        return {
+          ...state,
+          notebookCellTitleInput: state.notebookCellTitleInput + text,
+        };
+      }
+      return { ...state, notebookCellInput: state.notebookCellInput + text };
     }
     if (state.activeDialog === 'none') {
       return { ...state, input: state.input + text };
@@ -513,7 +793,10 @@ export function reducer(state: AppState, action: Action): AppState {
     return handleChatKey(state, key);
   }
 
-  // home screen
+  if (state.currentScreen === 'notebook') {
+    return handleNotebookKey(state, key);
+  }
+
   return handleHomeKey(state, key);
 }
 
@@ -566,34 +849,89 @@ function handleDialogKey(state: AppState, key: string): AppState {
     }
   }
 
-  if (state.activeDialog === 'conversations') {
-    if (key === 'up') {
-      const currentIdx = state.conversations.findIndex(
-        (c) => c.id === state.currentConversationId,
-      );
-      const newIdx = Math.max(0, currentIdx - 1);
-      const conv = state.conversations[newIdx];
-      if (conv) {
-        return { ...state, currentConversationId: conv.id };
-      }
-    }
-    if (key === 'down') {
-      const currentIdx = state.conversations.findIndex(
-        (c) => c.id === state.currentConversationId,
-      );
-      const newIdx = Math.min(state.conversations.length - 1, currentIdx + 1);
-      const conv = state.conversations[newIdx];
-      if (conv) {
-        return { ...state, currentConversationId: conv.id };
-      }
+  if (state.activeDialog === 'new_notebook_name') {
+    if (key === 'backspace') {
+      return {
+        ...state,
+        newNotebookNameInput: state.newNotebookNameInput.slice(0, -1),
+      };
     }
     if (key === 'enter') {
-      if (state.currentConversationId) {
-        return {
-          ...state,
-          currentScreen: 'chat',
-          activeDialog: 'none',
-        };
+      return reducer(state, {
+        type: 'submit_new_notebook_name',
+        title: state.newNotebookNameInput,
+      });
+    }
+    if (key.length === 1) {
+      return {
+        ...state,
+        newNotebookNameInput: state.newNotebookNameInput + key,
+      };
+    }
+  }
+
+  if (state.activeDialog === 'conversations') {
+    const maxIdx = state.conversations.length;
+    if (key === 'up') {
+      return {
+        ...state,
+        conversationsDialogSelected: Math.max(
+          0,
+          state.conversationsDialogSelected - 1,
+        ),
+      };
+    }
+    if (key === 'down') {
+      return {
+        ...state,
+        conversationsDialogSelected: Math.min(
+          maxIdx,
+          state.conversationsDialogSelected + 1,
+        ),
+      };
+    }
+    if (key === 'enter') {
+      if (state.conversationsDialogSelected === 0) {
+        return reducer(state, { type: 'request_new_conversation' });
+      }
+      const conv = state.conversations[state.conversationsDialogSelected - 1];
+      if (conv) {
+        return reducer(state, {
+          type: 'switch_conversation',
+          conversationId: conv.id,
+        });
+      }
+    }
+  }
+
+  if (state.activeDialog === 'notebooks') {
+    if (key === 'n' && key.length === 1) {
+      return reducer(state, { type: 'open_new_notebook_name_dialog' });
+    }
+    if (key === 'up') {
+      return {
+        ...state,
+        notebooksDialogSelected: Math.max(0, state.notebooksDialogSelected - 1),
+      };
+    }
+    if (key === 'down') {
+      const maxIdx = state.projectNotebooks.length;
+      return {
+        ...state,
+        notebooksDialogSelected: Math.min(
+          maxIdx,
+          state.notebooksDialogSelected + 1,
+        ),
+      };
+    }
+    if (key === 'enter') {
+      if (state.notebooksDialogSelected === 0) {
+        return reducer(state, { type: 'open_new_notebook_name_dialog' });
+      }
+      const notebook =
+        state.projectNotebooks[state.notebooksDialogSelected - 1];
+      if (notebook) {
+        return reducer(state, { type: 'open_notebook', notebook });
       }
     }
   }
@@ -721,7 +1059,12 @@ function handleDialogKey(state: AppState, key: string): AppState {
       name: d.name,
       attached: false,
     }));
-    const items = [...attachedItems, ...availableItems];
+    const datasourceItems = [...attachedItems, ...availableItems];
+    const showAddRow = true;
+    const itemCount = showAddRow
+      ? 1 + datasourceItems.length
+      : datasourceItems.length;
+    const maxIdx = itemCount > 0 ? itemCount - 1 : 0;
 
     if (key === 'up') {
       return {
@@ -733,7 +1076,6 @@ function handleDialogKey(state: AppState, key: string): AppState {
       };
     }
     if (key === 'down') {
-      const maxIdx = items.length > 0 ? items.length - 1 : 0;
       return {
         ...state,
         datasourcesDialogSelected: Math.min(
@@ -742,24 +1084,43 @@ function handleDialogKey(state: AppState, key: string): AppState {
         ),
       };
     }
-    if (key === 'enter' && conv) {
-      const item = items[state.datasourcesDialogSelected];
-      if (!item) return state;
-      const newState = item.attached
-        ? reducer(state, {
-            type: 'detach_datasource',
-            conversationId: conv.id,
-            datasourceId: item.id,
-          })
-        : reducer(state, {
-            type: 'attach_datasource',
-            conversationId: conv.id,
-            datasourceId: item.id,
-          });
-      return {
-        ...newState,
-        pendingConversationDatasourceSync: conv.id,
-      };
+    if (key === 'enter') {
+      if (state.datasourcesDialogSelected === 0 && showAddRow) {
+        return {
+          ...state,
+          activeDialog: 'add_datasource',
+          addDatasourceStep: 'type',
+          addDatasourceTypeIds: [],
+          addDatasourceTypeNames: [],
+          addDatasourceTypeSelected: 0,
+          addDatasourceTypeId: null,
+          addDatasourceName: '',
+          addDatasourceConnection: '',
+          addDatasourceFormSelected: 0,
+        };
+      }
+      if (conv) {
+        const item =
+          datasourceItems[
+            state.datasourcesDialogSelected - (showAddRow ? 1 : 0)
+          ];
+        if (!item) return state;
+        const newState = item.attached
+          ? reducer(state, {
+              type: 'detach_datasource',
+              conversationId: conv.id,
+              datasourceId: item.id,
+            })
+          : reducer(state, {
+              type: 'attach_datasource',
+              conversationId: conv.id,
+              datasourceId: item.id,
+            });
+        return {
+          ...newState,
+          pendingConversationDatasourceSync: conv.id,
+        };
+      }
     }
   }
 
@@ -912,6 +1273,151 @@ function handleDialogKey(state: AppState, key: string): AppState {
   return state;
 }
 
+function handleNotebookKey(state: AppState, key: string): AppState {
+  const nb = state.currentNotebook;
+  if (!nb) return state;
+  const cells = nb.cells;
+  const idx = state.notebookFocusedCellIndex;
+  const cell = cells[idx];
+
+  if (state.notebookEditingCellTitle != null) {
+    if (key === 'escape' || key === 'esc') {
+      return reducer(state, { type: 'stop_editing_cell_title' });
+    }
+    if (key === 'backspace') {
+      return {
+        ...state,
+        notebookCellTitleInput: state.notebookCellTitleInput.slice(0, -1),
+      };
+    }
+    if (key === 'enter') {
+      return reducer(state, {
+        type: 'update_notebook_cell_title',
+        cellId: state.notebookEditingCellTitle,
+        title: state.notebookCellTitleInput,
+      });
+    }
+    if (key.length === 1) {
+      return {
+        ...state,
+        notebookCellTitleInput: state.notebookCellTitleInput + key,
+      };
+    }
+    return state;
+  }
+
+  if (state.notebookCellDatasourcePickerOpen) {
+    if (key === 'escape' || key === 'esc') {
+      return {
+        ...state,
+        notebookCellDatasourcePickerOpen: false,
+      };
+    }
+    if (key === 'up') {
+      return {
+        ...state,
+        notebookCellDatasourcePickerSelected: Math.max(
+          0,
+          state.notebookCellDatasourcePickerSelected - 1,
+        ),
+      };
+    }
+    if (key === 'down') {
+      const maxDs = Math.max(0, state.projectDatasources.length - 1);
+      return {
+        ...state,
+        notebookCellDatasourcePickerSelected: Math.min(
+          maxDs,
+          state.notebookCellDatasourcePickerSelected + 1,
+        ),
+      };
+    }
+    if (key === 'enter' && cell) {
+      const ds =
+        state.projectDatasources[state.notebookCellDatasourcePickerSelected];
+      if (ds) {
+        const next = reducer(state, {
+          type: 'set_notebook_cell_datasource',
+          cellId: cell.cellId,
+          datasourceIds: [ds.id],
+        });
+        return {
+          ...next,
+          notebookCellDatasourcePickerOpen: false,
+        };
+      }
+    }
+    return state;
+  }
+
+  if (key === 'escape' || key === 'esc') {
+    return reducer(state, { type: 'close_notebook' });
+  }
+  if (key === 'backspace') {
+    return {
+      ...state,
+      notebookCellInput: state.notebookCellInput.slice(0, -1),
+    };
+  }
+  if (key.length === 1) {
+    return {
+      ...state,
+      notebookCellInput: state.notebookCellInput + key,
+    };
+  }
+  if (key === 'up') {
+    let next = reducer(state, {
+      type: 'update_notebook_cell_query',
+      cellId: cell?.cellId ?? 0,
+      query: state.notebookCellInput,
+    });
+    next = reducer(next, {
+      type: 'notebook_focus_cell',
+      index: Math.max(0, idx - 1),
+    });
+    return next;
+  }
+  if (key === 'down') {
+    let next = reducer(state, {
+      type: 'update_notebook_cell_query',
+      cellId: cell?.cellId ?? 0,
+      query: state.notebookCellInput,
+    });
+    next = reducer(next, {
+      type: 'notebook_focus_cell',
+      index: Math.min(cells.length - 1, idx + 1),
+    });
+    return next;
+  }
+  if (key === 'ctrl+enter' || key === 'ctrl+return' || key === 'ctrl+j') {
+    if (cell?.cellType === 'query' && state.notebookCellInput.trim()) {
+      const next = reducer(state, {
+        type: 'update_notebook_cell_query',
+        cellId: cell.cellId,
+        query: state.notebookCellInput,
+      });
+      return reducer(next, { type: 'run_notebook_cell', cellId: cell.cellId });
+    }
+  }
+  if (key === 'ctrl+o' || key === 'ctrl+;' || key === 'ctrl+shift+n') {
+    return reducer(state, { type: 'add_notebook_cell' });
+  }
+  if (key === 'ctrl+d') {
+    return {
+      ...state,
+      notebookCellDatasourcePickerOpen: true,
+      notebookCellDatasourcePickerSelected: 0,
+    };
+  }
+  if ((key === 'f2' || key === 'ctrl+t') && cell) {
+    return reducer(state, {
+      type: 'start_editing_cell_title',
+      cellId: cell.cellId,
+    });
+  }
+  return state;
+}
+
 function handleChatKey(state: AppState, key: string): AppState {
   if (key === 'ctrl+c') return state; // quit handled by app
 
@@ -976,8 +1482,23 @@ function handleChatKey(state: AppState, key: string): AppState {
   if (key === 'ctrl+l') {
     return { ...state, activeDialog: 'conversations' };
   }
+  if (key === 'ctrl+b') {
+    return { ...state, activeDialog: 'notebooks' };
+  }
+  if (key === 'ctrl+d') {
+    return reducer(state, {
+      type: 'execute_command',
+      action: 'show_datasources',
+    });
+  }
+  if (key === 'ctrl+shift+a') {
+    return reducer(state, {
+      type: 'execute_command',
+      action: 'show_add_datasource',
+    });
+  }
   if (key === 'ctrl+n') {
-    return reducer(state, { type: 'new_conversation' });
+    return reducer(state, { type: 'request_new_conversation' });
   }
   if (key === 'ctrl+?') {
     return { ...state, activeDialog: 'help' };
@@ -1070,6 +1591,21 @@ function handleHomeKey(state: AppState, key: string): AppState {
   if (key === 'ctrl+l') {
     return { ...state, activeDialog: 'conversations' };
   }
+  if (key === 'ctrl+b') {
+    return { ...state, activeDialog: 'notebooks' };
+  }
+  if (key === 'ctrl+d') {
+    return reducer(state, {
+      type: 'execute_command',
+      action: 'show_datasources',
+    });
+  }
+  if (key === 'ctrl+shift+a') {
+    return reducer(state, {
+      type: 'execute_command',
+      action: 'show_add_datasource',
+    });
+  }
   if (key === 'ctrl+?') {
     return { ...state, activeDialog: 'help' };
   }
@@ -1160,7 +1696,15 @@ export function keyEventToKeyString(e: {
   if (e.ctrl) parts.push('ctrl');
   if (e.shift) parts.push('shift');
   if (e.meta) parts.push('meta');
-  const name = e.name.toLowerCase();
+  let name = e.name.toLowerCase();
+  const arrowMap: Record<string, string> = {
+    arrowup: 'up',
+    arrowdown: 'down',
+    arrowleft: 'left',
+    arrowright: 'right',
+  };
+  const mapped = arrowMap[name];
+  if (mapped) name = mapped;
   if (name === 'escape' || name === 'esc') return 'escape';
   if (name === 'space') return ' ';
   if (name === 'return' || name === 'enter')

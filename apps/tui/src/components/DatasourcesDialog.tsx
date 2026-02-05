@@ -32,7 +32,9 @@ export function DatasourcesDialog({ state }: DatasourcesDialogProps) {
     attached: false,
   }));
   const items = [...attachedItems, ...availableItems];
+  const showAddRow = true;
   const maxItems = Math.min(12, state.height - 10);
+  const sliceEnd = showAddRow ? maxItems - 1 : maxItems;
 
   return (
     <box
@@ -61,32 +63,43 @@ export function DatasourcesDialog({ state }: DatasourcesDialogProps) {
           <text {...messageInfoStyle}>
             Start a conversation to attach datasources.
           </text>
-        ) : items.length === 0 ? (
-          <text {...messageInfoStyle}>
-            No datasources in project. Add one first.
-          </text>
         ) : (
-          items.slice(0, maxItems).map((item, i) => {
-            const isSelected = i === state.datasourcesDialogSelected;
-            const label = item.attached ? `[+] ${item.name}` : item.name;
-            const display =
-              label.length > 45 ? label.slice(0, 42) + '...' : label;
-            return (
-              <box key={item.id} flexDirection="row">
-                {isSelected ? (
+          <>
+            {showAddRow && (
+              <box flexDirection="row">
+                {state.datasourcesDialogSelected === 0 ? (
                   <text {...commandPaletteItemSelectedStyle}>
-                    {display.padEnd(45)} {item.attached ? 'detach' : 'attach'}
+                    {'+ Add new datasource'.padEnd(45)} open
                   </text>
                 ) : (
-                  <text {...commandPaletteItemStyle}>{display}</text>
+                  <text {...commandPaletteItemStyle}>+ Add new datasource</text>
                 )}
               </box>
-            );
-          })
+            )}
+            {items.slice(0, sliceEnd).map((item, i) => {
+              const rowIndex = showAddRow ? i + 1 : i;
+              const isSelected = rowIndex === state.datasourcesDialogSelected;
+              const label = item.attached ? `[+] ${item.name}` : item.name;
+              const display =
+                label.length > 45 ? label.slice(0, 42) + '...' : label;
+              return (
+                <box key={item.id} flexDirection="row">
+                  {isSelected ? (
+                    <text {...commandPaletteItemSelectedStyle}>
+                      {display.padEnd(45)} {item.attached ? 'detach' : 'attach'}
+                    </text>
+                  ) : (
+                    <text {...commandPaletteItemStyle}>{display}</text>
+                  )}
+                </box>
+              );
+            })}
+          </>
         )}
         <box height={1} />
         <text {...messageInfoStyle}>
-          Enter to attach or detach · Attached shown with [+]
+          Enter: attach/detach or add new · ctrl+d datasources · ctrl+shift+a
+          add
         </text>
       </box>
     </box>

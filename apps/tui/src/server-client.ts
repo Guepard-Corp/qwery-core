@@ -187,6 +187,300 @@ export async function getConversation(
   };
 }
 
+export interface ServerConversation {
+  id: string;
+  slug: string;
+  title: string;
+  datasources?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getConversationsByProjectId(
+  baseUrl: string,
+  projectId: string,
+): Promise<ServerConversation[]> {
+  const res = await fetch(
+    `${baseUrl}/conversations/project/${encodeURIComponent(projectId)}`,
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to list conversations: ${err}`);
+  }
+  const data = (await res.json()) as Array<{
+    id?: string;
+    slug?: string;
+    title?: string;
+    datasources?: string[];
+    createdAt?: string | number | Date;
+    updatedAt?: string | number | Date;
+  }>;
+  return (data ?? []).map((c) => ({
+    id: c.id ?? '',
+    slug: c.slug ?? '',
+    title: c.title ?? 'New Conversation',
+    datasources: c.datasources,
+    createdAt:
+      typeof c.createdAt === 'string'
+        ? c.createdAt
+        : typeof c.createdAt === 'number'
+          ? String(c.createdAt)
+          : c.createdAt instanceof Date
+            ? c.createdAt.toISOString()
+            : '',
+    updatedAt:
+      typeof c.updatedAt === 'string'
+        ? c.updatedAt
+        : typeof c.updatedAt === 'number'
+          ? String(c.updatedAt)
+          : c.updatedAt instanceof Date
+            ? c.updatedAt.toISOString()
+            : '',
+  }));
+}
+
+interface ApiMessagePart {
+  type?: string;
+  text?: string;
+  state?: string;
+  input?: unknown;
+  output?: unknown;
+  toolName?: string;
+}
+
+interface ApiMessage {
+  id?: string;
+  role?: string;
+  content?: { parts?: ApiMessagePart[] };
+  metadata?: { modelId?: string };
+  createdAt?: string | number | Date;
+}
+
+function apiMessageToChatMessage(m: ApiMessage): ChatMessage {
+  let content = '';
+  const toolCalls: ToolCall[] = [];
+  const parts = m.content?.parts ?? [];
+  for (const part of parts) {
+    if (part.type === 'text' && part.text != null) {
+      content += part.text;
+    }
+    if (
+      part.type &&
+      part.type.startsWith('tool-') &&
+      (part.state === 'output-available' || part.output !== undefined)
+    ) {
+      const name = part.toolName ?? part.type.replace(/^tool-/, '');
+      const output =
+        typeof part.output === 'string'
+          ? part.output
+          : JSON.stringify(part.output ?? '');
+      const args =
+        typeof part.input === 'string'
+          ? part.input
+          : JSON.stringify(part.input ?? '');
+      toolCalls.push({ name, args, output, status: 'success' });
+    }
+  }
+  const createdAt =
+    m.createdAt instanceof Date
+      ? m.createdAt.getTime()
+      : typeof m.createdAt === 'string'
+        ? new Date(m.createdAt).getTime()
+        : typeof m.createdAt === 'number'
+          ? m.createdAt
+          : Date.now();
+  return {
+    role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: content || (toolCalls.length ? '(tool calls)' : ''),
+    toolCalls,
+    model: (m.metadata as { modelId?: string })?.modelId ?? '',
+    duration: '',
+    timestamp: createdAt,
+  };
+}
+
+export async function getMessages(
+  baseUrl: string,
+  conversationSlug: string,
+): Promise<ChatMessage[]> {
+  const res = await fetch(
+    `${baseUrl}/messages?conversationSlug=${encodeURIComponent(conversationSlug)}`,
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to get messages: ${err}`);
+  }
+  const data = (await res.json()) as ApiMessage[];
+  return (data ?? []).map(apiMessageToChatMessage);
+}
+
+export interface NotebookCell {
+  cellId: number;
+  cellType: string;
+  query?: string;
+  datasources: string[];
+  isActive: boolean;
+  runMode: string;
+  title?: string;
+}
+
+export interface TuiNotebook {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  slug: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  datasources: string[];
+  cells: NotebookCell[];
+  createdBy?: string;
+  isPublic?: boolean;
+}
+
+export async function getNotebooks(
+  baseUrl: string,
+  projectId: string,
+): Promise<TuiNotebook[]> {
+  const res = await fetch(
+    `${baseUrl}/notebooks?projectId=${encodeURIComponent(projectId)}`,
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to list notebooks: ${err}`);
+  }
+  const data = (await res.json()) as Array<Record<string, unknown>>;
+  return (data ?? []).map(normalizeNotebook);
+}
+
+export async function getNotebook(
+  baseUrl: string,
+  idOrSlug: string,
+): Promise<TuiNotebook> {
+  const res = await fetch(
+    `${baseUrl}/notebooks/${encodeURIComponent(idOrSlug)}`,
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to get notebook: ${err}`);
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return normalizeNotebook(data);
+}
+
+function normalizeNotebook(n: Record<string, unknown>): TuiNotebook {
+  const cells = (n.cells as NotebookCell[] | undefined) ?? [];
+  return {
+    id: (n.id as string) ?? '',
+    projectId: (n.projectId as string) ?? '',
+    title: (n.title as string) ?? 'Notebook',
+    description: n.description as string | undefined,
+    slug: (n.slug as string) ?? '',
+    version: typeof n.version === 'number' ? n.version : 1,
+    createdAt:
+      n.createdAt instanceof Date
+        ? n.createdAt.toISOString()
+        : typeof n.createdAt === 'string'
+          ? n.createdAt
+          : '',
+    updatedAt:
+      n.updatedAt instanceof Date
+        ? n.updatedAt.toISOString()
+        : typeof n.updatedAt === 'string'
+          ? n.updatedAt
+          : '',
+    datasources: Array.isArray(n.datasources)
+      ? (n.datasources as string[])
+      : [],
+    cells: cells.map((c) => ({
+      cellId: c.cellId ?? 0,
+      cellType: c.cellType ?? 'query',
+      query: c.query,
+      datasources: Array.isArray(c.datasources) ? c.datasources : [],
+      isActive: c.isActive ?? true,
+      runMode: c.runMode ?? 'default',
+      title: c.title,
+    })),
+    createdBy: n.createdBy as string | undefined,
+    isPublic: n.isPublic as boolean | undefined,
+  };
+}
+
+export async function createNotebook(
+  baseUrl: string,
+  body: {
+    projectId: string;
+    title: string;
+    description?: string;
+    createdBy?: string;
+  },
+): Promise<TuiNotebook> {
+  const res = await fetch(`${baseUrl}/notebooks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to create notebook: ${err}`);
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return normalizeNotebook(data);
+}
+
+export async function updateNotebook(
+  baseUrl: string,
+  id: string,
+  body: Partial<{ title: string; description: string; cells: NotebookCell[] }>,
+): Promise<TuiNotebook> {
+  const res = await fetch(`${baseUrl}/notebooks/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to update notebook: ${err}`);
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return normalizeNotebook(data);
+}
+
+export interface RunNotebookQueryResult {
+  success: boolean;
+  data?: {
+    rows: Record<string, unknown>[];
+    headers: { name: string; displayName?: string; originalType?: string }[];
+    stat?: unknown;
+  };
+  error?: string;
+}
+
+export async function runNotebookQuery(
+  baseUrl: string,
+  params: { conversationId: string; query: string; datasourceId: string },
+): Promise<RunNotebookQueryResult> {
+  const res = await fetch(`${baseUrl}/notebook/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = (await res.json()) as {
+    success?: boolean;
+    data?: RunNotebookQueryResult['data'];
+    error?: string;
+  };
+  if (!res.ok) {
+    return { success: false, error: data.error ?? `HTTP ${res.status}` };
+  }
+  return {
+    success: data.success ?? false,
+    data: data.data,
+    error: data.error,
+  };
+}
+
 export async function getDatasources(
   baseUrl: string,
   projectId: string,

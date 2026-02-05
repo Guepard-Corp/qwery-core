@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'chat';
+export type Screen = 'home' | 'chat' | 'notebook';
 
 export type DialogType =
   | 'none'
@@ -11,7 +11,9 @@ export type DialogType =
   | 'agent'
   | 'model'
   | 'datasources'
-  | 'add_datasource';
+  | 'add_datasource'
+  | 'notebooks'
+  | 'new_notebook_name';
 
 export interface MeshStatus {
   servers: number;
@@ -126,6 +128,53 @@ export interface AppState {
   addDatasourceTestStatus: 'idle' | 'pending' | 'ok' | 'error';
   addDatasourceTestMessage: string;
   addDatasourceTestRequest: boolean;
+  requestNewConversation: boolean;
+  projectNotebooks: TuiNotebook[];
+  currentNotebook: TuiNotebook | null;
+  notebookCellResults: Record<
+    string,
+    { rows: unknown[]; headers: { name: string }[] }
+  >;
+  notebookCellErrors: Record<string, string>;
+  notebookCellLoading: number | null;
+  notebooksDialogSelected: number;
+  notebookFocusedCellIndex: number;
+  notebookCellInput: string;
+  notebookCellDatasourcePickerOpen: boolean;
+  notebookCellDatasourcePickerSelected: number;
+  notebookPendingSave: boolean;
+  newNotebookNameInput: string;
+  pendingNewNotebookTitle: string | null;
+  requestNewNotebook: boolean;
+  notebookEditingCellTitle: number | null;
+  notebookCellTitleInput: string;
+  conversationsDialogSelected: number;
+  notebookCreateError: string | null;
+}
+
+export interface TuiNotebook {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  slug: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  datasources: string[];
+  cells: TuiNotebookCell[];
+  createdBy?: string;
+  isPublic?: boolean;
+}
+
+export interface TuiNotebookCell {
+  cellId: number;
+  cellType: string;
+  query?: string;
+  datasources: string[];
+  isActive: boolean;
+  runMode: string;
+  title?: string;
 }
 
 export function getCurrentConversation(state: AppState): Conversation | null {
