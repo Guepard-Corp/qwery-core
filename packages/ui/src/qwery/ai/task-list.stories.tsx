@@ -9,16 +9,25 @@ import { TaskPart, StartedStepIndicator } from './message-parts';
 import type { TaskUIPart, TaskStatus } from './message-parts';
 import { ChevronDownIcon, SearchIcon } from 'lucide-react';
 
-const OLD_BADGE_META: Record<TaskStatus, { label: string; badgeClass: string }> = {
+const OLD_BADGE_META: Record<
+  TaskStatus,
+  { label: string; badgeClass: string }
+> = {
   pending: { label: 'Queued', badgeClass: 'bg-secondary text-foreground' },
   'in-progress': { label: 'Running', badgeClass: 'bg-primary/10 text-primary' },
-  completed: { label: 'Done', badgeClass: 'bg-emerald-500/15 text-emerald-600' },
+  completed: {
+    label: 'Done',
+    badgeClass: 'bg-emerald-500/15 text-emerald-600',
+  },
   error: { label: 'Error', badgeClass: 'bg-destructive/10 text-destructive' },
 };
 
 function OldTaskPart({ part }: { part: TaskUIPart }) {
   return (
-    <Collapsible defaultOpen className="w-full border border-border bg-background/60">
+    <Collapsible
+      defaultOpen
+      className="border-border bg-background/60 w-full border"
+    >
       <CollapsibleTrigger asChild>
         <button
           type="button"
@@ -32,7 +41,9 @@ function OldTaskPart({ part }: { part: TaskUIPart }) {
       <CollapsibleContent>
         <div className="border-muted mt-4 space-y-2 border-l-2 pl-4">
           {part.data.subtitle ? (
-            <p className="text-muted-foreground text-xs">{part.data.subtitle}</p>
+            <p className="text-muted-foreground text-xs">
+              {part.data.subtitle}
+            </p>
           ) : null}
           {part.data.tasks.map((task) => {
             const meta = OLD_BADGE_META[task.status];
@@ -175,13 +186,13 @@ export const SideBySide: Story = {
   render: (args) => (
     <div className="bg-background flex gap-8 p-6">
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+        <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           Old
         </p>
         <OldTaskPart part={args.part} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+        <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           New
         </p>
         <TaskPart {...args} />
@@ -218,7 +229,12 @@ const partWithSubsteps: TaskUIPart = {
         status: 'in-progress',
         substeps: [
           { id: 's2a', label: 'Open connection', status: 'completed' },
-          { id: 's2b', label: 'Execute query', status: 'in-progress', description: '~2.1k rows' },
+          {
+            id: 's2b',
+            label: 'Execute query',
+            status: 'in-progress',
+            description: '~2.1k rows',
+          },
           { id: 's2c', label: 'Fetch batch', status: 'pending' },
         ],
       },
@@ -263,8 +279,8 @@ export const StartedStepStandalone: Story = {
 
 export const StartedStepInChat: Story = {
   render: () => (
-    <div className="bg-background mx-auto w-full max-w-lg rounded-lg border border-border p-4 shadow-sm">
-      <div className="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wider">
+    <div className="bg-background border-border mx-auto w-full max-w-lg rounded-lg border p-4 shadow-sm">
+      <div className="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">
         Chat message (assistant)
       </div>
       <p className="text-foreground mb-2 text-sm">

@@ -19,7 +19,13 @@ const config: StorybookConfig = {
   },
   async viteFinal(config) {
     return mergeConfig(config, {
-      plugins: [react(), wasm(), topLevelAwait(), tsconfigPaths(), tailwindcss()],
+      plugins: [
+        react(),
+        wasm(),
+        topLevelAwait(),
+        tsconfigPaths(),
+        tailwindcss(),
+      ],
       esbuild: {
         jsx: 'automatic',
       },

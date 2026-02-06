@@ -27,9 +27,24 @@ export default meta;
 type Story = StoryObj<typeof Queue>;
 
 const sampleTodos: QueueTodo[] = [
-  { id: '1', title: 'Parse query', description: 'Understanding the request', status: 'completed' },
-  { id: '2', title: 'Connect to datasource', description: 'Loading schema', status: 'completed' },
-  { id: '3', title: 'Execute & validate', description: 'Running the query', status: 'pending' },
+  {
+    id: '1',
+    title: 'Parse query',
+    description: 'Understanding the request',
+    status: 'completed',
+  },
+  {
+    id: '2',
+    title: 'Connect to datasource',
+    description: 'Loading schema',
+    status: 'completed',
+  },
+  {
+    id: '3',
+    title: 'Execute & validate',
+    description: 'Running the query',
+    status: 'pending',
+  },
   { id: '4', title: 'Return results', status: 'pending' },
 ];
 
@@ -46,13 +61,17 @@ export const Default: Story = {
               {sampleTodos.map((todo) => (
                 <QueueItem key={todo.id}>
                   <div className="flex items-start gap-2">
-                    <QueueItemIndicator completed={todo.status === 'completed'} />
+                    <QueueItemIndicator
+                      completed={todo.status === 'completed'}
+                    />
                     <div className="min-w-0 flex-1">
                       <QueueItemContent completed={todo.status === 'completed'}>
                         {todo.title}
                       </QueueItemContent>
                       {todo.description ? (
-                        <QueueItemDescription completed={todo.status === 'completed'}>
+                        <QueueItemDescription
+                          completed={todo.status === 'completed'}
+                        >
                           {todo.description}
                         </QueueItemDescription>
                       ) : null}
@@ -122,7 +141,9 @@ export const Collapsed: Story = {
               {sampleTodos.slice(0, 3).map((todo) => (
                 <QueueItem key={todo.id}>
                   <div className="flex items-start gap-2">
-                    <QueueItemIndicator completed={todo.status === 'completed'} />
+                    <QueueItemIndicator
+                      completed={todo.status === 'completed'}
+                    />
                     <QueueItemContent completed={todo.status === 'completed'}>
                       {todo.title}
                     </QueueItemContent>
