@@ -162,7 +162,7 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.sendMessage,
       messageItemProps.onPasteToNotebook,
       messageItemProps.onSubmitFeedback,
-      messageItemProps.openToolPartKey,
+      messageItemProps.openToolPartKeys,
       messageItemProps.onToolPartOpenChange,
     ],
   );

@@ -27,6 +27,7 @@ import {
   ImageIcon,
   PaperclipIcon,
   PlusIcon,
+  SlidersHorizontalIcon,
   SquareIcon,
   XIcon,
 } from 'lucide-react';
@@ -128,6 +129,15 @@ function PromptInputContent(props: QweryPromptInputProps) {
                 <PaperclipIcon className="size-4" />
                 <span>Attach file</span>
               </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <PromptInputButton aria-label="Options">
+                <SlidersHorizontalIcon className="size-4" />
+              </PromptInputButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem
                 onSelect={(e) => e.preventDefault()}
                 className="flex cursor-default items-center justify-between gap-3 py-2"

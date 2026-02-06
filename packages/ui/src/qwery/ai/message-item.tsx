@@ -31,17 +31,8 @@ import {
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-} from '../../ai-elements/tool';
-import { Loader } from '../../ai-elements/loader';
-import { ToolUIPart } from 'ai';
+import type { ToolUIPart } from 'ai';
 import { ToolPart, TodoPart } from './message-parts';
-import { SQLQueryVisualizer } from './sql-query-visualizer';
-import { getUserFriendlyToolName } from './utils/tool-name';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import {
   isChatStreaming,
@@ -50,7 +41,6 @@ import {
   getChatStatusConfig,
 } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
-import { useToolVariant } from './tool-variant-context';
 import { MessageFeedbackButton } from './message-feedback-button';
 import {
   type FeedbackPayload,
@@ -98,8 +88,8 @@ export interface MessageItemProps {
     messageId: string,
     feedback: FeedbackPayload,
   ) => Promise<void>;
-  openToolPartKey?: string | null;
-  onToolPartOpenChange?: (key: string | null) => void;
+  openToolPartKeys?: Set<string> | null;
+  onToolPartOpenChange?: (key: string, open: boolean) => void;
   scrollToBottom?: () => void;
   onBeforeSuggestionSend?: (
     text: string,
@@ -132,7 +122,7 @@ function MessageItemComponent({
   sendMessage,
   onPasteToNotebook,
   onSubmitFeedback,
-  openToolPartKey,
+  openToolPartKeys,
   onToolPartOpenChange,
   scrollToBottom,
   onBeforeSuggestionSend,
@@ -140,7 +130,6 @@ function MessageItemComponent({
   getDatasourceTooltip,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
-  const { variant } = useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
@@ -854,63 +843,40 @@ function MessageItemComponent({
                         toolPart.state as string,
                       );
 
+                      const toolPartKey = `${message.id}-${i}`;
+                      const isLastPart = i === message.parts.length - 1;
+
                       if (isToolInProgress) {
-                        const toolName =
-                          'toolName' in toolPart &&
-                          typeof toolPart.toolName === 'string'
-                            ? getUserFriendlyToolName(
-                                `tool-${toolPart.toolName}`,
-                              )
-                            : getUserFriendlyToolName(toolPart.type);
-                        const runQueryInput =
-                          toolPart.type === 'tool-runQuery'
-                            ? (toolPart.input as { query?: string } | null)
-                            : null;
-                        const showRunQuerySql =
-                          runQueryInput?.query != null &&
-                          runQueryInput.query !== '';
-                        const isLastPart = i === message.parts.length - 1;
                         return (
                           <div
-                            key={`${message.id}-${i}`}
+                            key={toolPartKey}
                             className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
                           >
-                            <Tool
-                              defaultOpen={isLastPart}
-                              variant={variant}
-                              className={cn(
-                                'max-w-[min(43.2rem,calc(100%-3rem))]',
-                                'mx-4 sm:mx-6',
-                              )}
-                            >
-                              <ToolHeader
-                                title={toolName}
-                                type={toolPart.type}
-                                state={toolPart.state}
-                                variant={variant}
-                              />
-                              <ToolContent variant={variant}>
-                                {showRunQuerySql ? (
-                                  <SQLQueryVisualizer
-                                    query={runQueryInput!.query}
-                                    result={undefined}
-                                    showPasteButton={false}
-                                    chartExecutionOverride={false}
-                                  />
-                                ) : toolPart.input != null ? (
-                                  <ToolInput input={toolPart.input} />
-                                ) : null}
-                                <div className="flex items-center justify-center py-8">
-                                  <Loader size={20} />
-                                </div>
-                              </ToolContent>
-                            </Tool>
+                            <ToolPart
+                              part={toolPart}
+                              messageId={message.id}
+                              index={i}
+                              open={
+                                openToolPartKeys !== undefined &&
+                                openToolPartKeys !== null
+                                  ? openToolPartKeys.has(toolPartKey)
+                                  : undefined
+                              }
+                              onOpenChange={
+                                onToolPartOpenChange
+                                  ? (open) =>
+                                      onToolPartOpenChange(toolPartKey, open)
+                                  : undefined
+                              }
+                              defaultOpenWhenUncontrolled={isLastPart}
+                              onPasteToNotebook={onPasteToNotebook}
+                              notebookContext={notebookContext}
+                            />
                           </div>
                         );
                       }
 
                       // Use ToolPart component for completed tools (includes visualizers)
-                      const toolPartKey = `${message.id}-${i}`;
                       return (
                         <div
                           key={toolPartKey}
@@ -921,16 +887,15 @@ function MessageItemComponent({
                             messageId={message.id}
                             index={i}
                             open={
-                              openToolPartKey !== undefined
-                                ? openToolPartKey === toolPartKey
+                              openToolPartKeys !== undefined &&
+                              openToolPartKeys !== null
+                                ? openToolPartKeys.has(toolPartKey)
                                 : undefined
                             }
                             onOpenChange={
                               onToolPartOpenChange
                                 ? (open) =>
-                                    onToolPartOpenChange(
-                                      open ? toolPartKey : null,
-                                    )
+                                    onToolPartOpenChange(toolPartKey, open)
                                 : undefined
                             }
                             defaultOpenWhenUncontrolled={
@@ -1003,7 +968,7 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
     }
   }
 
-  if (prev.openToolPartKey !== next.openToolPartKey) {
+  if (prev.openToolPartKeys !== next.openToolPartKeys) {
     return false;
   }
 
