@@ -26,6 +26,7 @@ export interface SQLQueryVisualizerProps {
   onPasteToNotebook?: () => void;
   showPasteButton?: boolean;
   chartExecutionOverride?: boolean;
+  isStreaming?: boolean;
 }
 
 export function SQLQueryVisualizer({
@@ -34,23 +35,32 @@ export function SQLQueryVisualizer({
   className,
   onPasteToNotebook,
   showPasteButton = false,
+  isStreaming = false,
 }: SQLQueryVisualizerProps) {
   return (
     <div className={cn('flex w-full flex-col gap-3', className)}>
       {query && (
-        <CodeBlock code={query} language="sql" className="w-full">
-          <CodeBlockCopyButton className="text-muted-foreground hover:text-foreground h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100" />
-          {showPasteButton && onPasteToNotebook && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onPasteToNotebook}
-              className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-            >
-              <FileText className="h-3.5 w-3.5" />
-            </Button>
+        <div className="relative flex w-full items-start gap-1">
+          <CodeBlock code={query} language="sql" className="w-full min-w-0">
+            <CodeBlockCopyButton className="text-muted-foreground hover:text-foreground h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100" />
+            {showPasteButton && onPasteToNotebook && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onPasteToNotebook}
+                className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </CodeBlock>
+          {isStreaming && (
+            <span
+              className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+              aria-hidden
+            />
           )}
-        </CodeBlock>
+        </div>
       )}
 
       {result?.result && (

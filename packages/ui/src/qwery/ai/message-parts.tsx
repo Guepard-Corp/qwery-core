@@ -23,7 +23,6 @@ import {
   ToolInput,
   ToolOutput,
 } from '../../ai-elements/tool';
-
 import { SQLQueryVisualizer } from './sql-query-visualizer';
 
 import type { DatasourceMetadata } from '@qwery/domain/entities';
@@ -64,6 +63,14 @@ import { getUserFriendlyToolName } from './utils/tool-name';
 import { useToolVariant } from './tool-variant-context';
 
 import { ChartRenderer, type ChartConfig } from './charts/chart-renderer';
+import {
+  ChartSkeleton,
+  TableResultsSkeleton,
+  SchemaSkeleton,
+  SheetSkeleton,
+  SelectChartTypeSkeleton,
+  GenericToolSkeleton,
+} from './tool-loading-skeletons';
 import {
   ChartTypeSelector,
   type ChartTypeSelection,
@@ -746,20 +753,70 @@ export function ToolPart({
       );
     }
 
+    // Handle startWorkflow - streaming/loading, then result when output
+    if (part.type === 'tool-startWorkflow') {
+      const input = part.input as { objective?: string } | null;
+      if (!part.output && part.input != null) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            {input?.objective && (
+              <div className="bg-muted/50 rounded-md p-3">
+                <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                  Workflow Objective
+                </p>
+                <p className="text-sm">{input.objective}</p>
+                {isInputStreaming && (
+                  <span
+                    className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+                    aria-hidden
+                  />
+                )}
+              </div>
+            )}
+            {!isInputStreaming && <GenericToolSkeleton />}
+          </div>
+        );
+      }
+    }
+
     // Generic error handler for other tools
     if (part.state === 'output-error' && part.errorText) {
       return <ToolErrorVisualizer errorText={part.errorText} />;
     }
 
-    // Handle generateSql tool - show SQL only, no results
-    if (part.type === 'tool-generateSql' && part.output) {
+    // Handle generateSql - streaming instruction or loading, then SQL when output
+    if (part.type === 'tool-generateSql') {
+      const input = part.input as { instruction?: string } | null;
       const output = part.output as { query?: string } | null;
-      return (
-        <SQLQueryVisualizer
-          query={output?.query}
-          result={undefined} // No results for generateSql
-        />
-      );
+      if (!part.output && input?.instruction) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            <div className="bg-muted/50 rounded-md p-3">
+              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                Instruction
+              </p>
+              <p className="text-sm">{input.instruction}</p>
+              {isInputStreaming && (
+                <span
+                  className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+                  aria-hidden
+                />
+              )}
+            </div>
+            {!isInputStreaming && <GenericToolSkeleton />}
+          </div>
+        );
+      }
+      if (part.output && output?.query) {
+        return (
+          <SQLQueryVisualizer
+            query={output.query}
+            result={undefined}
+          />
+        );
+      }
     }
 
     // Handle runQuery tool - show SQL query during streaming (from input) and results when available (from output)
@@ -779,20 +836,24 @@ export function ToolPart({
         | null
         | undefined;
 
-      // During streaming, show SQL from input even if output is not available yet
+      // No output yet: show SQL streaming (cursor) or loading results
       if (!part.output && input?.query) {
+        const isInputStreaming = part.state === 'input-streaming';
         return (
-          <SQLQueryVisualizer
-            query={input.query}
-            result={undefined}
-            onPasteToNotebook={undefined}
-            showPasteButton={false}
-            chartExecutionOverride={false}
-          />
+          <div className="flex w-full flex-col gap-3">
+            <SQLQueryVisualizer
+              query={input.query}
+              result={undefined}
+              onPasteToNotebook={undefined}
+              showPasteButton={false}
+              chartExecutionOverride={false}
+              isStreaming={isInputStreaming}
+            />
+            {!isInputStreaming && <TableResultsSkeleton />}
+          </div>
         );
       }
 
-      // If no output and no input query, don't render anything yet
       if (!part.output) {
         return null;
       }
@@ -898,7 +959,32 @@ export function ToolPart({
       );
     }
 
-    // Handle getSchema tool with SchemaVisualizer
+    // Handle getSchema - streaming/loading, then schema when output
+    if (part.type === 'tool-getSchema') {
+      const input = part.input as { viewNames?: string[] } | null;
+      if (!part.output && part.input != null) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            {input?.viewNames && input.viewNames.length > 0 && (
+              <div className="bg-muted/50 rounded-md p-3">
+                <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                  Requested Views
+                </p>
+                <p className="text-sm">{input.viewNames.join(', ')}</p>
+                {isInputStreaming && (
+                  <span
+                    className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+                    aria-hidden
+                  />
+                )}
+              </div>
+            )}
+            {!isInputStreaming && <SchemaSkeleton />}
+          </div>
+        );
+      }
+    }
     if (part.type === 'tool-getSchema' && part.output) {
       const output = part.output as { schema?: DatasourceMetadata } | null;
       if (output?.schema) {
@@ -945,7 +1031,32 @@ export function ToolPart({
       }
     }
 
-    // Handle viewSheet tool with ViewSheetVisualizer
+    // Handle viewSheet - streaming/loading, then sheet when output
+    if (part.type === 'tool-viewSheet') {
+      const input = part.input as { sheetName?: string } | null;
+      if (!part.output && part.input != null) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            {input?.sheetName && (
+              <div className="bg-muted/50 rounded-md p-3">
+                <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                  Sheet
+                </p>
+                <p className="text-sm">{input.sheetName}</p>
+                {isInputStreaming && (
+                  <span
+                    className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+                    aria-hidden
+                  />
+                )}
+              </div>
+            )}
+            {!isInputStreaming && <SheetSkeleton />}
+          </div>
+        );
+      }
+    }
     if (part.type === 'tool-viewSheet' && part.output) {
       const output = part.output as {
         sheetName?: string;
@@ -990,7 +1101,37 @@ export function ToolPart({
       );
     }
 
-    // Handle generateChart tool with ChartRenderer
+    // Handle generateChart - streaming/loading, then chart when output
+    if (part.type === 'tool-generateChart') {
+      const input = part.input as {
+        queryResults?: { sqlQuery?: string };
+      } | null;
+      if (!part.output && part.input != null) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            {input?.queryResults?.sqlQuery && (
+              <SQLQueryVisualizer
+                query={input.queryResults.sqlQuery}
+                result={undefined}
+                isStreaming={isInputStreaming}
+              />
+            )}
+            {!input?.queryResults?.sqlQuery && (
+              <div className="bg-muted/50 rounded-md p-3">
+                {isInputStreaming && (
+                  <span
+                    className="text-foreground inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+                    aria-hidden
+                  />
+                )}
+              </div>
+            )}
+            {!isInputStreaming && <ChartSkeleton />}
+          </div>
+        );
+      }
+    }
     if (part.type === 'tool-generateChart' && part.output) {
       const output = part.output as ChartConfig | null;
       if (output?.chartType && output?.data && output?.config) {
@@ -998,7 +1139,27 @@ export function ToolPart({
       }
     }
 
-    // Handle selectChartType tool with ChartTypeSelector
+    // Handle selectChartType - streaming/loading, then selection when output
+    if (part.type === 'tool-selectChartType') {
+      const input = part.input as {
+        queryResults?: { sqlQuery?: string };
+      } | null;
+      if (!part.output && part.input != null) {
+        const isInputStreaming = part.state === 'input-streaming';
+        return (
+          <div className="flex w-full flex-col gap-3">
+            {input?.queryResults?.sqlQuery && (
+              <SQLQueryVisualizer
+                query={input.queryResults.sqlQuery}
+                result={undefined}
+                isStreaming={isInputStreaming}
+              />
+            )}
+            {!isInputStreaming && <SelectChartTypeSkeleton />}
+          </div>
+        );
+      }
+    }
     if (part.type === 'tool-selectChartType' && part.output) {
       const output = part.output as ChartTypeSelection | null;
       if (output?.chartType && output?.reasoningText) {
@@ -1006,7 +1167,22 @@ export function ToolPart({
       }
     }
 
-    // Default fallback to generic ToolOutput
+    // Generic: no output yet but have input - show streaming/loading
+    if (!part.output && part.input != null) {
+      const isInputStreaming = part.state === 'input-streaming';
+      return (
+        <div className="flex w-full flex-col gap-3">
+          {isInputStreaming && (
+            <span
+              className="text-foreground inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
+              aria-hidden
+            />
+          )}
+          {!isInputStreaming && <GenericToolSkeleton />}
+        </div>
+      );
+    }
+
     return <ToolOutput output={part.output} errorText={part.errorText} />;
   };
 
