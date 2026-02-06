@@ -897,17 +897,24 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     return null;
   }, [messages]);
 
-  const [openToolPartKey, setOpenToolPartKey] = useState<string | null>(null);
+  const [openToolPartKeys, setOpenToolPartKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
-    if (lastToolPartKey) setOpenToolPartKey(lastToolPartKey);
+    setOpenToolPartKeys(
+      lastToolPartKey ? new Set([lastToolPartKey]) : new Set(),
+    );
   }, [lastToolPartKey]);
 
-  const handleToolPartOpenChange = useCallback((key: string | null) => {
-    setOpenToolPartKey(key);
+  const handleToolPartOpenChange = useCallback((key: string, open: boolean) => {
+    setOpenToolPartKeys((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   }, []);
-
-  const effectiveOpenToolPartKey = openToolPartKey ?? lastToolPartKey;
 
   const prevViewSheetCountRef = useRef(0);
 
@@ -995,7 +1002,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     sendMessage={sendMessage}
                     onPasteToNotebook={onPasteToNotebook}
                     onSubmitFeedback={onSubmitFeedback}
-                    openToolPartKey={openToolPartKey}
+                    openToolPartKeys={openToolPartKeys}
                     onToolPartOpenChange={handleToolPartOpenChange}
                     onAtBottomChange={handleAtBottomChange}
                     contentSentinelRef={sentinelRef}
@@ -1584,55 +1591,48 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                   toolPart.state as string,
                                 );
 
-                                // Show loader while tool is in progress
+                                const toolPartKey = `${message.id}-${i}`;
+                                const isLastPart =
+                                  i === message.parts.length - 1;
+
                                 if (isToolInProgress) {
-                                  const toolName =
-                                    'toolName' in toolPart &&
-                                    typeof toolPart.toolName === 'string'
-                                      ? getUserFriendlyToolName(
-                                          `tool-${toolPart.toolName}`,
-                                        )
-                                      : getUserFriendlyToolName(toolPart.type);
-                                  const isLastPart =
-                                    i === message.parts.length - 1;
                                   return (
-                                    <Tool
-                                      key={`${message.id}-${i}`}
-                                      defaultOpen={isLastPart}
-                                      variant="default"
-                                    >
-                                      <ToolHeader
-                                        title={toolName}
-                                        type={toolPart.type}
-                                        state={toolPart.state}
-                                        variant="default"
-                                      />
-                                      <ToolContent variant="default">
-                                        {toolPart.input != null ? (
-                                          <ToolInput input={toolPart.input} />
-                                        ) : null}
-                                        <div className="flex items-center justify-center py-8">
-                                          <Loader size={20} />
-                                        </div>
-                                      </ToolContent>
-                                    </Tool>
+                                    <ToolPart
+                                      key={toolPartKey}
+                                      part={toolPart}
+                                      messageId={message.id}
+                                      index={i}
+                                      open={openToolPartKeys.has(
+                                        toolPartKey,
+                                      )}
+                                      onOpenChange={(open) =>
+                                        handleToolPartOpenChange(
+                                          toolPartKey,
+                                          open,
+                                        )
+                                      }
+                                      defaultOpenWhenUncontrolled={
+                                        isLastPart
+                                      }
+                                      onPasteToNotebook={onPasteToNotebook}
+                                      notebookContext={
+                                        currentNotebookContext
+                                      }
+                                    />
                                   );
                                 }
 
-                                // Use ToolPart component for completed tools (includes visualizers)
-                                const toolPartKey = `${message.id}-${i}`;
                                 return (
                                   <ToolPart
                                     key={toolPartKey}
                                     part={toolPart}
                                     messageId={message.id}
                                     index={i}
-                                    open={
-                                      effectiveOpenToolPartKey === toolPartKey
-                                    }
+                                    open={openToolPartKeys.has(toolPartKey)}
                                     onOpenChange={(open) =>
                                       handleToolPartOpenChange(
-                                        open ? toolPartKey : null,
+                                        toolPartKey,
+                                        open,
                                       )
                                     }
                                     onPasteToNotebook={onPasteToNotebook}
