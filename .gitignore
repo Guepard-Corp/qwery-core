@@ -193,3 +193,9 @@ packages/agent-factory-sdk/workspace/
 
 # React Router build output
 **/.react-router/
+
+# Build artifacts
+*.map
+apps/cli/bin/
+apps/cli/dist/
+apps/cli/build/
