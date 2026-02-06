@@ -1,10 +1,11 @@
 import { createApp } from './server';
 import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = join(__dirname, '..', '.env');
+const serverRoot = join(__dirname, '..');
+const envPath = join(serverRoot, '.env');
 if (existsSync(envPath)) {
   const content = readFileSync(envPath, 'utf-8');
   for (const line of content.split('\n')) {
@@ -22,12 +23,25 @@ if (existsSync(envPath)) {
     }
   }
 }
+
+const storageEnv =
+  process.env.QWERY_STORAGE_DIR ??
+  process.env.VITE_DATABASE_PATH ??
+  process.env.DATABASE_PATH;
+if (storageEnv && !isAbsolute(storageEnv)) {
+  const resolved = resolve(serverRoot, storageEnv);
+  if (process.env.QWERY_STORAGE_DIR) process.env.QWERY_STORAGE_DIR = resolved;
+  else if (process.env.VITE_DATABASE_PATH)
+    process.env.VITE_DATABASE_PATH = resolved;
+  else if (process.env.DATABASE_PATH) process.env.DATABASE_PATH = resolved;
+}
+
 const raw =
   process.env.WORKSPACE?.trim() ||
   process.env.VITE_WORKING_DIR?.trim() ||
   process.env.WORKING_DIR?.trim() ||
   'workspace';
-process.env.WORKSPACE = raw;
+process.env.WORKSPACE = isAbsolute(raw) ? raw : resolve(serverRoot, raw);
 
 const PORT = Number(process.env.PORT ?? 4096);
 const HOSTNAME = process.env.HOSTNAME ?? '0.0.0.0';

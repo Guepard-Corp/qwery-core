@@ -33,11 +33,13 @@ export class GetConversationBySlugService
   ) {}
 
   public async execute(slug: string): Promise<ConversationOutput> {
-    const conversation = await this.conversationRepository.findBySlug(slug);
+    const conversation =
+      (await this.conversationRepository.findBySlug(slug)) ??
+      (await this.conversationRepository.findById(slug));
     if (!conversation) {
       throw DomainException.new({
         code: Code.CONVERSATION_NOT_FOUND_ERROR,
-        overrideMessage: `Conversation with slug '${slug}' not found`,
+        overrideMessage: `Conversation with slug or id '${slug}' not found`,
         data: { slug },
       });
     }

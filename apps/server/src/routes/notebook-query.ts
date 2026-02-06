@@ -79,7 +79,20 @@ export function createNotebookQueryRoutes(
       }
 
       let transformedQuery = query;
-      if (datasource.datasource_provider === 'gsheet-csv') {
+      const trimmedQuery = query.trim();
+      const normalizedForShowTables = trimmedQuery.replace(/\s+/g, ' ').toLowerCase();
+      const isShowTables =
+        normalizedForShowTables === 'show tables' ||
+        normalizedForShowTables === 'show tables;';
+      if (isShowTables) {
+        const escapedDbName = expectedDbName.replace(/'/g, "''");
+        transformedQuery = `
+          SELECT table_catalog AS database, table_schema AS schema, table_name AS name, table_type AS type
+          FROM information_schema.tables
+          WHERE table_catalog = '${escapedDbName}' OR table_schema = '${escapedDbName}'
+          ORDER BY table_schema, table_name
+        `;
+      } else if (datasource.datasource_provider === 'gsheet-csv') {
         const dbNamePattern = expectedDbName.replace(
           /[.*+?^${}()|[\]\\]/g,
           '\\$&',
@@ -92,15 +105,6 @@ export function createNotebookQueryRoutes(
           new RegExp(`\\b${dbNamePattern}\\.main\\.`, 'gi'),
           `${expectedDbName}.`,
         );
-        if (/^show\s+tables;?\s*$/i.test(query)) {
-          const escapedDbName = expectedDbName.replace(/'/g, "''");
-          transformedQuery = `
-            SELECT table_catalog AS database, table_schema AS schema, table_name AS name, table_type AS type
-            FROM information_schema.tables
-            WHERE table_catalog = '${escapedDbName}'
-            ORDER BY table_schema, table_name
-          `;
-        }
       }
 
       try {
