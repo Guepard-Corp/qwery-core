@@ -2,10 +2,16 @@
 
 import { useState, useRef, useCallback, useMemo, createContext } from 'react';
 import * as React from 'react';
-import { Download, Copy, Check, FileText } from 'lucide-react';
+import { Download, Copy, FileText } from 'lucide-react';
 import { Button } from '../../../shadcn/button';
 import { Checkbox } from '../../../shadcn/checkbox';
 import { Label } from '../../../shadcn/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../shadcn/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '../../../lib/utils';
 
@@ -78,7 +84,6 @@ export function ChartWrapper({
   hideAxisLabelsCheckbox = false,
   chartData,
 }: ChartWrapperProps) {
-  const [copied, setCopied] = useState(false);
   const [internalShowAxisLabels, setInternalShowAxisLabels] = useState(true);
   const internalRef = useRef<HTMLDivElement>(null);
   const ref = chartRef || internalRef;
@@ -277,18 +282,46 @@ export function ChartWrapper({
       // Get the SVG code
       const svgCode = new XMLSerializer().serializeToString(svgElement);
 
-      // Copy to clipboard
       await navigator.clipboard.writeText(svgCode);
-      setCopied(true);
       toast.success('SVG code copied to clipboard');
-
-      // Reset copied state after 2 seconds
-      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Error copying SVG:', error);
       toast.error('Failed to copy SVG code');
     }
   }, [ref]);
+
+  const downloadAsSVG = useCallback(() => {
+    const currentRef = ref.current;
+    if (!currentRef) {
+      toast.error('Chart element not found');
+      return;
+    }
+
+    try {
+      const svgElement = currentRef.querySelector('svg');
+      if (!svgElement) {
+        toast.error('SVG element not found in chart');
+        return;
+      }
+
+      const svgCode = new XMLSerializer().serializeToString(svgElement);
+      const blob = new Blob([svgCode], {
+        type: 'image/svg+xml;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${title || 'chart'}-${Date.now()}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Chart downloaded as SVG');
+    } catch (error) {
+      console.error('Error downloading SVG:', error);
+      toast.error('Failed to download SVG');
+    }
+  }, [ref, title]);
 
   const exportAsCSV = useCallback(() => {
     if (!chartData || chartData.length === 0) {
@@ -323,7 +356,7 @@ export function ChartWrapper({
       <div className="flex items-start justify-between gap-4">
         {title && (
           <div className="flex-1 space-y-0.5">
-            <h3 className="text-foreground text-sm font-semibold tracking-tight">
+            <h3 className="text-foreground text-base font-semibold tracking-tight md:text-lg">
               {title}
             </h3>
           </div>
@@ -351,27 +384,34 @@ export function ChartWrapper({
           )}
 
           <div className="bg-background/50 flex items-center rounded-md border shadow-sm">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={downloadAsPNG}
-              className="hover:bg-muted/50 h-7 w-7 rounded-none border-r px-0 first:rounded-l-md"
-              title="Download PNG"
-            >
-              <Download className="text-muted-foreground h-3.5 w-3.5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hover:bg-muted/50 h-7 w-7 rounded-none border-r px-0 first:rounded-l-md"
+                  title="Download"
+                >
+                  <Download className="text-muted-foreground h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={downloadAsPNG}>
+                  Download as PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={downloadAsSVG}>
+                  Download as SVG
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
               size="sm"
               onClick={copySVG}
               className="hover:bg-muted/50 h-7 w-7 rounded-none border-r px-0"
-              title={copied ? 'Copied!' : 'Copy SVG'}
+              title="Copy SVG"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-              ) : (
-                <Copy className="text-muted-foreground h-3.5 w-3.5" />
-              )}
+              <Copy className="text-muted-foreground h-3.5 w-3.5" />
             </Button>
             {chartData && chartData.length > 0 && (
               <Button
@@ -390,10 +430,7 @@ export function ChartWrapper({
 
       {/* Chart Canvas Area */}
       <ChartContext.Provider value={contextValue}>
-        <div
-          ref={ref}
-          className="bg-card/30 w-full rounded-xl border p-4 shadow-sm transition-all hover:shadow-md"
-        >
+        <div ref={ref} className="w-full p-4">
           {children}
         </div>
       </ChartContext.Provider>
