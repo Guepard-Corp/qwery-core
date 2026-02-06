@@ -21,6 +21,8 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   DatabaseIcon,
   GripVertical,
@@ -29,6 +31,7 @@ import {
   MoreVertical,
   Pencil,
   PlayIcon,
+  Search,
   Sparkles,
   Trash2,
   X,
@@ -125,7 +128,7 @@ interface NotebookCellProps {
 }
 
 const ITEMS_PER_PAGE = 10;
-const SQL_PREVIEW_MAX_LEN = 72;
+const DS_ITEM_HEIGHT_PX = 32;
 
 function formatQueryDuration(ms: number | null | undefined): string {
   if (ms == null) return '';
@@ -134,12 +137,7 @@ function formatQueryDuration(ms: number | null | undefined): string {
   return `${(ms / 60000).toFixed(1)} m`;
 }
 
-function truncateQuery(q: string, maxLen = SQL_PREVIEW_MAX_LEN): string {
-  const trimmed = q.trim();
-  const firstLine = trimmed.split('\n')[0] ?? trimmed;
-  if (firstLine.length <= maxLen) return firstLine;
-  return firstLine.slice(0, maxLen) + '…';
-}
+const DS_PLACEHOLDER = 'Select datasource';
 
 function DatasourceSelectWithPagination({
   value,
@@ -147,107 +145,190 @@ function DatasourceSelectWithPagination({
   datasources,
   renderDatasourceOption,
   disabled,
+  placeholder = DS_PLACEHOLDER,
 }: {
   value?: string;
-  onValueChange: (value: string) => void;
+  onValueChange: (value: string | null) => void;
   datasources: NotebookDatasourceInfo[];
   renderDatasourceOption: (ds: NotebookDatasourceInfo) => React.ReactNode;
   disabled?: boolean;
+  placeholder?: string;
 }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const selectedDatasource = datasources.find((ds) => ds.id === value);
 
-  const totalPages = Math.ceil(datasources.length / ITEMS_PER_PAGE);
+  const filteredAndSorted = useMemo(() => {
+    let list = datasources;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = datasources.filter(
+        (ds) =>
+          ds.name.toLowerCase().includes(q) ||
+          (ds.provider ?? '').toLowerCase().includes(q),
+      );
+    }
+    return [...list].sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [datasources, search, sortOrder]);
+
+  const totalPages = Math.ceil(filteredAndSorted.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedDatasources = datasources.slice(startIndex, endIndex);
+  const paginatedDatasources = filteredAndSorted.slice(startIndex, endIndex);
 
-  // Reset scroll position to top when page changes and prevent popup repositioning
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      // Use requestAnimationFrame to ensure DOM has updated
-      requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = 0;
-        }
-      });
+    setCurrentPage(1);
+  }, [search, sortOrder]);
+
+  const showClear = search.trim().length > 0 || value != null;
+  const listHeightPx = ITEMS_PER_PAGE * DS_ITEM_HEIGHT_PX;
+
+  const handleClearSearchOrSelection = () => {
+    if (search.trim()) {
+      setSearch('');
+    } else if (value != null) {
+      onValueChange(null);
     }
-  }, [currentPage]);
+  };
 
   return (
     <Select
-      value={value}
+      value={value ?? undefined}
       onValueChange={(val) => {
-        onValueChange(val);
+        onValueChange(val ?? null);
         setCurrentPage(1);
       }}
       disabled={disabled}
     >
       <SelectTrigger className="hover:bg-accent text-muted-foreground h-7 w-auto min-w-[120px] border-none bg-transparent text-[11px] font-medium shadow-none">
         {!selectedDatasource && <DatabaseIcon className="mr-1.5 h-3 w-3" />}
-        <SelectValue placeholder="Select datasource" />
+        {selectedDatasource ? (
+          <SelectValue />
+        ) : (
+          <span className="text-muted-foreground">{placeholder}</span>
+        )}
       </SelectTrigger>
       <SelectContent
         position="popper"
-        className="h-[240px] w-[200px] overflow-hidden"
+        className="flex h-[420px] w-[280px] flex-col overflow-hidden p-0"
       >
-        <div className="flex h-full w-full flex-col overflow-hidden">
-          <div
-            ref={scrollContainerRef}
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+        <div
+          className="border-border bg-popover sticky top-0 z-10 flex shrink-0 items-center gap-1 border-b px-2 py-1.5"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+          <div className="relative min-w-0 flex-1">
+            <Input
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={cn(
+                'h-7 w-full border-0 bg-transparent px-1.5 text-xs shadow-none focus-visible:ring-0',
+                showClear && 'pr-7',
+              )}
+            />
+            {showClear ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClearSearchOrSelection();
+                }}
+                className="text-muted-foreground hover:text-foreground absolute right-0 top-1/2 flex shrink-0 -translate-y-1/2 rounded p-1 transition-colors"
+                aria-label={search.trim() ? 'Clear search' : 'Clear selection'}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSortOrder('asc');
+            }}
+            className={cn(
+              'text-muted-foreground hover:text-foreground flex shrink-0 rounded p-1 transition-colors',
+              sortOrder === 'asc' && 'bg-accent text-accent-foreground',
+            )}
+            aria-label="Sort A–Z"
           >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSortOrder('desc');
+            }}
+            className={cn(
+              'text-muted-foreground hover:text-foreground flex shrink-0 rounded p-1 transition-colors',
+              sortOrder === 'desc' && 'bg-accent text-accent-foreground',
+            )}
+            aria-label="Sort Z–A"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div
+          className="flex shrink-0 flex-col overflow-hidden"
+          style={{ height: listHeightPx }}
+        >
             {paginatedDatasources.map((ds) => (
               <SelectItem key={ds.id} value={ds.id} className="min-h-[32px]">
                 {renderDatasourceOption(ds)}
               </SelectItem>
             ))}
-            {/* Spacer to maintain fixed height when fewer items */}
-            {paginatedDatasources.length < ITEMS_PER_PAGE && (
-              <div className="flex-1" />
+            {paginatedDatasources.length === 0 && (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+                No datasources found
+              </div>
             )}
           </div>
-          {totalPages > 1 && (
-            <>
-              <div className="border-border h-px shrink-0 border-t" />
-              <div className="flex shrink-0 items-center justify-center gap-1 px-2 py-1.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentPage((p) => Math.max(1, p - 1));
-                  }}
-                  disabled={currentPage === 1}
-                  aria-label="Previous page"
-                >
-                  <ArrowUp className="h-3 w-3" />
-                </Button>
-                <span className="text-muted-foreground px-1 text-[10px] font-medium">
-                  {currentPage}/{totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentPage((p) => Math.min(totalPages, p + 1));
-                  }}
-                  disabled={currentPage === totalPages}
-                  aria-label="Next page"
-                >
-                  <ArrowDown className="h-3 w-3" />
-                </Button>
-              </div>
-            </>
+          {totalPages > 0 && (
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-zinc-200/90 px-2 py-1.5 dark:bg-zinc-800/90">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                }}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <span className="text-muted-foreground text-[10px] font-medium">
+                {currentPage}/{totalPages}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage((p) => Math.min(totalPages, p + 1));
+                }}
+                disabled={currentPage === totalPages}
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
           )}
-        </div>
       </SelectContent>
     </Select>
   );
@@ -316,7 +397,6 @@ function NotebookCellComponent({
   const [deleteAnimating, setDeleteAnimating] = useState(false);
   const [resultsOpen, setResultsOpen] = useState(true);
   const [errorOpen, setErrorOpen] = useState(true);
-  const [sqlOpen, setSqlOpen] = useState(true);
 
   // Cell title state - inline editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -862,7 +942,6 @@ function NotebookCellComponent({
             </div>
           )}
 
-          {/* Scrollable: SQL (collapsible) + Results/Error for query cell; editor for text/prompt */}
           <div
             className={cn(
               'min-h-0 flex-1 overflow-auto',
@@ -871,92 +950,72 @@ function NotebookCellComponent({
           >
             {isQueryCell ? (
               <>
-                <Collapsible
-                  open={sqlOpen}
-                  onOpenChange={setSqlOpen}
-                  className="border-border shrink-0 border-b"
+                <div
+                  ref={editorContainerRef}
+                  className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 border-border shrink-0 max-h-[400px] min-h-[88px] overflow-y-auto border-b [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                 >
-                  <CollapsibleTrigger className="hover:bg-muted/50 flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors [&[data-state=open]>svg]:rotate-180">
-                    <span className="text-muted-foreground min-w-0 truncate font-mono text-xs">
-                      {sqlOpen
-                        ? 'SQL'
-                        : query.trim()
-                          ? truncateQuery(query)
-                          : 'Empty query'}
-                    </span>
-                    <ChevronDown className="text-muted-foreground size-3.5 shrink-0 transition-transform duration-200" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="flex min-h-0 flex-col">
-                    <div
-                      ref={editorContainerRef}
-                      className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 max-h-[400px] min-h-[88px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
-                    >
-                      <div
-                        ref={codeMirrorRef}
-                        className="relative min-h-[88px] w-full"
-                      >
-                        <CodeMirror
-                          value={query}
-                          onChange={(value) => handleQueryChange(value)}
-                          extensions={[
-                            sql(),
-                            EditorView.lineWrapping,
-                            (() => {
-                              const isMac =
-                                typeof navigator !== 'undefined' &&
-                                /Mac|iPhone|iPod|iPad/i.test(
-                                  navigator.platform,
-                                );
-                              const modifier = isMac ? '⌘' : 'Ctrl';
-                              return placeholder(
-                                `Press ${modifier}+K to use AI assistant`,
-                              );
-                            })(),
-                          ]}
-                          theme={isDarkMode ? oneDark : undefined}
-                          editable={!isLoading && !isNotebookLoading}
-                          basicSetup={{
-                            lineNumbers: true,
-                            foldGutter: true,
-                            dropCursor: false,
-                            allowMultipleSelections: false,
-                          }}
-                          className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:rounded-none [&_.cm-gutter]:rounded-none [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:rounded-none [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
-                          data-test="notebook-sql-editor"
-                        />
-                      </div>
-                    </div>
-                    <NotebookCellAiPopup
-                      cellId={cell.cellId}
-                      isQueryCell={isQueryCell}
-                      isOpen={showAIPopup}
-                      aiQuestion={aiQuestion}
-                      setAiQuestion={setAiQuestion}
-                      aiInputRef={aiInputRef}
-                      cellContainerRef={cellContainerRef}
-                      codeMirrorRef={codeMirrorRef}
-                      textareaRef={textareaRef}
-                      editorContainerRef={editorContainerRef}
-                      onOpenAiPopup={(cellId) =>
-                        onOpenAiPopup(cellId, { x: 0, y: 0 })
-                      }
-                      onCloseAiPopup={onCloseAiPopup}
-                      onSubmit={handleAISubmit}
-                      query={query}
-                      selectedDatasource={selectedDatasource}
-                      onRunQueryWithAgent={onRunQueryWithAgent}
-                      cellType={
-                        cell.cellType === 'query' || cell.cellType === 'prompt'
-                          ? cell.cellType
-                          : undefined
-                      }
-                      isLoading={isLoading}
-                      enableShortcut={isAdvancedMode}
-                      embedded
-                      onNoDatasourceError={onNoDatasourceError}
+                  <div
+                    ref={codeMirrorRef}
+                    className="relative min-h-[88px] w-full"
+                  >
+                    <CodeMirror
+                      value={query}
+                      onChange={(value) => handleQueryChange(value)}
+                      extensions={[
+                        sql(),
+                        EditorView.lineWrapping,
+                        (() => {
+                          const isMac =
+                            typeof navigator !== 'undefined' &&
+                            /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+                          const modifier = isMac ? '⌘' : 'Ctrl';
+                          return placeholder(
+                            `Press ${modifier}+K to use AI assistant`,
+                          );
+                        })(),
+                      ]}
+                      theme={isDarkMode ? oneDark : undefined}
+                      editable={!isLoading && !isNotebookLoading}
+                      basicSetup={{
+                        lineNumbers: true,
+                        foldGutter: true,
+                        dropCursor: false,
+                        allowMultipleSelections: false,
+                      }}
+                      className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 [&_.cm-editor]:bg-muted/30 [&_.cm-editor.cm-focused]:bg-muted/30 [&_.cm-scroller]:bg-muted/30 [&_.cm-editor_.cm-content]:bg-muted/30 [&_.cm-gutter]:bg-muted/50 [&_.cm-gutterElement]:bg-muted/50 [&_.cm-lineNumbers]:bg-muted/50 dark:[&_.cm-editor]:bg-muted/20 dark:[&_.cm-editor.cm-focused]:bg-muted/20 dark:[&_.cm-scroller]:bg-muted/20 dark:[&_.cm-editor_.cm-content]:bg-muted/20 dark:[&_.cm-gutter]:bg-muted/40 dark:[&_.cm-gutterElement]:bg-muted/40 dark:[&_.cm-lineNumbers]:bg-muted/40 [&_.cm-content]:px-4 [&_.cm-content]:py-4 [&_.cm-content]:pr-12 [&_.cm-editor]:rounded-none [&_.cm-gutter]:rounded-none [&_.cm-scroller]:overflow-visible [&_.cm-scroller]:rounded-none [&_.cm-scroller]:font-mono [&_.cm-scroller]:text-sm [&_.cm-scroller::-webkit-scrollbar]:w-2 [&_.cm-scroller::-webkit-scrollbar-thumb]:rounded-full [&_.cm-scroller::-webkit-scrollbar-track]:bg-transparent"
+                      data-test="notebook-sql-editor"
                     />
-                  </CollapsibleContent>
-                </Collapsible>
+                  </div>
+                </div>
+                <NotebookCellAiPopup
+                  cellId={cell.cellId}
+                  isQueryCell={isQueryCell}
+                  isOpen={showAIPopup}
+                  aiQuestion={aiQuestion}
+                  setAiQuestion={setAiQuestion}
+                  aiInputRef={aiInputRef}
+                  cellContainerRef={cellContainerRef}
+                  codeMirrorRef={codeMirrorRef}
+                  textareaRef={textareaRef}
+                  editorContainerRef={editorContainerRef}
+                  onOpenAiPopup={(cellId) =>
+                    onOpenAiPopup(cellId, { x: 0, y: 0 })
+                  }
+                  onCloseAiPopup={onCloseAiPopup}
+                  onSubmit={handleAISubmit}
+                  query={query}
+                  selectedDatasource={selectedDatasource}
+                  onRunQueryWithAgent={onRunQueryWithAgent}
+                  cellType={
+                    cell.cellType === 'query' || cell.cellType === 'prompt'
+                      ? cell.cellType
+                      : undefined
+                  }
+                  isLoading={isLoading}
+                  enableShortcut={isAdvancedMode}
+                  embedded
+                  onNoDatasourceError={onNoDatasourceError}
+                />
 
                 {/* Results Grid - above footer */}
                 {result && (
