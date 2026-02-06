@@ -1,3 +1,5 @@
+import { sortByModifiedDesc } from '@qwery/shared/utils';
+
 export interface Conversation {
   id: string;
   slug: string;
@@ -93,7 +95,7 @@ export function groupConversationsByTime(
   Object.keys(groups).forEach((key) => {
     const group = groups[key];
     if (group) {
-      group.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      groups[key] = sortByModifiedDesc(group);
     }
   });
 
