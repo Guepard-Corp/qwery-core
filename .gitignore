@@ -208,3 +208,5 @@ apps/cli/build/
 
 # TUI investigation / scratch docs
 apps/tui/docs/
+# TUI dev verification scripts (run locally, not shipped)
+apps/tui/scripts/verify-*.ts
