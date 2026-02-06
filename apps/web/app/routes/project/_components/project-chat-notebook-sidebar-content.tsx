@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { Search, Plus, MessageCircle, Notebook } from 'lucide-react';
@@ -47,7 +47,34 @@ export function ProjectChatNotebookSidebarContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
+    () => {
+      try {
+        return JSON.parse(
+          localStorage.getItem('notebook:unsaved') || '[]',
+        ) as string[];
+      } catch {
+        return [];
+      }
+    },
+  );
   const { isProcessing, processingConversationSlug } = useAgentStatus();
+
+  useEffect(() => {
+    const handleUnsavedChanged = () => {
+      try {
+        const unsaved = JSON.parse(
+          localStorage.getItem('notebook:unsaved') || '[]',
+        ) as string[];
+        setUnsavedNotebookIds(unsaved);
+      } catch {
+        setUnsavedNotebookIds([]);
+      }
+    };
+    window.addEventListener('notebook:unsaved-changed', handleUnsavedChanged);
+    return () =>
+      window.removeEventListener('notebook:unsaved-changed', handleUnsavedChanged);
+  }, []);
 
   const { data: conversations = [], isLoading: isLoadingConversations } =
     useGetConversationsByProject(repositories.conversation, projectId);
@@ -59,7 +86,7 @@ export function ProjectChatNotebookSidebarContent() {
   );
   const notebooksList = useMemo(() => notebooks.data || [], [notebooks.data]);
 
-  const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
+  const notebookSlugMatch = location.pathname.match(/\/notebook\/([^/]+)$/);
   const currentNotebookSlug = notebookSlugMatch?.[1];
 
   const conversationSlugMatch = location.pathname.match(/\/c\/([^/]+)$/);
@@ -291,6 +318,8 @@ export function ProjectChatNotebookSidebarContent() {
           currentNotebookSlug={currentNotebookSlug}
           searchQuery={searchQuery}
           onNotebookDelete={onNotebookDelete}
+          unsavedNotebookIds={unsavedNotebookIds}
+          isProcessing={isProcessing}
         />
       </div>
     </>

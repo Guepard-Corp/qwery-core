@@ -55,29 +55,29 @@ export function ProjectBreadcrumb() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const [_unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
+  const [_unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
     [],
   );
   const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
 
   useEffect(() => {
-    const updateUnsavedSlugs = () => {
+    const updateUnsavedIds = () => {
       try {
         const unsaved = JSON.parse(
           localStorage.getItem('notebook:unsaved') || '[]',
         ) as string[];
-        setUnsavedNotebookSlugs(unsaved);
+        setUnsavedNotebookIds(unsaved);
       } catch {
-        setUnsavedNotebookSlugs([]);
+        setUnsavedNotebookIds([]);
       }
     };
 
-    updateUnsavedSlugs();
-    window.addEventListener('storage', updateUnsavedSlugs);
-    const interval = setInterval(updateUnsavedSlugs, 500);
+    updateUnsavedIds();
+    window.addEventListener('storage', updateUnsavedIds);
+    const interval = setInterval(updateUnsavedIds, 500);
     return () => {
-      window.removeEventListener('storage', updateUnsavedSlugs);
+      window.removeEventListener('storage', updateUnsavedIds);
       clearInterval(interval);
     };
   }, []);
@@ -407,7 +407,7 @@ export function ProjectBreadcrumb() {
         onNewProject={handleNewProject}
         onNewDatasource={handleNewDatasource}
         onNewNotebook={handleNewNotebook}
-        unsavedNotebookSlugs={_unsavedNotebookSlugs}
+        unsavedNotebookIds={_unsavedNotebookIds}
       />
       <OrganizationDialog
         open={showCreateOrgDialog}

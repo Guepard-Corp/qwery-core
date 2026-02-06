@@ -62,10 +62,10 @@ type SortOrder = 'asc' | 'desc';
 
 export function ListNotebooks({
   notebooks,
-  unsavedNotebookSlugs = [],
+  unsavedNotebookIds = [],
 }: {
   notebooks: NotebookOutput[];
-  unsavedNotebookSlugs?: string[];
+  unsavedNotebookIds?: string[];
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
@@ -412,8 +412,8 @@ export function ListNotebooks({
         ) : isGridView ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paginatedNotebooks.map((notebook) => {
-              const hasUnsavedChanges = unsavedNotebookSlugs.includes(
-                notebook.slug,
+              const hasUnsavedChanges = unsavedNotebookIds.includes(
+                notebook.id,
               );
               return (
                 <div
@@ -497,8 +497,8 @@ export function ListNotebooks({
               </TableHeader>
               <TableBody>
                 {paginatedNotebooks.map((notebook) => {
-                  const hasUnsavedChanges = unsavedNotebookSlugs.includes(
-                    notebook.slug,
+                  const hasUnsavedChanges = unsavedNotebookIds.includes(
+                    notebook.id,
                   );
                   const date = new Date(notebook.createdAt);
 

@@ -310,7 +310,7 @@ export interface QweryBreadcrumbProps {
   onNewProject?: () => void;
   onNewDatasource?: () => void;
   onNewNotebook?: () => void;
-  unsavedNotebookSlugs?: string[];
+  unsavedNotebookIds?: string[];
 }
 
 export function QweryBreadcrumb({
@@ -329,7 +329,7 @@ export function QweryBreadcrumb({
   onNewProject,
   onNewDatasource,
   onNewNotebook,
-  unsavedNotebookSlugs = [],
+  unsavedNotebookIds = [],
 }: QweryBreadcrumbProps) {
   const { t } = useTranslation('common');
 
@@ -395,7 +395,7 @@ export function QweryBreadcrumb({
       compareBy: isNotebook ? 'id' : 'slug',
       renderBadge: isNotebook
         ? (item) =>
-            unsavedNotebookSlugs.includes(item.slug) ? (
+            unsavedNotebookIds.includes(item.id) ? (
               <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
             ) : null
         : undefined,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { Skeleton } from '@qwery/ui/skeleton';
 import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
@@ -16,35 +17,35 @@ export default function ProjectNotebooksPage() {
     { enabled: !!projectId },
   );
 
-  const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
+  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
     [],
   );
 
   useEffect(() => {
-    const updateUnsavedSlugs = () => {
+    const updateUnsavedIds = () => {
       try {
         const unsaved = JSON.parse(
           localStorage.getItem('notebook:unsaved') || '[]',
         ) as string[];
-        setUnsavedNotebookSlugs(unsaved);
+        setUnsavedNotebookIds(unsaved);
       } catch {
-        setUnsavedNotebookSlugs([]);
+        setUnsavedNotebookIds([]);
       }
     };
 
-    updateUnsavedSlugs();
+    updateUnsavedIds();
 
-    window.addEventListener('storage', updateUnsavedSlugs);
+    window.addEventListener('storage', updateUnsavedIds);
 
     const handleCustomStorage = () => {
-      updateUnsavedSlugs();
+      updateUnsavedIds();
     };
     window.addEventListener('notebook:unsaved-changed', handleCustomStorage);
 
-    const interval = setInterval(updateUnsavedSlugs, 500);
+    const interval = setInterval(updateUnsavedIds, 500);
 
     return () => {
-      window.removeEventListener('storage', updateUnsavedSlugs);
+      window.removeEventListener('storage', updateUnsavedIds);
       window.removeEventListener(
         'notebook:unsaved-changed',
         handleCustomStorage,
@@ -55,10 +56,18 @@ export default function ProjectNotebooksPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ListNotebooks
-        notebooks={notebooks.data ?? []}
-        unsavedNotebookSlugs={unsavedNotebookSlugs}
-      />
+      {notebooks.isLoading && (
+        <div className="p-6 lg:p-10">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
+
+      {!notebooks.isLoading && (
+        <ListNotebooks
+          notebooks={notebooks.data ?? []}
+          unsavedNotebookIds={unsavedNotebookIds}
+        />
+      )}
     </div>
   );
 }
