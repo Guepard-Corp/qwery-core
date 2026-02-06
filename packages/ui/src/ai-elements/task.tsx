@@ -9,11 +9,7 @@ import { cn } from '../lib/utils';
 import { ChevronDownIcon, ListTodo } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
-export type TaskStatus =
-  | 'pending'
-  | 'in-progress'
-  | 'completed'
-  | 'error';
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'error';
 
 const TASK_INDICATOR_CLASS: Record<TaskStatus, string> = {
   pending: 'border-muted-foreground/50 bg-transparent',
@@ -47,12 +43,7 @@ export const TaskItemIndicator = ({
     aria-hidden
     {...props}
   >
-    <span
-      className={cn(
-        'size-1.5 rounded-full',
-        TASK_INDICATOR_DOT[status],
-      )}
-    />
+    <span className={cn('size-1.5 rounded-full', TASK_INDICATOR_DOT[status])} />
   </span>
 );
 
@@ -104,7 +95,7 @@ export const TaskTrigger = ({
 }: TaskTriggerProps) => (
   <CollapsibleTrigger asChild className={cn('group', className)} {...props}>
     {children ?? (
-      <div className="text-muted-foreground hover:text-foreground flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 text-sm transition-colors hover:bg-muted/50">
+      <div className="text-muted-foreground hover:text-foreground hover:bg-muted/50 flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 text-sm transition-colors">
         <ListTodo className="size-4 shrink-0 opacity-70" />
         <span className="min-w-0 flex-1 truncate font-medium">{title}</span>
         <span className="inline-flex size-4 shrink-0 items-center justify-center">
@@ -129,8 +120,6 @@ export const TaskContent = ({
     )}
     {...props}
   >
-    <div className="mt-2 space-y-0.5 pl-1">
-      {children}
-    </div>
+    <div className="mt-2 space-y-0.5 pl-1">{children}</div>
   </CollapsibleContent>
 );

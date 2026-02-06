@@ -123,7 +123,8 @@ function TaskStepRow({
         <div className="min-w-0 flex-1">
           <span
             className={cn(
-              task.status === 'completed' && 'text-muted-foreground line-through',
+              task.status === 'completed' &&
+                'text-muted-foreground line-through',
               task.status === 'error' && 'text-destructive',
               isSubstep && 'text-xs',
             )}
@@ -137,17 +138,18 @@ function TaskStepRow({
           ) : null}
         </div>
       </TaskItem>
-      {'substeps' in task &&
-        task.substeps &&
-        task.substeps.length > 0 && (
-          <ul className="border-muted/50 flex flex-col gap-0.5 border-l pl-3" role="list">
-            {task.substeps.map((sub) => (
-              <li key={sub.id}>
-                <TaskStepRow task={sub} isSubstep />
-              </li>
-            ))}
-          </ul>
-        )}
+      {'substeps' in task && task.substeps && task.substeps.length > 0 && (
+        <ul
+          className="border-muted/50 flex flex-col gap-0.5 border-l pl-3"
+          role="list"
+        >
+          {task.substeps.map((sub) => (
+            <li key={sub.id}>
+              <TaskStepRow task={sub} isSubstep />
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -156,7 +158,7 @@ export function TaskPart({ part, messageId, index }: TaskPartProps) {
   return (
     <Task
       key={`${messageId}-${part.id}-${index}`}
-      className="bg-muted/30 w-full rounded-lg border border-border/60 px-2 py-1"
+      className="bg-muted/30 border-border/60 w-full rounded-lg border px-2 py-1"
     >
       <TaskTrigger title={part.data.title} />
       <TaskContent>
