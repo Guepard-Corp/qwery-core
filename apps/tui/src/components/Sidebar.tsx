@@ -6,6 +6,7 @@ const SIDEBAR_WIDTH = 36;
 
 interface SidebarProps {
   conversation: Conversation | null;
+  attachedDatasourceNames: string[];
   height: number;
 }
 
@@ -21,7 +22,11 @@ function estimateTokens(messages: Conversation['messages']): number {
   return Math.round(total);
 }
 
-export function Sidebar({ conversation, height }: SidebarProps) {
+export function Sidebar({
+  conversation,
+  attachedDatasourceNames,
+  height,
+}: SidebarProps) {
   const { colors, keyStyle, keyDescStyle } = useStyles();
 
   const tokens = conversation ? estimateTokens(conversation.messages) : 0;
@@ -52,6 +57,16 @@ export function Sidebar({ conversation, height }: SidebarProps) {
                 <text {...keyDescStyle}>{tokens.toLocaleString()} tokens</text>
                 <text {...keyDescStyle}>{cost} spent</text>
               </box>
+              {attachedDatasourceNames.length > 0 && (
+                <box flexDirection="column">
+                  <text {...keyStyle}>Datasources</text>
+                  {attachedDatasourceNames.map((name) => (
+                    <text key={name} {...keyDescStyle}>
+                      {name}
+                    </text>
+                  ))}
+                </box>
+              )}
             </>
           )}
           <box flexDirection="column">

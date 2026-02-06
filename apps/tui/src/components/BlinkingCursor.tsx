@@ -8,7 +8,10 @@ export function BlinkingCursor() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const id = setInterval(() => setVisible((v) => !v), BLINK_INTERVAL_MS);
+    const id = setInterval(
+      () => setVisible((v: boolean) => !v),
+      BLINK_INTERVAL_MS,
+    );
     return () => clearInterval(id);
   }, []);
 

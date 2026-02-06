@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'chat';
+export type Screen = 'home' | 'chat' | 'notebook';
 
 export type DialogType =
   | 'none'
@@ -9,7 +9,11 @@ export type DialogType =
   | 'export'
   | 'stash'
   | 'agent'
-  | 'model';
+  | 'model'
+  | 'datasources'
+  | 'add_datasource'
+  | 'notebooks'
+  | 'new_notebook_name';
 
 export interface MeshStatus {
   servers: number;
@@ -37,6 +41,12 @@ export interface ChatMessage {
   timestamp?: number;
 }
 
+export interface Workspace {
+  projectId: string | null;
+  userId: string;
+  username: string;
+}
+
 export interface Conversation {
   id: string;
   slug?: string;
@@ -44,6 +54,7 @@ export interface Conversation {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+  datasources?: string[];
 }
 
 export interface CommandItem {
@@ -52,6 +63,14 @@ export interface CommandItem {
   category: string;
   action?: string;
 }
+
+export interface ProjectDatasource {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
+export type StreamingToolCall = { name: string; status: ToolCallStatus };
 
 export interface AppState {
   width: number;
@@ -65,12 +84,18 @@ export interface AppState {
   commandPaletteSearch: string;
   commandPaletteItems: CommandItem[];
   commandPaletteSelected: number;
+  workspace: Workspace | null;
+  projectDatasources: ProjectDatasource[];
   conversations: Conversation[];
   currentConversationId: string | null;
   chatInput: string;
   agentBusy: boolean;
   loaderPhase: number;
   pendingUserMessage: string;
+  streamingAgentContent: string;
+  streamingToolCalls: StreamingToolCall[];
+  expandedToolKeys: Record<string, boolean>;
+  focusedToolFlatIndex: number | null;
   meshStatus: MeshStatus | null;
   promptHistory: string[];
   promptHistoryIndex: number;
@@ -84,6 +109,73 @@ export interface AppState {
   themeDialogSelected: number;
   agentDialogSelected: number;
   modelDialogSelected: number;
+  datasourcesDialogSelected: number;
+  pendingConversationDatasourceSync: string | null;
+  addDatasourceStep: 'type' | 'form';
+  addDatasourceTypeIds: string[];
+  addDatasourceTypeNames: string[];
+  addDatasourceTypeSelected: number;
+  addDatasourceTypeId: string | null;
+  addDatasourceFieldValues: Record<string, string>;
+  addDatasourceFormFieldKeys: string[];
+  addDatasourceFormSelected: number;
+  pendingAddDatasource: {
+    typeId: string;
+    name: string;
+    config: Record<string, unknown>;
+  } | null;
+  addDatasourceValidationError: string | null;
+  addDatasourceTestStatus: 'idle' | 'pending' | 'ok' | 'error';
+  addDatasourceTestMessage: string;
+  addDatasourceTestRequest: boolean;
+  requestNewConversation: boolean;
+  projectNotebooks: TuiNotebook[];
+  currentNotebook: TuiNotebook | null;
+  notebookCellResults: Record<
+    string,
+    { rows: unknown[]; headers: { name: string }[] }
+  >;
+  notebookCellResultPage: Record<string, number>;
+  notebookCellErrors: Record<string, string>;
+  notebookCellLoading: number | null;
+  notebooksDialogSelected: number;
+  notebookFocusedCellIndex: number;
+  notebookCellInput: string;
+  notebookCellDatasourcePickerOpen: boolean;
+  notebookCellDatasourcePickerSelected: number;
+  notebookPendingSave: boolean;
+  newNotebookNameInput: string;
+  pendingNewNotebookTitle: string | null;
+  requestNewNotebook: boolean;
+  notebookEditingCellTitle: number | null;
+  notebookCellTitleInput: string;
+  conversationsDialogSelected: number;
+  notebookCreateError: string | null;
+}
+
+export interface TuiNotebook {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  slug: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  datasources: string[];
+  cells: TuiNotebookCell[];
+  createdBy?: string;
+  isPublic?: boolean;
+}
+
+export interface TuiNotebookCell {
+  cellId: number;
+  cellType: string;
+  query?: string;
+  datasources: string[];
+  isActive: boolean;
+  runMode: string;
+  title?: string;
 }
 
 export function getCurrentConversation(state: AppState): Conversation | null {

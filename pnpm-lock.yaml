@@ -331,9 +331,15 @@ importers:
       '@qwery/agent-factory-sdk':
         specifier: workspace:*
         version: link:../../packages/agent-factory-sdk
+      '@qwery/datasource-registry':
+        specifier: workspace:*
+        version: link:../../packages/datasource-registry
       '@qwery/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@qwery/extensions-loader':
+        specifier: workspace:*
+        version: link:../../packages/extensions-loader
       '@qwery/extensions-sdk':
         specifier: workspace:*
         version: link:../../packages/extensions-sdk
@@ -395,6 +401,9 @@ importers:
       '@opentui/react':
         specifier: ^0.1.75
         version: 0.1.75(react-devtools-core@7.0.1)(react@19.2.3)(stage-js@1.0.0-alpha.17)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.18.3)
+      '@qwery/datasource-registry':
+        specifier: workspace:*
+        version: link:../../packages/datasource-registry
       ai:
         specifier: 'catalog:'
         version: 6.0.58(zod@4.3.6)
@@ -414,6 +423,9 @@ importers:
       '@types/bun':
         specifier: latest
         version: 1.3.8
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.3
       eslint:
         specifier: ^9.39.0
         version: 9.39.1(jiti@2.6.1)
@@ -453,6 +465,9 @@ importers:
       '@qwery/csrf':
         specifier: workspace:*
         version: link:../../packages/csrf
+      '@qwery/datasource-registry':
+        specifier: workspace:*
+        version: link:../../packages/datasource-registry
       '@qwery/datasources':
         specifier: workspace:*
         version: link:../../packages/features/datasources
@@ -1164,6 +1179,24 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.3.6
+
+  packages/datasource-registry:
+    devDependencies:
+      '@qwery/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@qwery/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@qwery/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.1(jiti@2.6.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/domain:
     dependencies:

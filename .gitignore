@@ -182,3 +182,30 @@ test.db
 qwery.db
 
 starlight
+
+# Workspace runtime dirs (not source)
+**/workspace/
+/workspace/
+apps/server/workspace/
+apps/cli/workspace/
+apps/web/workspace/
+packages/agent-factory-sdk/workspace/
+# Keep source code workspace dirs
+!apps/cli/src/infrastructure/workspace/
+!apps/web/lib/workspace/
+!packages/domain/src/services/workspace/
+!packages/domain/src/usecases/workspace/
+
+# React Router build output
+**/.react-router/
+
+# Build artifacts
+*.map
+apps/cli/bin/
+apps/cli/dist/
+apps/cli/build/
+
+# TUI investigation / scratch docs
+apps/tui/docs/
+# TUI dev verification scripts (run locally, not shipped)
+apps/tui/scripts/verify-*.ts

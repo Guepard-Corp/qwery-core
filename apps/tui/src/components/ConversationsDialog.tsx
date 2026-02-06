@@ -3,7 +3,7 @@ import { useStyles } from '../theme/index.ts';
 
 interface ConversationsDialogProps {
   conversations: Conversation[];
-  selectedId: string | null;
+  selectedIndex: number;
   width: number;
   height: number;
 }
@@ -25,7 +25,7 @@ function formatTime(timestamp: number): string {
 
 export function ConversationsDialog({
   conversations,
-  selectedId,
+  selectedIndex,
   width,
   height,
 }: ConversationsDialogProps) {
@@ -37,7 +37,9 @@ export function ConversationsDialog({
     commandPaletteItemSelectedStyle,
     messageInfoStyle,
   } = useStyles();
-  const maxItems = Math.min(10, height - 10);
+  const maxRows = Math.min(12, height - 10);
+  const showNewRow = true;
+  const visibleConvs = conversations.slice(0, maxRows - (showNewRow ? 1 : 0));
 
   return (
     <box
@@ -59,14 +61,26 @@ export function ConversationsDialog({
         <box flexDirection="row">
           <text {...commandPaletteTitleStyle}>Conversations</text>
           <box flexGrow={1} />
-          <text {...commandPaletteShortcutStyle}>esc</text>
+          <text {...commandPaletteShortcutStyle}>esc · ctrl+n new</text>
         </box>
         <box height={1} />
-        {conversations.length === 0 ? (
+        {showNewRow && (
+          <box flexDirection="row" paddingLeft={1} paddingRight={1}>
+            {selectedIndex === 0 ? (
+              <text {...commandPaletteItemSelectedStyle}>
+                + New conversation
+              </text>
+            ) : (
+              <text {...commandPaletteItemStyle}>+ New conversation</text>
+            )}
+          </box>
+        )}
+        {visibleConvs.length === 0 && !showNewRow ? (
           <text {...messageInfoStyle}>No conversations yet</text>
         ) : (
-          conversations.slice(0, maxItems).map((conv) => {
-            const isSelected = conv.id === selectedId;
+          visibleConvs.map((conv, i) => {
+            const idx = showNewRow ? i + 1 : i;
+            const isSelected = idx === selectedIndex;
             const msgCount = conv.messages.length;
             const timeStr = formatTime(conv.updatedAt);
             const title =
@@ -75,7 +89,12 @@ export function ConversationsDialog({
                 : conv.title;
 
             return (
-              <box key={conv.id} flexDirection="row">
+              <box
+                key={conv.id}
+                flexDirection="row"
+                paddingLeft={1}
+                paddingRight={1}
+              >
                 {isSelected ? (
                   <text {...commandPaletteItemSelectedStyle}>
                     {title.padEnd(38)} {msgCount} msgs · {timeStr}
@@ -93,13 +112,13 @@ export function ConversationsDialog({
             );
           })
         )}
-        {conversations.length > maxItems && (
+        {conversations.length > visibleConvs.length && (
           <text {...messageInfoStyle}>
-            ... and {conversations.length - maxItems} more
+            ... and {conversations.length - visibleConvs.length} more
           </text>
         )}
         <box height={1} />
-        <text {...messageInfoStyle}>Press enter to open, ctrl+n for new</text>
+        <text {...messageInfoStyle}>Enter open · ↑↓ select</text>
       </box>
     </box>
   );

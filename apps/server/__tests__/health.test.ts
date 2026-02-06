@@ -34,6 +34,35 @@ describe('Server API – health and OpenAPI', () => {
       expect(body.openapi).toBe('3.0.3');
       expect(body.info?.title).toBe('Qwery API');
       expect(typeof body.paths).toBe('object');
+      const paths = body.paths as Record<string, unknown>;
+      expect(paths['/api/notebook/query']).toBeDefined();
+    });
+  });
+
+  describe('POST /api/notebook/query', () => {
+    it('returns JSON (400 for missing params)', async () => {
+      const res = await app.request('http://localhost/api/notebook/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error?: string };
+      expect(body.error).toBeDefined();
+    });
+    it('returns JSON (404 for unknown datasource)', async () => {
+      const res = await app.request('http://localhost/api/notebook/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: '_',
+          query: 'select 1',
+          datasourceId: '_',
+        }),
+      });
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as { error?: string };
+      expect(body.error).toContain('not found');
     });
   });
 });

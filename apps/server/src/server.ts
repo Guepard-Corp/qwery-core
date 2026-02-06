@@ -9,8 +9,10 @@ import { createConversationsRoutes } from './routes/conversations';
 import { createOrganizationsRoutes } from './routes/organizations';
 import { createProjectsRoutes } from './routes/projects';
 import { createDatasourcesRoutes } from './routes/datasources';
+import { createDriverRoutes } from './routes/driver';
 import { createMessagesRoutes } from './routes/messages';
 import { createNotebooksRoutes } from './routes/notebooks';
+import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
@@ -61,6 +63,7 @@ export function createApp() {
         if (origin.startsWith('http://127.0.0.1:')) return origin;
         return origin;
       },
+      credentials: true,
     }),
   );
 
@@ -73,10 +76,12 @@ export function createApp() {
   api.route('/organizations', createOrganizationsRoutes(getRepositories));
   api.route('/projects', createProjectsRoutes(getRepositories));
   api.route('/datasources', createDatasourcesRoutes(getRepositories));
+  api.route('/driver', createDriverRoutes());
   api.route('/chat', createChatRoutes());
   api.route('/conversations', createConversationsRoutes());
   api.route('/messages', createMessagesRoutes(getRepositories));
   api.route('/notebooks', createNotebooksRoutes(getRepositories));
+  api.route('/notebook/query', createNotebookQueryRoutes(getRepositories));
   api.route('/usage', createUsageRoutes(getRepositories));
   app.route('/api', api);
 
@@ -516,6 +521,31 @@ function getOpenAPISpec(): Record<string, unknown> {
             },
           ],
           responses: { '200': { description: 'Deleted' } },
+        },
+      },
+      '/api/notebook/query': {
+        post: {
+          summary: 'Run notebook cell query',
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['conversationId', 'query', 'datasourceId'],
+                  properties: {
+                    conversationId: { type: 'string' },
+                    query: { type: 'string' },
+                    datasourceId: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Query result' },
+            '400': { description: 'Bad request' },
+            '404': { description: 'Datasource not found' },
+          },
         },
       },
       '/api/usage': {

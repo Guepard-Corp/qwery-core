@@ -36,6 +36,16 @@ pnpm --filter @qwery/tui build
 pnpm --filter @qwery/tui start
 ```
 
+## Debug logging
+
+With `dev` or `dev:debug`, `QWERY_TUI_DEBUG_LOG` is set so all actions and key steps are written to `tui-debug.log` in the package directory. From repo root:
+
+```bash
+tail -f apps/tui/tui-debug.log
+```
+
+Log lines are timestamped and include `ACTION` (every dispatch), `LOG`/`WARN`/`ERROR` (notebook cell run and other steps).
+
 ## Development
 
 - `pnpm format:fix` / `pnpm format` – Prettier

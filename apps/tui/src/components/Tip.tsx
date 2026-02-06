@@ -7,12 +7,9 @@ export function Tip() {
     <box flexDirection="row">
       <text {...tipDotStyle}>● </text>
       <text {...tipLabelStyle}>Tip </text>
-      <text {...tipTextStyle}>Type </text>
-      <text {...tipHighlightStyle}>@</text>
-      <text {...tipTextStyle}>
-        {' '}
-        followed by a filename to fuzzy search and attach files
-      </text>
+      <text {...tipTextStyle}>Connect a datasource in the web app,</text>
+      <text> </text>
+      <text {...tipHighlightStyle}>then chat with it here.</text>
     </box>
   );
 }

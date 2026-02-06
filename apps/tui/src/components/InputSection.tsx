@@ -38,7 +38,7 @@ export function InputSection({
       <text width={promptWidth}>
         <BlinkingCursor />
         <span {...placeholderStyle}>
-          Ask anything... {'"'}Fix broken tests{'"'}
+          Ask your data... {'"'}Top 10 customers by revenue{'"'}
         </span>
       </text>
     ) : (

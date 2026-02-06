@@ -1,0 +1,935 @@
+{
+  "datasources": [
+    {
+      "id": "clickhouse-node",
+      "name": "ClickHouse (Server)",
+      "description": "Connect to ClickHouse databases",
+      "icon": "/extensions/clickhouse-node/ClickHouseLogo_White_FNL.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "ClickHouse server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "ClickHouse server port",
+                "default": 8123
+              },
+              "username": {
+                "type": "string",
+                "description": "ClickHouse username",
+                "default": "default"
+              },
+              "user": {
+                "type": "string",
+                "description": "ClickHouse username (alias for username)",
+                "default": "default"
+              },
+              "password": {
+                "type": "string",
+                "description": "ClickHouse password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "ClickHouse database name",
+                "default": "default"
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
+                "format": "uri"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-clickhouse-node",
+      "drivers": [
+        {
+          "id": "clickhouse.node",
+          "name": "ClickHouse (Server)",
+          "description": "Node runtime ClickHouse driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+        "defaultHost": "localhost",
+        "defaultPort": "8123",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "port": "8123",
+          "database": "default",
+          "username": "default",
+          "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "clickhouse-web",
+      "name": "ClickHouse (Browser)",
+      "description": "Connect to ClickHouse databases",
+      "icon": "/extensions/clickhouse-web/ClickHouseLogo_White_FNL.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "ClickHouse server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "ClickHouse server port",
+                "default": 8123
+              },
+              "username": {
+                "type": "string",
+                "description": "ClickHouse username",
+                "default": "default"
+              },
+              "user": {
+                "type": "string",
+                "description": "ClickHouse username (alias for username)",
+                "default": "default"
+              },
+              "password": {
+                "type": "string",
+                "description": "ClickHouse password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "ClickHouse database name",
+                "default": "default"
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
+                "format": "uri"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-clickhouse-web",
+      "drivers": [
+        {
+          "id": "clickhouse.web",
+          "name": "ClickHouse (Browser)",
+          "description": "Browser runtime ClickHouse driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+        "defaultHost": "localhost",
+        "defaultPort": "8123",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "port": "8123",
+          "database": "default",
+          "username": "default",
+          "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "duckdb",
+      "name": "DuckDB",
+      "description": "Connect to DuckDB databases",
+      "icon": "/extensions/duckdb/DuckDB_stack-darkmode.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database path (use :memory: for in-memory database)",
+            "default": ":memory:"
+          }
+        }
+      },
+      "packageName": "@qwery/extension-duckdb",
+      "drivers": [
+        {
+          "id": "duckdb.default",
+          "name": "DuckDB (Node)",
+          "description": "Default Node runtime DuckDB driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "embeddable",
+        "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "host": "—",
+          "port": "—",
+          "database": ":memory: or path/to/file.duckdb",
+          "username": "—",
+          "password": "—",
+          "connectionString": "duckdb://path/to/file.duckdb or :memory:"
+        },
+        "fieldLabels": {
+          "connectionString": "Database path or connection string"
+        }
+      }
+    },
+    {
+      "id": "duckdb-wasm",
+      "name": "DuckDB (WASM)",
+      "description": "Run DuckDB queries in your browser using WebAssembly",
+      "icon": "/extensions/duckdb-wasm/DuckDB_stack-darkmode.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name",
+            "default": "playground"
+          }
+        }
+      },
+      "packageName": "@qwery/extension-duckdb-wasm",
+      "drivers": [
+        {
+          "id": "duckdb-wasm.default",
+          "name": "DuckDB WASM (Browser)",
+          "description": "Browser runtime DuckDB WASM driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "formConfig": {
+        "preset": "embeddable",
+        "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "host": "—",
+          "port": "—",
+          "database": ":memory: or path/to/file.duckdb",
+          "username": "—",
+          "password": "—",
+          "connectionString": "duckdb://path/to/file.duckdb or :memory:"
+        },
+        "fieldLabels": {
+          "connectionString": "Database path or connection string"
+        }
+      }
+    },
+    {
+      "id": "gsheet-csv",
+      "name": "Google Sheets (CSV)",
+      "description": "Connect to public Google Sheets via CSV export",
+      "icon": "/extensions/gsheet-csv/gsheet.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sharedLink": {
+            "type": "string",
+            "description": "Public Google Sheets shared link (https://docs.google.com/spreadsheets/d/...)",
+            "format": "uri"
+          }
+        },
+        "required": ["sharedLink"]
+      },
+      "packageName": "@qwery/extension-gsheet-csv",
+      "drivers": [
+        {
+          "id": "gsheet-csv.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for Google Sheets CSV",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sharedLink",
+        "docsUrl": "https://support.google.com/docs/answer/2494822",
+        "connectionFieldKind": "sharedLink",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "connectionString": "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
+        },
+        "fieldLabels": {
+          "connectionString": "Shared link"
+        },
+        "normalizedKey": "sharedLink",
+        "acceptedKeys": ["sharedLink", "url"],
+        "supportsPreview": true
+      }
+    },
+    {
+      "id": "json-online",
+      "name": "JSON (Online)",
+      "description": "Connect to public JSON files via URL",
+      "icon": "/extensions/json-online/json.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "jsonUrl": {
+            "type": "string",
+            "description": "Public JSON file URL",
+            "format": "uri"
+          }
+        },
+        "required": ["jsonUrl"]
+      },
+      "packageName": "@qwery/extension-json-online",
+      "drivers": [
+        {
+          "id": "json-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for JSON files",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "fileUrl",
+        "connectionFieldKind": "fileUrl",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "connectionString": "https://example.com/data.json"
+        },
+        "fieldLabels": {
+          "connectionString": "JSON file URL"
+        },
+        "normalizedKey": "jsonUrl",
+        "acceptedKeys": ["jsonUrl", "url", "connectionUrl"],
+        "supportsPreview": true
+      }
+    },
+    {
+      "id": "mysql",
+      "name": "MySQL",
+      "description": "Connect to MySQL databases",
+      "icon": "/extensions/mysql/MySQL.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "MySQL server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "MySQL server port",
+                "default": 3306
+              },
+              "username": {
+                "type": "string",
+                "description": "MySQL username"
+              },
+              "user": {
+                "type": "string",
+                "description": "MySQL username (alias for username)"
+              },
+              "password": {
+                "type": "string",
+                "description": "MySQL password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "MySQL database name"
+              },
+              "ssl": {
+                "type": "boolean",
+                "description": "Enable SSL connection",
+                "default": false
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "MySQL connection string (mysql://user:pass@host:port/database) secret:true",
+                "format": "uri"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-mysql",
+      "drivers": [
+        {
+          "id": "mysql.default",
+          "name": "MySQL (Node)",
+          "description": "Default Node runtime MySQL driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html",
+        "defaultHost": "localhost",
+        "defaultPort": "3306",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "port": "3306",
+          "connectionString": "mysql://user:pass@host:3306/db"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "parquet-online",
+      "name": "Parquet (Online)",
+      "description": "Connect to public Parquet files via URL",
+      "icon": "/extensions/parquet-online/parquet.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Public Parquet file URL",
+            "format": "uri"
+          }
+        },
+        "required": ["url"]
+      },
+      "packageName": "@qwery/extension-parquet-online",
+      "drivers": [
+        {
+          "id": "parquet-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for Parquet files",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "fileUrl",
+        "connectionFieldKind": "fileUrl",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "connectionString": "https://example.com/data.parquet"
+        },
+        "fieldLabels": {
+          "connectionString": "Parquet file URL"
+        },
+        "normalizedKey": "url",
+        "acceptedKeys": ["url", "connectionUrl"],
+        "supportsPreview": true
+      }
+    },
+    {
+      "id": "pglite",
+      "name": "Embedded PostgreSQL",
+      "description": "Test PostgreSQL queries in your browser using PGlite",
+      "icon": "/extensions/pglite/pglite.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database name",
+            "default": "playground"
+          }
+        }
+      },
+      "packageName": "@qwery/extension-pglite",
+      "drivers": [
+        {
+          "id": "pglite.default",
+          "name": "PGlite (Browser)",
+          "description": "Browser runtime PGlite driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "formConfig": {
+        "preset": "embeddable",
+        "docsUrl": "https://github.com/electric-sql/pglite",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "host": "—",
+          "port": "—",
+          "database": ":memory: or indexeddb://dbname",
+          "username": "—",
+          "password": "—",
+          "connectionString": "pglite://:memory: or indexeddb://dbname"
+        },
+        "fieldLabels": {
+          "connectionString": "Database URI"
+        }
+      }
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Connect to PostgreSQL databases",
+      "icon": "/extensions/postgresql/postgresql.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "PostgreSQL server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "PostgreSQL server port",
+                "default": 5432
+              },
+              "username": {
+                "type": "string",
+                "description": "PostgreSQL username"
+              },
+              "user": {
+                "type": "string",
+                "description": "PostgreSQL username (alias for username)"
+              },
+              "password": {
+                "type": "string",
+                "description": "PostgreSQL password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "PostgreSQL database name"
+              },
+              "sslmode": {
+                "type": "string",
+                "enum": [
+                  "disable",
+                  "require",
+                  "prefer",
+                  "verify-ca",
+                  "verify-full"
+                ],
+                "description": "SSL mode",
+                "default": "prefer"
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "PostgreSQL connection string (postgresql://user:pass@host:port/db) secret:true"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html",
+        "defaultHost": "localhost",
+        "defaultPort": "5432",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "port": "5432",
+          "connectionString": "postgresql://user:pass@host:5432/db"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "postgresql-supabase",
+      "name": "Supabase",
+      "description": "Connect to Supabase databases",
+      "icon": "/extensions/postgresql-supabase/supabase-logo-wordmark--dark.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "Supabase server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "Supabase server port",
+                "default": 5432
+              },
+              "username": {
+                "type": "string",
+                "description": "Supabase username"
+              },
+              "user": {
+                "type": "string",
+                "description": "Supabase username (alias for username)"
+              },
+              "password": {
+                "type": "string",
+                "description": "Supabase password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "Supabase database name"
+              },
+              "sslmode": {
+                "type": "string",
+                "enum": [
+                  "disable",
+                  "require",
+                  "prefer",
+                  "verify-ca",
+                  "verify-full"
+                ],
+                "description": "SSL mode",
+                "default": "prefer"
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "Supabase connection string (postgresql://user:pass@host:port/db) secret:true"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres",
+        "defaultHost": "db.xxx.supabase.co",
+        "defaultPort": "5432",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "host": "db.xxx.supabase.co",
+          "port": "5432",
+          "connectionString": "postgresql://postgres.[ref]:[password]@db.xxx.supabase.co:5432/postgres"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "postgresql-neon",
+      "name": "Neon",
+      "description": "Connect to Neon databases",
+      "icon": "/extensions/postgresql-neon/neon-logo-dark-color.svg",
+      "schema": {
+        "type": "object",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "Neon server hostname"
+              },
+              "port": {
+                "type": "number",
+                "description": "Neon server port",
+                "default": 5432
+              },
+              "username": {
+                "type": "string",
+                "description": "Neon username"
+              },
+              "user": {
+                "type": "string",
+                "description": "Neon username (alias for username)"
+              },
+              "password": {
+                "type": "string",
+                "description": "Neon password secret:true",
+                "format": "password"
+              },
+              "database": {
+                "type": "string",
+                "description": "Neon database name"
+              },
+              "sslmode": {
+                "type": "string",
+                "enum": [
+                  "disable",
+                  "require",
+                  "prefer",
+                  "verify-ca",
+                  "verify-full"
+                ],
+                "description": "SSL mode",
+                "default": "prefer"
+              }
+            },
+            "required": ["host"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connectionUrl": {
+                "type": "string",
+                "description": "Neon connection string (postgresql://user:pass@host:port/db) secret:true"
+              }
+            },
+            "required": ["connectionUrl"]
+          }
+        ]
+      },
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "sql",
+        "docsUrl": "https://neon.tech/docs/connect/connect-intro",
+        "defaultHost": "ep-xxx.region.aws.neon.tech",
+        "defaultPort": "5432",
+        "connectionFieldKind": "connectionString",
+        "showDetailsTab": true,
+        "showConnectionStringTab": true,
+        "showSslToggle": true,
+        "placeholders": {
+          "host": "ep-xxx.region.aws.neon.tech",
+          "port": "5432",
+          "connectionString": "postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require"
+        },
+        "fieldLabels": {
+          "connectionString": "Connection string"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "name": "S3 Object Storage",
+      "description": "Connect to S3-compatible storage (AWS, DigitalOcean, MinIO) and query Parquet or JSON files with wildcard filtering",
+      "icon": "/extensions/s3/s3.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["aws", "digitalocean", "minio", "other"],
+            "description": "S3-compatible provider (endpoint URL required for non-AWS)"
+          },
+          "aws_access_key_id": {
+            "type": "string",
+            "description": "Access key ID"
+          },
+          "aws_secret_access_key": {
+            "type": "string",
+            "description": "Secret access key",
+            "format": "password"
+          },
+          "aws_session_token": {
+            "type": "string",
+            "description": "Session token (optional, for temporary credentials)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region (e.g. us-east-1, or DigitalOcean Spaces region: fra1, nyc3)"
+          },
+          "endpoint_url": {
+            "type": "string",
+            "description": "Custom endpoint (required for MinIO/other). For DigitalOcean optional: omit to use https://<region>.digitaloceanspaces.com",
+            "format": "uri"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Bucket name"
+          },
+          "prefix": {
+            "type": "string",
+            "description": "Prefix/folder inside bucket",
+            "default": ""
+          },
+          "format": {
+            "type": "string",
+            "enum": ["parquet", "json"],
+            "description": "File format to read (Parquet or JSON)"
+          },
+          "includes": {
+            "type": "array",
+            "description": "Wildcard include patterns (e.g. **/*.parquet). First used.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludes": {
+            "type": "array",
+            "description": "Wildcard exclude patterns",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "provider",
+          "aws_access_key_id",
+          "aws_secret_access_key",
+          "region",
+          "bucket",
+          "format"
+        ]
+      },
+      "packageName": "@qwery/extension-s3",
+      "drivers": [
+        {
+          "id": "s3.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node driver for S3 Parquet/JSON with wildcard support",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": null
+    },
+    {
+      "id": "youtube-data-api-v3",
+      "name": "YouTube Data API v3",
+      "description": "Query public YouTube video stats via API key",
+      "icon": "/extensions/youtube-data-api-v3/YouTube_2024.svg",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "YouTube Data API key secret:true",
+            "format": "password"
+          },
+          "channelId": {
+            "type": "string",
+            "description": "Channel ID (e.g., UC...)"
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Max videos to load (default 25)"
+          },
+          "publishedAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional filter: published after (RFC3339)"
+          },
+          "publishedBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional filter: published before (RFC3339)"
+          }
+        },
+        "required": ["apiKey", "channelId"]
+      },
+      "packageName": "@qwery/extension-youtube-data-api-v3",
+      "drivers": [
+        {
+          "id": "youtube-data-api-v3.default",
+          "name": "YouTube Data API v3 (Node)",
+          "description": "Node runtime driver using googleapis client + DuckDB",
+          "runtime": "node"
+        }
+      ],
+      "formConfig": {
+        "preset": "apiKey",
+        "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
+        "connectionFieldKind": "apiKey",
+        "showDetailsTab": false,
+        "showConnectionStringTab": true,
+        "placeholders": {
+          "connectionString": "Your YouTube Data API key"
+        },
+        "fieldLabels": {
+          "connectionString": "API key"
+        },
+        "normalizedKey": "apiKey",
+        "acceptedKeys": ["apiKey", "connectionUrl", "connectionString"]
+      }
+    }
+  ]
+}
