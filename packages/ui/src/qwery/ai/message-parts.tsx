@@ -4,7 +4,7 @@ import {
   TaskItem,
   TaskItemIndicator,
   TaskTrigger,
-} from '../../ai-elements/task';
+} from '../../ai-elements';
 import {
   Message,
   MessageContent,
@@ -41,7 +41,18 @@ import {
   SourcesTrigger,
 } from '../../ai-elements/sources';
 import { useState, createContext, useMemo } from 'react';
-import { CopyIcon, RefreshCcwIcon, CheckIcon, Database } from 'lucide-react';
+import {
+  CopyIcon,
+  RefreshCcwIcon,
+  CheckIcon,
+  Database,
+  ListTodo,
+  ChevronDownIcon,
+  CheckCircle2Icon,
+  CircleDashedIcon,
+  XCircleIcon,
+  ArrowRightIcon,
+} from 'lucide-react';
 import { ToolUIPart, UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -123,8 +134,7 @@ function TaskStepRow({
         <div className="min-w-0 flex-1">
           <span
             className={cn(
-              task.status === 'completed' &&
-                'text-muted-foreground line-through',
+              task.status === 'completed' && 'text-muted-foreground line-through',
               task.status === 'error' && 'text-destructive',
               isSubstep && 'text-xs',
             )}
@@ -138,18 +148,17 @@ function TaskStepRow({
           ) : null}
         </div>
       </TaskItem>
-      {'substeps' in task && task.substeps && task.substeps.length > 0 && (
-        <ul
-          className="border-muted/50 flex flex-col gap-0.5 border-l pl-3"
-          role="list"
-        >
-          {task.substeps.map((sub) => (
-            <li key={sub.id}>
-              <TaskStepRow task={sub} isSubstep />
-            </li>
-          ))}
-        </ul>
-      )}
+      {'substeps' in task &&
+        task.substeps &&
+        task.substeps.length > 0 && (
+          <ul className="border-muted/50 flex flex-col gap-0.5 border-l pl-3" role="list">
+            {task.substeps.map((sub) => (
+              <li key={sub.id}>
+                <TaskStepRow task={sub} isSubstep />
+              </li>
+            ))}
+          </ul>
+        )}
     </>
   );
 }
@@ -158,7 +167,7 @@ export function TaskPart({ part, messageId, index }: TaskPartProps) {
   return (
     <Task
       key={`${messageId}-${part.id}-${index}`}
-      className="bg-muted/30 border-border/60 w-full rounded-lg border px-2 py-1"
+      className="bg-muted/30 w-full rounded-lg border border-border/60 px-2 py-1"
     >
       <TaskTrigger title={part.data.title} />
       <TaskContent>
@@ -176,37 +185,6 @@ export function TaskPart({ part, messageId, index }: TaskPartProps) {
         </ul>
       </TaskContent>
     </Task>
-  );
-}
-
-export type StartedStepIndicatorProps = {
-  stepIndex: number;
-  stepLabel?: string;
-  className?: string;
-};
-
-export function StartedStepIndicator({
-  stepIndex,
-  stepLabel,
-  className,
-}: StartedStepIndicatorProps) {
-  return (
-    <div
-      className={cn(
-        'text-muted-foreground inline-flex items-center gap-2 text-xs',
-        className,
-      )}
-      role="status"
-    >
-      <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-medium">
-        Step {stepIndex}
-      </span>
-      {stepLabel ? (
-        <span className="truncate">{stepLabel}</span>
-      ) : (
-        <span>Started</span>
-      )}
-    </div>
   );
 }
 
