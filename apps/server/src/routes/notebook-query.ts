@@ -80,7 +80,9 @@ export function createNotebookQueryRoutes(
 
       let transformedQuery = query;
       const trimmedQuery = query.trim();
-      const normalizedForShowTables = trimmedQuery.replace(/\s+/g, ' ').toLowerCase();
+      const normalizedForShowTables = trimmedQuery
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
       const isShowTables =
         normalizedForShowTables === 'show tables' ||
         normalizedForShowTables === 'show tables;';

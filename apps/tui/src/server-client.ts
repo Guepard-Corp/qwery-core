@@ -19,6 +19,8 @@ import type {
 
 const DEFAULT_SERVER_URL = 'http://localhost:4096';
 
+let cachedServerUrl: string | null = null;
+
 function getServerUrl(): string {
   return process.env.QWERY_SERVER_URL ?? DEFAULT_SERVER_URL;
 }
@@ -59,24 +61,38 @@ export async function initWorkspace(
 }
 
 export async function ensureServerRunning(): Promise<string> {
+  if (cachedServerUrl) {
+    try {
+      const res = await fetch(`${cachedServerUrl}/health`, {
+        signal: AbortSignal.timeout(500),
+      });
+      if (res.ok) return cachedServerUrl;
+    } catch {
+      cachedServerUrl = null;
+    }
+  }
+
   const url = getServerUrl();
   try {
     const res = await fetch(`${url}/health`, {
       signal: AbortSignal.timeout(500),
     });
-    if (res.ok) return url;
+    if (res.ok) {
+      cachedServerUrl = url;
+      return url;
+    }
   } catch {
     // Server not running
   }
 
   const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
   const serverEntry = join(root, 'apps', 'server', 'src', 'index.ts');
-
+  const port = (url.startsWith('http') ? new URL(url).port : null) || '4096';
   spawn('bun', ['run', serverEntry], {
     cwd: root,
     stdio: 'ignore',
     detached: true,
-    env: { ...process.env, PORT: '4096' },
+    env: { ...process.env, PORT: port },
   }).unref();
 
   const maxAttempts = 20;
@@ -86,7 +102,10 @@ export async function ensureServerRunning(): Promise<string> {
       const res = await fetch(`${url}/health`, {
         signal: AbortSignal.timeout(500),
       });
-      if (res.ok) return url;
+      if (res.ok) {
+        cachedServerUrl = url;
+        return url;
+      }
     } catch {
       // Retry
     }
@@ -466,11 +485,21 @@ export async function runNotebookQuery(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
-  const data = (await res.json()) as {
+  const raw = await res.text();
+  let data: {
     success?: boolean;
     data?: RunNotebookQueryResult['data'];
     error?: string;
   };
+  try {
+    data = raw ? (JSON.parse(raw) as typeof data) : {};
+  } catch {
+    const preview = raw.slice(0, 200).replace(/\s+/g, ' ');
+    return {
+      success: false,
+      error: `Server returned non-JSON (${res.status}). Body: ${preview}${raw.length > 200 ? '…' : ''}`,
+    };
+  }
   if (!res.ok) {
     return { success: false, error: data.error ?? `HTTP ${res.status}` };
   }
@@ -585,6 +614,33 @@ export function connectionToRawConfig(
   rawConfig.sharedLink = value;
   rawConfig.jsonUrl = value;
   return rawConfig;
+}
+
+export function fieldValuesToRawConfig(
+  fieldValues: Record<string, string>,
+  _typeId: string,
+): Record<string, unknown> {
+  const raw: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fieldValues)) {
+    if (key === 'name' || value === '') continue;
+    const v = value.trim();
+    if (key === 'port' && v !== '') raw[key] = Number(v) || v;
+    else if (v) raw[key] = v;
+  }
+  if (
+    (raw.connectionUrl || raw.connectionString) &&
+    !raw.url &&
+    !raw.sharedLink &&
+    !raw.jsonUrl
+  ) {
+    const u = (raw.connectionUrl || raw.connectionString) as string;
+    raw.connectionUrl = u;
+    raw.connectionString = u;
+    raw.url = u;
+    raw.sharedLink = u;
+    raw.jsonUrl = u;
+  }
+  return raw;
 }
 
 export function validateProviderConfig(

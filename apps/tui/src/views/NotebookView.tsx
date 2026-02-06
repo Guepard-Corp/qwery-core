@@ -37,12 +37,16 @@ export function NotebookView({ state }: NotebookViewProps) {
   const cellInput = state.notebookCellInput;
   const loadingCellId = state.notebookCellLoading;
   const results = state.notebookCellResults;
+  const resultPages = state.notebookCellResultPage;
   const errors = state.notebookCellErrors;
   const datasourceNames = state.projectDatasources;
   const pickerOpen = state.notebookCellDatasourcePickerOpen;
   const pickerSelected = state.notebookCellDatasourcePickerSelected;
   const editingTitleCellId = state.notebookEditingCellTitle;
   const titleInput = state.notebookCellTitleInput;
+
+  const ROWS_PER_PAGE = 10;
+  const COL_MAX = 14;
 
   const getDatasourceName = (id: string) =>
     datasourceNames.find((d) => d.id === id)?.name ?? id;
@@ -61,8 +65,8 @@ export function NotebookView({ state }: NotebookViewProps) {
         <text {...chatTitleStyle}>Notebook: {truncate(nb.title, 40)}</text>
         <box flexGrow={1} />
         <text {...messageInfoStyle}>
-          Esc close · ↑↓ cell · Ctrl+Enter run · Ctrl+O new cell · Ctrl+D
-          datasource · F2 rename
+          Esc close · ↑↓ cell · Ctrl+R run · Ctrl+O new cell · Ctrl+D datasource
+          · F2 rename
         </text>
       </box>
       <box flexDirection="column" flexGrow={1} overflow="scroll">
@@ -96,7 +100,8 @@ export function NotebookView({ state }: NotebookViewProps) {
                 {editingTitleCellId === cell.cellId ? (
                   <text {...commandPaletteItemSelectedStyle}>
                     {(titleInput || '(unnamed)').slice(0, 30)}
-                    {titleInput.length > 30 ? '...' : ''} · Enter save Esc cancel
+                    {titleInput.length > 30 ? '...' : ''} · Enter save Esc
+                    cancel
                   </text>
                 ) : isFocused ? (
                   <text {...commandPaletteItemSelectedStyle}>
@@ -134,7 +139,7 @@ export function NotebookView({ state }: NotebookViewProps) {
                     </text>
                     <box flexGrow={1} />
                     <text {...messageInfoStyle}>
-                      {isFocused ? 'Ctrl+Enter to run' : ''}
+                      {isFocused ? 'Ctrl+R to run' : ''}
                     </text>
                   </box>
                   {isLoading && <text {...messageInfoStyle}>Running...</text>}
@@ -155,6 +160,7 @@ export function NotebookView({ state }: NotebookViewProps) {
                       border={true}
                       borderColor={colors.dimGray}
                       paddingLeft={1}
+                      paddingRight={1}
                       marginTop={0}
                     >
                       <text {...messageInfoStyle}>
@@ -163,33 +169,48 @@ export function NotebookView({ state }: NotebookViewProps) {
                           ? ` · ${result.headers.map((h) => h.name).join(', ')}`
                           : ''}
                       </text>
-                      {result.rows.length > 0 &&
-                        result.rows.length <= 10 &&
-                        result.headers.length > 0 && (
+                      {result.rows.length > 0 && result.headers.length > 0 && (
+                        <>
                           <box flexDirection="column" marginTop={0}>
                             <text {...messageInfoStyle}>
-                              {result.headers.map((h) => h.name).join(' | ')}
+                              {result.headers
+                                .map((h) =>
+                                  truncate(String(h.name), COL_MAX).padEnd(
+                                    COL_MAX,
+                                  ),
+                                )
+                                .join(' │ ')}
                             </text>
-                            {result.rows.slice(0, 5).map((row, ri) => (
-                              <text key={ri} {...messageInfoStyle}>
-                                {result.headers
-                                  .map((h) =>
-                                    String(
-                                      (row as Record<string, unknown>)[
-                                        h.name
-                                      ] ?? '',
-                                    ),
-                                  )
-                                  .join(' | ')}
-                              </text>
-                            ))}
-                            {result.rows.length > 5 && (
-                              <text {...messageInfoStyle}>
-                                ... +{result.rows.length - 5} more
-                              </text>
-                            )}
+                            {(result.rows as Record<string, unknown>[])
+                              .slice(
+                                (resultPages[String(cell.cellId)] ?? 0) *
+                                  ROWS_PER_PAGE,
+                                ((resultPages[String(cell.cellId)] ?? 0) + 1) *
+                                  ROWS_PER_PAGE,
+                              )
+                              .map((row, ri) => (
+                                <text key={ri} {...messageInfoStyle}>
+                                  {result.headers
+                                    .map((h) =>
+                                      truncate(
+                                        String(row[h.name] ?? ''),
+                                        COL_MAX,
+                                      ).padEnd(COL_MAX),
+                                    )
+                                    .join(' │ ')}
+                                </text>
+                              ))}
                           </box>
-                        )}
+                          {Math.ceil(result.rows.length / ROWS_PER_PAGE) >
+                            1 && (
+                            <text {...messageInfoStyle} marginTop={0}>
+                              Page {(resultPages[String(cell.cellId)] ?? 0) + 1}{' '}
+                              of {Math.ceil(result.rows.length / ROWS_PER_PAGE)}{' '}
+                              · ← → change page
+                            </text>
+                          )}
+                        </>
+                      )}
                     </box>
                   )}
                 </>

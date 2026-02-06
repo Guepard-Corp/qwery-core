@@ -63,6 +63,7 @@ export function createApp() {
         if (origin.startsWith('http://127.0.0.1:')) return origin;
         return origin;
       },
+      credentials: true,
     }),
   );
 
@@ -520,6 +521,31 @@ function getOpenAPISpec(): Record<string, unknown> {
             },
           ],
           responses: { '200': { description: 'Deleted' } },
+        },
+      },
+      '/api/notebook/query': {
+        post: {
+          summary: 'Run notebook cell query',
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['conversationId', 'query', 'datasourceId'],
+                  properties: {
+                    conversationId: { type: 'string' },
+                    query: { type: 'string' },
+                    datasourceId: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Query result' },
+            '400': { description: 'Bad request' },
+            '404': { description: 'Datasource not found' },
+          },
         },
       },
       '/api/usage': {

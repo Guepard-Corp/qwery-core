@@ -1,4 +1,5 @@
 import type { AppState } from '../state/types.ts';
+import { getFormFieldsForType } from '../util/datasource-form-fields.ts';
 import { useStyles } from '../theme/index.ts';
 
 interface AddDatasourceDialogProps {
@@ -64,47 +65,48 @@ export function AddDatasourceDialog({ state }: AddDatasourceDialogProps) {
           )
         ) : (
           <>
-            <box flexDirection="row">
-              <text {...commandPaletteItemStyle}>Name: </text>
-              {state.addDatasourceFormSelected === 0 ? (
-                <text {...commandPaletteItemSelectedStyle}>
-                  {state.addDatasourceName || ' '}
-                </text>
-              ) : (
-                <text {...commandPaletteItemStyle}>
-                  {state.addDatasourceName || ' '}
-                </text>
-              )}
-            </box>
-            <box flexDirection="row">
-              <text {...commandPaletteItemStyle}>Connection: </text>
-              {state.addDatasourceFormSelected === 1 ? (
-                <text {...commandPaletteItemSelectedStyle}>
-                  {state.addDatasourceConnection || ' '}
-                </text>
-              ) : (
-                <text {...commandPaletteItemStyle}>
-                  {state.addDatasourceConnection || ' '}
-                </text>
-              )}
-            </box>
+            {(() => {
+              const typeId = state.addDatasourceTypeId;
+              const { labels } = typeId
+                ? getFormFieldsForType(typeId)
+                : { labels: {} as Record<string, string> };
+              return state.addDatasourceFormFieldKeys.map((key, i) => (
+                <box key={key} flexDirection="row">
+                  <text {...commandPaletteItemStyle}>
+                    {labels[key] ?? key}:{' '}
+                  </text>
+                  {state.addDatasourceFormSelected === i ? (
+                    <text {...commandPaletteItemSelectedStyle}>
+                      {(state.addDatasourceFieldValues[key] ?? '') || ' '}
+                    </text>
+                  ) : (
+                    <text {...commandPaletteItemStyle}>
+                      {(state.addDatasourceFieldValues[key] ?? '') || ' '}
+                    </text>
+                  )}
+                </box>
+              ));
+            })()}
             <box flexDirection="row" marginTop={1} gap={1}>
               <text
-                {...(state.addDatasourceFormSelected === 2
+                {...(state.addDatasourceFormSelected ===
+                state.addDatasourceFormFieldKeys.length
                   ? commandPaletteItemSelectedStyle
                   : commandPaletteItemStyle)}
               >
                 [Test connection]
               </text>
               <text
-                {...(state.addDatasourceFormSelected === 3
+                {...(state.addDatasourceFormSelected ===
+                state.addDatasourceFormFieldKeys.length + 1
                   ? commandPaletteItemSelectedStyle
                   : commandPaletteItemStyle)}
               >
                 [Create]
               </text>
               <text
-                {...(state.addDatasourceFormSelected === 4
+                {...(state.addDatasourceFormSelected ===
+                state.addDatasourceFormFieldKeys.length + 2
                   ? commandPaletteItemSelectedStyle
                   : commandPaletteItemStyle)}
               >

@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef } from 'react';
+import { useReducer, useEffect, useRef, useCallback } from 'react';
 import { createCliRenderer } from '@opentui/core';
 import { createRoot, useKeyboard, useTerminalDimensions } from '@opentui/react';
 import type { AppState } from './state/types.ts';
@@ -43,10 +43,11 @@ import {
   testConnection,
   validateProviderConfig,
   normalizeProviderConfig,
-  connectionToRawConfig,
+  fieldValuesToRawConfig,
 } from './server-client.ts';
 import { getDatasourceTypes } from '@qwery/datasource-registry';
 import { getCurrentConversation } from './state/types.ts';
+import { initTuiLogger, tuiLog, tuiLogAction } from './util/tuiLogger.ts';
 
 async function readClipboard(): Promise<string> {
   const platform = typeof process !== 'undefined' ? process.platform : 'linux';
@@ -270,56 +271,83 @@ function AppContent({ state, dispatch }: AppContentProps) {
   useEffect(() => {
     const cellId = state.notebookCellLoading;
     const nb = state.currentNotebook;
-    if (cellId == null || !nb || !state.workspace?.projectId) return;
+    const projectId = state.workspace?.projectId;
+
+    tuiLog('LOG', '[notebook] cell-run effect', {
+      cellId,
+      hasNotebook: !!nb,
+      projectId: projectId ?? null,
+    });
+
+    if (cellId == null || !nb) return;
+    const loadingCellId: number = cellId;
+
+    const clearLoadingWithError = (error: string) => {
+      tuiLog('WARN', '[notebook] clearLoadingWithError', loadingCellId, error);
+      dispatch({ type: 'notebook_cell_error', cellId: loadingCellId, error });
+      dispatch({
+        type: 'notebook_cell_result',
+        cellId: loadingCellId,
+        result: null,
+      });
+      dispatch({ type: 'notebook_cell_loading', cellId: null });
+    };
+    if (!projectId) {
+      tuiLog('WARN', '[notebook] no projectId');
+      clearLoadingWithError(
+        'No project. Start TUI and wait for init, or start a conversation first.',
+      );
+      return;
+    }
     const cell = nb.cells.find((c) => c.cellId === cellId);
     if (!cell || cell.cellType !== 'query') {
-      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      tuiLog('WARN', '[notebook] not a query cell', {
+        cell: !!cell,
+        type: cell?.cellType,
+      });
+      clearLoadingWithError('Cannot run: not a query cell.');
       return;
     }
     if (!cell.datasources?.[0]) {
-      dispatch({
-        type: 'notebook_cell_error',
-        cellId,
-        error: 'Set a datasource for this cell (Ctrl+D)',
-      });
-      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      tuiLog('WARN', '[notebook] no datasource for cell');
+      clearLoadingWithError('Set a datasource for this cell (Ctrl+D).');
       return;
     }
     if (!cell.query?.trim()) {
-      dispatch({
-        type: 'notebook_cell_error',
-        cellId,
-        error: 'Enter a query first',
-      });
-      dispatch({ type: 'notebook_cell_loading', cellId: null });
+      tuiLog('WARN', '[notebook] empty query');
+      clearLoadingWithError('Enter a query first.');
       return;
     }
+
+    tuiLog('LOG', '[notebook] running cell', loadingCellId);
     let cancelled = false;
     ensureServerRunning()
       .then((root) => {
+        tuiLog('LOG', '[notebook] server running, fetching conversations');
         const base = apiBase(root);
-        return getConversationsByProjectId(base, state.workspace!.projectId!);
+        return getConversationsByProjectId(base, projectId);
       })
       .then((convs) => {
         if (cancelled) return;
+        tuiLog('LOG', '[notebook] conversations count', convs?.length ?? 0);
         const conv = convs.find((c) => c.title === `Notebook - ${nb.id}`);
         if (!conv?.id) {
-          dispatch({
-            type: 'notebook_cell_result',
-            cellId,
-            result: null,
-          });
-          dispatch({
-            type: 'notebook_cell_error',
-            cellId,
-            error: 'Notebook conversation not found. Save and reopen notebook.',
-          });
-          dispatch({ type: 'notebook_cell_loading', cellId: null });
+          tuiLog(
+            'WARN',
+            '[notebook] notebook conv not found',
+            `Notebook - ${nb.id}`,
+          );
+          clearLoadingWithError(
+            'Notebook conversation not found. Create the notebook from TUI (Notebooks → New notebook) and try again.',
+          );
           return;
         }
-        const datasourceId = cell.datasources[0];
-        if (!datasourceId) return;
-        const conversationId = conv.slug?.trim() || conv.id;
+        const datasourceId = cell.datasources[0]!;
+        const conversationId = (conv.slug?.trim() || conv.id) as string;
+        tuiLog('LOG', '[notebook] runNotebookQuery', {
+          conversationId,
+          datasourceId,
+        });
         return ensureServerRunning().then((root) =>
           runNotebookQuery(apiBase(root), {
             conversationId,
@@ -330,35 +358,51 @@ function AppContent({ state, dispatch }: AppContentProps) {
       })
       .then((result) => {
         if (cancelled || result === undefined) return;
+        tuiLog('LOG', '[notebook] runNotebookQuery result', {
+          success: result?.success,
+          hasData: !!(result as { data?: unknown })?.data,
+          error: (result as { error?: string })?.error,
+        });
         if (result.success && result.data) {
-          dispatch({ type: 'notebook_cell_error', cellId, error: null });
+          dispatch({
+            type: 'notebook_cell_error',
+            cellId: loadingCellId,
+            error: null,
+          });
           dispatch({
             type: 'notebook_cell_result',
-            cellId,
+            cellId: loadingCellId,
             result: {
-              rows: result.data.rows,
-              headers: result.data.headers.map((h) => ({
-                name: h.name,
-              })),
+              rows: result.data.rows ?? [],
+              headers: (result.data.headers ?? []).map(
+                (h: { name: string }) => ({
+                  name: h.name ?? '',
+                }),
+              ),
             },
           });
         } else {
-          dispatch({
-            type: 'notebook_cell_error',
-            cellId,
-            error: result.error ?? 'Query failed',
-          });
-          dispatch({ type: 'notebook_cell_result', cellId, result: null });
+          clearLoadingWithError(
+            result?.error?.trim()
+              ? result.error
+              : 'Query failed (no details from server).',
+          );
         }
       })
       .catch((err) => {
+        tuiLog('ERROR', '[notebook] runNotebookQuery catch', err);
         if (!cancelled) {
-          const msg = err instanceof Error ? err.message : 'Run failed';
-          dispatch({ type: 'notebook_cell_error', cellId, error: msg });
-          dispatch({ type: 'notebook_cell_result', cellId, result: null });
+          const msg =
+            err instanceof Error
+              ? err.message
+              : typeof err === 'object' && err !== null && 'message' in err
+                ? String((err as { message: string }).message)
+                : 'Run failed (network or server error).';
+          clearLoadingWithError(msg);
         }
       })
       .finally(() => {
+        tuiLog('LOG', '[notebook] cell-run finally', { cancelled });
         if (!cancelled)
           dispatch({ type: 'notebook_cell_loading', cellId: null });
       });
@@ -470,8 +514,10 @@ function AppContent({ state, dispatch }: AppContentProps) {
       dispatch({ type: 'add_datasource_failed' });
       return;
     }
-    const rawConfig = connectionToRawConfig(pending.connection);
-    const validationError = validateProviderConfig(pending.typeId, rawConfig);
+    const validationError = validateProviderConfig(
+      pending.typeId,
+      pending.config,
+    );
     if (validationError) {
       dispatch({
         type: 'set_add_datasource_validation_error',
@@ -480,17 +526,16 @@ function AppContent({ state, dispatch }: AppContentProps) {
       dispatch({ type: 'add_datasource_failed' });
       return;
     }
-    const config = normalizeProviderConfig(pending.typeId, rawConfig);
+    const config = pending.config;
     let cancelled = false;
     console.log('[TUI] Create datasource calling API');
     ensureServerRunning()
       .then((root) => {
         const api = apiBase(root);
-        const name = pending.name.trim() || pending.typeId;
         return createDatasource(api, {
           projectId: state.workspace!.projectId!,
-          name,
-          description: name,
+          name: pending.name,
+          description: pending.name,
           datasource_provider: pending.typeId,
           datasource_driver: pending.typeId,
           datasource_kind: 'embedded',
@@ -540,7 +585,10 @@ function AppContent({ state, dispatch }: AppContentProps) {
       status: 'pending',
       message: '',
     });
-    const rawConfig = connectionToRawConfig(state.addDatasourceConnection);
+    const rawConfig = fieldValuesToRawConfig(
+      state.addDatasourceFieldValues,
+      typeId,
+    );
     const validationError = validateProviderConfig(typeId, rawConfig);
     if (validationError) {
       dispatch({
@@ -559,7 +607,7 @@ function AppContent({ state, dispatch }: AppContentProps) {
       datasource_provider: typeId,
       datasource_driver: typeId,
       datasource_kind: 'embedded',
-      name: state.addDatasourceName.trim() || typeId,
+      name: (state.addDatasourceFieldValues['name'] ?? '').trim() || typeId,
       config,
     };
     let cancelled = false;
@@ -604,8 +652,7 @@ function AppContent({ state, dispatch }: AppContentProps) {
     dispatch,
     state.addDatasourceTestRequest,
     state.addDatasourceTypeId,
-    state.addDatasourceName,
-    state.addDatasourceConnection,
+    state.addDatasourceFieldValues,
   ]);
 
   useKeyboard((e) => {
@@ -815,24 +862,31 @@ function AppContent({ state, dispatch }: AppContentProps) {
 
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState());
+  const dispatchWithLog = useCallback((action: Action) => {
+    tuiLogAction(action.type, action);
+    dispatch(action);
+  }, []);
   return (
     <ThemeProvider themeId={state.themeId}>
-      <AppContent state={state} dispatch={dispatch} />
+      <AppContent state={state} dispatch={dispatchWithLog} />
     </ThemeProvider>
   );
 }
 
-async function setupDebugLogFile() {
-  const logPath =
+async function setupDebugLogFile(): Promise<{
+  resolvedPath: string;
+  fs: typeof import('node:fs');
+} | null> {
+  const envPath =
     typeof process !== 'undefined'
       ? process.env.QWERY_TUI_DEBUG_LOG
       : undefined;
-  if (!logPath || typeof logPath !== 'string') return;
+  if (!envPath || typeof envPath !== 'string') return null;
   const fs = await import('node:fs');
   const path = await import('node:path');
-  const resolvedPath = path.isAbsolute(logPath)
-    ? logPath
-    : path.join(process.cwd(), logPath);
+  const resolvedPath = path.isAbsolute(envPath)
+    ? envPath
+    : path.join(process.cwd(), envPath);
   try {
     fs.writeFileSync(resolvedPath, '');
   } catch {
@@ -853,16 +907,14 @@ async function setupDebugLogFile() {
   console.error = (...args: unknown[]) => write('ERROR', ...args);
   console.warn = (...args: unknown[]) => write('WARN', ...args);
   console.debug = (...args: unknown[]) => write('DEBUG', ...args);
+  return { resolvedPath, fs };
 }
 
 async function main() {
-  await setupDebugLogFile();
-  if (process.env.QWERY_TUI_DEBUG_LOG) {
-    const path = await import('node:path');
-    const resolved = path.isAbsolute(process.env.QWERY_TUI_DEBUG_LOG)
-      ? process.env.QWERY_TUI_DEBUG_LOG
-      : path.join(process.cwd(), process.env.QWERY_TUI_DEBUG_LOG);
-    console.log('[TUI] Debug log active', resolved);
+  const debug = await setupDebugLogFile();
+  if (debug) {
+    initTuiLogger(debug.resolvedPath, debug.fs);
+    console.log('[TUI] Debug log active', debug.resolvedPath);
   }
   const renderer = await createCliRenderer();
   const root = createRoot(renderer);

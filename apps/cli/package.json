@@ -9,7 +9,7 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
-    "build": "tsup --config tsup.config.ts && chmod +x dist/index.js",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' tsup --config tsup.config.ts && chmod +x dist/index.js",
     "clean": "rimraf dist node_modules/.cache/tsbuildinfo.json",
     "dev": "echo \"Use pnpm --filter cli start -- <command>\"",
     "format": "prettier --check \"src/**/*.{ts,tsx}\"",

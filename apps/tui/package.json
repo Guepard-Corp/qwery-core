@@ -13,7 +13,8 @@
     "format:fix": "prettier --write \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\"",
     "lint": "eslint src __tests__",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "bun run scripts/test-notebook-query.ts"
   },
   "bin": {
     "qwery-tui": "dist/index.js"

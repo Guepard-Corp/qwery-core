@@ -116,13 +116,13 @@ export interface AppState {
   addDatasourceTypeNames: string[];
   addDatasourceTypeSelected: number;
   addDatasourceTypeId: string | null;
-  addDatasourceName: string;
-  addDatasourceConnection: string;
+  addDatasourceFieldValues: Record<string, string>;
+  addDatasourceFormFieldKeys: string[];
   addDatasourceFormSelected: number;
   pendingAddDatasource: {
     typeId: string;
     name: string;
-    connection: string;
+    config: Record<string, unknown>;
   } | null;
   addDatasourceValidationError: string | null;
   addDatasourceTestStatus: 'idle' | 'pending' | 'ok' | 'error';
@@ -135,6 +135,7 @@ export interface AppState {
     string,
     { rows: unknown[]; headers: { name: string }[] }
   >;
+  notebookCellResultPage: Record<string, number>;
   notebookCellErrors: Record<string, string>;
   notebookCellLoading: number | null;
   notebooksDialogSelected: number;

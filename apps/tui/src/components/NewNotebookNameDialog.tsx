@@ -50,14 +50,10 @@ export function NewNotebookNameDialog({ state }: NewNotebookNameDialogProps) {
           paddingLeft={1}
           paddingRight={1}
         >
-          <text {...commandPaletteItemStyle}>
-            {display || '(empty)'}
-          </text>
+          <text {...commandPaletteItemStyle}>{display || '(empty)'}</text>
         </box>
         <box height={1} />
-        <text {...messageInfoStyle}>
-          Type name · Enter create · Esc cancel
-        </text>
+        <text {...messageInfoStyle}>Type name · Enter create · Esc cancel</text>
       </box>
     </box>
   );

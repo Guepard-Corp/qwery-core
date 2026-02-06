@@ -120,10 +120,12 @@ describe('BusinessContextService', () => {
       schema,
     });
 
-    // Wait a bit for async save to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const loaded = await loadBusinessContext(testDir);
+    let loaded: Awaited<ReturnType<typeof loadBusinessContext>> = null;
+    for (let i = 0; i < 25; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      loaded = await loadBusinessContext(testDir);
+      if (loaded?.views.has('products')) break;
+    }
 
     expect(loaded).toBeDefined();
     expect(loaded?.views.has('products')).toBe(true);

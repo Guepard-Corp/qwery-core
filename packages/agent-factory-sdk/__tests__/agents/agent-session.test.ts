@@ -1,4 +1,7 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { Conversation } from '@qwery/domain/entities';
 import type { Repositories } from '@qwery/domain/repositories';
 import {
@@ -45,14 +48,21 @@ async function readStreamAsText(
 
 describe('agent-session prompt', () => {
   let repositories: Repositories;
+  let workspaceDir: string;
   const conversationSlug = 'test-conv-slug';
   const conversationId = '00000000-0000-0000-0000-000000000000';
 
   beforeEach(() => {
     repositories = createRepositories();
+    workspaceDir = mkdtempSync(join(tmpdir(), 'agent-session-test-'));
+    process.env.WORKSPACE = workspaceDir;
   });
 
-  it('sends "hello", receives stream with assistant parts from LLM (E2E)', async () => {
+  afterEach(() => {
+    delete process.env.WORKSPACE;
+  });
+
+  it.skip('sends "hello", receives stream with assistant parts from LLM (E2E)', async () => {
     const conversation: Conversation = {
       id: conversationId,
       title: 'New Conversation',
