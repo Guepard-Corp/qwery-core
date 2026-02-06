@@ -4,15 +4,39 @@ export { QweryConversationContent } from './conversation-content';
 export { MessageRenderer } from './message-renderer';
 export {
   TaskPart,
+  StartedStepIndicator,
   TextPart,
   ReasoningPart,
   ToolPart,
   TodoPart,
   SourcesPart,
-  TASK_STATUS_META,
   type TaskStatus,
+  type TaskStep,
+  type TaskSubstep,
   type TaskUIPart,
+  type StartedStepIndicatorProps,
 } from './message-parts';
+
+export {
+  Queue,
+  QueueSection,
+  QueueSectionTrigger,
+  QueueSectionLabel,
+  QueueSectionContent,
+  QueueList,
+  QueueItem,
+  QueueItemIndicator,
+  QueueItemContent,
+  QueueItemDescription,
+  QueueItemActions,
+  QueueItemAction,
+  QueueItemAttachment,
+  QueueItemImage,
+  QueueItemFile,
+  type QueueTodo,
+  type QueueMessage,
+  type QueueMessagePart,
+} from './queue';
 
 export { QweryConversationInit } from './init-conversation';
 export { type PromptInputMessage } from '../../ai-elements/prompt-input';

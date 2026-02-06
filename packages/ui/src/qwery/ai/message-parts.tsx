@@ -2,7 +2,7 @@ import {
   Task,
   TaskContent,
   TaskItem,
-  TaskItemFile,
+  TaskItemIndicator,
   TaskTrigger,
 } from '../../ai-elements';
 import {
@@ -71,6 +71,13 @@ import type { NotebookCellType } from './utils/notebook-cell-type';
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'error';
 
+export type TaskSubstep = {
+  id: string;
+  label: string;
+  description?: string;
+  status: TaskStatus;
+};
+
 export interface MarkdownContextValue {
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   messages?: UIMessage[];
@@ -81,41 +88,22 @@ export const MarkdownContext = createContext<MarkdownContextValue>({});
 
 export const MarkdownProvider = MarkdownContext.Provider;
 
+export type TaskStep = {
+  id: string;
+  label: string;
+  description?: string;
+  status: TaskStatus;
+  substeps?: TaskSubstep[];
+};
+
 export type TaskUIPart = {
   type: 'data-tasks';
   id: string;
   data: {
     title: string;
     subtitle?: string;
-    tasks: {
-      id: string;
-      label: string;
-      description?: string;
-      status: TaskStatus;
-    }[];
+    tasks: TaskStep[];
   };
-};
-
-export const TASK_STATUS_META: Record<
-  TaskStatus,
-  { label: string; badgeClass: string }
-> = {
-  pending: {
-    label: 'Queued',
-    badgeClass: 'bg-secondary text-foreground',
-  },
-  'in-progress': {
-    label: 'Running',
-    badgeClass: 'bg-primary/10 text-primary',
-  },
-  completed: {
-    label: 'Done',
-    badgeClass: 'bg-emerald-500/15 text-emerald-600',
-  },
-  error: {
-    label: 'Error',
-    badgeClass: 'bg-destructive/10 text-destructive',
-  },
 };
 
 export interface TaskPartProps {
@@ -124,217 +112,77 @@ export interface TaskPartProps {
   index: number;
 }
 
+function TaskStepRow({
+  task,
+  isSubstep,
+}: {
+  task: TaskStep | TaskSubstep;
+  isSubstep?: boolean;
+}) {
+  return (
+    <>
+      <TaskItem
+        className={cn(
+          'text-foreground flex items-start gap-3 rounded-md py-1.5 pr-2 text-sm',
+          isSubstep && 'pl-2',
+        )}
+      >
+        <TaskItemIndicator
+          status={task.status}
+          className={cn('mt-0.5 shrink-0', isSubstep ? 'size-3' : 'size-4')}
+        />
+        <div className="min-w-0 flex-1">
+          <span
+            className={cn(
+              task.status === 'completed' && 'text-muted-foreground line-through',
+              task.status === 'error' && 'text-destructive',
+              isSubstep && 'text-xs',
+            )}
+          >
+            {task.label}
+          </span>
+          {task.description ? (
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              {task.description}
+            </p>
+          ) : null}
+        </div>
+      </TaskItem>
+      {'substeps' in task &&
+        task.substeps &&
+        task.substeps.length > 0 && (
+          <ul className="border-muted/50 flex flex-col gap-0.5 border-l pl-3" role="list">
+            {task.substeps.map((sub) => (
+              <li key={sub.id}>
+                <TaskStepRow task={sub} isSubstep />
+              </li>
+            ))}
+          </ul>
+        )}
+    </>
+  );
+}
+
 export function TaskPart({ part, messageId, index }: TaskPartProps) {
   return (
     <Task
       key={`${messageId}-${part.id}-${index}`}
-      className="border-border bg-background/60 w-full border"
+      className="bg-muted/30 w-full rounded-lg border border-border/60 px-2 py-1"
     >
       <TaskTrigger title={part.data.title} />
       <TaskContent>
         {part.data.subtitle ? (
-          <p className="text-muted-foreground text-xs">{part.data.subtitle}</p>
+          <p className="text-muted-foreground mb-2 text-xs">
+            {part.data.subtitle}
+          </p>
         ) : null}
-        {part.data.tasks.map((task) => {
-          const meta = TASK_STATUS_META[task.status];
-          return (
-            <TaskItem
-              key={task.id}
-              className="text-foreground flex flex-col gap-1 text-sm"
-            >
-              <div className="flex items-center gap-2">
-                <TaskItemFile className={meta.badgeClass}>
-                  {meta.label}
-                </TaskItemFile>
-                <span>{task.label}</span>
-              </div>
-              {task.description ? (
-                <p className="text-muted-foreground text-xs">
-                  {task.description}
-                </p>
-              ) : null}
-            </TaskItem>
-          );
-        })}
-      </TaskContent>
-    </Task>
-  );
-}
-
-export type TodoItemUI = {
-  id: string;
-  content: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: string;
-};
-
-const TODO_STATUS_META: Record<
-  TodoItemUI['status'],
-  {
-    label: string;
-    badgeClass: string;
-    iconClass: string;
-    Icon: React.ComponentType<{ className?: string }>;
-    strikethrough: boolean;
-  }
-> = {
-  pending: {
-    label: 'Queued',
-    badgeClass: 'bg-muted/50 text-muted-foreground',
-    iconClass: 'text-muted-foreground',
-    Icon: CircleDashedIcon,
-    strikethrough: false,
-  },
-  in_progress: {
-    label: 'Running',
-    badgeClass: 'bg-primary/10 text-primary',
-    iconClass: 'text-primary',
-    Icon: ArrowRightIcon,
-    strikethrough: false,
-  },
-  completed: {
-    label: 'Done',
-    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-    iconClass: 'text-emerald-600 dark:text-emerald-400',
-    Icon: CheckCircle2Icon,
-    strikethrough: true,
-  },
-  cancelled: {
-    label: 'Cancelled',
-    badgeClass: 'bg-destructive/10 text-destructive',
-    iconClass: 'text-destructive',
-    Icon: XCircleIcon,
-    strikethrough: true,
-  },
-};
-
-const DEFAULT_TODO_STATUS: TodoItemUI['status'] = 'pending';
-
-function getTodoStatusMeta(
-  status: string | undefined,
-): (typeof TODO_STATUS_META)[TodoItemUI['status']] {
-  const normalized =
-    status === 'in-progress'
-      ? 'in_progress'
-      : (status as TodoItemUI['status'] | undefined);
-  return (
-    (normalized && TODO_STATUS_META[normalized]) ??
-    TODO_STATUS_META[DEFAULT_TODO_STATUS]
-  );
-}
-
-function parseTodosFromPart(
-  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
-): TodoItemUI[] {
-  if (part.type === 'tool-todowrite') {
-    const input = part.input as { todos?: TodoItemUI[] } | null;
-    const todos = input?.todos;
-    return Array.isArray(todos) ? todos : [];
-  }
-  const output = part.output;
-  if (output == null) return [];
-  if (Array.isArray(output)) return output as TodoItemUI[];
-  if (typeof output === 'string') {
-    try {
-      const parsed = JSON.parse(output) as TodoItemUI[] | unknown;
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  if (typeof output === 'object' && output !== null && 'todos' in output) {
-    const todos = (output as { todos: TodoItemUI[] }).todos;
-    return Array.isArray(todos) ? todos : [];
-  }
-  return [];
-}
-
-function todoPartTitle(
-  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
-  todos: TodoItemUI[],
-): string {
-  if (part.type === 'tool-todoread') return 'Todo list';
-  if (todos.length === 0) return 'Plan';
-  const allPending = todos.every((t) => t.status === 'pending');
-  const allCompleted = todos.every((t) => t.status === 'completed');
-  if (allPending) return 'Creating plan';
-  if (allCompleted) return 'Completing plan';
-  return 'Updating plan';
-}
-
-function todoPartSubtitle(todos: TodoItemUI[]): string | null {
-  if (todos.length === 0) return null;
-  const completed = todos.filter((t) => t.status === 'completed').length;
-  return `${completed} of ${todos.length} To-dos`;
-}
-
-export type TodoPartProps = {
-  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' };
-  messageId: string;
-  index: number;
-};
-
-export function TodoPart({ part, messageId, index }: TodoPartProps) {
-  const todos = parseTodosFromPart(part);
-  const title = todoPartTitle(part, todos);
-  const subtitle = todoPartSubtitle(todos);
-  const displayTitle = subtitle ?? title;
-
-  return (
-    <Task
-      key={`${messageId}-todo-${index}`}
-      className="group border-border bg-card hover:border-border/80 w-full rounded-xl border shadow-sm transition-colors"
-    >
-      <TaskTrigger title={displayTitle}>
-        <div className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-2 py-2 pr-1.5 text-sm transition-colors">
-          <div className="bg-primary/10 text-primary flex shrink-0 items-center justify-center rounded-md p-1.5">
-            <ListTodo className="size-3.5" />
-          </div>
-          <span className="min-w-0 flex-1 font-medium">{displayTitle}</span>
-          <ChevronDownIcon className="size-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-        </div>
-      </TaskTrigger>
-      <TaskContent>
-        <div className="pl-3">
-          {todos.length === 0 ? (
-            <p className="text-muted-foreground text-xs">No items yet</p>
-          ) : (
-            <ul className="space-y-0.5" data-component="todos">
-              {todos.map((todo) => {
-                const meta = getTodoStatusMeta(todo.status);
-                const StatusIcon = meta.Icon ?? CircleDashedIcon;
-                return (
-                  <li
-                    key={todo.id}
-                    className={cn(
-                      'flex items-center gap-2 py-1.5 text-sm',
-                      meta.strikethrough && 'text-muted-foreground',
-                    )}
-                    data-status={todo.status}
-                  >
-                    <div
-                      className={cn(
-                        'flex shrink-0 items-center justify-center rounded-full p-1',
-                        meta.badgeClass,
-                        meta.iconClass,
-                      )}
-                    >
-                      <StatusIcon className="size-3" />
-                    </div>
-                    <span
-                      className={cn(
-                        'min-w-0 flex-1',
-                        meta.strikethrough && 'line-through',
-                      )}
-                    >
-                      {todo.content}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <ul className="flex flex-col gap-0.5" role="list">
+          {part.data.tasks.map((task) => (
+            <li key={task.id}>
+              <TaskStepRow task={task} />
+            </li>
+          ))}
+        </ul>
       </TaskContent>
     </Task>
   );

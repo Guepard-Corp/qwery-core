@@ -2,6 +2,8 @@ import type { StorybookConfig } from '@storybook/react-vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { mergeConfig } from 'vite';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const config: StorybookConfig = {
@@ -17,7 +19,13 @@ const config: StorybookConfig = {
   },
   async viteFinal(config) {
     return mergeConfig(config, {
-      plugins: [react(), tsconfigPaths(), tailwindcss()],
+      plugins: [
+        react(),
+        wasm(),
+        topLevelAwait(),
+        tsconfigPaths(),
+        tailwindcss(),
+      ],
       esbuild: {
         jsx: 'automatic',
       },
@@ -46,6 +54,17 @@ const config: StorybookConfig = {
           '@duckdb/node-bindings-win32-x64',
           '@duckdb/node-bindings-darwin-x64',
           '@duckdb/node-bindings-linux-x64',
+          '@qwery/extension-clickhouse-node',
+          '@qwery/extension-clickhouse-web',
+          '@qwery/extension-duckdb',
+          '@qwery/extension-duckdb-wasm',
+          '@qwery/extension-pglite',
+          '@qwery/extension-mysql',
+          '@qwery/extension-postgresql',
+          '@qwery/extension-json-online',
+          '@qwery/extension-gsheet-csv',
+          '@qwery/extension-parquet-online',
+          '@qwery/extension-youtube-data-api-v3',
         ],
       },
     });
