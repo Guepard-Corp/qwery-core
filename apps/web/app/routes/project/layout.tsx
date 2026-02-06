@@ -21,6 +21,7 @@ import { AgentUIWrapper } from './_components/agent-ui-wrapper';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
 import { AgentTabs, AgentStatusProvider } from '@qwery/ui/ai';
+import { LeaveConfirmationProvider } from '~/lib/context/leave-confirmation-context';
 import { useGetMessagesByConversationSlug } from '~/lib/queries/use-get-messages';
 import {
   NotebookSidebarProvider,
@@ -31,6 +32,8 @@ import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
+// LocalStorage key for persisting notebook sidebar open/closed state
+const NOTEBOOK_SIDEBAR_OPEN_KEY = 'notebook-sidebar-open';
 
 export async function loader(_args: Route.LoaderArgs) {
   return {
@@ -155,15 +158,20 @@ function SidebarLayoutInner(
   // This prevents reopening when user manually closes it
   const hasOpenedOnMountRef = useRef(false);
 
-  // Open sidebar on mount/refresh when conversation param is present
-  // Only open once on initial mount, not on every conversation change
+  // Open sidebar on mount only when conversation exists and user had it open last time
   useEffect(() => {
     if (isNotebookPage && sidebarRef.current && !hasOpenedOnMountRef.current) {
-      // Check if we should open based on URL or persisted conversation
       const hasConversation =
         conversationSlugFromUrl || persistedConversationSlug;
       if (hasConversation && conversationSlug !== 'default') {
-        // Small delay to ensure everything is mounted
+        const persistedOpen =
+          typeof window !== 'undefined'
+            ? localStorage.getItem(NOTEBOOK_SIDEBAR_OPEN_KEY)
+            : null;
+        if (persistedOpen === 'false') {
+          hasOpenedOnMountRef.current = true;
+          return;
+        }
         const timeoutId = setTimeout(() => {
           sidebarRef.current?.open();
           hasOpenedOnMountRef.current = true;
@@ -198,10 +206,25 @@ function SidebarLayoutInner(
 
   return (
     <AgentStatusProvider>
-      <SidebarProvider defaultOpen={layoutState.open}>
+      <LeaveConfirmationProvider>
+        <SidebarProvider defaultOpen={layoutState.open}>
         <Page
           agentSidebarOpen={undefined}
           agentSidebarRef={isNotebookPage ? sidebarRef : undefined}
+          agentSidebarOnOpenChange={
+            isNotebookPage
+              ? (open) => {
+                  try {
+                    localStorage.setItem(
+                      NOTEBOOK_SIDEBAR_OPEN_KEY,
+                      open ? 'true' : 'false',
+                    );
+                  } catch {
+                    // ignore
+                  }
+                }
+              : undefined
+          }
         >
           <PageTopNavigation>
             <ProjectLayoutTopBar />
@@ -234,6 +257,7 @@ function SidebarLayoutInner(
           {props.children}
         </Page>
       </SidebarProvider>
+      </LeaveConfirmationProvider>
     </AgentStatusProvider>
   );
 }
