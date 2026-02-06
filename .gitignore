@@ -182,3 +182,13 @@ test.db
 qwery.db
 
 starlight
+
+# Workspace runtime dirs (not source)
+/workspace/
+apps/server/workspace/
+apps/cli/workspace/
+apps/web/workspace/
+packages/agent-factory-sdk/workspace/
+
+# React Router build output
+**/.react-router/
