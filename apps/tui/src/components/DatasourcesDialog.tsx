@@ -86,7 +86,7 @@ export function DatasourcesDialog({ state }: DatasourcesDialogProps) {
                 <box key={item.id} flexDirection="row">
                   {isSelected ? (
                     <text {...commandPaletteItemSelectedStyle}>
-                      {display.padEnd(45)} {item.attached ? 'detach' : 'attach'}
+                      {display.padEnd(45)} {item.attached ? '−' : '+'}
                     </text>
                   ) : (
                     <text {...commandPaletteItemStyle}>{display}</text>
@@ -98,8 +98,7 @@ export function DatasourcesDialog({ state }: DatasourcesDialogProps) {
         )}
         <box height={1} />
         <text {...messageInfoStyle}>
-          Enter: attach/detach or add new · ctrl+d datasources · ctrl+shift+a
-          add
+          Enter: toggle or add new · ctrl+d datasources · ctrl+shift+a add
         </text>
       </box>
     </box>

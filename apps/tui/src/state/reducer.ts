@@ -9,6 +9,11 @@ import type {
 } from './types.ts';
 import { getCurrentConversation } from './types.ts';
 import { themeIds } from '../theme/themes.ts';
+import {
+  fieldValuesToRawConfig,
+  normalizeProviderConfig,
+} from '../server-client.ts';
+import { getFormFieldsForType } from '../util/datasource-form-fields.ts';
 
 export type Action =
   | { type: 'key'; key: string }
@@ -35,12 +40,7 @@ export type Action =
   | { type: 'clear_pending_datasource_sync' }
   | { type: 'set_pending_datasource_sync'; conversationId: string }
   | { type: 'set_add_datasource_type_ids'; ids: string[]; names: string[] }
-  | {
-      type: 'submit_add_datasource';
-      typeId: string;
-      name: string;
-      connection: string;
-    }
+  | { type: 'submit_add_datasource' }
   | {
       type: 'add_datasource_created';
       datasources: AppState['projectDatasources'];
@@ -112,7 +112,12 @@ export type Action =
   | { type: 'stop_editing_cell_title' }
   | { type: 'clear_request_new_notebook' }
   | { type: 'notebook_cell_error'; cellId: number; error: string | null }
-  | { type: 'set_notebook_create_error'; error: string | null };
+  | { type: 'set_notebook_create_error'; error: string | null }
+  | {
+      type: 'set_notebook_result_page';
+      cellId: number;
+      page: number;
+    };
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
@@ -287,15 +292,21 @@ export function reducer(state: AppState, action: Action): AppState {
         addDatasourceTypeNames: action.names,
       };
 
-    case 'submit_add_datasource':
+    case 'submit_add_datasource': {
+      const typeId = state.addDatasourceTypeId;
+      if (!typeId) return state;
+      const rawConfig = fieldValuesToRawConfig(
+        state.addDatasourceFieldValues,
+        typeId,
+      );
+      const name =
+        (state.addDatasourceFieldValues['name'] ?? '').trim() || typeId;
+      const config = normalizeProviderConfig(typeId, rawConfig);
       return {
         ...state,
-        pendingAddDatasource: {
-          typeId: action.typeId,
-          name: action.name,
-          connection: action.connection,
-        },
+        pendingAddDatasource: { typeId, name, config },
       };
+    }
 
     case 'add_datasource_created':
       return {
@@ -305,8 +316,8 @@ export function reducer(state: AppState, action: Action): AppState {
         projectDatasources: action.datasources,
         addDatasourceStep: 'type',
         addDatasourceTypeId: null,
-        addDatasourceName: '',
-        addDatasourceConnection: '',
+        addDatasourceFieldValues: {},
+        addDatasourceFormFieldKeys: [],
       };
 
     case 'add_datasource_failed':
@@ -395,6 +406,7 @@ export function reducer(state: AppState, action: Action): AppState {
         currentScreen:
           state.currentScreen === 'notebook' ? 'home' : state.currentScreen,
         notebookCellResults: {},
+        notebookCellResultPage: {},
         notebookCellErrors: {},
         notebookCellLoading: null,
         notebookCellInput: '',
@@ -404,16 +416,26 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'notebook_cell_result': {
       const next = { ...state.notebookCellResults };
+      const nextPage = { ...state.notebookCellResultPage };
       if (action.result) {
         next[String(action.cellId)] = action.result;
+        nextPage[String(action.cellId)] = 0;
       } else {
         delete next[String(action.cellId)];
+        delete nextPage[String(action.cellId)];
       }
       return {
         ...state,
         notebookCellResults: next,
+        notebookCellResultPage: nextPage,
         notebookCellLoading: null,
       };
+    }
+
+    case 'set_notebook_result_page': {
+      const next = { ...state.notebookCellResultPage };
+      next[String(action.cellId)] = Math.max(0, action.page);
+      return { ...state, notebookCellResultPage: next };
     }
 
     case 'notebook_cell_loading':
@@ -586,8 +608,8 @@ export function reducer(state: AppState, action: Action): AppState {
             addDatasourceTypeNames: [],
             addDatasourceTypeSelected: 0,
             addDatasourceTypeId: null,
-            addDatasourceName: '',
-            addDatasourceConnection: '',
+            addDatasourceFieldValues: {},
+            addDatasourceFormFieldKeys: [],
             addDatasourceFormSelected: 0,
           };
         case 'show_notebooks':
@@ -743,13 +765,13 @@ export function reducer(state: AppState, action: Action): AppState {
       state.addDatasourceStep === 'form'
     ) {
       const sel = state.addDatasourceFormSelected;
-      if (sel >= 2) return state;
-      return {
-        ...state,
-        ...(sel === 0
-          ? { addDatasourceName: state.addDatasourceName + text }
-          : { addDatasourceConnection: state.addDatasourceConnection + text }),
-      };
+      const fieldKeys = state.addDatasourceFormFieldKeys;
+      if (sel >= fieldKeys.length) return state;
+      const key = fieldKeys[sel];
+      if (!key) return state;
+      const next = { ...state.addDatasourceFieldValues };
+      next[key] = (next[key] ?? '') + text;
+      return { ...state, addDatasourceFieldValues: next };
     }
     if (state.activeDialog === 'command') {
       return {
@@ -1094,8 +1116,8 @@ function handleDialogKey(state: AppState, key: string): AppState {
           addDatasourceTypeNames: [],
           addDatasourceTypeSelected: 0,
           addDatasourceTypeId: null,
-          addDatasourceName: '',
-          addDatasourceConnection: '',
+          addDatasourceFieldValues: {},
+          addDatasourceFormFieldKeys: [],
           addDatasourceFormSelected: 0,
         };
       }
@@ -1151,11 +1173,17 @@ function handleDialogKey(state: AppState, key: string): AppState {
         const typeName =
           state.addDatasourceTypeNames[state.addDatasourceTypeSelected] ??
           typeId;
+        const { fieldKeys } = getFormFieldsForType(typeId);
+        const fieldValues: Record<string, string> = {};
+        for (const k of fieldKeys) {
+          fieldValues[k] = k === 'name' ? typeName : '';
+        }
         return {
           ...state,
           addDatasourceStep: 'form',
           addDatasourceTypeId: typeId,
-          addDatasourceName: typeName,
+          addDatasourceFormFieldKeys: fieldKeys,
+          addDatasourceFieldValues: fieldValues,
           addDatasourceFormSelected: 0,
           addDatasourceValidationError: null,
           addDatasourceTestStatus: 'idle',
@@ -1168,8 +1196,8 @@ function handleDialogKey(state: AppState, key: string): AppState {
           ...state,
           addDatasourceStep: 'type',
           addDatasourceTypeId: null,
-          addDatasourceName: '',
-          addDatasourceConnection: '',
+          addDatasourceFieldValues: {},
+          addDatasourceFormFieldKeys: [],
           addDatasourceFormSelected: 0,
           addDatasourceValidationError: null,
           addDatasourceTestStatus: 'idle',
@@ -1177,7 +1205,9 @@ function handleDialogKey(state: AppState, key: string): AppState {
         };
       }
       const sel = state.addDatasourceFormSelected;
-      const maxFormSel = 4;
+      const fieldKeys = state.addDatasourceFormFieldKeys;
+      const numFields = fieldKeys.length;
+      const maxFormSel = numFields + 2;
 
       if (key === 'up') {
         return {
@@ -1191,23 +1221,23 @@ function handleDialogKey(state: AppState, key: string): AppState {
           addDatasourceFormSelected: sel >= maxFormSel ? 0 : sel + 1,
         };
       }
-      if (key === 'left' && sel >= 2) {
+      if (key === 'left' && sel >= numFields) {
         return {
           ...state,
-          addDatasourceFormSelected: sel <= 2 ? 4 : sel - 1,
+          addDatasourceFormSelected: sel <= numFields ? maxFormSel : sel - 1,
         };
       }
-      if (key === 'right' && sel >= 2) {
+      if (key === 'right' && sel >= numFields) {
         return {
           ...state,
-          addDatasourceFormSelected: sel >= 4 ? 2 : sel + 1,
+          addDatasourceFormSelected: sel >= maxFormSel ? numFields : sel + 1,
         };
       }
       if (key === 'enter') {
-        if (sel === 2) {
+        if (sel === numFields) {
           return { ...state, addDatasourceTestRequest: true };
         }
-        if (sel === 3) {
+        if (sel === numFields + 1) {
           const typeId = state.addDatasourceTypeId;
           if (!typeId) {
             return {
@@ -1222,21 +1252,16 @@ function handleDialogKey(state: AppState, key: string): AppState {
                 'No project. Restart TUI to initialize workspace.',
             };
           }
-          return reducer(state, {
-            type: 'submit_add_datasource',
-            typeId,
-            name: state.addDatasourceName.trim() || typeId,
-            connection: state.addDatasourceConnection,
-          });
+          return reducer(state, { type: 'submit_add_datasource' });
         }
-        if (sel === 4) {
+        if (sel === numFields + 2) {
           return {
             ...state,
             activeDialog: 'none',
             addDatasourceStep: 'type',
             addDatasourceTypeId: null,
-            addDatasourceName: '',
-            addDatasourceConnection: '',
+            addDatasourceFieldValues: {},
+            addDatasourceFormFieldKeys: [],
             addDatasourceFormSelected: 0,
             addDatasourceValidationError: null,
             addDatasourceTestStatus: 'idle',
@@ -1245,27 +1270,18 @@ function handleDialogKey(state: AppState, key: string): AppState {
         }
         return state;
       }
-      if (sel >= 2) return state;
+      if (sel >= numFields) return state;
+      const currentKey = fieldKeys[sel];
+      if (!currentKey) return state;
       if (key === 'backspace') {
-        return {
-          ...state,
-          ...(sel === 0
-            ? { addDatasourceName: state.addDatasourceName.slice(0, -1) }
-            : {
-                addDatasourceConnection: state.addDatasourceConnection.slice(
-                  0,
-                  -1,
-                ),
-              }),
-        };
+        const next = { ...state.addDatasourceFieldValues };
+        next[currentKey] = (next[currentKey] ?? '').slice(0, -1);
+        return { ...state, addDatasourceFieldValues: next };
       }
       if (key.length === 1) {
-        return {
-          ...state,
-          ...(sel === 0
-            ? { addDatasourceName: state.addDatasourceName + key }
-            : { addDatasourceConnection: state.addDatasourceConnection + key }),
-        };
+        const next = { ...state.addDatasourceFieldValues };
+        next[currentKey] = (next[currentKey] ?? '') + key;
+        return { ...state, addDatasourceFieldValues: next };
       }
     }
   }
@@ -1353,6 +1369,29 @@ function handleNotebookKey(state: AppState, key: string): AppState {
   if (key === 'escape' || key === 'esc') {
     return reducer(state, { type: 'close_notebook' });
   }
+  const ROWS_PER_PAGE = 10;
+  const result = cell ? state.notebookCellResults[String(cell.cellId)] : null;
+  const totalPages = result
+    ? Math.max(1, Math.ceil(result.rows.length / ROWS_PER_PAGE))
+    : 0;
+  const currentPage = (
+    cell && result
+      ? (state.notebookCellResultPage[String(cell.cellId)] ?? 0)
+      : 0
+  ) as number;
+  if (totalPages > 1 && (key === 'left' || key === 'right') && cell) {
+    const nextPage =
+      key === 'left'
+        ? Math.max(0, currentPage - 1)
+        : Math.min(totalPages - 1, currentPage + 1);
+    if (nextPage !== currentPage) {
+      return reducer(state, {
+        type: 'set_notebook_result_page',
+        cellId: cell.cellId,
+        page: nextPage,
+      });
+    }
+  }
   if (key === 'backspace') {
     return {
       ...state,
@@ -1389,7 +1428,7 @@ function handleNotebookKey(state: AppState, key: string): AppState {
     });
     return next;
   }
-  if (key === 'ctrl+enter' || key === 'ctrl+return' || key === 'ctrl+j') {
+  if (key === 'ctrl+r') {
     if (cell?.cellType === 'query' && state.notebookCellInput.trim()) {
       const next = reducer(state, {
         type: 'update_notebook_cell_query',

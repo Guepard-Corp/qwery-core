@@ -19,7 +19,7 @@ export function ChatView({ state }: ChatViewProps) {
   const messages = conv?.messages ?? [];
   const title = conv?.title ?? 'New Conversation';
   const mainWidth = state.width - SIDEBAR_WIDTH;
-  const { colors, messageInfoStyle } = useStyles();
+  useStyles();
 
   const attachedNames =
     conv?.datasources?.length && state.projectDatasources.length
@@ -67,21 +67,6 @@ export function ChatView({ state }: ChatViewProps) {
     <box flexDirection="row" width={state.width} height={state.height}>
       <box flexDirection="column" flexGrow={1} width={mainWidth}>
         <ChatTitleBar title={title} width={mainWidth} />
-        {attachedNames.length > 0 && (
-          <>
-            <box height={1} />
-            <box
-              flexDirection="row"
-              paddingLeft={1}
-              paddingRight={1}
-              paddingTop={0}
-              paddingBottom={0}
-            >
-              <text {...messageInfoStyle}>Datasources: </text>
-              <text fg={colors.cyan}>{attachedNames.join(', ')}</text>
-            </box>
-          </>
-        )}
         <box height={1} />
         <scrollbox flexDirection="column" flexGrow={1}>
           {messages.map((msg, i) => (
@@ -121,7 +106,11 @@ export function ChatView({ state }: ChatViewProps) {
         <ChatInput value={state.chatInput} width={mainWidth} />
         <ChatStatusBar width={mainWidth} mesh={state.meshStatus} />
       </box>
-      <Sidebar conversation={conv} height={state.height} />
+      <Sidebar
+        conversation={conv}
+        attachedDatasourceNames={attachedNames}
+        height={state.height}
+      />
     </box>
   );
 }

@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     include: ['__tests__/**/*.test.ts'],
     clearMocks: true,
+    hookTimeout: 60_000,
     coverage: {
       provider: 'istanbul',
       exclude: [

@@ -9,9 +9,12 @@ import { DatasourceKind, type Datasource } from '@qwery/domain/entities';
 import { DatasourceRepository } from '../src/datasource.repository';
 import { ProjectRepository } from '../src/project.repository';
 
-// Mock extensions-sdk
 vi.mock('@qwery/extensions-sdk', () => ({
   getDiscoveredDatasource: vi.fn(),
+}));
+
+vi.mock('@qwery/domain/utils', () => ({
+  getSecretFields: () => ['password'],
 }));
 
 import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
