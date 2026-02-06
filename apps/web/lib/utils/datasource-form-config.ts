@@ -95,10 +95,14 @@ type ProviderRule = {
 };
 
 const stringOrUndefined = z.union([z.string(), z.undefined()]);
+const portCoerce = z.preprocess(
+  (v) => (v === '' || v === undefined ? undefined : v),
+  z.coerce.number().int().min(1).max(65535).optional(),
+);
 const baseConfigSchema = z.record(z.unknown()).and(
   z.object({
     host: stringOrUndefined.optional(),
-    port: stringOrUndefined.optional(),
+    port: portCoerce,
     database: stringOrUndefined.optional(),
     username: stringOrUndefined.optional(),
     password: stringOrUndefined.optional(),
