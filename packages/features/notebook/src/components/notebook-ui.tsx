@@ -96,6 +96,8 @@ interface NotebookUIProps {
   hasUnsavedChanges?: boolean;
   isNotebookLoading?: boolean;
   onNoDatasourceError?: () => void;
+  chatSidebarAgentState?: 'idle' | 'processing';
+  isChatSidebarOpen?: boolean;
 }
 
 // Visual indicator for duplication mode
@@ -606,6 +608,8 @@ export function NotebookUI({
   hasUnsavedChanges = false,
   isNotebookLoading = false,
   onNoDatasourceError,
+  chatSidebarAgentState,
+  isChatSidebarOpen = false,
 }: NotebookUIProps) {
   // Initialize cells from notebook or initialCells, default to empty array
   const [cells, setCells] = React.useState<NotebookCellData[]>(() => {
@@ -1281,6 +1285,23 @@ export function NotebookUI({
               ) : (
                 <>
                   <h1 className="text-2xl font-semibold">{headerTitle}</h1>
+                  {((chatSidebarAgentState === 'processing') ||
+                    (isChatSidebarOpen && chatSidebarAgentState === 'idle')) && (
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                        chatSidebarAgentState === 'processing'
+                          ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                          : 'bg-muted text-muted-foreground',
+                      )}
+                      aria-label={`Chat sidebar: ${chatSidebarAgentState}`}
+                      title={`Chat sidebar: ${chatSidebarAgentState}`}
+                    >
+                      {chatSidebarAgentState === 'processing'
+                        ? 'Processing'
+                        : 'Idle'}
+                    </span>
+                  )}
                   {hasUnsavedChanges && (
                     <span
                       className="h-3 w-3 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm"
