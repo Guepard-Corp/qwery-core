@@ -492,7 +492,7 @@ export function UserMessageBubble({
                       className="flex !w-auto max-w-[80%] min-w-0"
                     >
                       <MessageContent className="overflow-wrap-anywhere max-w-full min-w-0 break-words">
-                        <span className="text-sm font-semibold break-words">
+                        <span className="text-base font-semibold break-words">
                           {userQuestion}
                         </span>
                       </MessageContent>
@@ -504,7 +504,7 @@ export function UserMessageBubble({
                   <div className="mt-1 shrink-0">
                     <BotAvatar size={6} isLoading={false} />
                   </div>
-                  <div className="prose prose-sm dark:prose-invert [&_li]:text-foreground [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:list-inside [&_ul]:list-disc [&_ul]:pl-6">
+                  <div className="prose prose-base dark:prose-invert [&_li]:text-foreground [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:list-inside [&_ul]:list-disc [&_ul]:pl-6">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={agentMarkdownComponents}
@@ -526,7 +526,7 @@ export function UserMessageBubble({
             className="overflow-wrap-anywhere max-w-full min-w-0 break-words"
             style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
           >
-            <span className="text-sm font-semibold break-words">{text}</span>
+            <span className="text-base font-semibold break-words">{text}</span>
           </MessageContent>
         </Message>
       </div>

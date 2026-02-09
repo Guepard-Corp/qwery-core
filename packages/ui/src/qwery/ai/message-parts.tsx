@@ -200,6 +200,26 @@ export function TaskPart({ part, messageId, index }: TaskPartProps) {
   );
 }
 
+export interface StartedStepIndicatorProps {
+  stepIndex: number;
+  stepLabel?: string;
+}
+
+export function StartedStepIndicator({
+  stepIndex,
+  stepLabel,
+}: StartedStepIndicatorProps) {
+  return (
+    <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+      <CircleDashedIcon className="h-3.5 w-3.5 animate-spin" />
+      <span>
+        Step {stepIndex}
+        {stepLabel ? `: ${stepLabel}` : ''}
+      </span>
+    </div>
+  );
+}
+
 export interface TextPartProps {
   part: { type: 'text'; text: string };
   messageId: string;
@@ -268,7 +288,7 @@ export function TextPart({
           )}
         >
           <MessageContent>
-            <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_div[data-code-block-container]]:w-full [&_div[data-code-block-container]]:max-w-[28rem] [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
+            <div className="prose prose-base dark:prose-invert overflow-wrap-anywhere max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_div[data-code-block-container]]:w-full [&_div[data-code-block-container]]:max-w-[28rem] [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={agentMarkdownComponents}
@@ -351,7 +371,7 @@ export function ReasoningPart({
         >
           <ReasoningTrigger />
           <ReasoningContent>
-            <div className="prose prose-sm dark:prose-invert overflow-wrap-anywhere [&_p]:text-foreground/90 [&_li]:text-foreground/90 [&_strong]:text-foreground [&_em]:text-foreground/80 [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_a]:text-primary max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
+            <div className="prose prose-base dark:prose-invert overflow-wrap-anywhere [&_p]:text-foreground/90 [&_li]:text-foreground/90 [&_strong]:text-foreground [&_em]:text-foreground/80 [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_a]:text-primary max-w-none min-w-0 overflow-x-hidden break-words [&_code]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&>*]:max-w-full [&>*]:min-w-0">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={agentMarkdownComponents}
@@ -600,6 +620,16 @@ export interface ToolPartProps {
   };
 }
 
+export interface TodoPartProps {
+  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' };
+  messageId: string;
+  index: number;
+}
+
+export function TodoPart({ part, messageId, index }: TodoPartProps) {
+  return <ToolPart part={part} messageId={messageId} index={index} />;
+}
+
 export function ToolPart({
   part,
   messageId,
@@ -810,12 +840,7 @@ export function ToolPart({
         );
       }
       if (part.output && output?.query) {
-        return (
-          <SQLQueryVisualizer
-            query={output.query}
-            result={undefined}
-          />
-        );
+        return <SQLQueryVisualizer query={output.query} result={undefined} />;
       }
     }
 

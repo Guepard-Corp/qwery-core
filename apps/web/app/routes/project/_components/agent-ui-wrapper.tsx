@@ -262,6 +262,12 @@ export const AgentUIWrapper = forwardRef<
     workspace.userId,
   ]);
 
+  // Clear pending when conversation changes (e.g. user switched conversation)
+  // so we show the new conversation's datasources instead of stale pending
+  useEffect(() => {
+    setPendingDatasources(null);
+  }, [conversation?.id]);
+
   // Priority for display: cellDatasource > pending datasources > conversation datasources
   // This ensures the notebook cell's datasource is shown in the UI immediately
   // cellDatasource is cleared when user manually changes selection or after first message
@@ -353,6 +359,12 @@ export const AgentUIWrapper = forwardRef<
               ? selectedDatasources
               : undefined;
 
+          console.log('[AgentUIWrapper] sendMessageRef', {
+            currentCellDs,
+            selectedDatasources,
+            datasourcesToUse,
+          });
+
           // Update conversation datasources BEFORE sending message.
           // Uses mutateAsync so the returned Promise is independent of any
           // concurrent mutate() calls (avoids the 2-click race condition).
@@ -420,8 +432,12 @@ export const AgentUIWrapper = forwardRef<
           // Note: We keep cellId, notebookCellType, and datasourceId for paste functionality
           // They will be cleared when the conversation ends or user navigates away
 
-          // Send message with metadata - useChat should preserve metadata if passed in message object
-          // We'll also update the message after it's created as a fallback
+          const requestBody = {
+            model: currentModelRef.current,
+            datasources: datasourcesToUse,
+          };
+          console.log('[AgentUIWrapper] calling sendMessage with body', requestBody);
+
           await internalSendMessageRef.current(
             {
               text,
@@ -430,10 +446,7 @@ export const AgentUIWrapper = forwardRef<
                 : {}),
             },
             {
-              body: {
-                model: currentModelRef.current, // Use the current model from chat interface
-                datasources: datasourcesToUse, // This MUST be the correct datasource(s)
-              },
+              body: requestBody,
             },
           );
 
@@ -542,11 +555,12 @@ export const AgentUIWrapper = forwardRef<
   // Handle datasource selection change and save to conversation
   const handleDatasourceSelectionChange = useCallback(
     (datasourceIds: string[]) => {
-      // Clear cell datasource when user manually changes selection
-      // This allows user to override the notebook cell's datasource
+      console.log('[AgentUIWrapper] handleDatasourceSelectionChange', {
+        datasourceIds,
+        length: datasourceIds.length,
+      });
       clearCellDatasource();
 
-      // Set pending datasources for immediate UI update
       setPendingDatasources(datasourceIds);
 
       // Save to conversation if conversation is loaded
@@ -564,7 +578,7 @@ export const AgentUIWrapper = forwardRef<
             {
               id: conversation.id,
               datasources: datasourceIds,
-              updatedBy: workspace.userId,
+              updatedBy: workspace.username || workspace.userId || 'system',
             },
             {
               onSuccess: () => {
@@ -574,7 +588,7 @@ export const AgentUIWrapper = forwardRef<
             },
           );
         } else {
-          // Datasources already match, just clear pending
+          // Datasources already match, clear pending so we use conversation as source of truth
           setPendingDatasources(null);
         }
       }

@@ -49,6 +49,14 @@ export function createChatRoutes() {
       const messages = body.messages as UIMessage[];
       const model = body.model ?? getDefaultModel();
 
+      // [DEBUG] Chat request: trace datasources
+      console.log('[chat] POST', slug, {
+        bodyKeys: Object.keys(body),
+        datasources,
+        datasourcesLength: Array.isArray(datasources) ? datasources.length : 'not-array',
+        model,
+      });
+
       const repositories = await getRepositories();
       const datasources = await resolveChatDatasources({
         bodyDatasources: body.datasources,

@@ -106,15 +106,14 @@ export function ConversationList({
   }, [conversations, currentConversationId]);
 
   const allConversations = useMemo(() => {
-    return conversations
-      .filter((c) => {
-        const isNotCurrent = c.id !== currentConversationId;
-        const matchesSearch = c.title
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase());
-        return isNotCurrent && matchesSearch;
-      })
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    const filtered = conversations.filter((c) => {
+      const isNotCurrent = c.id !== currentConversationId;
+      const matchesSearch = c.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      return isNotCurrent && matchesSearch;
+    });
+    return sortByModifiedDesc(filtered);
   }, [conversations, currentConversationId, searchQuery]);
 
   const visibleConversations = useMemo(() => {
