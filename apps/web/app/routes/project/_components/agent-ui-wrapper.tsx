@@ -269,18 +269,17 @@ export const AgentUIWrapper = forwardRef<
   }, [conversation?.id]);
 
   // Priority for display: cellDatasource > pending datasources > conversation datasources
-  // This ensures the notebook cell's datasource is shown in the UI immediately
-  // cellDatasource is cleared when user manually changes selection or after first message
   const selectedDatasources = useMemo(() => {
-    // If cellDatasource is set, show it in the UI (user can still change it)
-    if (cellDatasource) {
-      return [cellDatasource];
-    }
-    // Otherwise use pending datasources or conversation datasources
+    if (cellDatasource) return [cellDatasource];
     return pendingDatasources !== null
       ? pendingDatasources
       : conversationDatasources;
   }, [cellDatasource, pendingDatasources, conversationDatasources]);
+
+  const selectedDatasourcesRef = useRef<string[]>([]);
+  useEffect(() => {
+    selectedDatasourcesRef.current = selectedDatasources;
+  }, [selectedDatasources]);
 
   const projectContext = useProjectOptional();
   const datasourceProjectId =
@@ -359,12 +358,6 @@ export const AgentUIWrapper = forwardRef<
               ? selectedDatasources
               : undefined;
 
-          console.log('[AgentUIWrapper] sendMessageRef', {
-            currentCellDs,
-            selectedDatasources,
-            datasourcesToUse,
-          });
-
           // Update conversation datasources BEFORE sending message.
           // Uses mutateAsync so the returned Promise is independent of any
           // concurrent mutate() calls (avoids the 2-click race condition).
@@ -436,7 +429,6 @@ export const AgentUIWrapper = forwardRef<
             model: currentModelRef.current,
             datasources: datasourcesToUse,
           };
-          console.log('[AgentUIWrapper] calling sendMessage with body', requestBody);
 
           await internalSendMessageRef.current(
             {
@@ -555,12 +547,8 @@ export const AgentUIWrapper = forwardRef<
   // Handle datasource selection change and save to conversation
   const handleDatasourceSelectionChange = useCallback(
     (datasourceIds: string[]) => {
-      console.log('[AgentUIWrapper] handleDatasourceSelectionChange', {
-        datasourceIds,
-        length: datasourceIds.length,
-      });
       clearCellDatasource();
-
+      selectedDatasourcesRef.current = datasourceIds;
       setPendingDatasources(datasourceIds);
 
       // Save to conversation if conversation is loaded
@@ -752,6 +740,7 @@ export const AgentUIWrapper = forwardRef<
         datasources={datasourceItems}
         selectedDatasources={selectedDatasources}
         onDatasourceSelectionChange={handleDatasourceSelectionChange}
+        getDatasourcesForSend={() => selectedDatasourcesRef.current ?? []}
         pluginLogoMap={pluginLogoMap}
         datasourcesLoading={datasources.isLoading}
         onSendMessageReady={handleSendMessageReady}

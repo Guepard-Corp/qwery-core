@@ -109,6 +109,7 @@ export interface QweryAgentUIProps {
   datasources?: DatasourceItem[];
   selectedDatasources?: string[];
   onDatasourceSelectionChange?: (datasourceIds: string[]) => void;
+  getDatasourcesForSend?: () => string[];
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
   onMessageUpdate?: (
@@ -165,6 +166,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     datasources,
     selectedDatasources,
     onDatasourceSelectionChange,
+    getDatasourcesForSend,
     pluginLogoMap,
     datasourcesLoading,
     onMessageUpdate,
@@ -1725,6 +1727,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
               datasources={datasources}
               selectedDatasources={selectedDatasources}
               onDatasourceSelectionChange={onDatasourceSelectionChange}
+              getDatasourcesForSend={getDatasourcesForSend}
               pluginLogoMap={pluginLogoMap}
               datasourcesLoading={datasourcesLoading}
               scrollToBottomRef={scrollToBottomRef}
@@ -1805,6 +1808,7 @@ function PromptInputInner({
   datasources,
   selectedDatasources,
   onDatasourceSelectionChange,
+  getDatasourcesForSend,
   pluginLogoMap,
   datasourcesLoading,
   scrollToBottomRef,
@@ -1826,6 +1830,7 @@ function PromptInputInner({
   datasources?: DatasourceItem[];
   selectedDatasources?: string[];
   onDatasourceSelectionChange?: (datasourceIds: string[]) => void;
+  getDatasourcesForSend?: () => string[];
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
   scrollToBottomRef: React.RefObject<(() => void) | null>;
@@ -1851,14 +1856,10 @@ function PromptInputInner({
     setState((prev) => ({ ...prev, input: '' }));
 
     try {
+      const ds =
+        getDatasourcesForSend?.() ?? selectedDatasources ?? [];
       const bodyDatasources =
-        selectedDatasources && selectedDatasources.length > 0
-          ? selectedDatasources
-          : undefined;
-      console.log('[PromptInputInner] handleSubmit sendMessage', {
-        selectedDatasources,
-        bodyDatasources,
-      });
+        ds.length > 0 ? ds : undefined;
       const sendPromise = sendMessage(
         {
           text: message.text || 'Sent with attachments',
