@@ -1602,22 +1602,16 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                       part={toolPart}
                                       messageId={message.id}
                                       index={i}
-                                      open={openToolPartKeys.has(
-                                        toolPartKey,
-                                      )}
+                                      open={openToolPartKeys.has(toolPartKey)}
                                       onOpenChange={(open) =>
                                         handleToolPartOpenChange(
                                           toolPartKey,
                                           open,
                                         )
                                       }
-                                      defaultOpenWhenUncontrolled={
-                                        isLastPart
-                                      }
+                                      defaultOpenWhenUncontrolled={isLastPart}
                                       onPasteToNotebook={onPasteToNotebook}
-                                      notebookContext={
-                                        currentNotebookContext
-                                      }
+                                      notebookContext={currentNotebookContext}
                                     />
                                   );
                                 }
@@ -1857,6 +1851,14 @@ function PromptInputInner({
     setState((prev) => ({ ...prev, input: '' }));
 
     try {
+      const bodyDatasources =
+        selectedDatasources && selectedDatasources.length > 0
+          ? selectedDatasources
+          : undefined;
+      console.log('[PromptInputInner] handleSubmit sendMessage', {
+        selectedDatasources,
+        bodyDatasources,
+      });
       const sendPromise = sendMessage(
         {
           text: message.text || 'Sent with attachments',
@@ -1866,10 +1868,7 @@ function PromptInputInner({
           body: {
             model: state.model,
             webSearch: state.webSearch,
-            datasources:
-              selectedDatasources && selectedDatasources.length > 0
-                ? selectedDatasources
-                : undefined,
+            datasources: bodyDatasources,
           },
         },
       );

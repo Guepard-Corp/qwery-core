@@ -21,7 +21,7 @@ export function ChartSkeleton({ className }: { className?: string }) {
           {[40, 65, 45, 80, 55, 70, 50].map((h, i) => (
             <Skeleton
               key={i}
-              className="flex-1 min-w-0 rounded-t"
+              className="min-w-0 flex-1 rounded-t"
               style={{ height: `${h}%` }}
             />
           ))}
@@ -45,16 +45,16 @@ export function TableResultsSkeleton({ className }: { className?: string }) {
       <div className="border-border/50 border-x border-b">
         <div className="flex gap-2 border-b px-3 py-2">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-3.5 flex-1 min-w-0" />
+            <Skeleton key={i} className="h-3.5 min-w-0 flex-1" />
           ))}
         </div>
         {[1, 2, 3, 4, 5, 6].map((row) => (
           <div
             key={row}
-            className="flex gap-2 border-border/50 border-b px-3 py-2 last:border-b-0"
+            className="border-border/50 flex gap-2 border-b px-3 py-2 last:border-b-0"
           >
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-3 flex-1 min-w-0" />
+              <Skeleton key={i} className="h-3 min-w-0 flex-1" />
             ))}
           </div>
         ))}
@@ -131,7 +131,7 @@ export function SelectChartTypeSkeleton({ className }: { className?: string }) {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="flex flex-col rounded-xl border border-border bg-card/50 p-4"
+            className="border-border bg-card/50 flex flex-col rounded-xl border p-4"
           >
             <div className="mb-3 flex items-start justify-between">
               <Skeleton className="size-10 rounded-lg" />

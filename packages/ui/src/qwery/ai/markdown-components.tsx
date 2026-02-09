@@ -158,7 +158,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <p
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 text-base leading-7 break-words',
           className,
         )}
       />
@@ -224,7 +224,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <ul
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 min-w-0 list-disc pl-6 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 min-w-0 list-disc pl-6 text-base leading-7 break-words',
           className,
         )}
       >
@@ -235,7 +235,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <ol
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 min-w-0 list-decimal pl-6 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 min-w-0 list-decimal pl-6 text-base leading-7 break-words',
           className,
         )}
       >
@@ -284,7 +284,7 @@ export const createAgentMarkdownComponents = (): Components => {
             <li
               {...props}
               className={cn(
-                'marker:text-muted-foreground overflow-wrap-anywhere relative my-1 min-w-0 pr-6 text-sm leading-6 break-words',
+                'marker:text-muted-foreground overflow-wrap-anywhere relative my-1 min-w-0 pr-6 text-base leading-7 break-words',
                 className,
               )}
             >
@@ -298,7 +298,7 @@ export const createAgentMarkdownComponents = (): Components => {
           <li
             {...props}
             className={cn(
-              'marker:text-muted-foreground overflow-wrap-anywhere my-1 min-w-0 text-sm leading-6 break-words',
+              'marker:text-muted-foreground overflow-wrap-anywhere my-1 min-w-0 text-base leading-7 break-words',
               className,
             )}
           >
@@ -312,7 +312,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <blockquote
         {...props}
         className={cn(
-          'border-border/60 text-muted-foreground overflow-wrap-anywhere my-4 border-l-2 pl-4 text-sm break-words italic',
+          'border-border/60 text-muted-foreground overflow-wrap-anywhere my-4 border-l-2 pl-4 text-base break-words italic',
           className,
         )}
       />

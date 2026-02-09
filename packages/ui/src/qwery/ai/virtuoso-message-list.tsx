@@ -426,14 +426,23 @@ export const VirtuosoMessageList = forwardRef<
     ) {
       return;
     }
-    const id = requestAnimationFrame(() => {
+    const scrollLastIntoView = () => {
       virtuosoRef.current?.scrollToIndex({
         index: messages.length - 1,
         behavior: 'auto',
         align: 'end',
       });
-    });
-    return () => cancelAnimationFrame(id);
+    };
+    const id1 = requestAnimationFrame(scrollLastIntoView);
+    const t0 = setTimeout(scrollLastIntoView, 0);
+    const t1 = setTimeout(scrollLastIntoView, 50);
+    const t2 = setTimeout(scrollLastIntoView, 150);
+    return () => {
+      cancelAnimationFrame(id1);
+      clearTimeout(t0);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [lastMessageContentKey, status, shouldAutoScroll, messages.length]);
   return (
     <div
