@@ -36,6 +36,15 @@ pnpm --filter @qwery/tui build
 pnpm --filter @qwery/tui start
 ```
 
+## Troubleshooting
+
+**`EPERM: operation not permitted, read`** – Caused by Bun reading stdin (terminal input). Known regression in Bun 1.3.2+ for interactive/TUI apps. Workarounds:
+
+- Ensure the TUI runs in a real TTY (not a pipe or restricted terminal)
+- Ensure that Bun 1.3.0 is installed to avoid this read permission issue, and run `bun run dev` with watch if needed.
+
+(Note: `pnpm start` uses Node; @opentui/core loads `.scm` assets that Node does not support, so the TUI is intended to be run with Bun for dev.)
+
 ## Debug logging
 
 With `dev` or `dev:debug`, `QWERY_TUI_DEBUG_LOG` is set so all actions and key steps are written to `tui-debug.log` in the package directory. From repo root:
