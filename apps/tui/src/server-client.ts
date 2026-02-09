@@ -1,4 +1,6 @@
 import { spawn } from 'child_process';
+import { request as nodeHttpRequest } from 'node:http';
+import { request as nodeHttpsRequest } from 'node:https';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseJsonEventStream } from '@ai-sdk/provider-utils';
@@ -28,6 +30,40 @@ function getServerUrl(): string {
 export function apiBase(root?: string): string {
   const base = (root ?? getServerUrl()).replace(/\/$/, '');
   return `${base}/api`;
+}
+
+function nodePost(
+  urlStr: string,
+  body: string,
+): Promise<{ statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const isHttps = urlStr.startsWith('https:');
+    const request = isHttps ? nodeHttpsRequest : nodeHttpRequest;
+    const req = request(
+      urlStr,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body, 'utf8'),
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () =>
+          resolve({
+            statusCode: res.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString('utf8'),
+          }),
+        );
+        res.on('error', reject);
+      },
+    );
+    req.on('error', reject);
+    req.write(body, 'utf8');
+    req.end();
+  });
 }
 
 export interface WorkspaceInit {
@@ -480,12 +516,10 @@ export async function runNotebookQuery(
   baseUrl: string,
   params: { conversationId: string; query: string; datasourceId: string },
 ): Promise<RunNotebookQueryResult> {
-  const res = await fetch(`${baseUrl}/notebook/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-  const raw = await res.text();
+  const { statusCode, body: raw } = await nodePost(
+    `${baseUrl}/notebook/query`,
+    JSON.stringify(params),
+  );
   let data: {
     success?: boolean;
     data?: RunNotebookQueryResult['data'];
@@ -497,11 +531,11 @@ export async function runNotebookQuery(
     const preview = raw.slice(0, 200).replace(/\s+/g, ' ');
     return {
       success: false,
-      error: `Server returned non-JSON (${res.status}). Body: ${preview}${raw.length > 200 ? '…' : ''}`,
+      error: `Server returned non-JSON (${statusCode}). Body: ${preview}${raw.length > 200 ? '…' : ''}`,
     };
   }
-  if (!res.ok) {
-    return { success: false, error: data.error ?? `HTTP ${res.status}` };
+  if (statusCode < 200 || statusCode >= 300) {
+    return { success: false, error: data.error ?? `HTTP ${statusCode}` };
   }
   return {
     success: data.success ?? false,
@@ -805,11 +839,10 @@ export async function sendChatMessage(
   };
   if (datasources?.length) body.datasources = datasources;
 
-  return fetch(`${baseUrl}/chat/${slug}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const url = `${baseUrl}/chat/${slug}`;
+  const bodyStr = JSON.stringify(body);
+  const { body: text } = await nodePost(url, bodyStr);
+  return { text: () => Promise.resolve(text) } as Response;
 }
 
 function uiMessageToStreamingPartial(msg: UIMessage): {
@@ -882,16 +915,25 @@ function uiMessageToChatMessage(
   };
 }
 
+async function responseBodyStream(res: Response): Promise<ReadableStream<Uint8Array>> {
+  const text = await res.text();
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(text));
+      controller.close();
+    },
+  });
+}
+
 export async function parseStreamToChatMessage(
   res: Response,
   startTime: number,
 ): Promise<ChatMessage> {
-  if (!res.body) {
-    throw new Error('No response body');
-  }
+  const stream = await responseBodyStream(res);
 
   const chunkStream = parseJsonEventStream({
-    stream: res.body,
+    stream,
     schema: uiMessageChunkSchema,
   }).pipeThrough(
     new TransformStream({
@@ -920,12 +962,10 @@ export async function parseStreamToChatMessageStreaming(
   startTime: number,
   onUpdate: (content: string, toolCalls: StreamingToolCall[]) => void,
 ): Promise<ChatMessage> {
-  if (!res.body) {
-    throw new Error('No response body');
-  }
+  const stream = await responseBodyStream(res);
 
   const chunkStream = parseJsonEventStream({
-    stream: res.body,
+    stream,
     schema: uiMessageChunkSchema,
   }).pipeThrough(
     new TransformStream({

@@ -49,6 +49,28 @@ import { getDatasourceTypes } from '@qwery/datasource-registry';
 import { getCurrentConversation } from './state/types.ts';
 import { initTuiLogger, tuiLog, tuiLogAction } from './util/tuiLogger.ts';
 
+const EPERM_MSG =
+  'EPERM reading stdin (known Bun 1.3.2+ issue). Try: run in a real terminal, or use Bun 1.3.0.';
+
+function isEpermRead(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('EPERM') && msg.includes('read');
+}
+
+function exitWithEpermMsg(): never {
+  process.stderr.write(EPERM_MSG + '\n');
+  process.exit(1);
+}
+
+const _originalConsoleError = console.error;
+console.error = (...args: unknown[]) => {
+  if (args.some((a) => a !== undefined && isEpermRead(a))) {
+    _originalConsoleError(EPERM_MSG);
+    return;
+  }
+  _originalConsoleError(...args);
+};
+
 async function readClipboard(): Promise<string> {
   const platform = typeof process !== 'undefined' ? process.platform : 'linux';
   try {
@@ -884,13 +906,26 @@ async function setupDebugLogFile(): Promise<{
   if (!envPath || typeof envPath !== 'string') return null;
   const fs = await import('node:fs');
   const path = await import('node:path');
-  const resolvedPath = path.isAbsolute(envPath)
-    ? envPath
-    : path.join(process.cwd(), envPath);
+  const os = await import('node:os');
+  let resolvedPath: string;
+  if (path.isAbsolute(envPath)) {
+    resolvedPath = envPath;
+  } else {
+    try {
+      resolvedPath = path.join(process.cwd(), envPath);
+    } catch {
+      resolvedPath = path.join(os.tmpdir(), 'qwery-tui-debug.log');
+    }
+  }
   try {
     fs.writeFileSync(resolvedPath, '');
   } catch {
-    // ignore
+    try {
+      resolvedPath = path.join(os.tmpdir(), 'qwery-tui-debug.log');
+      fs.writeFileSync(resolvedPath, '');
+    } catch {
+      return null;
+    }
   }
   const write = (level: string, ...args: unknown[]) => {
     const line =
@@ -904,13 +939,29 @@ async function setupDebugLogFile(): Promise<{
     }
   };
   console.log = (...args: unknown[]) => write('LOG', ...args);
-  console.error = (...args: unknown[]) => write('ERROR', ...args);
+  console.error = (...args: unknown[]) => {
+    if (args[0] !== undefined && isEpermRead(args[0])) {
+      write('ERROR', EPERM_MSG);
+      _originalConsoleError(EPERM_MSG);
+      return;
+    }
+    write('ERROR', ...args);
+    _originalConsoleError(...args);
+  };
   console.warn = (...args: unknown[]) => write('WARN', ...args);
   console.debug = (...args: unknown[]) => write('DEBUG', ...args);
   return { resolvedPath, fs };
 }
 
 async function main() {
+  process.on('uncaughtException', (err) => {
+    if (isEpermRead(err)) exitWithEpermMsg();
+    throw err;
+  });
+  process.on('unhandledRejection', (reason) => {
+    if (isEpermRead(reason)) exitWithEpermMsg();
+  });
+
   const debug = await setupDebugLogFile();
   if (debug) {
     initTuiLogger(debug.resolvedPath, debug.fs);
@@ -922,6 +973,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (isEpermRead(err)) exitWithEpermMsg();
   console.error(err);
   process.exit(1);
 });
