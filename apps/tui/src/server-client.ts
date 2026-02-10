@@ -915,7 +915,9 @@ function uiMessageToChatMessage(
   };
 }
 
-async function responseBodyStream(res: Response): Promise<ReadableStream<Uint8Array>> {
+async function responseBodyStream(
+  res: Response,
+): Promise<ReadableStream<Uint8Array>> {
   const text = await res.text();
   const encoder = new TextEncoder();
   return new ReadableStream({
