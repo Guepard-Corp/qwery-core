@@ -1,5 +1,4 @@
 import * as duckdb from '@duckdb/node-api';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -9,11 +8,7 @@ import type {
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  database: z.string().default(':memory:').describe('Database path (use :memory: for in-memory)'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 interface DuckDBInstance {
   instance: duckdb.DuckDBInstance;
@@ -21,7 +16,7 @@ interface DuckDBInstance {
 }
 
 export function makeDuckDBDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, DuckDBInstance>();
 
   const getInstance = async (): Promise<DuckDBInstance> => {

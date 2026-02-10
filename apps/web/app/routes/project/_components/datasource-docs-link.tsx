@@ -1,23 +1,17 @@
-import type { DatasourceFormConfigPayload } from '@qwery/extensions-sdk';
 import { ExternalLink } from 'lucide-react';
 
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 
-import { getDocsUrl } from '~/lib/utils/datasource-form-config';
-
 export function DatasourceDocsLink({
-  extensionId,
-  formConfig,
+  docsUrl,
   className,
   iconOnly = false,
 }: {
-  extensionId: string;
-  formConfig?: DatasourceFormConfigPayload | null;
+  docsUrl: string | null | undefined;
   className?: string;
   iconOnly?: boolean;
 }) {
-  const docsUrl = formConfig?.docsUrl ?? getDocsUrl(extensionId);
   if (!docsUrl) return null;
 
   if (iconOnly) {

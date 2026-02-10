@@ -1,7 +1,19 @@
-import { ExtensionsRegistry } from '@qwery/extensions-sdk';
-
 type Preset = string;
-type FormConfig = Record<string, unknown> | null | undefined;
+
+/** Form metadata by extension id (preset, normalizedKey). No longer on extension definition. */
+const EXTENSION_FORM_META: Record<
+  string,
+  { preset: Preset; normalizedKey?: string }
+> = {
+  'gsheet-csv': { preset: 'sharedLink', normalizedKey: 'sharedLink' },
+  'json-online': { preset: 'fileUrl', normalizedKey: 'jsonUrl' },
+  'parquet-online': { preset: 'fileUrl', normalizedKey: 'url' },
+  s3: { preset: 's3' },
+  duckdb: { preset: 'embeddable' },
+  'duckdb-wasm': { preset: 'embeddable' },
+  pglite: { preset: 'embeddable' },
+  'youtube-data-api-v3': { preset: 'apiKey' },
+};
 
 const DEFAULT_LABELS: Record<string, string> = {
   name: 'Name',
@@ -28,7 +40,7 @@ const DEFAULT_LABELS: Record<string, string> = {
 
 function connectionKeysForPreset(
   preset: Preset,
-  formConfig: FormConfig,
+  normalizedKey?: string | null,
 ): string[] {
   switch (preset) {
     case 'sql':
@@ -41,11 +53,11 @@ function connectionKeysForPreset(
         'connectionString',
       ];
     case 'sharedLink':
-      return [(formConfig?.normalizedKey as string) ?? 'sharedLink'];
+      return [normalizedKey ?? 'sharedLink'];
     case 'apiKey':
       return ['apiKey'];
     case 'fileUrl':
-      return [(formConfig?.normalizedKey as string) ?? 'url'];
+      return [normalizedKey ?? 'url'];
     case 'embeddable':
       return ['database'];
     case 's3':
@@ -70,16 +82,14 @@ export interface FormFieldsResult {
 }
 
 export function getFormFieldsForType(typeId: string): FormFieldsResult {
-  const entry = ExtensionsRegistry.get(typeId);
-  const formConfig = entry?.formConfig as FormConfig;
-  const preset = (formConfig?.preset as Preset) ?? 'sql';
-  const connectionKeys = connectionKeysForPreset(preset, formConfig);
+  const meta = EXTENSION_FORM_META[typeId];
+  const preset = meta?.preset ?? 'sql';
+  const normalizedKey = meta?.normalizedKey ?? null;
+  const connectionKeys = connectionKeysForPreset(preset, normalizedKey);
   const fieldKeys = ['name', ...connectionKeys];
-  const fieldLabels =
-    (formConfig?.fieldLabels as Record<string, string> | undefined) ?? {};
   const labels: Record<string, string> = {};
   for (const key of fieldKeys) {
-    labels[key] = fieldLabels[key] ?? DEFAULT_LABELS[key] ?? key;
+    labels[key] = DEFAULT_LABELS[key] ?? key;
   }
   return { fieldKeys, labels };
 }

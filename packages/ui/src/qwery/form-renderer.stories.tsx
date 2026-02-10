@@ -130,3 +130,31 @@ export const ConnectionUrlOrFields: Story = {
     },
   },
 };
+
+const placeholderI18nSchema = z.object({
+  sharedLink: z.url().meta({
+    description:
+      'Public Google Sheets shared link (https://docs.google.com/spreadsheets/d/...)',
+    i18n: {
+      en: 'Shared link',
+      fr: 'Lien partagé',
+    },
+    placeholder: 'https://docs.google.com/spreadsheets/d/.../edit?usp=sharing',
+  }),
+});
+
+export const PlaceholderAndI18n: Story = {
+  args: {
+    schema: placeholderI18nSchema,
+    formId: 'storybook-form-renderer-i18n',
+    locale: 'en',
+    onSubmit: async () => {},
+  },
+  argTypes: {
+    locale: {
+      control: 'select',
+      options: ['en', 'fr'],
+      description: 'Current locale; label resolves from meta.i18n when set.',
+    },
+  },
+};

@@ -207,7 +207,6 @@ describe('MCP handler', () => {
         id: string;
         name: string;
         schema?: unknown;
-        formConfig?: unknown;
         drivers?: unknown[];
       };
       expect(def.id).toBe('postgresql');

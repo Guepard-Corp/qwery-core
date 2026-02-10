@@ -1,7 +1,6 @@
 import { performance } from 'node:perf_hooks';
 
 import { google, youtube_v3 } from 'googleapis';
-import { z } from 'zod';
 
 import type {
   DatasourceMetadata,
@@ -12,18 +11,13 @@ import type {
 import {
   DatasourceMetadataZodSchema,
   getQueryEngineConnection,
-  type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  apiKey: z.string().min(1, 'apiKey is required').describe('secret:true'),
-  channelId: z.string().min(1, 'channelId is required'),
-  maxResults: z.coerce.number().int().positive().max(50).default(25),
-  publishedAfter: z.string().datetime().optional(),
-  publishedBefore: z.string().datetime().optional(),
-});
+import type { z } from 'zod';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
+
+type DriverConfig = z.infer<typeof schema>;
 
 type VideoRow = {
   videoId: string;
@@ -444,7 +438,7 @@ async function toMetadataFromConnection(
 }
 
 export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
 
   return {
     async testConnection(): Promise<void> {

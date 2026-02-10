@@ -19,7 +19,8 @@ export const ExtensionDefinitionSchema = z.object({
   tags: z.array(z.string()).optional(),
   scope: z.nativeEnum(ExtensionScope),
   schema: z.any().optional().nullable(),
-  formConfig: z.any().optional(),
+  docsUrl: z.string().nullable().optional(),
+  supportsPreview: z.boolean().optional(),
 });
 
 /**

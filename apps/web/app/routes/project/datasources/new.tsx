@@ -410,7 +410,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
-  const { t } = useTranslation('datasources');
+  const { t, i18n } = useTranslation('datasources');
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
   );
@@ -882,6 +882,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                   schema={extensionSchema.data}
                   onSubmit={handleSubmit}
                   formId="datasource-form"
+                  locale={i18n.resolvedLanguage}
                   onFormReady={(values) =>
                     setFormValues(values as Record<string, unknown> | null)
                   }

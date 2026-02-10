@@ -13777,11 +13777,11 @@ function date4(params) {
 config(en_default());
 
 // packages/extensions/clickhouse-node/src/schema.ts
-var passwordField = external_exports.string().min(1).describe("secret:true").meta({
+var passwordField = external_exports.string().min(1).meta({
   description: "ClickHouse password",
   secret: true
 });
-var connectionUrlField = external_exports.url().min(1).describe("secret:true").meta({
+var connectionUrlField = external_exports.url().min(1).meta({
   description: "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
   placeholder: "clickhouse://user:pass@host:8123/default or http://host:8123",
   secret: true

@@ -1,5 +1,4 @@
 import { PGlite } from '@electric-sql/pglite';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -9,14 +8,10 @@ import type {
 } from '@qwery/extensions-sdk';
 import { buildMetadataFromInformationSchema } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  database: z.string().default('playground').describe('Database name'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 export function makePGliteDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const dbMap = new Map<string, PGlite>();
 
   const getDb = async (): Promise<PGlite> => {

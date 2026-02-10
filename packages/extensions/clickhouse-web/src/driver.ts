@@ -10,26 +10,11 @@ import type {
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
 import { extractConnectionUrl } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    connectionUrl: z.string().url().describe('secret:true').optional(),
-    host: z.string().optional(),
-    port: z.coerce.number().int().min(1).max(65535).optional(),
-    username: z.string().optional(),
-    user: z.string().optional(),
-    password: z.string().describe('secret:true').optional(),
-    database: z.string().optional(),
-  })
-  .refine(
-    (data) => data.connectionUrl || data.host,
-    {
-      message: 'Either connectionUrl or host must be provided',
-    },
-  );
+import { schema } from './schema';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+type Config = z.infer<typeof schema>;
 
-export function buildClickHouseConfigFromFields(fields: DriverConfig) {
+export function buildClickHouseConfigFromFields(fields: Config) {
   // Extract connection URL (either from connectionUrl or build from fields)
   const connectionUrl = extractConnectionUrl(
     fields as Record<string, unknown>,
@@ -52,7 +37,7 @@ function buildClickHouseConfig(connectionUrl: string) {
 }
 
 export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const clientMap = new Map<string, ReturnType<typeof createClient>>();
 
   const getClient = () => {

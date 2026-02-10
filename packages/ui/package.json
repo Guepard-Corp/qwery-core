@@ -122,6 +122,7 @@
     "./form": "./src/shadcn/form.tsx",
     "./hover-card": "./src/shadcn/hover-card.tsx",
     "./input": "./src/shadcn/input.tsx",
+    "./secret-input": "./src/shadcn/secret-input.tsx",
     "./label": "./src/shadcn/label.tsx",
     "./popover": "./src/shadcn/popover.tsx",
     "./scroll-area": "./src/shadcn/scroll-area.tsx",

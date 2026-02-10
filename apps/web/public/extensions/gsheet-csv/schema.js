@@ -13778,15 +13778,13 @@ config(en_default());
 
 // packages/extensions/gsheet-csv/src/schema.ts
 var schema = external_exports.object({
-  sharedLink: external_exports.string().url().meta({
+  sharedLink: external_exports.url().meta({
     description: "Public Google Sheets shared link (https://docs.google.com/spreadsheets/d/...)",
     i18n: {
       fr: "Lien partag\xE9",
       en: "Shared link"
     },
-    placeholder: "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing",
-    supportsPreview: true,
-    docsUrl: "https://support.google.com/docs/answer/2494822"
+    placeholder: "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
   })
 });
 export {

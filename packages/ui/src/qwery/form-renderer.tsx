@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '@qwery/ui/form';
 import { Input } from '@qwery/ui/input';
+import { SecretInput } from '@qwery/ui/secret-input';
 import {
   Select,
   SelectContent,
@@ -54,6 +55,8 @@ export interface FormRendererProps<T extends ZodSchemaType> {
   formId?: string;
   onFormReady?: (values: z.infer<T>) => void;
   onValidityChange?: (isValid: boolean) => void;
+  /** Current locale for i18n label resolution (e.g. from useTranslation().i18n.resolvedLanguage). */
+  locale?: string;
 }
 
 function getRootSchema(schema: z.ZodTypeAny): {
@@ -73,6 +76,22 @@ function getRootSchema(schema: z.ZodTypeAny): {
   };
 }
 
+function resolveLabel(
+  meta: { label?: string; i18n?: Record<string, string> },
+  fieldKey: string,
+  locale?: string,
+): string {
+  if (locale && meta.i18n && typeof meta.i18n === 'object') {
+    return (
+      meta.i18n[locale] ??
+      meta.i18n['en'] ??
+      meta.label ??
+      humanizeFieldKey(fieldKey)
+    );
+  }
+  return meta.label ?? humanizeFieldKey(fieldKey);
+}
+
 export function FormRenderer<T extends z.ZodTypeAny>({
   schema,
   onSubmit,
@@ -80,6 +99,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
   formId,
   onFormReady,
   onValidityChange,
+  locale,
 }: FormRendererProps<T>) {
   if (!schema) {
     throw new Error('No schema provided to FormRenderer');
@@ -151,7 +171,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
       const unwrapped = unwrapSchema(fieldSchema);
       const typeName = getSchemaType(fieldSchema);
       const meta = getFieldMeta(fieldSchema, fieldKey);
-      const label = meta.label ?? humanizeFieldKey(fieldKey);
+      const label = resolveLabel(meta, fieldKey, locale);
       const description = meta.description;
       const placeholder = meta.placeholder;
       const defaultValue = getDefaultValue(fieldSchema);
@@ -232,6 +252,12 @@ export function FormRenderer<T extends z.ZodTypeAny>({
                           Change
                         </Button>
                       </div>
+                    ) : isSecret ? (
+                      <SecretInput
+                        {...field}
+                        placeholder={displayPlaceholder}
+                        value={field.value ?? ''}
+                      />
                     ) : (
                       <Input
                         {...field}
@@ -519,7 +545,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
         />
       );
     },
-    [form],
+    [form, locale],
   );
 
   const fields = React.useMemo(() => {

@@ -74,35 +74,29 @@ export function validateDatasourceUrl(
   return { isValid: true, error: null };
 }
 
+/** Metadata used to resolve preview URL (from extension registry). */
+export interface DatasourcePreviewMeta {
+  supportsPreview?: boolean;
+}
+
 /**
  * Gets the preview URL for a datasource based on its type and form values
  */
 export function getDatasourcePreviewUrl(
   formValues: Record<string, unknown> | null,
   extensionId: string,
-  formConfig?: {
-    preset?: string;
-    connectionFieldKind?: string;
-    supportsPreview?: boolean;
-  } | null,
+  meta?: DatasourcePreviewMeta | null,
 ): string | null {
   if (!formValues) return null;
 
-  // Only process datasources that support preview
-  if (formConfig?.supportsPreview !== true) {
+  if (meta?.supportsPreview !== true) {
     return null;
   }
 
   const type = getDatasourceType(extensionId);
-  const preset = formConfig?.preset;
-  const connectionFieldKind = formConfig?.connectionFieldKind;
 
   // Google Sheets - convert shared link to embed URL
-  if (
-    type === 'gsheet' ||
-    preset === 'sharedLink' ||
-    connectionFieldKind === 'sharedLink'
-  ) {
+  if (type === 'gsheet') {
     const sharedLink = (formValues.sharedLink || formValues.url) as
       | string
       | undefined;
@@ -122,12 +116,7 @@ export function getDatasourcePreviewUrl(
   }
 
   // File URLs (JSON, Parquet, etc.)
-  if (
-    type === 'json' ||
-    type === 'parquet' ||
-    preset === 'fileUrl' ||
-    connectionFieldKind === 'fileUrl'
-  ) {
+  if (type === 'json' || type === 'parquet') {
     const url = (formValues.url ||
       formValues.jsonUrl ||
       formValues.connectionUrl) as string | undefined;

@@ -37,9 +37,14 @@ type ZodDef = {
   options?: z.ZodTypeAny[];
 };
 
+/** Zod v4 uses _zod.def; Zod v3 uses _def. */
 function getDef(schema: z.ZodTypeAny): ZodDef | undefined {
-  const s = schema as { _def?: ZodDef; def?: ZodDef };
-  return s._def ?? s.def;
+  const s = schema as {
+    _def?: ZodDef;
+    def?: ZodDef;
+    _zod?: { def?: ZodDef };
+  };
+  return s._def ?? s.def ?? s._zod?.def;
 }
 
 /** Map Zod v4 def.type to our SchemaTypeName. */
@@ -106,9 +111,21 @@ export function getSchemaType(schema: z.ZodTypeAny): SchemaTypeName {
   return toTypeName(def);
 }
 
+/** Zod v4 stores .meta() in globalRegistry, not on def.metadata. */
+function getZod4Metadata(schema: z.ZodTypeAny): FieldMeta | null {
+  if (typeof globalThis === 'undefined') return null;
+  const reg = (
+    globalThis as { __zod_globalRegistry?: { get(s: unknown): unknown } }
+  ).__zod_globalRegistry;
+  const meta = reg?.get(schema);
+  if (meta && typeof meta === 'object')
+    return meta as FieldMeta & { format?: string };
+  return null;
+}
+
 /**
- * Read field metadata from Zod v4 .meta() only.
- * All schemas are required to provide .meta(); no legacy _def.description fallback.
+ * Read field metadata from Zod .meta().
+ * Supports Zod v3 _def.metadata and Zod v4 globalRegistry (e.g. extension schemas loaded from bundle).
  */
 export function getFieldMeta(
   schema: z.ZodTypeAny,
@@ -116,26 +133,37 @@ export function getFieldMeta(
 ): FieldMeta {
   const unwrapped = unwrapSchema(schema);
   const def = getDef(unwrapped);
-  if (!def) return {};
 
-  const meta = def.metadata;
-  if (meta && typeof meta === 'object') {
-    const secret =
-      meta.secret === true ||
-      (meta as { format?: string }).format === 'password';
-    return {
-      label: meta.label,
-      description: meta.description,
-      placeholder: meta.placeholder,
-      secret,
-      i18n: meta.i18n,
-      layout: meta.layout,
-      docsUrl: meta.docsUrl,
-      supportsPreview: meta.supportsPreview,
-    };
+  let meta: (FieldMeta & { format?: string }) | null = null;
+  if (def?.metadata && typeof def.metadata === 'object') {
+    meta = def.metadata as FieldMeta & { format?: string };
   }
+  if (!meta) {
+    meta = getZod4Metadata(schema) ?? getZod4Metadata(unwrapped);
+  }
+  if (!meta) return {};
 
-  return {};
+  const defFormat =
+    def && 'format' in def ? (def as { format?: string }).format : undefined;
+  const passwordInChecks =
+    def?.checks &&
+    Array.isArray(def.checks) &&
+    (def.checks as { format?: string }[]).some((c) => c?.format === 'password');
+  const secret =
+    meta.secret === true ||
+    meta.format === 'password' ||
+    defFormat === 'password' ||
+    passwordInChecks === true;
+  return {
+    label: meta.label,
+    description: meta.description,
+    placeholder: meta.placeholder,
+    secret,
+    i18n: meta.i18n,
+    layout: meta.layout,
+    docsUrl: meta.docsUrl,
+    supportsPreview: meta.supportsPreview,
+  };
 }
 
 /**

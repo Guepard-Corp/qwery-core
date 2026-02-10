@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type {
   DriverContext,
@@ -18,60 +18,57 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const PROVIDERS = ['aws', 'digitalocean', 'minio', 'other'] as const;
-const FORMATS = ['parquet', 'json'] as const;
+import { schema } from './schema';
 
-const ConfigSchema = z
-  .object({
-    provider: z.enum(PROVIDERS),
-    aws_access_key_id: z.string().min(1),
-    aws_secret_access_key: z.string().min(1),
-    aws_session_token: z.string().optional(),
-    region: z.string().min(1),
-    endpoint_url: z.string().url().optional(),
-    bucket: z.string().min(1),
-    prefix: z.string().optional().default(''),
-    format: z.enum(FORMATS),
-    includes: z.array(z.string()).optional(),
-    excludes: z.array(z.string()).optional(),
-  })
-  .refine(
-    (data) =>
+type SchemaConfig = z.infer<typeof schema>;
+
+function resolveS3Config(data: SchemaConfig): SchemaConfig & {
+  endpoint_url: string | undefined;
+  prefix: string;
+  includeGlob: string;
+  urlPattern: string;
+  cacheKey: string;
+} {
+  if (
+    !(
       data.provider === 'aws' ||
       (data.endpoint_url && data.endpoint_url.length > 0) ||
-      (data.provider === 'digitalocean' && data.region?.length > 0),
-    {
-      message:
-        'Endpoint URL required for non-AWS, or set region for DigitalOcean',
-      path: ['endpoint_url'],
-    },
-  )
-  .transform((data) => {
-    const trimmedPrefix = (data.prefix ?? '').replace(/^\/+|\/+$/g, '');
-    const includes = data.includes ?? [];
-    const defaultGlob =
-      data.format === 'parquet' ? '**/*.parquet' : '**/*.json';
-    const includeGlob =
-      includes.length > 0 ? (includes[0] ?? defaultGlob).replace(/^\/+/, '') : defaultGlob;
-    const pathPart = trimmedPrefix ? `${trimmedPrefix}/${includeGlob}` : includeGlob;
-    const urlPattern = `s3://${data.bucket}/${pathPart}`;
-    const endpointUrl =
-      data.endpoint_url?.trim() ||
-      (data.provider === 'digitalocean' && data.region
-        ? `https://${data.region}.digitaloceanspaces.com`
-        : undefined);
-    const cacheKey = `${data.provider}|${data.region}|${endpointUrl ?? ''}|${data.aws_session_token ?? ''}|${data.bucket}|${trimmedPrefix}|${data.format}|${includeGlob}`;
-    return {
-      ...data,
-      endpoint_url: endpointUrl,
-      prefix: trimmedPrefix,
-      includeGlob,
-      urlPattern,
-      cacheKey,
-    };
-  });
+      (data.provider === 'digitalocean' && data.region?.length > 0)
+    )
+  ) {
+    throw new Error(
+      'Endpoint URL required for non-AWS, or set region for DigitalOcean',
+    );
+  }
+  const trimmedPrefix = (data.prefix ?? '').replace(/^\/+|\/+$/g, '');
+  const includes = data.includes ?? [];
+  const defaultGlob =
+    data.format === 'parquet' ? '**/*.parquet' : '**/*.json';
+  const includeGlob =
+    includes.length > 0
+      ? (includes[0] ?? defaultGlob).replace(/^\/+/, '')
+      : defaultGlob;
+  const pathPart = trimmedPrefix
+    ? `${trimmedPrefix}/${includeGlob}`
+    : includeGlob;
+  const urlPattern = `s3://${data.bucket}/${pathPart}`;
+  const endpointUrl =
+    data.endpoint_url?.trim() ||
+    (data.provider === 'digitalocean' && data.region
+      ? `https://${data.region}.digitaloceanspaces.com`
+      : undefined);
+  const cacheKey = `${data.provider}|${data.region}|${endpointUrl ?? ''}|${data.aws_session_token ?? ''}|${data.bucket}|${trimmedPrefix}|${data.format}|${includeGlob}`;
+  return {
+    ...data,
+    endpoint_url: endpointUrl,
+    prefix: trimmedPrefix,
+    includeGlob,
+    urlPattern,
+    cacheKey,
+  };
+}
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+type DriverConfig = ReturnType<typeof resolveS3Config>;
 
 const VIEW_NAME = 'data';
 
@@ -148,7 +145,7 @@ function buildViewSqlInCatalog(config: DriverConfig, catalogName: string): strin
 }
 
 export function makeS3Driver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = resolveS3Config(schema.parse(context.config));
   const instanceMap = new Map<
     string,
     Awaited<ReturnType<typeof createDuckDbInstance>>

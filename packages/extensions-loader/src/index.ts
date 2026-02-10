@@ -36,6 +36,7 @@ const EXTENSIONS = [
   '@qwery/extension-pglite',
   '@qwery/extension-postgresql-supabase',
   '@qwery/extension-postgresql-neon',
+  '@qwery/extension-csv-online',
 ];
 
 interface ContributesDriver {
@@ -52,7 +53,8 @@ interface ContributesDatasource {
   description?: string;
   icon?: string;
   schema: unknown;
-  formConfig?: unknown;
+  docsUrl?: string | null;
+  supportsPreview?: boolean;
   drivers?: string[];
 }
 
@@ -100,7 +102,8 @@ function initDriverImportsFromPackageJson(): void {
           description: ds.description,
           scope: ExtensionScope.DATASOURCE,
           schema: null,
-          formConfig: ds.formConfig,
+          docsUrl: ds.docsUrl ?? null,
+          supportsPreview: ds.supportsPreview === true,
           drivers: driverDescriptors.map((d) => ({
             id: d.id,
             name: d.name,

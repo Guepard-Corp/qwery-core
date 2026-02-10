@@ -256,7 +256,7 @@ function createMcpServer(getRepos: () => Promise<Repositories>): McpServer {
     {
       title: 'Get datasource provider definition',
       description:
-        'Get full datasource provider definition: config schema (JSON Schema), formConfig, drivers, id, name, description, icon, and all fields needed to create or configure a datasource.',
+        'Get full datasource provider definition: config schema (JSON Schema), drivers, id, name, description, icon, docsUrl, and all fields needed to create or configure a datasource.',
       inputSchema: getDatasourceProviderSchema,
     },
     async (args) => {

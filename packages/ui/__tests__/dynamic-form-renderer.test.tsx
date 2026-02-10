@@ -146,6 +146,48 @@ describe('FormRenderer', () => {
     });
   });
 
+  it('resolves label from meta.i18n when locale is passed', () => {
+    const fieldSchema = z.string().url();
+    const def = (
+      fieldSchema as { _def?: { metadata?: Record<string, unknown> } }
+    )._def;
+    if (def) {
+      def.metadata = {
+        label: 'Shared link',
+        i18n: { en: 'Shared link', fr: 'Lien partagé' },
+      };
+    }
+    const i18nSchema = z.object({ sharedLink: fieldSchema });
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <FormRenderer schema={i18nSchema} onSubmit={onSubmit} locale="fr" />,
+    );
+    expect(screen.getByLabelText('Lien partagé')).toBeInTheDocument();
+
+    rerender(
+      <FormRenderer schema={i18nSchema} onSubmit={onSubmit} locale="en" />,
+    );
+    expect(screen.getByLabelText('Shared link')).toBeInTheDocument();
+  });
+
+  it('falls back to meta.label or humanized key when locale is omitted', () => {
+    const fieldSchema = z.string().url();
+    const def = (
+      fieldSchema as { _def?: { metadata?: Record<string, unknown> } }
+    )._def;
+    if (def) {
+      def.metadata = {
+        label: 'Shared link',
+        i18n: { en: 'Shared link', fr: 'Lien partagé' },
+      };
+    }
+    const i18nSchema = z.object({ sharedLink: fieldSchema });
+    const onSubmit = vi.fn();
+    render(<FormRenderer schema={i18nSchema} onSubmit={onSubmit} />);
+    expect(screen.getByLabelText('Shared link')).toBeInTheDocument();
+  });
+
   it('supports union schema for datasource when field-based variant is first', async () => {
     const onSubmit = vi.fn();
     render(

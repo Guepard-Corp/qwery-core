@@ -1,5 +1,4 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -19,11 +18,7 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  sharedLink: z.string().url().describe('Public Google Sheets shared link'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 const convertToCsvLink = (spreadsheetId: string, gid: number): string => {
   const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
@@ -172,7 +167,7 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
 };
 
 export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<
     string,
     {

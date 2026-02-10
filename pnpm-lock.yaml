@@ -1065,6 +1065,9 @@ importers:
       '@qwery/extension-clickhouse-node':
         specifier: workspace:*
         version: link:../extensions/clickhouse-node
+      '@qwery/extension-csv-online':
+        specifier: workspace:*
+        version: link:../extensions/csv-online
       '@qwery/extension-duckdb':
         specifier: workspace:*
         version: link:../extensions/duckdb
@@ -1170,6 +1173,25 @@ importers:
       '@clickhouse/client-web':
         specifier: ^0.2.10
         version: 0.2.10
+      '@qwery/extensions-sdk':
+        specifier: workspace:*
+        version: link:../../extensions-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@vitest/coverage-istanbul':
+        specifier: 'catalog:'
+        version: 4.0.18(vitest@4.0.18)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.9.2)(@vitest/ui@4.0.18)(jiti@2.6.1)(jsdom@27.1.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.9.2)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/extensions/csv-online:
+    dependencies:
+      '@duckdb/node-api':
+        specifier: 1.4.2-r.1
+        version: 1.4.2-r.1
       '@qwery/extensions-sdk':
         specifier: workspace:*
         version: link:../../extensions-sdk

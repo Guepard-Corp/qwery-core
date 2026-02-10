@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const schema = z.object({
   sharedLink: z
-    .string()
     .url()
     .meta({
       description:
@@ -13,7 +12,5 @@ export const schema = z.object({
       },
       placeholder:
         'https://docs.google.com/spreadsheets/d/.../edit?usp=sharing',
-      supportsPreview: true,
-      docsUrl: 'https://support.google.com/docs/answer/2494822',
     }),
 });

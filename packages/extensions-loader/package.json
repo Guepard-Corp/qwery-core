@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@qwery/extension-clickhouse-node": "workspace:*",
+    "@qwery/extension-csv-online": "workspace:*",
     "@qwery/extension-duckdb": "workspace:*",
     "@qwery/extension-gsheet-csv": "workspace:*",
     "@qwery/extension-json-online": "workspace:*",

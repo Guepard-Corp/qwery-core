@@ -26,27 +26,10 @@
           "SQL"
         ],
         "icon": "media/DuckDB_stack-darkmode.svg",
-        "formConfig": {
-          "preset": "embeddable",
-          "docsUrl": "https://duckdb.org/docs/connectivity/overview",
-          "connectionFieldKind": "connectionString",
-          "showDetailsTab": false,
-          "showConnectionStringTab": true,
-          "placeholders": {
-            "host": "—",
-            "port": "—",
-            "database": ":memory: or path/to/file.duckdb",
-            "username": "—",
-            "password": "—",
-            "connectionString": "duckdb://path/to/file.duckdb or :memory:"
-          },
-          "fieldLabels": {
-            "connectionString": "Database path or connection string"
-          }
-        },
         "drivers": [
           "duckdb-wasm.default"
-        ]
+        ],
+        "docsUrl": "https://duckdb.org/docs/connectivity/overview"
       }
     ],
     "drivers": [

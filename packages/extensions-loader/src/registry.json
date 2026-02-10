@@ -19,25 +19,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
-        "defaultHost": "localhost",
-        "defaultPort": "8123",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "port": "8123",
-          "database": "default",
-          "username": "default",
-          "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
-        }
-      }
+      "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+      "supportsPreview": false
     },
     {
       "id": "clickhouse-web",
@@ -59,25 +42,29 @@
           "entry": "driver.js"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
-        "defaultHost": "localhost",
-        "defaultPort": "8123",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "port": "8123",
-          "database": "default",
-          "username": "default",
-          "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
+      "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+      "supportsPreview": false
+    },
+    {
+      "id": "csv-online",
+      "name": "CSV (Online)",
+      "description": "Connect to public CSV files via URL",
+      "scope": "datasource",
+      "tags": [
+        "Files"
+      ],
+      "schema": null,
+      "packageName": "@qwery/extension-csv-online",
+      "drivers": [
+        {
+          "id": "csv-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for CSV files",
+          "runtime": "node"
         }
-      }
+      ],
+      "docsUrl": null,
+      "supportsPreview": true
     },
     {
       "id": "duckdb",
@@ -98,24 +85,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "embeddable",
-        "docsUrl": "https://duckdb.org/docs/connectivity/overview",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "host": "—",
-          "port": "—",
-          "database": ":memory: or path/to/file.duckdb",
-          "username": "—",
-          "password": "—",
-          "connectionString": "duckdb://path/to/file.duckdb or :memory:"
-        },
-        "fieldLabels": {
-          "connectionString": "Database path or connection string"
-        }
-      }
+      "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+      "supportsPreview": false
     },
     {
       "id": "duckdb-wasm",
@@ -137,24 +108,8 @@
           "entry": "driver.js"
         }
       ],
-      "formConfig": {
-        "preset": "embeddable",
-        "docsUrl": "https://duckdb.org/docs/connectivity/overview",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "host": "—",
-          "port": "—",
-          "database": ":memory: or path/to/file.duckdb",
-          "username": "—",
-          "password": "—",
-          "connectionString": "duckdb://path/to/file.duckdb or :memory:"
-        },
-        "fieldLabels": {
-          "connectionString": "Database path or connection string"
-        }
-      }
+      "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+      "supportsPreview": false
     },
     {
       "id": "gsheet-csv",
@@ -176,7 +131,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": null
+      "docsUrl": "https://support.google.com/docs/answer/2494822",
+      "supportsPreview": true
     },
     {
       "id": "json-online",
@@ -197,25 +153,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "fileUrl",
-        "connectionFieldKind": "fileUrl",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "connectionString": "https://example.com/data.json"
-        },
-        "fieldLabels": {
-          "connectionString": "JSON file URL"
-        },
-        "normalizedKey": "jsonUrl",
-        "acceptedKeys": [
-          "jsonUrl",
-          "url",
-          "connectionUrl"
-        ],
-        "supportsPreview": true
-      }
+      "docsUrl": null,
+      "supportsPreview": true
     },
     {
       "id": "mysql",
@@ -236,23 +175,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html",
-        "defaultHost": "localhost",
-        "defaultPort": "3306",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "port": "3306",
-          "connectionString": "mysql://user:pass@host:3306/db"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
-        }
-      }
+      "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html",
+      "supportsPreview": false
     },
     {
       "id": "parquet-online",
@@ -273,24 +197,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "fileUrl",
-        "connectionFieldKind": "fileUrl",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "connectionString": "https://example.com/data.parquet"
-        },
-        "fieldLabels": {
-          "connectionString": "Parquet file URL"
-        },
-        "normalizedKey": "url",
-        "acceptedKeys": [
-          "url",
-          "connectionUrl"
-        ],
-        "supportsPreview": true
-      }
+      "docsUrl": null,
+      "supportsPreview": true
     },
     {
       "id": "pglite",
@@ -312,24 +220,8 @@
           "entry": "driver.js"
         }
       ],
-      "formConfig": {
-        "preset": "embeddable",
-        "docsUrl": "https://github.com/electric-sql/pglite",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "host": "—",
-          "port": "—",
-          "database": ":memory: or indexeddb://dbname",
-          "username": "—",
-          "password": "—",
-          "connectionString": "pglite://:memory: or indexeddb://dbname"
-        },
-        "fieldLabels": {
-          "connectionString": "Database URI"
-        }
-      }
+      "docsUrl": "https://github.com/electric-sql/pglite",
+      "supportsPreview": false
     },
     {
       "id": "postgresql",
@@ -350,23 +242,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html",
-        "defaultHost": "localhost",
-        "defaultPort": "5432",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "port": "5432",
-          "connectionString": "postgresql://user:pass@host:5432/db"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
-        }
-      }
+      "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html",
+      "supportsPreview": false
     },
     {
       "id": "postgresql-supabase",
@@ -388,24 +265,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres",
-        "defaultHost": "db.xxx.supabase.co",
-        "defaultPort": "5432",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "host": "db.xxx.supabase.co",
-          "port": "5432",
-          "connectionString": "postgresql://postgres.[ref]:[password]@db.xxx.supabase.co:5432/postgres"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
-        }
-      }
+      "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres",
+      "supportsPreview": false
     },
     {
       "id": "postgresql-neon",
@@ -427,24 +288,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "sql",
-        "docsUrl": "https://neon.tech/docs/connect/connect-intro",
-        "defaultHost": "ep-xxx.region.aws.neon.tech",
-        "defaultPort": "5432",
-        "connectionFieldKind": "connectionString",
-        "showDetailsTab": true,
-        "showConnectionStringTab": true,
-        "showSslToggle": true,
-        "placeholders": {
-          "host": "ep-xxx.region.aws.neon.tech",
-          "port": "5432",
-          "connectionString": "postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require"
-        },
-        "fieldLabels": {
-          "connectionString": "Connection string"
-        }
-      }
+      "docsUrl": "https://neon.tech/docs/connect/connect-intro",
+      "supportsPreview": false
     },
     {
       "id": "s3",
@@ -466,7 +311,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": null
+      "docsUrl": null,
+      "supportsPreview": false
     },
     {
       "id": "youtube-data-api-v3",
@@ -487,25 +333,8 @@
           "runtime": "node"
         }
       ],
-      "formConfig": {
-        "preset": "apiKey",
-        "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
-        "connectionFieldKind": "apiKey",
-        "showDetailsTab": false,
-        "showConnectionStringTab": true,
-        "placeholders": {
-          "connectionString": "Your YouTube Data API key"
-        },
-        "fieldLabels": {
-          "connectionString": "API key"
-        },
-        "normalizedKey": "apiKey",
-        "acceptedKeys": [
-          "apiKey",
-          "connectionUrl",
-          "connectionString"
-        ]
-      }
+      "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
+      "supportsPreview": false
     }
   ]
 }

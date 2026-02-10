@@ -1,0 +1,55 @@
+{
+  "name": "@qwery/extension-csv-online",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/driver.js",
+  "types": "./dist/driver.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/driver.d.ts",
+      "default": "./dist/driver.js"
+    },
+    "./schema": "./dist/schema.js"
+  },
+  "scripts": {
+    "lint": "echo \"no lint configured\"",
+    "test": "vitest run --coverage --passWithNoTests",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "contributes": {
+    "datasources": [
+      {
+        "id": "csv-online",
+        "name": "CSV (Online)",
+        "description": "Connect to public CSV files via URL",
+        "tags": [
+          "Files"
+        ],
+        "icon": "media/csv.svg",
+        "supportsPreview": true,
+        "drivers": [
+          "csv-online.duckdb"
+        ]
+      }
+    ],
+    "drivers": [
+      {
+        "id": "csv-online.duckdb",
+        "name": "DuckDB (Node)",
+        "description": "Node runtime DuckDB driver for CSV files",
+        "runtime": "node",
+        "entry": "./dist/driver.js"
+      }
+    ]
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.2-r.1",
+    "@qwery/extensions-sdk": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vitest/coverage-istanbul": "catalog:",
+    "vitest": "catalog:"
+  }
+}

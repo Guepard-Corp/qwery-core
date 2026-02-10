@@ -23,6 +23,8 @@
         "id": "gsheet-csv",
         "name": "Google Sheets (CSV)",
         "description": "Connect to public Google Sheets via CSV export",
+        "docsUrl": "https://support.google.com/docs/answer/2494822",
+        "supportsPreview": true,
         "tags": [
           "Files",
           "SaaS"

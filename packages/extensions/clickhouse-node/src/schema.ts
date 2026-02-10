@@ -3,7 +3,6 @@ import { z } from 'zod';
 const passwordField = z
   .string()
   .min(1)
-  .describe('secret:true')
   .meta({
     description: 'ClickHouse password',
     secret: true,
@@ -12,7 +11,6 @@ const passwordField = z
 const connectionUrlField = z
   .url()
   .min(1)
-  .describe('secret:true')
   .meta({
     description:
       'ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)',

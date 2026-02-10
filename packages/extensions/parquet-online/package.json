@@ -9,7 +9,8 @@
     ".": {
       "types": "./dist/driver.d.ts",
       "default": "./dist/driver.js"
-    }
+    },
+    "./schema": "./dist/schema.js"
   },
   "scripts": {
     "lint": "echo \"no lint configured\"",
@@ -26,24 +27,7 @@
           "Files"
         ],
         "icon": "media/parquet.svg",
-        "formConfig": {
-          "preset": "fileUrl",
-          "connectionFieldKind": "fileUrl",
-          "showDetailsTab": false,
-          "showConnectionStringTab": true,
-          "placeholders": {
-            "connectionString": "https://example.com/data.parquet"
-          },
-          "fieldLabels": {
-            "connectionString": "Parquet file URL"
-          },
-          "normalizedKey": "url",
-          "acceptedKeys": [
-            "url",
-            "connectionUrl"
-          ],
-          "supportsPreview": true
-        },
+        "supportsPreview": true,
         "drivers": [
           "parquet-online.duckdb"
         ]

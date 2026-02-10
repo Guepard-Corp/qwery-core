@@ -295,7 +295,8 @@ async function main() {
         schema: null,
         packageName: pkg.name,
         drivers: driverDescriptors,
-        formConfig: ds.formConfig ?? null,
+        docsUrl: ds.docsUrl ?? null,
+        supportsPreview: ds.supportsPreview === true,
       });
 
       // Check for src/schema.ts and bundle it if it exists

@@ -1,5 +1,4 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -13,11 +12,7 @@ import {
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  database: z.string().default('playground').describe('Database name'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 interface DuckDBInstance {
   connection: duckdb.AsyncDuckDBConnection;
@@ -25,7 +20,7 @@ interface DuckDBInstance {
 }
 
 export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, DuckDBInstance>();
 
   const getInstance = async (): Promise<DuckDBInstance> => {

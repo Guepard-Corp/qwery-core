@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as React from 'react';
-
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -72,6 +72,7 @@ export async function loader({
 export default function ProjectDatasourceViewPage(props?: {
   loaderData?: { datasource: Awaited<ReturnType<typeof loader>>['datasource'] };
 }) {
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
   const params = useParams();
   const slug = params.slug as string;
@@ -458,6 +459,7 @@ export default function ProjectDatasourceViewPage(props?: {
               schema={extensionSchema.data}
               onSubmit={handleSubmit}
               formId="datasource-form"
+              locale={i18n.resolvedLanguage}
               defaultValues={datasource.data?.config as Record<string, unknown>}
               onFormReady={(values) =>
                 setFormValues(values as Record<string, unknown> | null)

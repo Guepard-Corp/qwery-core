@@ -1,7 +1,10 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { z } from 'zod';
+import { z as zLib } from 'zod';
 import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
@@ -16,11 +19,8 @@ import { useCreateDatasource } from '~/lib/mutations/use-create-datasource';
 import { generateRandomName } from '~/lib/names';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
-import {
-  normalizeProviderConfig,
-  validateProviderConfigWithZod,
-} from '~/lib/utils/datasource-form-config';
-import { DatasourceConnectionFields } from './datasource-connection-fields';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
+import { FormRenderer } from '@qwery/ui/form-renderer';
 import { DatasourceDocsLink } from './datasource-docs-link';
 
 export interface DatasourceConnectFormProps {
@@ -80,10 +80,25 @@ export function DatasourceConnectForm({
     }
   }, [variant, actionsContainerReady, actionsContainerRef]);
 
+  const { i18n } = useTranslation();
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
   const projectRepository = repositories.project;
   const extension = useGetExtension(extensionId);
+  const extensionSchema = useExtensionSchema(extensionId);
+
+  /** Fallback when extension has no schema (e.g. 404 on schema.js). FormRenderer always used. */
+  const fallbackSchema = useMemo(
+    () =>
+      zLib
+        .object({
+          connectionUrl: zLib.string().optional(),
+          connectionString: zLib.string().optional(),
+        })
+        .passthrough(),
+    [],
+  );
+  const effectiveSchema = extensionSchema.data ?? fallbackSchema;
 
   const formatTestConnectionError = (error: unknown) => {
     if (error instanceof Error) {
@@ -188,32 +203,26 @@ export function DatasourceConnectForm({
       toast.error(<Trans i18nKey="datasources:formNotReady" />);
       return;
     }
-    const zodResult = validateProviderConfigWithZod(
-      formValues,
-      extensionId,
-      extension.data.formConfig,
-    );
-    if (!zodResult.success) {
-      toast.error(zodResult.error);
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
       return;
     }
-    const normalizedConfig = normalizeProviderConfig(
-      zodResult.data,
-      extensionId,
-      extension.data.formConfig,
-    );
+    const validData = parsed.data as Record<string, unknown>;
     const testDatasource: Partial<Datasource> = {
       datasource_provider: extension.data.id,
       datasource_driver: extension.data.id,
       datasource_kind: DatasourceKind.EMBEDDED,
       name: datasourceName || 'Test Connection',
-      config: normalizedConfig,
+      config: validData,
     };
     onTestConnectionLoadingChange?.(true);
     testConnectionMutation.mutate(testDatasource as Datasource);
   }, [
     extension.data,
     extensionId,
+    effectiveSchema,
     formValues,
     datasourceName,
     testConnectionMutation,
@@ -257,22 +266,14 @@ export function DatasourceConnectForm({
       return;
     }
 
-    const zodResult = validateProviderConfigWithZod(
-      formValues,
-      extensionId,
-      extension.data.formConfig,
-    );
-    if (!zodResult.success) {
-      toast.error(zodResult.error);
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
       setIsConnecting(false);
       return;
     }
-
-    const normalizedConfig = normalizeProviderConfig(
-      zodResult.data,
-      extensionId,
-      extension.data.formConfig,
-    );
+    const validData = parsed.data as Record<string, unknown>;
 
     const dsMeta = extension.data as DatasourceExtension | undefined;
     if (!dsMeta) {
@@ -281,7 +282,7 @@ export function DatasourceConnectForm({
     }
     const driver =
       dsMeta.drivers.find(
-        (d) => d.id === (normalizedConfig as { driverId?: string })?.driverId,
+        (d) => d.id === (validData as { driverId?: string })?.driverId,
       ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
@@ -296,12 +297,13 @@ export function DatasourceConnectForm({
       datasource_provider: extension.data.id || '',
       datasource_driver: extension.data.id || '',
       datasource_kind: datasourceKind as string,
-      config: normalizedConfig,
+      config: validData,
       createdBy: userId,
     });
   }, [
     extension.data,
     extensionId,
+    effectiveSchema,
     formValues,
     datasourceName,
     projectSlug,
@@ -378,10 +380,7 @@ export function DatasourceConnectForm({
               <span className="text-2xl font-semibold tracking-tight">
                 Connect to {extensionMeta.name}
               </span>
-              <DatasourceDocsLink
-                extensionId={extensionId}
-                formConfig={extension.data?.formConfig}
-              />
+              <DatasourceDocsLink docsUrl={extension.data?.docsUrl} />
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -464,12 +463,15 @@ export function DatasourceConnectForm({
             </div>
           ) : (
             <div className="space-y-6">
-              <DatasourceConnectionFields
-                extensionId={extensionId}
-                formConfig={extension.data?.formConfig}
-                onFormReady={handleFormReady}
+              <FormRenderer
+                schema={effectiveSchema}
+                onSubmit={() => {}}
+                formId={formId ?? 'datasource-form'}
+                locale={i18n.resolvedLanguage}
+                onFormReady={(values) =>
+                  handleFormReady(values as Record<string, unknown>)
+                }
                 onValidityChange={setIsFormValid}
-                _formId={formId ?? 'datasource-form'}
               />
             </div>
           )}

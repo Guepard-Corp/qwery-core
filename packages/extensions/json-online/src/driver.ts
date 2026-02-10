@@ -1,5 +1,4 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -15,28 +14,12 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    jsonUrl: z.string().url().optional().describe('Public JSON file URL'),
-    url: z.string().url().optional().describe('Public JSON file URL'),
-    connectionUrl: z.string().url().optional().describe('Public JSON file URL'),
-  })
-  .refine(
-    (data) => data.jsonUrl || data.url || data.connectionUrl,
-    {
-      message: 'Either jsonUrl, url, or connectionUrl must be provided',
-    },
-  )
-  .transform((data) => ({
-    jsonUrl: data.jsonUrl || data.url || data.connectionUrl || '',
-  }));
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 const VIEW_NAME = 'data';
 
 export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, Awaited<ReturnType<typeof createDuckDbInstance>>>();
 
   const createDuckDbInstance = async () => {
@@ -47,13 +30,13 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
   };
 
   const getInstance = async () => {
-    const key = parsedConfig.jsonUrl;
+    const key = parsedConfig.url;
     if (!instanceMap.has(key)) {
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
 
       try {
-        const escapedUrl = parsedConfig.jsonUrl.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from JSON URL using read_json_auto
@@ -107,7 +90,7 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const escapedUrl = parsedConfig.jsonUrl.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from JSON URL using read_json_auto in main engine

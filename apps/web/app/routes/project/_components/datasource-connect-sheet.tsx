@@ -183,8 +183,7 @@ export function DatasourceConnectSheet({
                     Connect to {extensionMeta.name}
                   </span>
                   <DatasourceDocsLink
-                    extensionId={extensionId}
-                    formConfig={undefined}
+                    docsUrl={extension.data?.docsUrl}
                     iconOnly
                   />
                 </div>
@@ -287,12 +286,12 @@ export function DatasourceConnectSheet({
                   onTestConnectionLoadingChange={setIsTestConnectionLoading}
                 />
               </div>
-              {formValues && extension.data?.formConfig?.supportsPreview && (
+              {formValues && extension.data?.supportsPreview && (
                 <DatasourcePreview
                   ref={previewRef}
                   formValues={formValues}
                   extensionId={extensionId}
-                  formConfig={extension.data?.formConfig}
+                  supportsPreview={extension.data?.supportsPreview}
                   isTestConnectionLoading={isTestConnectionLoading}
                   className="min-h-0 flex-1"
                 />

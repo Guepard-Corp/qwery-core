@@ -10,9 +10,8 @@ const passwordField = z
   });
 
 const connectionUrlField = z
-  .string()
-  .min(1)
   .url()
+  .min(1)
   .describe('secret:true')
   .meta({
     description:

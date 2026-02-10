@@ -1,5 +1,4 @@
 export * from './types';
-export * from './form-config';
 export * from './driver';
 export * from './metadata';
 export * from './qwery';

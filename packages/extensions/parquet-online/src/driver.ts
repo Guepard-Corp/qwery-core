@@ -1,5 +1,4 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -18,31 +17,12 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    url: z.string().url().optional().describe('Public Parquet file URL'),
-    connectionUrl: z
-      .string()
-      .url()
-      .optional()
-      .describe('Public Parquet file URL'),
-  })
-  .refine(
-    (data) => data.url || data.connectionUrl,
-    {
-      message: 'Either url or connectionUrl must be provided',
-    },
-  )
-  .transform((data) => ({
-    url: data.url || data.connectionUrl || '',
-  }));
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 const VIEW_NAME = 'data';
 
 export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, Awaited<ReturnType<typeof createDuckDbInstance>>>();
 
   const createDuckDbInstance = async () => {

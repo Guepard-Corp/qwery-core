@@ -13781,7 +13781,7 @@ var passwordField = external_exports.string().min(1).describe("secret:true").met
   description: "ClickHouse password",
   secret: true
 });
-var connectionUrlField = external_exports.string().min(1).url().describe("secret:true").meta({
+var connectionUrlField = external_exports.url().min(1).describe("secret:true").meta({
   description: "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
   placeholder: "clickhouse://user:pass@host:8123/default or http://host:8123",
   secret: true
