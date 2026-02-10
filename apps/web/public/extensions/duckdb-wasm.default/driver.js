@@ -13449,7 +13449,7 @@ var qe = I[1];
 var Ye = I[2];
 var Y = Z(q());
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -13561,7 +13561,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/util.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/util.js
 var util2;
 (function(util3) {
   util3.assertEqual = (_2) => {
@@ -13695,7 +13695,7 @@ var getParsedType = (data) => {
   }
 };
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/ZodError.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util2.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -13791,7 +13791,7 @@ var ZodError = class _ZodError extends Error {
     return this.issues.length === 0;
   }
   flatten(mapper = (issue) => issue.message) {
-    const fieldErrors = {};
+    const fieldErrors = /* @__PURE__ */ Object.create(null);
     const formErrors = [];
     for (const sub of this.issues) {
       if (sub.path.length > 0) {
@@ -13813,7 +13813,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/locales/en.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -13916,7 +13916,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/errors.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -13925,7 +13925,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -14035,14 +14035,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -17490,12 +17490,37 @@ var coerce = {
 };
 var NEVER = INVALID;
 
-// packages/extensions-sdk/dist/types.js
-var ExtensionScope;
-(function(ExtensionScope2) {
+// packages/extensions-sdk/src/types.ts
+var ExtensionScope = /* @__PURE__ */ ((ExtensionScope2) => {
   ExtensionScope2["DATASOURCE"] = "datasource";
   ExtensionScope2["DRIVER"] = "driver";
-})(ExtensionScope || (ExtensionScope = {}));
+  ExtensionScope2["HOOK"] = "hook";
+  ExtensionScope2["TOOL"] = "tool";
+  ExtensionScope2["AGENT"] = "agent";
+  ExtensionScope2["SKILL"] = "skill";
+  return ExtensionScope2;
+})(ExtensionScope || {});
+var ExtensionDefinitionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  icon: external_exports.string(),
+  description: external_exports.string().optional(),
+  tags: external_exports.array(external_exports.string()).optional(),
+  scope: external_exports.nativeEnum(ExtensionScope),
+  schema: external_exports.any().optional().nullable(),
+  formConfig: external_exports.any().optional()
+});
+var DriverRuntimeSchema = external_exports.enum(["node", "browser"]);
+var DriverExtensionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  description: external_exports.string().optional(),
+  runtime: DriverRuntimeSchema.optional(),
+  entry: external_exports.string().optional()
+});
+var DatasourceExtensionSchema = ExtensionDefinitionSchema.extend({
+  drivers: external_exports.array(DriverExtensionSchema)
+});
 
 // packages/domain/src/entities/index.ts
 var import_reflect_metadata = __toESM(require_Reflect(), 1);
@@ -20119,12 +20144,50 @@ var MessageRole = /* @__PURE__ */ ((MessageRole2) => {
   MessageRole2["SYSTEM"] = "system";
   return MessageRole2;
 })(MessageRole || {});
+var MessageContentPartSchema = external_exports.object({
+  type: external_exports.string(),
+  text: external_exports.string().optional(),
+  state: external_exports.string().optional()
+}).passthrough();
+var MessageContentSchema = external_exports.object({
+  id: external_exports.string().optional(),
+  role: external_exports.string().optional(),
+  parts: external_exports.array(MessageContentPartSchema).optional()
+}).passthrough();
+var TokensSchema = external_exports.object({
+  input: external_exports.number(),
+  output: external_exports.number(),
+  reasoning: external_exports.number().optional(),
+  cache: external_exports.object({
+    read: external_exports.number(),
+    write: external_exports.number()
+  }).optional()
+}).passthrough();
+var MessageMetadataSchema = external_exports.object({
+  error: external_exports.unknown().optional(),
+  modelId: external_exports.string().optional(),
+  providerId: external_exports.string().optional(),
+  cost: external_exports.number().optional(),
+  tokens: TokensSchema.optional(),
+  parentId: external_exports.string().optional(),
+  finish: external_exports.string().optional(),
+  summary: external_exports.boolean().optional(),
+  path: external_exports.object({
+    cwd: external_exports.string(),
+    root: external_exports.string()
+  }).optional(),
+  agent: external_exports.string().optional(),
+  model: external_exports.object({
+    providerID: external_exports.string(),
+    modelID: external_exports.string()
+  }).optional()
+}).passthrough();
 var MessageSchema = external_exports.object({
   id: external_exports.string().uuid().describe("The unique identifier for the action"),
   conversationId: external_exports.string().uuid().describe("The unique identifier for the conversation"),
-  content: external_exports.record(external_exports.string(), external_exports.any()).describe("The content of the message"),
+  content: MessageContentSchema.describe("The content of the message"),
   role: external_exports.nativeEnum(MessageRole).describe("The role of the message"),
-  metadata: external_exports.record(external_exports.string(), external_exports.any()).describe("The metadata of the message"),
+  metadata: MessageMetadataSchema.describe("The metadata of the message"),
   createdAt: external_exports.date().describe("The date and time the message was created"),
   updatedAt: external_exports.date().describe("The date and time the message was last updated"),
   createdBy: external_exports.string().describe("The user who created the message"),
@@ -20365,6 +20428,7 @@ var UsageSchema = external_exports.object({
   totalTokens: external_exports.number().describe("The total number of tokens used").default(0),
   reasoningTokens: external_exports.number().describe("The total number of reasoning tokens used").default(0),
   cachedInputTokens: external_exports.number().describe("The total number of cached input tokens used").default(0),
+  cost: external_exports.number().describe("The cost in USD for this usage").default(0),
   contextSize: external_exports.number().describe("The used context size of the model").default(0),
   creditsCap: external_exports.number().describe("The maximum number of credits capacity").default(0),
   creditsUsed: external_exports.number().describe("The number of credits used").default(0),
@@ -20416,10 +20480,24 @@ __decorateClass([
 ], UsageEntity.prototype, "cachedInputTokens", 2);
 __decorateClass([
   Expose()
+], UsageEntity.prototype, "cost", 2);
+__decorateClass([
+  Expose()
 ], UsageEntity.prototype, "contextSize", 2);
 UsageEntity = __decorateClass([
   Exclude()
 ], UsageEntity);
+
+// packages/domain/src/entities/ai/todo.type.ts
+var TodoItemSchema = external_exports.object({
+  id: external_exports.string().describe("Unique identifier for the todo item"),
+  content: external_exports.string().describe("Brief description of the task"),
+  status: external_exports.enum(["pending", "in_progress", "completed", "cancelled"]).describe(
+    "Current status of the task: pending, in_progress, completed, cancelled"
+  ),
+  priority: external_exports.enum(["high", "medium", "low"]).describe("Priority level of the task: high, medium, low")
+});
+var TodoSchema = external_exports.array(TodoItemSchema);
 
 // packages/domain/src/entities/ai/workspace.type.ts
 var WorkspaceSchema2 = external_exports.object({
@@ -20929,13 +21007,15 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
-// packages/extensions-sdk/dist/timeout-utils.js
+// packages/extensions-sdk/src/timeout-utils.ts
 var DEFAULT_CONNECTION_TEST_TIMEOUT_MS = 3e4;
 async function withTimeout(promise, timeoutMs, errorMessage) {
   let timeoutId;
   const timeoutPromise = new Promise((_2, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error(errorMessage !== null && errorMessage !== void 0 ? errorMessage : `Operation timed out after ${timeoutMs}ms`));
+      reject(
+        new Error(errorMessage ?? `Operation timed out after ${timeoutMs}ms`)
+      );
     }, timeoutMs);
   });
   try {
@@ -20952,14 +21032,111 @@ async function withTimeout(promise, timeoutMs, errorMessage) {
   }
 }
 
+// packages/extensions-sdk/src/metadata-builder.ts
+function buildMetadataFromInformationSchema(options) {
+  const { driver, rows, primaryKeys = [], foreignKeys = [] } = options;
+  let tableId = 1;
+  const tableMap = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = `${row.table_schema}.${row.table_name}`;
+    if (!tableMap.has(key)) {
+      tableMap.set(key, {
+        id: tableId++,
+        schema: row.table_schema,
+        name: row.table_name,
+        columns: []
+      });
+    }
+    const entry = tableMap.get(key);
+    entry.columns.push({
+      id: `${row.table_schema}.${row.table_name}.${row.column_name}`,
+      table_id: 0,
+      schema: row.table_schema,
+      table: row.table_name,
+      name: row.column_name,
+      ordinal_position: row.ordinal_position,
+      data_type: row.data_type,
+      format: row.data_type,
+      is_identity: false,
+      identity_generation: null,
+      is_generated: false,
+      is_nullable: row.is_nullable === "YES",
+      is_updatable: true,
+      is_unique: false,
+      check: null,
+      default_value: null,
+      enums: [],
+      comment: null
+    });
+  }
+  let relationshipId = 1;
+  const tables = Array.from(tableMap.values()).map((table) => {
+    const tablePrimaryKeys = primaryKeys.filter(
+      (pk) => pk.table_schema === table.schema && pk.table_name === table.name
+    ).map((pk) => ({
+      table_id: table.id,
+      name: pk.column_name,
+      schema: table.schema,
+      table_name: table.name
+    }));
+    const relationships = foreignKeys.filter(
+      (fk) => fk.source_schema === table.schema && fk.source_table_name === table.name
+    ).map((fk) => ({
+      id: relationshipId++,
+      constraint_name: fk.constraint_name,
+      source_schema: fk.source_schema,
+      source_table_name: fk.source_table_name,
+      source_column_name: fk.source_column_name,
+      target_table_schema: fk.target_table_schema,
+      target_table_name: fk.target_table_name,
+      target_column_name: fk.target_column_name
+    }));
+    return {
+      id: table.id,
+      schema: table.schema,
+      name: table.name,
+      rls_enabled: false,
+      rls_forced: false,
+      bytes: 0,
+      size: "0",
+      live_rows_estimate: 0,
+      dead_rows_estimate: 0,
+      comment: null,
+      primary_keys: tablePrimaryKeys,
+      relationships
+    };
+  });
+  const columns = Array.from(tableMap.values()).flatMap(
+    (table) => table.columns.map((column) => ({
+      ...column,
+      table_id: table.id
+    }))
+  );
+  const schemas = Array.from(
+    new Set(Array.from(tableMap.values()).map((table) => table.schema))
+  ).map((name, idx) => ({
+    id: idx + 1,
+    name,
+    owner: "unknown"
+  }));
+  return DatasourceMetadataZodSchema.parse({
+    version: "0.0.1",
+    driver,
+    schemas,
+    tables,
+    columns
+  });
+}
+
 // packages/extensions/duckdb-wasm/dist/driver.js
 var ConfigSchema = external_exports.object({
   database: external_exports.string().default("playground").describe("Database name")
 });
 function makeDuckDBWasmDriver(context) {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const instanceMap = /* @__PURE__ */ new Map();
-  const getInstance = async (config) => {
-    const key = config.database || "playground";
+  const getInstance = async () => {
+    const key = parsedConfig.database || "playground";
     if (!instanceMap.has(key)) {
       const baseUrl = typeof window !== "undefined" ? `${window.location.origin}/extensions/duckdb-wasm.default` : "/extensions/duckdb-wasm.default";
       const localBundle = {
@@ -20977,17 +21154,15 @@ function makeDuckDBWasmDriver(context) {
     return instanceMap.get(key);
   };
   return {
-    async testConnection(config) {
-      const parsed = ConfigSchema.parse(config);
+    async testConnection() {
       await withTimeout((async () => {
-        const instance8 = await getInstance(parsed);
+        const instance8 = await getInstance();
         await instance8.connection.query("SELECT 1");
         context.logger?.info?.("duckdb-wasm: testConnection ok");
       })(), DEFAULT_CONNECTION_TEST_TIMEOUT_MS, "DuckDB WASM connection test timed out");
     },
-    async metadata(config) {
-      const parsed = ConfigSchema.parse(config);
-      const instance8 = await getInstance(parsed);
+    async metadata() {
+      const instance8 = await getInstance();
       const tablesResult = await instance8.connection.query(`
         SELECT 
           table_schema,
@@ -21000,76 +21175,14 @@ function makeDuckDBWasmDriver(context) {
         WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_internal')
         ORDER BY table_schema, table_name, ordinal_position;
       `);
-      let tableId = 1;
-      const tableMap = /* @__PURE__ */ new Map();
-      const buildColumn = (schema, table, name, ordinal, dataType, nullable) => ({
-        id: `${schema}.${table}.${name}`,
-        table_id: 0,
-        schema,
-        table,
-        name,
-        ordinal_position: ordinal,
-        data_type: dataType,
-        format: dataType,
-        is_identity: false,
-        identity_generation: null,
-        is_generated: false,
-        is_nullable: nullable === "YES",
-        is_updatable: true,
-        is_unique: false,
-        check: null,
-        default_value: null,
-        enums: [],
-        comment: null
-      });
-      const rows = tablesResult.toArray();
-      for (const row of rows) {
-        const key = `${row.table_schema}.${row.table_name}`;
-        if (!tableMap.has(key)) {
-          tableMap.set(key, {
-            id: tableId++,
-            schema: row.table_schema,
-            name: row.table_name,
-            columns: []
-          });
-        }
-        const entry = tableMap.get(key);
-        entry.columns.push(buildColumn(row.table_schema, row.table_name, row.column_name, row.ordinal_position, row.data_type, row.is_nullable));
-      }
-      const tables = Array.from(tableMap.values()).map((table) => ({
-        id: table.id,
-        schema: table.schema,
-        name: table.name,
-        rls_enabled: false,
-        rls_forced: false,
-        bytes: 0,
-        size: "0",
-        live_rows_estimate: 0,
-        dead_rows_estimate: 0,
-        comment: null,
-        primary_keys: [],
-        relationships: []
-      }));
-      const columns = Array.from(tableMap.values()).flatMap((table) => table.columns.map((column) => ({
-        ...column,
-        table_id: table.id
-      })));
-      const schemas = Array.from(new Set(Array.from(tableMap.values()).map((table) => table.schema))).map((name, idx) => ({
-        id: idx + 1,
-        name,
-        owner: "unknown"
-      }));
-      return DatasourceMetadataZodSchema.parse({
-        version: "0.0.1",
+      const infoRows = tablesResult.toArray();
+      return buildMetadataFromInformationSchema({
         driver: "duckdb-wasm",
-        schemas,
-        tables,
-        columns
+        rows: infoRows
       });
     },
-    async query(sql, config) {
-      const parsed = ConfigSchema.parse(config);
-      const instance8 = await getInstance(parsed);
+    async query(sql) {
+      const instance8 = await getInstance();
       const startTime = performance.now();
       try {
         const result = await instance8.connection.query(sql);

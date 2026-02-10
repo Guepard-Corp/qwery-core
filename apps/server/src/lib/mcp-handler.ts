@@ -22,8 +22,9 @@ import {
 import type { Repositories } from '@qwery/domain/repositories';
 import { DomainException } from '@qwery/domain/exceptions';
 import {
-  getDiscoveredDatasource,
-  getDiscoveredDatasources,
+  ExtensionsRegistry,
+  ExtensionScope,
+  DatasourceExtension,
 } from '@qwery/extensions-sdk';
 import { instanceToPlain } from 'class-transformer';
 import { getRepositories } from './repositories';
@@ -236,24 +237,10 @@ function createMcpServer(getRepos: () => Promise<Repositories>): McpServer {
       inputSchema: z.object({}),
     },
     async () => {
-      const providers = await getDiscoveredDatasources();
-      const list = providers.map((ds) => ({
-        id: ds.id,
-        name: ds.name,
-        description: ds.description,
-        icon: ds.icon,
-        scope: ds.scope,
-        packageName: ds.packageName,
-        drivers: ds.drivers.map((d) => ({
-          id: d.id,
-          name: d.name,
-          description: d.description,
-          runtime: d.runtime,
-          entry: d.entry,
-          packageName: d.packageName,
-        })),
-      }));
-      return jsonContent(list);
+      const providers = await ExtensionsRegistry.list(
+        ExtensionScope.DATASOURCE,
+      );
+      return jsonContent(providers);
     },
   );
 
@@ -273,32 +260,15 @@ function createMcpServer(getRepos: () => Promise<Repositories>): McpServer {
       inputSchema: getDatasourceProviderSchema,
     },
     async (args) => {
-      const provider = await getDiscoveredDatasource(args.providerId.trim());
+      const provider = ExtensionsRegistry.get(args.providerId.trim()) as
+        | DatasourceExtension
+        | undefined;
       if (!provider) {
         return errorContent(
           `Datasource provider not found: ${args.providerId}`,
         );
       }
-      const definition = {
-        id: provider.id,
-        name: provider.name,
-        description: provider.description,
-        icon: provider.icon,
-        scope: provider.scope,
-        packageName: provider.packageName,
-        rawSchema: provider.rawSchema,
-        formConfig: provider.formConfig ?? null,
-        drivers: provider.drivers.map((d) => ({
-          id: d.id,
-          name: d.name,
-          description: d.description,
-          runtime: d.runtime,
-          entry: d.entry,
-          packageDir: d.packageDir,
-          packageName: d.packageName,
-        })),
-      };
-      return jsonContent(definition);
+      return jsonContent(provider);
     },
   );
 

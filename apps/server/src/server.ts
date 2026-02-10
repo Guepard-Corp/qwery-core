@@ -10,6 +10,7 @@ import { createOrganizationsRoutes } from './routes/organizations';
 import { createProjectsRoutes } from './routes/projects';
 import { createDatasourcesRoutes } from './routes/datasources';
 import { createDriverRoutes } from './routes/driver';
+import { createExtensionsRoutes } from './routes/extensions';
 import { createMessagesRoutes } from './routes/messages';
 import { createNotebooksRoutes } from './routes/notebooks';
 import { createNotebookQueryRoutes } from './routes/notebook-query';
@@ -77,6 +78,7 @@ export function createApp() {
   api.route('/projects', createProjectsRoutes(getRepositories));
   api.route('/datasources', createDatasourcesRoutes(getRepositories));
   api.route('/driver', createDriverRoutes());
+  api.route('/extensions', createExtensionsRoutes());
   api.route('/chat', createChatRoutes());
   api.route('/conversations', createConversationsRoutes());
   api.route('/messages', createMessagesRoutes(getRepositories));
@@ -380,6 +382,49 @@ function getOpenAPISpec(): Record<string, unknown> {
             },
           ],
           responses: { '200': { description: 'Deleted' } },
+        },
+      },
+      '/api/extensions': {
+        get: {
+          summary: 'List extensions',
+          parameters: [
+            {
+              name: 'scope',
+              in: 'query',
+              required: false,
+              schema: {
+                type: 'string',
+                enum: [
+                  'datasource',
+                  'driver',
+                  'hook',
+                  'tool',
+                  'agent',
+                  'skill',
+                ],
+              },
+              description: 'Filter by extension scope',
+            },
+          ],
+          responses: { '200': { description: 'List of extensions' } },
+        },
+      },
+      '/api/extensions/{id}': {
+        get: {
+          summary: 'Get extension by id',
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+              description: 'Extension identifier',
+            },
+          ],
+          responses: {
+            '200': { description: 'Extension definition' },
+            '404': { description: 'Extension not found' },
+          },
         },
       },
       '/api/conversations': {

@@ -13,9 +13,9 @@
     "*.ts",
     "*.tsx",
     "src",
-    "__evals__"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "__evals__"
   ]
 }

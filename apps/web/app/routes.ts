@@ -12,13 +12,7 @@ const rootRoutes = [
 ];
 
 // API routes kept in web (driver, extensions, notebook prompt/query); repository traffic goes to apps/server
-const apiRoutes = [
-  route('api/init', 'routes/api/init.ts'),
-  route('api/driver/command', 'routes/api/driver/command.ts'),
-  route('api/extensions/registry', 'routes/api/extensions/registry.ts'),
-  route('api/notebook/prompt', 'routes/api/notebook/prompt.ts'),
-  route('api/notebook/query', 'routes/api/notebook/query.ts'),
-];
+const apiRoutes = [route('api/init', 'routes/api/init.ts')];
 
 const appRoutes = layout('routes/layout/layout.tsx', [
   index('routes/index.tsx'),

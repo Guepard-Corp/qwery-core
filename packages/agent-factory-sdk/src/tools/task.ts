@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import type { UIMessage } from 'ai';
 import { Tool } from './tool';
@@ -26,6 +26,8 @@ const parameters = z.object({
     .describe('The command that triggered this task'),
 });
 
+type TaskParams = z.infer<typeof parameters>;
+
 export const TaskTool = Tool.define('task', {
   whenModel: () => true,
   init: async (ctx) => {
@@ -34,7 +36,7 @@ export const TaskTool = Tool.define('task', {
     const accessible = all.filter(
       (a) =>
         a.hidden !== true &&
-        (a.mode === 'delegate' ||
+        (a.mode === 'subagent' ||
           a.mode === 'all' ||
           (a.mode === 'main' && a.id !== currentAgentId)),
     );
@@ -42,7 +44,7 @@ export const TaskTool = Tool.define('task', {
     return {
       description,
       parameters,
-      execute: async (params, execCtx) => {
+      execute: async (params: TaskParams, execCtx) => {
         const repositories = execCtx.extra?.repositories as
           | Repositories
           | undefined;

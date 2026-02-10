@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import { DatasourceExtension } from '@qwery/extensions-sdk';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { FormRenderer } from '@qwery/ui/form-renderer';
@@ -46,7 +46,7 @@ import {
 } from '@qwery/ui/select';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -54,8 +54,9 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateDatasource } from '~/lib/mutations/use-create-datasource';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
-import { DATASOURCES } from '~/lib/datasources-loader';
+import { DATASOURCES } from '~/lib/loaders/datasource-loader';
 
 import type { Route } from './+types/new';
 
@@ -399,7 +400,7 @@ export async function loader({ params }: Route.LoaderArgs) {
   return {
     extensionId: extension.id,
     name: extension.name,
-    logo: extension.logo,
+    icon: extension.icon,
     description: extension.description,
   };
 }
@@ -424,6 +425,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const projectRepository = repositories.project;
 
   const extension = useGetExtension(extensionId);
+  const extensionSchema = useExtensionSchema(extensionId);
   const [isFormValid, setIsFormValid] = useState(false);
 
   const testConnectionMutation = useTestConnection(
@@ -712,11 +714,15 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
     config = normalizeProviderConfig(config);
 
-    const dsMeta = await getDiscoveredDatasource(extension.data.id);
+    const dsMeta = extension.data as DatasourceExtension | undefined;
+    if (!dsMeta) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
     const driver =
-      dsMeta?.drivers.find(
+      dsMeta.drivers.find(
         (d) => d.id === (config as { driverId?: string })?.driverId,
-      ) ?? dsMeta?.drivers[0];
+      ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
@@ -779,9 +785,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
           <div className="flex items-center gap-4">
             <div className="bg-muted/50 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl">
-              {(extension.data?.logo || loaderData.logo) && (
+              {(extension.data?.icon || loaderData.icon) && (
                 <img
-                  src={extension.data?.logo || loaderData.logo}
+                  src={extension.data?.icon || loaderData.icon}
                   alt={extension.data?.name || loaderData.name}
                   className="h-9 w-9 object-contain"
                 />
@@ -864,23 +870,28 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             <div className="bg-background p-5">
-              {extension.data?.schema &&
-                (extensionId === 's3' ? (
-                  <S3DatasourceForm
-                    onSubmit={handleSubmit}
-                    formId="datasource-form"
-                    onFormReady={setFormValues}
-                    onValidityChange={setIsFormValid}
-                  />
-                ) : (
-                  <FormRenderer
-                    schema={extension.data.schema}
-                    onSubmit={handleSubmit}
-                    formId="datasource-form"
-                    onFormReady={setFormValues}
-                    onValidityChange={setIsFormValid}
-                  />
-                ))}
+              {extensionId === 's3' ? (
+                <S3DatasourceForm
+                  onSubmit={handleSubmit}
+                  formId="datasource-form"
+                  onFormReady={setFormValues}
+                  onValidityChange={setIsFormValid}
+                />
+              ) : extensionSchema.data ? (
+                <FormRenderer
+                  schema={extensionSchema.data}
+                  onSubmit={handleSubmit}
+                  formId="datasource-form"
+                  onFormReady={(values) =>
+                    setFormValues(values as Record<string, unknown> | null)
+                  }
+                  onValidityChange={setIsFormValid}
+                />
+              ) : extensionSchema.isLoading ? (
+                <div className="text-muted-foreground py-8 text-center text-sm">
+                  Loading form…
+                </div>
+              ) : null}
             </div>
 
             <div className="border-border/40 bg-muted/10 flex items-center justify-between border-t px-5 py-4">

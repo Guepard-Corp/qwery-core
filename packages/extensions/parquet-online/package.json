@@ -22,6 +22,9 @@
         "id": "parquet-online",
         "name": "Parquet (Online)",
         "description": "Connect to public Parquet files via URL",
+        "tags": [
+          "Files"
+        ],
         "icon": "media/parquet.svg",
         "formConfig": {
           "preset": "fileUrl",
@@ -40,19 +43,6 @@
             "connectionUrl"
           ],
           "supportsPreview": true
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Public Parquet file URL",
-              "format": "uri"
-            }
-          },
-          "required": [
-            "url"
-          ]
         },
         "drivers": [
           "parquet-online.duckdb"

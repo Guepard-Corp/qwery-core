@@ -1,5 +1,5 @@
 import { Entity } from '../../common/entity';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { Exclude, Expose } from 'class-transformer';
 
 export const PromptSchema = z.object({

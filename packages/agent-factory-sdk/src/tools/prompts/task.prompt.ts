@@ -4,8 +4,6 @@ export const TaskPrompt = (
   agents: AgentInfoWithId[],
 ) => `Launch a new agent to handle complex, multistep data tasks autonomously.
 
-NOTE: subagents are named "delegate"
-
 Available agent types and the tools they have access to:
 ${agents.map((a) => `- ${a.id}: ${a.description ?? 'This subagent should only be called manually by the user.'}`).join('\n')}
 

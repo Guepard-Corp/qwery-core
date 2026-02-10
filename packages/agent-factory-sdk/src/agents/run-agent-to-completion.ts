@@ -1,14 +1,6 @@
 import { type UIMessage, convertToModelMessages, validateUIMessages } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
 import type { Repositories } from '@qwery/domain/repositories';
-import { createQueryEngine } from '@qwery/domain/ports';
-import { DuckDBQueryEngine } from '../services/duckdb-query-engine.service';
-import {
-  DatasourceOrchestrationService,
-  type DatasourceOrchestrationResult,
-} from '../tools/datasource-orchestration-service';
-import { getSchemaCache } from '../tools/schema-cache';
-import { getDatasourceDatabaseName } from '../tools/datasource-name-utils';
 import { insertReminders } from './insert-reminders';
 import { Registry } from '../tools/registry';
 import type { AskRequest, ToolContext, ToolMetadataInput } from '../tools/tool';
@@ -19,6 +11,8 @@ import { MessagePersistenceService } from '../services/message-persistence.servi
 import { UsagePersistenceService } from '../services/usage-persistence.service';
 import { getLogger } from '@qwery/shared/logger';
 import { getDefaultModel } from '../services/model-resolver';
+import { loadDatasources } from '../tools/datasource-loader';
+import type { Datasource } from '@qwery/domain/entities';
 
 export type RunAgentToCompletionInput = {
   conversationId: string;
@@ -69,6 +63,11 @@ export async function runAgentToCompletion(
     throw new Error(`Agent not found: ${agentId}`);
   }
 
+  const loadedDatasources = await loadDatasources(
+    datasources ?? [],
+    repositories.datasource,
+  );
+
   const model =
     typeof modelInput === 'string' && modelInput
       ? Provider.getModelFromString(modelInput)
@@ -77,35 +76,6 @@ export async function runAgentToCompletion(
     providerId: model.providerID,
     modelId: model.id,
   };
-
-  const queryEngine = createQueryEngine(DuckDBQueryEngine);
-  const datasourceOrchestrationService = new DatasourceOrchestrationService();
-  let orchestrationResult: DatasourceOrchestrationResult;
-  try {
-    orchestrationResult = await datasourceOrchestrationService.orchestrate({
-      conversationId,
-      conversationSlug,
-      repositories,
-      queryEngine,
-      metadataDatasources: datasources,
-    });
-  } catch (error) {
-    logger.warn(
-      '[RunAgentToCompletion] Orchestration failed:',
-      error instanceof Error ? error.message : String(error),
-    );
-    const workspace =
-      typeof process !== 'undefined' && process?.env?.WORKSPACE
-        ? process.env.WORKSPACE
-        : '';
-    orchestrationResult = {
-      conversation: null,
-      datasources: [],
-      workspace,
-      schemaCache: getSchemaCache(conversationId),
-      attached: false,
-    };
-  }
 
   const assistantMessageId = uuidv4();
   const getContext = (options: {
@@ -119,9 +89,7 @@ export async function runAgentToCompletion(
     abort: options.abortSignal ?? abortSignal,
     extra: {
       repositories,
-      queryEngine,
       conversationId,
-      orchestrationResult,
       metadataDatasources: datasources,
     },
     messages: [],
@@ -141,9 +109,7 @@ export async function runAgentToCompletion(
   );
 
   const reminderContext = {
-    attachedDatasourceNames: orchestrationResult.datasources.map((d) =>
-      getDatasourceDatabaseName(d.datasource),
-    ),
+    attachedDatasourceNames: loadedDatasources.map((d: Datasource) => d.name),
   };
   const msgsWithReminders = insertReminders({
     messages: messages.map((m) => ({

@@ -4,7 +4,7 @@ export const AgentInfoSchema = z
   .object({
     name: z.string(),
     description: z.string().optional(),
-    mode: z.enum(['main', 'delegate', 'all']),
+    mode: z.enum(['main', 'subagent', 'all']),
     native: z.boolean().optional(),
     hidden: z.boolean().optional(),
     topP: z.number().optional(),

@@ -3,7 +3,7 @@ import type {
   DatasourceMetadata,
   DatasourceResultSet,
 } from '../entities';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 /**
  * URI scheme validator for working directory paths.
@@ -81,6 +81,8 @@ export type QueryEngineConfig = z.infer<typeof QueryEngineConfigSchema>;
  * ```
  */
 export abstract class AbstractQueryEngine {
+  abstract id: string;
+
   /**
    * Initialize the query engine with the provided configuration.
    *

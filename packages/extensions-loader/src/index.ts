@@ -1,12 +1,12 @@
+import { createRequire } from 'node:module';
+
 import {
   datasources,
+  ExtensionsRegistry,
   type DriverFactory,
   type DriverContext,
-  getDiscoveredDatasource,
-  getDiscoveredDatasources,
-  type DiscoveredDriver,
+  DriverExtension,
   type DatasourceExtension,
-  type ExtensionMetadata,
   ExtensionScope,
 } from '@qwery/extensions-sdk';
 
@@ -18,6 +18,133 @@ type DriverModule = {
 
 type DriverImportFn = () => Promise<DriverModule>;
 
+const driverImports = new Map<string, DriverImportFn>();
+const extensionIdToPkgName = new Map<string, string>();
+
+const EXTENSIONS = [
+  '@qwery/extension-clickhouse-node',
+  '@qwery/extension-duckdb',
+  '@qwery/extension-gsheet-csv',
+  '@qwery/extension-json-online',
+  '@qwery/extension-mysql',
+  '@qwery/extension-parquet-online',
+  '@qwery/extension-s3',
+  '@qwery/extension-postgresql',
+  '@qwery/extension-youtube-data-api-v3',
+  '@qwery/extension-clickhouse-web',
+  '@qwery/extension-duckdb-wasm',
+  '@qwery/extension-pglite',
+  '@qwery/extension-postgresql-supabase',
+  '@qwery/extension-postgresql-neon',
+];
+
+interface ContributesDriver {
+  id: string;
+  name: string;
+  description?: string;
+  runtime?: string;
+  entry?: string;
+}
+
+interface ContributesDatasource {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  schema: unknown;
+  formConfig?: unknown;
+  drivers?: string[];
+}
+
+interface PackageContributes {
+  drivers?: ContributesDriver[];
+  datasources?: ContributesDatasource[];
+}
+
+function initDriverImportsFromPackageJson(): void {
+  if (typeof process === 'undefined' || !process.versions?.node) return;
+  const requireFromLoader = createRequire(import.meta.url);
+  const fs = requireFromLoader('node:fs') as typeof import('node:fs');
+  const path = requireFromLoader('node:path') as typeof import('node:path');
+
+  for (const pkgName of EXTENSIONS) {
+    try {
+      const entryPath = requireFromLoader.resolve(pkgName);
+      let dir = path.dirname(entryPath);
+      while (dir !== path.dirname(dir)) {
+        if (fs.existsSync(path.join(dir, 'package.json'))) break;
+        dir = path.dirname(dir);
+      }
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
+      ) as { contributes?: PackageContributes };
+      const contributes = pkg.contributes ?? {};
+      const drivers = contributes.drivers ?? [];
+      const datasources = contributes.datasources ?? [];
+
+      const importFn: DriverImportFn = () => import(/* @vite-ignore */ pkgName);
+      for (const driver of drivers) {
+        driverImports.set(driver.id, importFn);
+      }
+
+      for (const ds of datasources) {
+        const driverIds = ds.drivers ?? [];
+        const driverDescriptors = driverIds
+          .map((id) => drivers.find((d) => d.id === id))
+          .filter((d): d is ContributesDriver => d != null);
+        extensionIdToPkgName.set(ds.id, pkgName);
+        const extension: DatasourceExtension = {
+          id: ds.id,
+          name: ds.name,
+          icon: ds.icon ?? '',
+          description: ds.description,
+          scope: ExtensionScope.DATASOURCE,
+          schema: null,
+          formConfig: ds.formConfig,
+          drivers: driverDescriptors.map((d) => ({
+            id: d.id,
+            name: d.name,
+            description: d.description,
+            runtime: d.runtime as DatasourceExtension['drivers'][0]['runtime'],
+            entry: d.entry,
+          })),
+        };
+        ExtensionsRegistry.register(extension);
+      }
+    } catch {
+      // skip if package not found or not built
+    }
+  }
+}
+
+initDriverImportsFromPackageJson();
+
+/**
+ * Load the Zod schema from the extension package for server-side use (e.g. getSecretFields).
+ * Idempotent: if the extension already has a schema, does nothing.
+ */
+export async function loadExtensionSchemaForProvider(
+  extensionId: string,
+): Promise<void> {
+  const extension = ExtensionsRegistry.get(extensionId) as
+    | DatasourceExtension
+    | undefined;
+  if (!extension || extension.schema != null) return;
+
+  const pkgName = extensionIdToPkgName.get(extensionId);
+  if (!pkgName) return;
+
+  try {
+    const mod = await import(/* @vite-ignore */ `${pkgName}/schema`);
+    const schema = mod.schema ?? mod.default;
+    if (schema != null) {
+      ExtensionsRegistry.register({ ...extension, schema });
+    }
+  } catch {
+    // No schema export or package not built; keep schema null
+  }
+}
+
 function getDriverFactoryFromModule(mod: DriverModule): unknown {
   const m = mod as Record<string, unknown>;
   const factory = m.driverFactory ?? m.default;
@@ -26,69 +153,6 @@ function getDriverFactoryFromModule(mod: DriverModule): unknown {
 
 const loadedDrivers = new Set<string>();
 
-/**
- * Manual map of driver IDs to their import functions.
- * Add new node drivers here when creating new extensions.
- */
-const driverImports = new Map<string, DriverImportFn>([
-  // ClickHouse Node
-  [
-    'clickhouse.node',
-    () => import('@qwery/extension-clickhouse-node') as Promise<DriverModule>,
-  ],
-
-  // DuckDB Node
-  [
-    'duckdb.default',
-    () => import('@qwery/extension-duckdb') as Promise<DriverModule>,
-  ],
-
-  // Google Sheets CSV
-  [
-    'gsheet-csv.duckdb',
-    () => import('@qwery/extension-gsheet-csv') as Promise<DriverModule>,
-  ],
-
-  // JSON Online
-  [
-    'json-online.duckdb',
-    () => import('@qwery/extension-json-online') as Promise<DriverModule>,
-  ],
-
-  // MySQL
-  [
-    'mysql.default',
-    () => import('@qwery/extension-mysql') as Promise<DriverModule>,
-  ],
-
-  // Parquet Online
-  [
-    'parquet-online.duckdb',
-    () => import('@qwery/extension-parquet-online') as Promise<DriverModule>,
-  ],
-
-  // S3 Object Storage (Parquet/JSON with wildcards)
-  ['s3.duckdb', () => import('@qwery/extension-s3') as Promise<DriverModule>],
-
-  // PostgreSQL (used by postgresql, postgresql-supabase, postgresql-neon)
-  [
-    'postgresql.default',
-    () => import('@qwery/extension-postgresql') as Promise<DriverModule>,
-  ],
-
-  // YouTube Data API v3
-  [
-    'youtube-data-api-v3.default',
-    () =>
-      import('@qwery/extension-youtube-data-api-v3') as Promise<DriverModule>,
-  ],
-]);
-
-/**
- * Load a node driver module by driver ID
- * @param driverId The driver ID (e.g., 'gsheet-csv.duckdb')
- * @returns The loaded driver module
- */
 async function loadDriverModule(driverId: string): Promise<DriverModule> {
   const importFn = driverImports.get(driverId);
   if (!importFn) {
@@ -114,26 +178,22 @@ export function getNodeDriverIds(): string[] {
 }
 
 /**
- * Get a driver instance from the registry
- * Loads and registers the driver if not already loaded
- * @param driver The discovered driver metadata
- * @param context Optional driver context to merge with default context
+ * Get a driver instance from the registry.
+ * Loads and registers the driver if not already loaded.
  */
 export async function getDriverInstance(
-  driver: DiscoveredDriver,
-  context?: Partial<DriverContext>,
+  driver: DriverExtension,
+  context: DriverContext,
 ): Promise<ReturnType<DriverFactory>> {
-  // Get factory from registry
   let factory = datasources.getDriverRegistration(driver.id)?.factory;
   if (factory) {
     const driverContext: DriverContext = {
-      runtime: driver.runtime,
       ...context,
+      runtime: context.runtime ?? driver.runtime,
     };
     return factory(driverContext);
   }
 
-  // Load and register if not already loaded
   if (!loadedDrivers.has(driver.id)) {
     loadedDrivers.add(driver.id);
     try {
@@ -144,7 +204,11 @@ export async function getDriverInstance(
       } else {
         const entry = driver.entry ?? './dist/driver.js';
         const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
-        const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
+        const g = globalThis as unknown as {
+          window?: { location: { origin: string } };
+        };
+        const origin = g.window?.location?.origin ?? '';
+        const url = `${origin}/extensions/${driver.id}/${fileName}`;
         const dynamicImport = new Function('url', 'return import(url)');
         mod = await dynamicImport(url);
       }
@@ -174,171 +238,8 @@ export async function getDriverInstance(
   }
 
   const driverContext: DriverContext = {
-    runtime: driver.runtime,
     ...context,
+    runtime: context.runtime ?? driver.runtime,
   };
   return factory(driverContext);
 }
-
-// Extension registry functions
-
-function pickDriver(drivers: DiscoveredDriver[], config: unknown) {
-  const cfg = config as { driverId?: string } | undefined;
-  if (cfg?.driverId) {
-    const match = drivers.find((d) => d.id === cfg.driverId);
-    if (match) return match;
-  }
-
-  const browserPreferred =
-    typeof window !== 'undefined' &&
-    drivers.find((d) => d.runtime === 'browser');
-  if (browserPreferred) return browserPreferred;
-
-  return drivers[0];
-}
-
-function normalizeIconPath(
-  icon: string | undefined,
-  datasourceId: string,
-): string {
-  if (!icon) return '';
-  // If already an absolute path (starts with /), return as is
-  if (icon.startsWith('/')) return icon;
-  // If relative path, convert to public path
-  const filename = icon.split('/').pop() || icon;
-  return `/extensions/${datasourceId}/${filename}`;
-}
-
-/**
- * Get an extension by ID
- */
-export async function getExtension(
-  id: string,
-): Promise<DatasourceExtension | undefined> {
-  const ds = await getDiscoveredDatasource(id);
-  if (!ds) return undefined;
-
-  const drivers = ds.drivers;
-
-  return {
-    id: ds.id,
-    name: ds.name,
-    logo: normalizeIconPath(ds.icon, ds.id),
-    description: ds.description,
-    tags: [],
-    scope: ds.scope,
-    schema: ds.schema,
-    formConfig: ds.formConfig ?? null,
-    getDriver: async (instanceName: string, config: unknown) => {
-      const driver = pickDriver(drivers, config);
-      if (!driver) {
-        throw new Error(`No driver configured for datasource ${ds.id}`);
-      }
-
-      // Get factory from registry
-      let factory = datasources.getDriverRegistration(driver.id)?.factory;
-      if (factory) {
-        const context: DriverContext = { runtime: driver.runtime };
-        return factory(context);
-      }
-
-      // Load and register if not already loaded
-      if (!loadedDrivers.has(driver.id)) {
-        loadedDrivers.add(driver.id);
-        try {
-          let mod: DriverModule;
-
-          if (driver.runtime === 'node') {
-            mod = await loadDriverModule(driver.id);
-          } else {
-            const entry = driver.entry ?? './dist/driver.js';
-            const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
-            const url = `${window.location.origin}/extensions/${driver.id}/${fileName}`;
-            const dynamicImport = new Function('url', 'return import(url)');
-            mod = await dynamicImport(url);
-          }
-
-          const driverFactory = getDriverFactoryFromModule(mod);
-
-          if (typeof driverFactory === 'function') {
-            factory = driverFactory as DriverFactory;
-            datasources.registerDriver(
-              driver.id,
-              factory,
-              driver.runtime ?? 'node',
-            );
-          } else {
-            throw new Error(
-              `Driver ${driver.id} did not export a driverFactory or default function`,
-            );
-          }
-        } catch (err) {
-          loadedDrivers.delete(driver.id);
-          throw err;
-        }
-      }
-
-      if (!factory) {
-        throw new Error(`Driver ${driver.id} did not register a factory`);
-      }
-
-      const context: DriverContext = { runtime: driver.runtime };
-      return factory(context);
-    },
-  };
-}
-
-/**
- * Get all extensions
- */
-export async function getAllExtensions(): Promise<DatasourceExtension[]> {
-  const datasources = await getDiscoveredDatasources();
-  const extensions = await Promise.all(
-    datasources.map((ds) => getExtension(ds.id)),
-  );
-  return extensions.filter(Boolean) as DatasourceExtension[];
-}
-
-/**
- * Get extension metadata by ID
- */
-export async function getExtensionMetadata(
-  id: string,
-): Promise<ExtensionMetadata | undefined> {
-  const ds = await getDiscoveredDatasource(id);
-  if (!ds) return undefined;
-  return {
-    id: ds.id,
-    name: ds.name,
-    logo: normalizeIconPath(ds.icon, ds.id),
-    description: ds.description,
-    tags: [],
-    scope: ds.scope ?? ExtensionScope.DATASOURCE,
-    schema: ds.schema,
-    formConfig: ds.formConfig ?? null,
-  };
-}
-
-/**
- * Get all extension metadata
- */
-export async function getAllExtensionMetadata(): Promise<ExtensionMetadata[]> {
-  const datasources = await getDiscoveredDatasources();
-  return datasources.map((ds) => ({
-    id: ds.id,
-    name: ds.name,
-    logo: normalizeIconPath(ds.icon, ds.id),
-    description: ds.description,
-    tags: [],
-    scope: ds.scope ?? ExtensionScope.DATASOURCE,
-    schema: ds.schema,
-    formConfig: ds.formConfig ?? null,
-  }));
-}
-
-// Re-export types for convenience
-export type {
-  DatasourceExtension,
-  ExtensionMetadata,
-  DiscoveredDriver,
-} from '@qwery/extensions-sdk';

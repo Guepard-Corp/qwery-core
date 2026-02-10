@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Datasource, DatasourceMetadata } from '@qwery/domain/entities';
 import { DatasourceKind } from '@qwery/domain/entities';
-import { getExtension } from '@qwery/extensions-loader';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
-import { apiPost } from '../repositories/api-client';
+import {
+  DatasourceExtension,
+  type DriverExtension,
+} from '@qwery/extensions-sdk';
+import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { useGetDatasourceExtensions } from './use-get-extension';
 
 export function getDatasourceMetadataKey(
   datasourceProvider: string,
@@ -17,6 +20,8 @@ export function useGetDatasourceMetadata(
   datasource: Datasource | null | undefined,
   options?: { enabled?: boolean },
 ) {
+  const { data: extensions = [] } = useGetDatasourceExtensions();
+
   return useQuery({
     queryKey: getDatasourceMetadataKey(
       datasource?.datasource_provider || '',
@@ -29,9 +34,10 @@ export function useGetDatasourceMetadata(
       }
 
       // Get driver metadata to check runtime
-      const dsMeta = await getDiscoveredDatasource(
-        datasource.datasource_provider,
-      );
+      const dsMeta = extensions.find(
+        (ext) => ext.id === datasource.datasource_provider,
+      ) as DatasourceExtension | undefined;
+
       if (!dsMeta) {
         throw new Error('Datasource metadata not found');
       }
@@ -54,39 +60,41 @@ export function useGetDatasourceMetadata(
           throw new Error('Browser drivers require embedded datasources');
         }
 
-        const extension = await getExtension(datasource.datasource_provider);
-        if (!extension) {
-          throw new Error('Extension not found');
-        }
-
-        const driverStorageKey =
-          (datasource.config as { storageKey?: string })?.storageKey ??
-          datasource.id ??
-          datasource.slug ??
-          datasource.name;
-        const driverInstance = await extension.getDriver(
-          driverStorageKey,
-          datasource.config,
+        const driverInstance = await getBrowserDriverInstance(
+          driver as DriverExtension,
+          { config: datasource.config },
         );
-        if (!driverInstance) {
-          throw new Error('Driver not found');
-        }
 
-        return await driverInstance.metadata(datasource.config);
+        return await driverInstance.metadata();
       }
 
       // Handle node drivers (remote datasources) via API
       if (runtime === 'node') {
-        const response = await apiPost<{
-          success: boolean;
-          data: DatasourceMetadata;
-        }>('/driver/command', {
-          action: 'metadata',
-          datasourceProvider: datasource.datasource_provider,
-          driverId: driver.id,
-          config: datasource.config,
+        const response = await fetch('/api/driver/command', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'metadata',
+            datasourceProvider: datasource.datasource_provider,
+            driverId: driver.id,
+            config: datasource.config,
+          }),
         });
-        return response.data;
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ error: 'Failed to get datasource metadata' }));
+          throw new Error(error.error || 'Failed to get datasource metadata');
+        }
+
+        const result = await response.json();
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to get datasource metadata');
+        }
+        return result.data;
       }
 
       throw new Error(`Unsupported driver runtime: ${runtime}`);
@@ -94,7 +102,7 @@ export function useGetDatasourceMetadata(
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled:
       options?.enabled !== undefined
-        ? options.enabled && !!datasource
-        : !!datasource,
+        ? options.enabled && !!datasource && extensions.length > 0
+        : !!datasource && extensions.length > 0,
   });
 }

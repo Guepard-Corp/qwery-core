@@ -1,12 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
-
 import {
   type Datasource,
   DatasourceKind,
   type DatasourceResultSet,
 } from '@qwery/domain/entities';
-import { getExtension } from '@qwery/extensions-loader';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import {
+  DatasourceExtension,
+  type DriverExtension,
+} from '@qwery/extensions-sdk';
+import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 type RunQueryPayload = {
   cellId: number;
@@ -20,11 +23,13 @@ export function useRunQuery(
   onSuccess: (result: DatasourceResultSet, cellId: number) => void,
   onError: (error: Error, cellId: number) => void,
 ) {
+  const { data: extensions = [] } = useGetDatasourceExtensions();
+
   return useMutation({
     mutationFn: async (
       payload: RunQueryPayload,
     ): Promise<DatasourceResultSet> => {
-      const { query, datasource, conversationId } = payload;
+      const { query, datasource } = payload;
 
       if (!query.trim()) {
         throw new Error('Query cannot be empty');
@@ -36,67 +41,11 @@ export function useRunQuery(
         );
       }
 
-      // For Google Sheets, use DuckDB (same as agent's runQuery tool) if conversationId is provided
-      // This allows queries to use the same attached database references as the agent
-      if (datasource.datasource_provider === 'gsheet-csv' && conversationId) {
-        const response = await fetch('/api/notebook/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            conversationId,
-            query,
-            datasourceId: datasource.id,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: 'Failed to execute query' }));
-          throw new Error(error.error || 'Failed to execute query');
-        }
-
-        const apiResult = await response.json();
-        if (!apiResult.success || !apiResult.data) {
-          throw new Error(
-            apiResult.error || 'Query execution failed on server',
-          );
-        }
-
-        const result = apiResult.data;
-        // Ensure rows and headers are arrays
-        const rows = Array.isArray(result.rows) ? result.rows : [];
-        const headers = Array.isArray(result.headers) ? result.headers : [];
-        const columns = headers.map(
-          (header: {
-            name: string;
-            displayName?: string;
-            originalType?: string | null;
-          }) => ({
-            name: header.name,
-            displayName: header.displayName ?? header.name,
-            originalType: header.originalType ?? null,
-          }),
-        );
-
-        return {
-          rows,
-          columns,
-          stat: result.stat ?? {
-            rowsAffected: 0,
-            rowsRead: rows.length,
-            rowsWritten: 0,
-            queryDurationMs: null,
-          },
-        };
-      }
-
       // Get driver metadata to check runtime
-      const dsMeta = await getDiscoveredDatasource(
-        datasource.datasource_provider,
-      );
+      const dsMeta = extensions.find(
+        (ext) => ext.id === datasource.datasource_provider,
+      ) as DatasourceExtension | undefined;
+
       if (!dsMeta) {
         throw new Error('Datasource metadata not found');
       }
@@ -119,35 +68,13 @@ export function useRunQuery(
           throw new Error('Browser drivers require embedded datasources');
         }
 
-        const extension = await getExtension(datasource.datasource_provider);
-        if (!extension) {
-          throw new Error('Extension not found');
-        }
-
-        const driverStorageKey =
-          (datasource.config as { storageKey?: string })?.storageKey ??
-          datasource.id ??
-          datasource.slug ??
-          datasource.name;
-        const driverInstance = await extension.getDriver(
-          driverStorageKey,
-          datasource.config,
+        const driverInstance = await getBrowserDriverInstance(
+          driver as DriverExtension,
+          { config: datasource.config },
         );
-        if (!driverInstance) {
-          throw new Error('Driver not found');
-        }
 
-        const result = await driverInstance.query(query, datasource.config);
-        return {
-          rows: result.rows,
-          columns: result.columns,
-          stat: result.stat ?? {
-            rowsAffected: 0,
-            rowsRead: result.rows.length,
-            rowsWritten: 0,
-            queryDurationMs: null,
-          },
-        };
+        const result = await driverInstance.query(query);
+        return result;
       }
 
       // Handle node drivers (remote datasources) via API
@@ -180,17 +107,8 @@ export function useRunQuery(
           );
         }
 
-        const result = apiResult.data;
-        return {
-          rows: result.rows,
-          columns: result.columns,
-          stat: result.stat ?? {
-            rowsAffected: 0,
-            rowsRead: result.rows.length,
-            rowsWritten: 0,
-            queryDurationMs: null,
-          },
-        };
+        const result = apiResult.data as DatasourceResultSet;
+        return result;
       }
 
       throw new Error(`Unsupported driver runtime: ${runtime}`);

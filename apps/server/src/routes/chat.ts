@@ -5,7 +5,6 @@ import {
   prompt,
   getDefaultModel,
   validateUIMessages,
-  detectIntent,
   PROMPT_SOURCE,
   type PromptSource,
   type NotebookCellType,
@@ -15,11 +14,13 @@ import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import type { Repositories } from '@qwery/domain/repositories';
 import { createRepositories } from '../lib/repositories';
 import { getTelemetry } from '../lib/telemetry';
+import { resolveChatDatasources } from '../helpers/chat-helper';
 
 const chatBodySchema = z.object({
   messages: z.array(z.unknown()),
   model: z.string().optional(),
   datasources: z.array(z.string()).optional(),
+  trigger: z.enum(['submit-message', 'regenerate-message']).optional(),
 });
 
 const chatParamSchema = z.object({
@@ -47,34 +48,18 @@ export function createChatRoutes() {
       const body = c.req.valid('json');
       const messages = body.messages as UIMessage[];
       const model = body.model ?? getDefaultModel();
-      const datasources = body.datasources;
 
       const repositories = await getRepositories();
+      const datasources = await resolveChatDatasources({
+        bodyDatasources: body.datasources,
+        messages,
+        conversationSlug: slug,
+        conversationRepository: repositories.conversation,
+      });
       const telemetry = await getTelemetry();
 
-      const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
-      const lastUserMessageText =
-        lastUserMessage?.parts
-          ?.filter(
-            (p): p is { type: 'text'; text: string } =>
-              p.type === 'text' && 'text' in p,
-          )
-          .map((p) => p.text)
-          .join(' ')
-          .trim() || '';
-
-      let needSQL = false;
-      if (lastUserMessageText) {
-        try {
-          const intentResult = await detectIntent(
-            lastUserMessageText,
-            messages,
-          );
-          needSQL = (intentResult as { needsSQL?: boolean }).needsSQL ?? false;
-        } catch {
-          needSQL = false;
-        }
-      }
+      //TODO: implement intent detection
+      const needSQL = false;
 
       const processedMessages = messages.map(
         (message: UIMessage, index: number) => {

@@ -1,4 +1,4 @@
-import { PLAYGROUNDS } from '@qwery/playground/playgrounds';
+import { PLAYGROUNDS } from '@qwery/playground/constants';
 
 import type { Route } from './+types/playground';
 import { ListPlaygrounds } from './_components/list-playgrounds';

@@ -21,9 +21,9 @@ import { convertMessages } from '~/lib/utils/messages-converter';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
 import { QweryContextProps } from 'node_modules/@qwery/ui/src/qwery/ai/context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import type { DatasourceItem } from '@qwery/ui/ai';
 import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
 import { useUpdateConversation } from '~/lib/mutations/use-conversation';
@@ -265,21 +265,17 @@ export const AgentUIWrapper = forwardRef<
   );
 
   // Fetch extension metadata for datasource icons
-  const { data: pluginMetadata = [] } = useQuery({
-    queryKey: ['all-plugin-metadata'],
-    queryFn: () => getAllExtensionMetadata(),
-    staleTime: 60 * 1000,
-  });
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    pluginMetadata.forEach((plugin) => {
-      if (plugin?.id && plugin.logo) {
-        map.set(plugin.id, plugin.logo);
+    extensions.forEach((plugin) => {
+      if (plugin.icon) {
+        map.set(plugin.id, plugin.icon);
       }
     });
     return map;
-  }, [pluginMetadata]);
+  }, [extensions]);
 
   // Convert datasources to DatasourceItem format
   const datasourceItems = useMemo<DatasourceItem[]>(() => {
@@ -296,9 +292,9 @@ export const AgentUIWrapper = forwardRef<
 
   const transport = useMemo(
     () => (model: string) => {
-      return transportFactory(conversationSlug, model, repositories);
+      return transportFactory(conversationSlug, model);
     },
-    [conversationSlug, repositories],
+    [conversationSlug],
   );
 
   // Handle sendMessage and model from QweryAgentUI

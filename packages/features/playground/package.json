@@ -15,6 +15,7 @@
   "exports": {
     "./playground-try": "./src/components/playground-try.tsx",
     "./playgrounds": "./src/playgrounds.ts",
+    "./constants": "./src/constants.ts",
     "./factory": "./src/factory/playground-factory.ts",
     "./factory/database": "./src/factory/playground-database.ts",
     "./utils/playground-sql": "./src/utils/playground-sql.ts",

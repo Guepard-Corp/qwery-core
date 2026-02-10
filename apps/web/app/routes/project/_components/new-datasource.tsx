@@ -15,21 +15,13 @@ import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 
 import { DatasourceConnectSheet } from './datasource-connect-sheet';
+import { DatasourceExtension } from '@qwery/extensions-sdk';
 
 const ITEMS_PER_PAGE = 24;
-
-type PluginMetadata = {
-  id: string;
-  name: string;
-  description: string;
-  logo: string;
-  tags: string[];
-};
-
 export function NewDatasource({
   datasources,
 }: {
-  datasources: PluginMetadata[];
+  datasources: DatasourceExtension[];
 }) {
   const params = useParams();
   const project_id = params.slug as string;
@@ -44,22 +36,13 @@ export function NewDatasource({
   const [orderOverride, setOrderOverride] = useState<string[] | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedDatasource, setSelectedDatasource] = useState<{
-    id: string;
-    name: string;
-    logo: string;
-    description: string;
-  } | null>(null);
+  const [selectedDatasource, setSelectedDatasource] =
+    useState<DatasourceExtension | null>(null);
 
   const filterTags = ['SQL', 'Files', 'SaaS', 'API'];
 
-  const openDrawerFor = useCallback((ds: PluginMetadata) => {
-    setSelectedDatasource({
-      id: ds.id,
-      name: ds.name,
-      logo: ds.logo,
-      description: ds.description,
-    });
+  const openDrawerFor = useCallback((ds: DatasourceExtension) => {
+    setSelectedDatasource(ds);
     setDrawerOpen(true);
   }, []);
 
@@ -109,7 +92,7 @@ export function NewDatasource({
 
       const matchesFilter =
         selectedFilters.size === 0 ||
-        datasource.tags.some((tag) => selectedFilters.has(tag));
+        datasource.tags?.some((tag) => selectedFilters.has(tag));
 
       return matchesSearch && matchesFilter;
     });
@@ -122,7 +105,7 @@ export function NewDatasource({
     const byId = new Map(filteredDatasources.map((d) => [d.id, d]));
     return orderOverride
       .map((id) => byId.get(id))
-      .filter((d): d is PluginMetadata => d != null);
+      .filter((d): d is DatasourceExtension => d != null);
   }, [filteredDatasources, orderOverride]);
 
   const effectiveCurrentPage = useMemo(() => {
@@ -288,7 +271,7 @@ export function NewDatasource({
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {paginatedDatasources.map((datasource, index) => {
                 const hasFailed = failedLogos.has(datasource.id);
-                const showLogo = datasource.logo && !hasFailed;
+                const showLogo = datasource.icon && !hasFailed;
                 const shouldInvert = isJsonDatasource(datasource.id);
                 const isDragging = draggingIndex === index;
 
@@ -313,7 +296,7 @@ export function NewDatasource({
                       <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
                         {showLogo ? (
                           <img
-                            src={datasource.logo}
+                            src={datasource.icon}
                             alt={datasource.name}
                             className={cn(
                               'h-12 w-12 object-contain',
@@ -419,11 +402,7 @@ export function NewDatasource({
           onOpenChange={setDrawerOpen}
           extensionId={selectedDatasource.id}
           projectSlug={project_id}
-          extensionMeta={{
-            name: selectedDatasource.name,
-            logo: selectedDatasource.logo,
-            description: selectedDatasource.description,
-          }}
+          extensionMeta={selectedDatasource}
           onSuccess={closeDrawer}
           onCancel={closeDrawer}
         />

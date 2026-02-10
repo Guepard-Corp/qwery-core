@@ -1,4 +1,3 @@
-export * from './factory-agent';
 export * from './agent';
 export * from './ask-agent';
 export * from './query-agent';
@@ -17,9 +16,6 @@ export type {
   ProcessInput,
   CreateInput,
 } from './session-compaction';
-
-// Export actors
-export * from './actors';
 
 // Export types for use across the codebase
 export * from './types';

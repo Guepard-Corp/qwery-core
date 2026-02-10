@@ -2346,7 +2346,7 @@ var require_Reflect = __commonJS({
 // packages/extensions/clickhouse-web/dist/driver.js
 var import_client_web = __toESM(require_dist2(), 1);
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -2458,7 +2458,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/util.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -2592,7 +2592,7 @@ var getParsedType = (data) => {
   }
 };
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/ZodError.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -2688,7 +2688,7 @@ var ZodError = class _ZodError extends Error {
     return this.issues.length === 0;
   }
   flatten(mapper = (issue) => issue.message) {
-    const fieldErrors = {};
+    const fieldErrors = /* @__PURE__ */ Object.create(null);
     const formErrors = [];
     for (const sub of this.issues) {
       if (sub.path.length > 0) {
@@ -2710,7 +2710,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/locales/en.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -2813,7 +2813,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/errors.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -2822,7 +2822,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -2932,14 +2932,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
+// node_modules/.pnpm/zod@4.3.6/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -6387,12 +6387,37 @@ var coerce = {
 };
 var NEVER = INVALID;
 
-// packages/extensions-sdk/dist/types.js
-var ExtensionScope;
-(function(ExtensionScope2) {
+// packages/extensions-sdk/src/types.ts
+var ExtensionScope = /* @__PURE__ */ ((ExtensionScope2) => {
   ExtensionScope2["DATASOURCE"] = "datasource";
   ExtensionScope2["DRIVER"] = "driver";
-})(ExtensionScope || (ExtensionScope = {}));
+  ExtensionScope2["HOOK"] = "hook";
+  ExtensionScope2["TOOL"] = "tool";
+  ExtensionScope2["AGENT"] = "agent";
+  ExtensionScope2["SKILL"] = "skill";
+  return ExtensionScope2;
+})(ExtensionScope || {});
+var ExtensionDefinitionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  icon: external_exports.string(),
+  description: external_exports.string().optional(),
+  tags: external_exports.array(external_exports.string()).optional(),
+  scope: external_exports.nativeEnum(ExtensionScope),
+  schema: external_exports.any().optional().nullable(),
+  formConfig: external_exports.any().optional()
+});
+var DriverRuntimeSchema = external_exports.enum(["node", "browser"]);
+var DriverExtensionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  description: external_exports.string().optional(),
+  runtime: DriverRuntimeSchema.optional(),
+  entry: external_exports.string().optional()
+});
+var DatasourceExtensionSchema = ExtensionDefinitionSchema.extend({
+  drivers: external_exports.array(DriverExtensionSchema)
+});
 
 // packages/domain/src/entities/index.ts
 var import_reflect_metadata = __toESM(require_Reflect(), 1);
@@ -9016,12 +9041,50 @@ var MessageRole = /* @__PURE__ */ ((MessageRole2) => {
   MessageRole2["SYSTEM"] = "system";
   return MessageRole2;
 })(MessageRole || {});
+var MessageContentPartSchema = external_exports.object({
+  type: external_exports.string(),
+  text: external_exports.string().optional(),
+  state: external_exports.string().optional()
+}).passthrough();
+var MessageContentSchema = external_exports.object({
+  id: external_exports.string().optional(),
+  role: external_exports.string().optional(),
+  parts: external_exports.array(MessageContentPartSchema).optional()
+}).passthrough();
+var TokensSchema = external_exports.object({
+  input: external_exports.number(),
+  output: external_exports.number(),
+  reasoning: external_exports.number().optional(),
+  cache: external_exports.object({
+    read: external_exports.number(),
+    write: external_exports.number()
+  }).optional()
+}).passthrough();
+var MessageMetadataSchema = external_exports.object({
+  error: external_exports.unknown().optional(),
+  modelId: external_exports.string().optional(),
+  providerId: external_exports.string().optional(),
+  cost: external_exports.number().optional(),
+  tokens: TokensSchema.optional(),
+  parentId: external_exports.string().optional(),
+  finish: external_exports.string().optional(),
+  summary: external_exports.boolean().optional(),
+  path: external_exports.object({
+    cwd: external_exports.string(),
+    root: external_exports.string()
+  }).optional(),
+  agent: external_exports.string().optional(),
+  model: external_exports.object({
+    providerID: external_exports.string(),
+    modelID: external_exports.string()
+  }).optional()
+}).passthrough();
 var MessageSchema = external_exports.object({
   id: external_exports.string().uuid().describe("The unique identifier for the action"),
   conversationId: external_exports.string().uuid().describe("The unique identifier for the conversation"),
-  content: external_exports.record(external_exports.string(), external_exports.any()).describe("The content of the message"),
+  content: MessageContentSchema.describe("The content of the message"),
   role: external_exports.nativeEnum(MessageRole).describe("The role of the message"),
-  metadata: external_exports.record(external_exports.string(), external_exports.any()).describe("The metadata of the message"),
+  metadata: MessageMetadataSchema.describe("The metadata of the message"),
   createdAt: external_exports.date().describe("The date and time the message was created"),
   updatedAt: external_exports.date().describe("The date and time the message was last updated"),
   createdBy: external_exports.string().describe("The user who created the message"),
@@ -9262,6 +9325,7 @@ var UsageSchema = external_exports.object({
   totalTokens: external_exports.number().describe("The total number of tokens used").default(0),
   reasoningTokens: external_exports.number().describe("The total number of reasoning tokens used").default(0),
   cachedInputTokens: external_exports.number().describe("The total number of cached input tokens used").default(0),
+  cost: external_exports.number().describe("The cost in USD for this usage").default(0),
   contextSize: external_exports.number().describe("The used context size of the model").default(0),
   creditsCap: external_exports.number().describe("The maximum number of credits capacity").default(0),
   creditsUsed: external_exports.number().describe("The number of credits used").default(0),
@@ -9313,10 +9377,24 @@ __decorateClass([
 ], UsageEntity.prototype, "cachedInputTokens", 2);
 __decorateClass([
   Expose()
+], UsageEntity.prototype, "cost", 2);
+__decorateClass([
+  Expose()
 ], UsageEntity.prototype, "contextSize", 2);
 UsageEntity = __decorateClass([
   Exclude()
 ], UsageEntity);
+
+// packages/domain/src/entities/ai/todo.type.ts
+var TodoItemSchema = external_exports.object({
+  id: external_exports.string().describe("Unique identifier for the todo item"),
+  content: external_exports.string().describe("Brief description of the task"),
+  status: external_exports.enum(["pending", "in_progress", "completed", "cancelled"]).describe(
+    "Current status of the task: pending, in_progress, completed, cancelled"
+  ),
+  priority: external_exports.enum(["high", "medium", "low"]).describe("Priority level of the task: high, medium, low")
+});
+var TodoSchema = external_exports.array(TodoItemSchema);
 
 // packages/domain/src/entities/ai/workspace.type.ts
 var WorkspaceSchema2 = external_exports.object({
@@ -9826,7 +9904,7 @@ var DatasourceResultSetZodSchema = external_exports.object({
   stat: DatasourceResultStatSchema.describe("Query execution statistics")
 }).passthrough();
 
-// packages/extensions-sdk/dist/connection-string-utils.js
+// packages/extensions-sdk/src/connection-string-utils.ts
 function extractGenericUrl(config, keys) {
   for (const key of keys) {
     const value = config[key];
@@ -9911,7 +9989,7 @@ function cleanPostgresConnectionUrl(connectionUrl) {
       url.searchParams.set("sslmode", "prefer");
     }
     return url.toString();
-  } catch (_a) {
+  } catch {
     let cleaned = connectionUrl;
     cleaned = cleaned.replace(/[&?]channel_binding=[^&]*/g, "");
     cleaned = cleaned.replace(/channel_binding=[^&]*&?/g, "");
@@ -9950,31 +10028,41 @@ function extractConnectionUrl(config, providerId) {
     case "postgresql":
     case "postgres":
       if (!fields.host) {
-        throw new Error("PostgreSQL datasource requires connectionUrl or host in config");
+        throw new Error(
+          "PostgreSQL datasource requires connectionUrl or host in config"
+        );
       }
       return buildPostgresConnectionUrl(fields);
     case "mysql":
       if (!fields.host) {
-        throw new Error("MySQL datasource requires connectionUrl or host in config");
+        throw new Error(
+          "MySQL datasource requires connectionUrl or host in config"
+        );
       }
       return buildMysqlConnectionUrl(fields);
     case "clickhouse-node":
     case "clickhouse-web":
     case "clickhouse":
       if (!fields.host) {
-        throw new Error("ClickHouse datasource requires connectionUrl or host in config");
+        throw new Error(
+          "ClickHouse datasource requires connectionUrl or host in config"
+        );
       }
       return buildClickHouseConnectionUrl(fields);
     case "sqlite":
     case "duckdb": {
       const path = extractPath(config, ["path", "database", "connectionUrl"]);
       if (!path) {
-        throw new Error("SQLite/DuckDB datasource requires path, database, or connectionUrl in config");
+        throw new Error(
+          "SQLite/DuckDB datasource requires path, database, or connectionUrl in config"
+        );
       }
       return path;
     }
     default:
-      throw new Error(`Unsupported provider for connection string extraction: ${providerId}`);
+      throw new Error(
+        `Unsupported provider for connection string extraction: ${providerId}`
+      );
   }
 }
 
@@ -9982,7 +10070,7 @@ function extractConnectionUrl(config, providerId) {
 var ConfigSchema = external_exports.object({
   connectionUrl: external_exports.string().url().describe("secret:true").optional(),
   host: external_exports.string().optional(),
-  port: external_exports.number().int().min(1).max(65535).optional(),
+  port: external_exports.coerce.number().int().min(1).max(65535).optional(),
   username: external_exports.string().optional(),
   user: external_exports.string().optional(),
   password: external_exports.string().describe("secret:true").optional(),
@@ -10006,9 +10094,10 @@ function buildClickHouseConfig(connectionUrl) {
   };
 }
 function makeClickHouseDriver(context) {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const clientMap = /* @__PURE__ */ new Map();
-  const getClient = (config) => {
-    const connectionUrl = extractConnectionUrl(config, "clickhouse-web");
+  const getClient = () => {
+    const connectionUrl = extractConnectionUrl(parsedConfig, "clickhouse-web");
     const key = connectionUrl;
     if (!clientMap.has(key)) {
       const clientConfig = buildClickHouseConfig(connectionUrl);
@@ -10018,18 +10107,16 @@ function makeClickHouseDriver(context) {
     return clientMap.get(key);
   };
   return {
-    async testConnection(config) {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async testConnection() {
+      const client = getClient();
       await client.query({
         query: "SELECT 1",
         format: "JSON"
       });
       context.logger?.info?.("clickhouse: testConnection ok");
     },
-    async metadata(config) {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async metadata() {
+      const client = getClient();
       const databasesResult = await client.query({
         query: `SELECT name FROM system.databases WHERE name NOT IN ('system', 'information_schema', 'INFORMATION_SCHEMA') ORDER BY name`,
         format: "JSON"
@@ -10141,9 +10228,8 @@ function makeClickHouseDriver(context) {
         columns
       });
     },
-    async query(sql, config) {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async query(sql) {
+      const client = getClient();
       const startTime = performance.now();
       const result = await client.query({
         query: sql,

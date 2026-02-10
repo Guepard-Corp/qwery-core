@@ -16,10 +16,6 @@ export interface PlaygroundDatabase {
   /**
    * Seed the database with sample/prefilled data
    * @param driver - The driver to use to seed the database
-   * @param config - The configuration for the driver
    */
-  seed(
-    driver: IDataSourceDriver,
-    config: Record<string, unknown>,
-  ): Promise<void>;
+  seed(driver: IDataSourceDriver): Promise<void>;
 }

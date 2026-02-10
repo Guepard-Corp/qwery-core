@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 
 import { google, youtube_v3 } from 'googleapis';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DatasourceMetadata,
@@ -444,21 +444,20 @@ async function toMetadataFromConnection(
 }
 
 export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
+
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      await ensureInstanceReady(parsed, context);
+    async testConnection(): Promise<void> {
+      await ensureInstanceReady(parsedConfig, context);
       context.logger?.info?.('youtube: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-
+    async metadata(): Promise<DatasourceMetadata> {
       const queryEngineConn = getQueryEngineConnection(context);
       if (queryEngineConn) {
         // Use provided connection - load data into main engine
         const connection = queryEngineConn;
-        const entry = await ensureInstanceReady(parsed, context);
+        const entry = await ensureInstanceReady(parsedConfig, context);
         const conn = await entry.instance.connect();
 
         try {
@@ -507,14 +506,13 @@ export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
         }
       } else {
         // Fallback for testConnection or when no connection provided - use isolated instance
-        const entry = await ensureInstanceReady(parsed, context);
+        const entry = await ensureInstanceReady(parsedConfig, context);
         return toMetadata(entry);
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const entry = await ensureInstanceReady(parsed, context);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const entry = await ensureInstanceReady(parsedConfig, context);
       const conn = await entry.instance.connect();
 
       const startTime = performance.now();

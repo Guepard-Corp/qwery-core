@@ -1,5 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -7,7 +7,7 @@ import type {
   DatasourceResultSet,
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
-import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
+import { buildMetadataFromInformationSchema } from '@qwery/extensions-sdk';
 
 const ConfigSchema = z.object({
   database: z.string().default('playground').describe('Database name'),
@@ -16,10 +16,11 @@ const ConfigSchema = z.object({
 type DriverConfig = z.infer<typeof ConfigSchema>;
 
 export function makePGliteDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const dbMap = new Map<string, PGlite>();
 
-  const getDb = async (config: DriverConfig): Promise<PGlite> => {
-    const key = config.database || 'playground';
+  const getDb = async (): Promise<PGlite> => {
+    const key = parsedConfig.database || 'playground';
     if (!dbMap.has(key)) {
       const db = new PGlite(`idb://${key}`);
       await db.waitReady;
@@ -29,16 +30,14 @@ export function makePGliteDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      const db = await getDb(parsed);
+    async testConnection(): Promise<void> {
+      const db = await getDb();
       await db.query('SELECT 1');
       context.logger?.info?.('pglite: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-      const db = await getDb(parsed);
+    async metadata(): Promise<DatasourceMetadata> {
+      const db = await getDb();
 
       const tablesResult = await db.query<{
         table_schema: string;
@@ -66,127 +65,23 @@ export function makePGliteDriver(context: DriverContext): IDataSourceDriver {
         ORDER BY table_schema, table_name, ordinal_position;
       `);
 
-      let tableId = 1;
-      const tableMap = new Map<
-        string,
-        {
-          id: number;
-          schema: string;
-          name: string;
-          columns: Array<ReturnType<typeof buildColumn>>;
-        }
-      >();
-
-      const buildColumn = (
-        schema: string,
-        table: string,
-        name: string,
-        ordinal: number,
-        dataType: string,
-        nullable: string,
-        charMaxLength: number | null,
-        numericPrecision: number | null,
-        numericScale: number | null,
-      ) => {
-        let format = dataType;
-        if (charMaxLength) {
-          format = `${dataType}(${charMaxLength})`;
-        } else if (numericPrecision !== null && numericScale !== null) {
-          format = `${dataType}(${numericPrecision},${numericScale})`;
-        } else if (numericPrecision !== null) {
-          format = `${dataType}(${numericPrecision})`;
-        }
-
-        return {
-          id: `${schema}.${table}.${name}`,
-          table_id: 0,
-          schema,
-          table,
-          name,
-          ordinal_position: ordinal,
-          data_type: dataType,
-          format,
-          is_identity: false,
-          identity_generation: null,
-          is_generated: false,
-          is_nullable: nullable === 'YES',
-          is_updatable: true,
-          is_unique: false,
-          check: null,
-          default_value: null,
-          enums: [],
-          comment: null,
-        };
-      };
-
-      for (const row of tablesResult.rows) {
-        const key = `${row.table_schema}.${row.table_name}`;
-        if (!tableMap.has(key)) {
-          tableMap.set(key, {
-            id: tableId++,
-            schema: row.table_schema,
-            name: row.table_name,
-            columns: [],
-          });
-        }
-        const entry = tableMap.get(key)!;
-        entry.columns.push(
-          buildColumn(
-            row.table_schema,
-            row.table_name,
-            row.column_name,
-            row.ordinal_position,
-            row.data_type,
-            row.is_nullable,
-            row.character_maximum_length,
-            row.numeric_precision,
-            row.numeric_scale,
-          ),
-        );
-      }
-
-      const tables = Array.from(tableMap.values()).map((table) => ({
-        id: table.id,
-        schema: table.schema,
-        name: table.name,
-        rls_enabled: false,
-        rls_forced: false,
-        bytes: 0,
-        size: '0',
-        live_rows_estimate: 0,
-        dead_rows_estimate: 0,
-        comment: null,
-        primary_keys: [],
-        relationships: [],
+      const infoRows = tablesResult.rows.map((row) => ({
+        table_schema: row.table_schema,
+        table_name: row.table_name,
+        column_name: row.column_name,
+        data_type: row.data_type,
+        ordinal_position: row.ordinal_position,
+        is_nullable: row.is_nullable,
       }));
 
-      const columns = Array.from(tableMap.values()).flatMap((table) =>
-        table.columns.map((column) => ({
-          ...column,
-          table_id: table.id,
-        })),
-      );
-
-      const schemas = Array.from(
-        new Set(Array.from(tableMap.values()).map((table) => table.schema)),
-      ).map((name, idx) => ({
-        id: idx + 1,
-        name,
-        owner: 'unknown',
-      }));
-
-      return DatasourceMetadataZodSchema.parse({
-        version: '0.0.1',
+      return buildMetadataFromInformationSchema({
         driver: 'pglite',
-        schemas,
-        tables,
-        columns,
+        rows: infoRows,
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const db = await getDb(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const db = await getDb();
       const startTime = performance.now();
 
       try {

@@ -22,6 +22,9 @@
         "id": "postgresql",
         "name": "PostgreSQL",
         "description": "Connect to PostgreSQL databases",
+        "tags": [
+          "SQL"
+        ],
         "icon": "media/postgresql.svg",
         "formConfig": {
           "preset": "sql",
@@ -40,69 +43,6 @@
             "connectionString": "Connection string"
           }
         },
-        "schema": {
-          "type": "object",
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "description": "PostgreSQL server hostname"
-                },
-                "port": {
-                  "type": "number",
-                  "description": "PostgreSQL server port",
-                  "default": 5432
-                },
-                "username": {
-                  "type": "string",
-                  "description": "PostgreSQL username"
-                },
-                "user": {
-                  "type": "string",
-                  "description": "PostgreSQL username (alias for username)"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "PostgreSQL password secret:true",
-                  "format": "password"
-                },
-                "database": {
-                  "type": "string",
-                  "description": "PostgreSQL database name"
-                },
-                "sslmode": {
-                  "type": "string",
-                  "enum": [
-                    "disable",
-                    "require",
-                    "prefer",
-                    "verify-ca",
-                    "verify-full"
-                  ],
-                  "description": "SSL mode",
-                  "default": "prefer"
-                }
-              },
-              "required": [
-                "host"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "connectionUrl": {
-                  "type": "string",
-                  "description": "PostgreSQL connection string (postgresql://user:pass@host:port/db) secret:true"
-                }
-              },
-              "required": [
-                "connectionUrl"
-              ]
-            }
-          ]
-        },
         "drivers": [
           "postgresql.default"
         ]
@@ -111,6 +51,10 @@
         "id": "postgresql-supabase",
         "name": "Supabase",
         "description": "Connect to Supabase databases",
+        "tags": [
+          "SQL",
+          "SaaS"
+        ],
         "icon": "media/supabase-logo-wordmark--dark.svg",
         "formConfig": {
           "preset": "sql",
@@ -201,6 +145,10 @@
         "id": "postgresql-neon",
         "name": "Neon",
         "description": "Connect to Neon databases",
+        "tags": [
+          "SQL",
+          "SaaS"
+        ],
         "icon": "media/neon-logo-dark-color.svg",
         "formConfig": {
           "preset": "sql",

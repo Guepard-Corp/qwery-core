@@ -4,7 +4,18 @@ import {
   getChartDefinition,
   getAxesLabelsPrecisionGuidelines,
 } from '../config/supported-charts';
-import type { BusinessContext } from '../../tools/types/business-context.types';
+
+type VocabularyEntry = {
+  businessTerm: string;
+  technicalTerms: string[];
+  synonyms: string[];
+};
+type EntityEntry = { name: string };
+type BusinessContextForPrompt = {
+  domain: { domain: string };
+  vocabulary?: Map<string, VocabularyEntry>;
+  entities?: Map<string, EntityEntry>;
+};
 
 export const GENERATE_CHART_CONFIG_PROMPT = (
   chartType: ChartType,
@@ -13,7 +24,7 @@ export const GENERATE_CHART_CONFIG_PROMPT = (
     columns: string[];
   },
   sqlQuery: string,
-  businessContext?: BusinessContext | null,
+  businessContext?: BusinessContextForPrompt | null,
 ) => {
   const chartDef = getChartDefinition(chartType);
   if (!chartDef) {
@@ -68,7 +79,12 @@ ${getChartGenerationPrompt(chartType)}
       ? `- Use business context vocabulary to improve labels:
   * Domain: ${businessContext.domain.domain}
   * Vocabulary mappings (technical column → business term):
-    ${Array.from(businessContext.vocabulary.entries())
+    ${(
+      Array.from(businessContext.vocabulary.entries()) as [
+        string,
+        VocabularyEntry,
+      ][]
+    )
       .map(
         ([_term, entry]) =>
           `  - "${entry.businessTerm}" → [${entry.technicalTerms.join(', ')}]${entry.synonyms.length > 0 ? ` (synonyms: ${entry.synonyms.join(', ')})` : ''}`,
@@ -89,9 +105,13 @@ ${
     ? `
 **Business Context:**
 - Domain: ${businessContext.domain.domain}
-- Key entities: ${Array.from(businessContext.entities.values())
-        .map((e) => e.name)
-        .join(', ')}
+- Key entities: ${
+        businessContext.entities
+          ? (Array.from(businessContext.entities.values()) as EntityEntry[])
+              .map((e) => e.name)
+              .join(', ')
+          : ''
+      }
 - Use vocabulary mappings to translate technical column names to business-friendly labels
 - Use domain understanding to create meaningful chart titles`
     : ''

@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 const production = process.env.NODE_ENV === 'production';
 
@@ -6,31 +6,38 @@ const AppConfigSchema = z
   .object({
     name: z
       .string({
-        description: `Qwery Studio"`,
-        required_error: `Please provide the variable VITE_PRODUCT_NAME`,
+        error: (issue) =>
+          issue.input === undefined
+            ? 'Please provide the variable VITE_PRODUCT_NAME'
+            : 'Expected string',
       })
       .min(1),
     title: z
       .string({
-        description: `Qwery Studio`,
-        required_error: `Please provide the variable VITE_SITE_TITLE`,
+        error: (issue) =>
+          issue.input === undefined
+            ? 'Please provide the variable VITE_SITE_TITLE'
+            : 'Expected string',
       })
       .min(1),
     description: z.string({
-      description: `Qwery Studio`,
-      required_error: `Please provide the variable VITE_SITE_DESCRIPTION`,
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Please provide the variable VITE_SITE_DESCRIPTION'
+          : 'Expected string',
     }),
-    url: z
-      .string({
-        required_error: `Please provide the variable VITE_SITE_URL`,
-      })
-      .url({
-        message: `You are deploying a production build but have entered a VITE_SITE_URL variable using http instead of https. It is very likely that you have set the incorrect URL. The build will now fail to prevent you from from deploying a faulty configuration. Please provide the variable VITE_SITE_URL with a valid URL, such as: 'https://example.com'`,
-      }),
+    url: z.url({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Please provide the variable VITE_SITE_URL'
+          : "You are deploying a production build but have entered a VITE_SITE_URL variable using http instead of https. It is very likely that you have set the incorrect URL. The build will now fail to prevent you from from deploying a faulty configuration. Please provide the variable VITE_SITE_URL with a valid URL, such as: 'https://example.com'",
+    }),
     locale: z
       .string({
-        description: `en`,
-        required_error: `Please provide the variable VITE_DEFAULT_LOCALE`,
+        error: (issue) =>
+          issue.input === undefined
+            ? 'Please provide the variable VITE_DEFAULT_LOCALE'
+            : 'Expected string',
       })
       .default('en'),
     theme: z.enum(['light', 'dark', 'system']).default('light'),
@@ -69,7 +76,7 @@ const AppConfigSchema = z
       return !schema.url.startsWith('http:');
     },
     {
-      message: `Please use a valid HTTPS URL in production.`,
+      error: 'Please use a valid HTTPS URL in production.',
       path: ['url'],
     },
   )
@@ -78,7 +85,7 @@ const AppConfigSchema = z
       return schema.themeColor !== schema.themeColorDark;
     },
     {
-      message: `Please provide different theme colors for light and dark themes.`,
+      error: 'Please provide different theme colors for light and dark themes.',
       path: ['themeColor'],
     },
   );

@@ -13,19 +13,13 @@ import { SessionCompaction } from './session-compaction';
 import { getLogger } from '@qwery/shared/logger';
 import { Registry } from '../tools/registry';
 import type { AskRequest, ToolContext, ToolMetadataInput } from '../tools/tool';
-import { createQueryEngine } from '@qwery/domain/ports';
-import { DuckDBQueryEngine } from '../services/duckdb-query-engine.service';
-import {
-  DatasourceOrchestrationService,
-  type DatasourceOrchestrationResult,
-} from '../tools/datasource-orchestration-service';
-import { getSchemaCache } from '../tools/schema-cache';
-import { getDatasourceDatabaseName } from '../tools/datasource-name-utils';
 import { insertReminders } from './insert-reminders';
 import { LLM } from '../llm/llm';
 import { Provider } from '../llm/provider';
 import { SystemPrompt } from '../llm/system';
 import { v4 as uuidv4 } from 'uuid';
+import { loadDatasources } from '../tools/datasource-loader';
+import type { Datasource } from '@qwery/domain/entities';
 
 export type AgentSessionPromptInput = {
   conversationSlug: string;
@@ -102,6 +96,10 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     mcpServerUrl,
   } = input;
   const agentId = inputAgentId ?? DEFAULT_AGENT_ID;
+
+  logger.info(
+    `[AgentSession] Starting agent session for conversation: ${conversationSlug}, agent: ${agentId}, datasources: ${input.datasources?.join(', ')}`,
+  );
 
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
@@ -212,37 +210,10 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       throw new Error(`Agent not found: ${agentId}`);
     }
 
-    const queryEngine = createQueryEngine(DuckDBQueryEngine);
-    const datasourceOrchestrationService = new DatasourceOrchestrationService();
-    let orchestrationResult: DatasourceOrchestrationResult;
-    try {
-      orchestrationResult = await datasourceOrchestrationService.orchestrate({
-        conversationId,
-        conversationSlug,
-        repositories,
-        queryEngine,
-        metadataDatasources: input.datasources,
-      });
-    } catch (error) {
-      logger.warn(
-        '[AgentSession] Orchestration failed, tools may lack datasource context:',
-        error instanceof Error ? error.message : String(error),
-      );
-      const workspace =
-        typeof process !== 'undefined' && process?.env?.WORKSPACE
-          ? process.env.WORKSPACE
-          : undefined;
-      if (!workspace) {
-        throw new Error('WORKSPACE environment variable is not set');
-      }
-      orchestrationResult = {
-        conversation: null,
-        datasources: [],
-        workspace,
-        schemaCache: getSchemaCache(conversationId),
-        attached: false,
-      };
-    }
+    const datasources = await loadDatasources(
+      conversation.datasources ?? [],
+      repositories.datasource,
+    );
 
     const providerModel =
       typeof model === 'string'
@@ -265,10 +236,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       abort: options.abortSignal ?? abortController.signal,
       extra: {
         repositories,
-        queryEngine,
         conversationId,
-        orchestrationResult,
-        metadataDatasources: input.datasources,
+        attachedDatasources: input.datasources,
       },
       messages: msgs,
       ask: async (req: AskRequest) => {
@@ -291,9 +260,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     );
 
     const reminderContext = {
-      attachedDatasourceNames: orchestrationResult.datasources.map((d) =>
-        getDatasourceDatabaseName(d.datasource),
-      ),
+      attachedDatasourceNames: datasources.map((d: Datasource) => d.name),
     };
     insertReminders({
       messages: msgs,

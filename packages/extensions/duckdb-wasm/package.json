@@ -22,6 +22,9 @@
         "id": "duckdb-wasm",
         "name": "DuckDB (WASM)",
         "description": "Run DuckDB queries in your browser using WebAssembly",
+        "tags": [
+          "SQL"
+        ],
         "icon": "media/DuckDB_stack-darkmode.svg",
         "formConfig": {
           "preset": "embeddable",
@@ -39,16 +42,6 @@
           },
           "fieldLabels": {
             "connectionString": "Database path or connection string"
-          }
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "database": {
-              "type": "string",
-              "description": "Database name",
-              "default": "playground"
-            }
           }
         },
         "drivers": [

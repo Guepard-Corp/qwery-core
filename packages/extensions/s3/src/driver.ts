@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -148,6 +148,7 @@ function buildViewSqlInCatalog(config: DriverConfig, catalogName: string): strin
 }
 
 export function makeS3Driver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const instanceMap = new Map<
     string,
     Awaited<ReturnType<typeof createDuckDbInstance>>
@@ -158,14 +159,14 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
     return DuckDBInstance.create(':memory:');
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.cacheKey;
+  const getInstance = async () => {
+    const key = parsedConfig.cacheKey;
     if (!instanceMap.has(key)) {
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
       try {
-        await configureS3Connection(conn, config);
-        await conn.run(buildViewSql(config));
+        await configureS3Connection(conn, parsedConfig);
+        await conn.run(buildViewSql(parsedConfig));
       } finally {
         conn.closeSync();
       }
@@ -175,10 +176,9 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         const conn = await instance.connect();
         try {
           const resultReader = await conn.runAndReadAll(
@@ -197,12 +197,11 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
       await withTimeout(
         testPromise,
         DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
-        `S3 connection test timed out. Check credentials, region, endpoint (if non-AWS), bucket, and that matching ${parsed.format} files exist.`,
+        `S3 connection test timed out. Check credentials, region, endpoint (if non-AWS), bucket, and that matching ${parsedConfig.format} files exist.`,
       );
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn:
         | QueryEngineConnection
         | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
@@ -211,10 +210,10 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
       const queryEngineConn = getQueryEngineConnection(context);
       if (queryEngineConn) {
         conn = queryEngineConn;
-        await configureS3Connection(conn, parsed);
-        await conn.run(buildViewSql(parsed));
+        await configureS3Connection(conn, parsedConfig);
+        await conn.run(buildViewSql(parsedConfig));
       } else {
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -294,9 +293,8 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const instance = await getInstance();
       const conn = await instance.connect();
       const startTime = performance.now();
       try {
@@ -357,12 +355,11 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
           's3 attach requires queryEngineConnection in DriverContext',
         );
       }
-      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
       const catalogName = options.schemaName ?? 'main';
       const escapedCatalog = catalogName.replace(/"/g, '""');
       const escapedCatalogForQuery = catalogName.replace(/'/g, "''");
 
-      await configureS3Connection(conn, parsed);
+      await configureS3Connection(conn, parsedConfig);
 
       const dbListReader = await conn.runAndReadAll(
         `SELECT name FROM pragma_database_list WHERE name = '${escapedCatalogForQuery}'`,
@@ -375,7 +372,7 @@ export function makeS3Driver(context: DriverContext): IDataSourceDriver {
         await conn.run(`ATTACH ':memory:' AS "${escapedCatalog}"`);
       }
 
-      await conn.run(buildViewSqlInCatalog(parsed, catalogName));
+      await conn.run(buildViewSqlInCatalog(parsedConfig, catalogName));
 
       return {
         tables: [

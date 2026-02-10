@@ -1,5 +1,5 @@
 import { Entity } from '../common/entity';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { CellTypeSchema } from '../enums/cellType';
 import { RunModeSchema } from '../enums/runMode';
 import {

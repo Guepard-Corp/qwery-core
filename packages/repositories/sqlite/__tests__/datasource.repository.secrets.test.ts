@@ -9,15 +9,17 @@ import { DatasourceKind, type Datasource } from '@qwery/domain/entities';
 import { DatasourceRepository } from '../src/datasource.repository';
 import { ProjectRepository } from '../src/project.repository';
 
+const mockGet = vi.fn();
 vi.mock('@qwery/extensions-sdk', () => ({
-  getDiscoveredDatasource: vi.fn(),
+  ExtensionsRegistry: {
+    get: (...args: unknown[]) => mockGet(...args),
+  },
+  DatasourceExtension: {},
 }));
 
 vi.mock('@qwery/domain/utils', () => ({
   getSecretFields: () => ['password'],
 }));
-
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
 
 describe('DatasourceRepository Secrets', () => {
   let repository: DatasourceRepository;
@@ -48,8 +50,7 @@ describe('DatasourceRepository Secrets', () => {
     });
 
     // Default mock: postgres has a secret 'password'
-    // Default mock: postgres has a secret 'password'
-    vi.mocked(getDiscoveredDatasource).mockResolvedValue({
+    mockGet.mockReturnValue({
       id: 'postgres',
       schema: z.object({
         host: z.string(),

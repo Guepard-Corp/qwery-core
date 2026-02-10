@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import type { WithParts } from '../llm/message';
 
 export type Model = { providerId: string; modelId: string };

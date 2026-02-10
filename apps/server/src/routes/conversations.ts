@@ -13,8 +13,8 @@ import type { Repositories } from '@qwery/domain/repositories';
 import { createRepositories } from '../lib/repositories';
 import { handleDomainException, isUUID } from '../lib/http-utils';
 
-const TUI_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
-const TUI_TASK_ID = '00000000-0000-0000-0000-000000000002';
+const TUI_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440000';
+const TUI_TASK_ID = '550e8400-e29b-41d4-a716-446655440001';
 
 const createBodySchema = z.object({
   title: z.string().optional().default('New Conversation'),

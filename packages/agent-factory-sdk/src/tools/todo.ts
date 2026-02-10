@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import type { Repositories } from '@qwery/domain/repositories';
 import {
   CreateOrUpdateTodoService,

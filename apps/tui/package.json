@@ -23,7 +23,7 @@
     "@ai-sdk/provider-utils": "^4.0.10",
     "@opentui/core": "^0.1.75",
     "@opentui/react": "^0.1.75",
-    "@qwery/datasource-registry": "workspace:*",
+    "@qwery/extensions-sdk": "workspace:*",
     "ai": "catalog:",
     "react": "^19.2.3"
   },

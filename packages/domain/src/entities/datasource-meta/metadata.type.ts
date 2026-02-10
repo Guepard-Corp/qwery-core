@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { ColumnArrayZodSchema } from './columns.type';
 import { ColumnPrivilegesArrayZodSchema } from './column-privileges.type';

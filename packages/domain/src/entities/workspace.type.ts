@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { Entity } from '../common/entity';
 import {
@@ -71,7 +71,7 @@ export class WorkspaceEntity extends Entity<string, typeof WorkspaceSchema> {
     this.runtime = data.runtime;
   }
 
-  protected getData(): Workspace {
+  protected override getData(): Workspace {
     return {
       id: this.getId(),
       userId: this.userId,

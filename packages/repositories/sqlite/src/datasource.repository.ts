@@ -8,7 +8,8 @@ import {
   ISecretVault,
 } from '@qwery/domain/repositories';
 import { getSecretFields } from '@qwery/domain/utils';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import { loadExtensionSchemaForProvider } from '@qwery/extensions-loader';
+import { DatasourceExtension, ExtensionsRegistry } from '@qwery/extensions-sdk';
 
 import { createDatabase, initializeSchema } from './db';
 import { LocalEncryptionVault } from './local-encryption-vault';
@@ -36,8 +37,9 @@ export class DatasourceRepository extends IDatasourceRepository {
     }
 
     try {
-      const extension = await getDiscoveredDatasource(provider);
-      if (extension) {
+      await loadExtensionSchemaForProvider(provider);
+      const extension = ExtensionsRegistry.get<DatasourceExtension>(provider);
+      if (extension?.schema) {
         const fields = getSecretFields(
           extension.schema as unknown as Parameters<typeof getSecretFields>[0],
         );

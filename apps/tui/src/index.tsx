@@ -45,7 +45,6 @@ import {
   normalizeProviderConfig,
   fieldValuesToRawConfig,
 } from './server-client.ts';
-import { getDatasourceTypes } from '@qwery/datasource-registry';
 import { getCurrentConversation } from './state/types.ts';
 import { initTuiLogger, tuiLog, tuiLogAction } from './util/tuiLogger.ts';
 
@@ -476,26 +475,6 @@ function AppContent({ state, dispatch }: AppContentProps) {
     state.currentNotebook?.id,
     state.currentNotebook?.cells,
     state.notebookPendingSave,
-  ]);
-
-  useEffect(() => {
-    if (
-      state.activeDialog === 'add_datasource' &&
-      state.addDatasourceStep === 'type' &&
-      state.addDatasourceTypeIds.length === 0
-    ) {
-      const types = getDatasourceTypes();
-      dispatch({
-        type: 'set_add_datasource_type_ids',
-        ids: types.map((t) => t.id),
-        names: types.map((t) => t.name),
-      });
-    }
-  }, [
-    dispatch,
-    state.activeDialog,
-    state.addDatasourceStep,
-    state.addDatasourceTypeIds.length,
   ]);
 
   useEffect(() => {

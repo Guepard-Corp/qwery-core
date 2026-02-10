@@ -6,7 +6,7 @@ import { NavLink, useLocation } from 'react-router';
 
 import { cva } from 'class-variance-authority';
 import { ChevronDown } from 'lucide-react';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { cn, isRouteActive } from '../lib/utils';
 import { Button } from '../shadcn/button';

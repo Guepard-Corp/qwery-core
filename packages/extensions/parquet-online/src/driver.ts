@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -42,6 +42,7 @@ type DriverConfig = z.infer<typeof ConfigSchema>;
 const VIEW_NAME = 'data';
 
 export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const instanceMap = new Map<string, Awaited<ReturnType<typeof createDuckDbInstance>>>();
 
   const createDuckDbInstance = async () => {
@@ -50,8 +51,8 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
     return instance;
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.url;
+  const getInstance = async () => {
+    const key = parsedConfig.url;
     if (!instanceMap.has(key)) {
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
@@ -61,7 +62,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         await conn.run('INSTALL httpfs;');
         await conn.run('LOAD httpfs;');
 
-        const escapedUrl = config.url.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from Parquet URL using read_parquet
@@ -79,11 +80,9 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         const conn = await instance.connect();
 
         try {
@@ -109,8 +108,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       );
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
       let shouldCloseConnection = false;
 
@@ -118,7 +116,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const escapedUrl = parsed.url.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from Parquet URL using read_parquet in main engine
@@ -128,7 +126,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         `);
       } else {
         // Fallback for testConnection or when no connection provided - create temporary instance
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -218,9 +216,8 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const instance = await getInstance();
       const conn = await instance.connect();
 
       const startTime = performance.now();
@@ -293,8 +290,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
           'parquet-online attach requires queryEngineConnection in DriverContext',
         );
       }
-      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
-      const url = parsed.url;
+      const url = parsedConfig.url;
       if (!url) {
         throw new Error(
           'parquet-online attach requires url or connectionUrl in config',

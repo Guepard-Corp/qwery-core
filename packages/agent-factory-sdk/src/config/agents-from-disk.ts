@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import type { AgentInfoWithId } from '../agents/agent';
 import { Agent } from '../agents/agent';
 import { AgentInfoSchema } from '../agents/agent';
@@ -9,7 +9,7 @@ import { AgentInfoSchema } from '../agents/agent';
 const AgentFrontmatterSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
-  mode: z.enum(['main', 'delegate', 'all']).optional(),
+  mode: z.enum(['main', 'subagent', 'all']).optional(),
   model: z
     .union([
       z.string(),

@@ -22,6 +22,9 @@
         "id": "pglite",
         "name": "Embedded PostgreSQL",
         "description": "Test PostgreSQL queries in your browser using PGlite",
+        "tags": [
+          "SQL"
+        ],
         "icon": "media/pglite.svg",
         "formConfig": {
           "preset": "embeddable",
@@ -39,16 +42,6 @@
           },
           "fieldLabels": {
             "connectionString": "Database URI"
-          }
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "database": {
-              "type": "string",
-              "description": "Database name",
-              "default": "playground"
-            }
           }
         },
         "drivers": [

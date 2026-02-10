@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { Tool } from './tool';
 import TurndownService from 'turndown';
 

@@ -27,11 +27,9 @@ import {
   X,
   Play,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 
 import type { Datasource } from '@qwery/domain/entities';
 import { PlaygroundTry } from '@qwery/playground/playground-try';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -58,6 +56,7 @@ import {
 } from '@qwery/ui/table';
 import { createDatasourceViewPath } from '~/config/project.navigation.config';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -85,21 +84,18 @@ export function ListDatasources({
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [showPlayground, setShowPlayground] = useState(true);
 
-  // Fetch all plugin metadata to get logos
-  const { data: pluginMetadata = [] } = useQuery({
-    queryKey: ['all-plugin-metadata'],
-    queryFn: () => getAllExtensionMetadata(),
-    staleTime: 60 * 1000,
-  });
+  // Fetch all extensions metadata to get logos
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   // Create a map of provider ID -> logo
+  // TODO: is this needed ?
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    pluginMetadata.forEach((plugin) => {
-      map.set(plugin.id, plugin.logo);
+    extensions.forEach((plugin) => {
+      map.set(plugin.id, plugin.icon);
     });
     return map;
-  }, [pluginMetadata]);
+  }, [extensions]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

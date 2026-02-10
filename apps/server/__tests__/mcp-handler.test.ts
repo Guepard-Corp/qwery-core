@@ -103,7 +103,7 @@ async function ensureProject(app: Hono): Promise<string> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: 'MCP Test Org',
-          userId: '00000000-0000-0000-0000-000000000001',
+          userId: '550e8400-e29b-41d4-a716-446655440000',
           createdBy: 'test',
         }),
       },
@@ -206,13 +206,13 @@ describe('MCP handler', () => {
       const def = JSON.parse(text!) as {
         id: string;
         name: string;
-        rawSchema?: unknown;
+        schema?: unknown;
         formConfig?: unknown;
         drivers?: unknown[];
       };
       expect(def.id).toBe('postgresql');
       expect(def.name).toBeDefined();
-      expect(def.rawSchema).toBeDefined();
+      expect(def.schema).toBeDefined();
       expect(Array.isArray(def.drivers)).toBe(true);
     });
 

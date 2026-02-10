@@ -1,8 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
-
 import { Datasource } from '@qwery/domain/entities';
-import { getExtension } from '@qwery/extensions-loader';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import {
+  DatasourceExtension,
+  type DriverExtension,
+} from '@qwery/extensions-sdk';
+import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 type TestConnectionResult = {
   success: boolean;
@@ -17,9 +20,15 @@ export function useTestConnection(
   onSuccess: (result: TestConnectionResult) => void,
   onError: (error: Error) => void,
 ) {
+  const { data: extensions = [] } = useGetDatasourceExtensions();
+
   return useMutation({
     mutationFn: async (payload: Datasource) => {
-      const dsMeta = await getDiscoveredDatasource(payload.datasource_provider);
+      // Find the extension from the list
+      const dsMeta = extensions.find(
+        (ext) => ext.id === payload.datasource_provider,
+      ) as DatasourceExtension | undefined;
+
       const driver =
         dsMeta?.drivers.find(
           (d) => d.id === (payload.config as { driverId?: string })?.driverId,
@@ -28,24 +37,13 @@ export function useTestConnection(
       const runtime = driver?.runtime ?? 'browser';
 
       if (runtime === 'browser') {
-        const extension = await getExtension(payload.datasource_provider);
-        if (!extension) {
-          throw new Error('Extension not found');
-        }
-        const driverStorageKey =
-          (payload.config as { storageKey?: string })?.storageKey ??
-          payload.id ??
-          payload.slug ??
-          payload.name ??
-          'embedded-datasource';
-        const instance = await extension.getDriver(
-          driverStorageKey,
-          payload.config,
+        const instance = await getBrowserDriverInstance(
+          driver as DriverExtension,
+          {
+            config: payload.config,
+          },
         );
-        if (!instance) {
-          throw new Error('Driver not found');
-        }
-        await instance.testConnection(payload.config);
+        await instance.testConnection();
         return {
           success: true,
           data: {

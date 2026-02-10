@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { parseAcceptLanguageHeader } from '@qwery/i18n';
 import { initializeServerI18n } from '@qwery/i18n/server';

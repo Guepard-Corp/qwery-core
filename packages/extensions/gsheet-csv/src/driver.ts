@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -94,13 +94,13 @@ const extractGidFromUrl = (url: string): number | null => {
   if (queryMatch) {
     return parseInt(queryMatch[1]!, 10);
   }
-  
+
   // Try to extract from hash fragment: #gid=1822465437
   const hashMatch = url.match(/#gid=(\d+)/);
   if (hashMatch) {
     return parseInt(hashMatch[1]!, 10);
   }
-  
+
   return null;
 };
 
@@ -114,22 +114,22 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
     const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_CONNECTION_TEST_TIMEOUT_MS);
-    
+
     try {
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; Qwery/1.0)',
         },
       });
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         return null;
       }
 
       const html = await response.text();
-      
+
       if (!html || html.length < 100) {
         return null;
       }
@@ -172,6 +172,7 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
 };
 
 export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const instanceMap = new Map<
     string,
     {
@@ -186,8 +187,8 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
     return instance;
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.sharedLink;
+  const getInstance = async () => {
+    const key = parsedConfig.sharedLink;
     if (!instanceMap.has(key)) {
       // Extract spreadsheet ID from various Google Sheets URL formats:
       // - https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
@@ -238,11 +239,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const { instance } = await getInstance(parsed);
+        const { instance } = await getInstance();
         const conn = await instance.connect();
 
         try {
@@ -267,31 +266,24 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       );
     },
 
-    async metadata(
-      config: unknown,
-      connection?: unknown,
-    ): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['instance']['connect']>>;
       let shouldCloseConnection = false;
 
-      // Check if connection parameter is provided, otherwise use queryEngineConnection from context
-      const queryEngineConn =
-        (connection && isQueryEngineConnection(connection)
-          ? connection
-          : null) || getQueryEngineConnection(context);
+      // Use queryEngineConnection from context
+      const queryEngineConn = getQueryEngineConnection(context);
 
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const match = parsed.sharedLink.match(
+        const match = parsedConfig.sharedLink.match(
           /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
         );
         if (!match) {
-          throw new Error(`Invalid Google Sheets link format: ${parsed.sharedLink}`);
+          throw new Error(`Invalid Google Sheets link format: ${parsedConfig.sharedLink}`);
         }
         const spreadsheetId = match[1]!;
-        let gid = extractGidFromUrl(parsed.sharedLink);
+        let gid = extractGidFromUrl(parsedConfig.sharedLink);
 
         // If no gid in URL, try to discover the first available gid
         if (gid === null) {
@@ -318,7 +310,7 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
         }
       } else {
         // Fallback for testConnection or when no connection provided - create temporary instance
-        const { instance } = await getInstance(parsed);
+        const { instance } = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -414,9 +406,8 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const { instance } = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const { instance } = await getInstance();
       const conn = await instance.connect();
 
       const startTime = performance.now();
@@ -491,8 +482,7 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
           'gsheet-csv attach requires queryEngineConnection in DriverContext',
         );
       }
-      const parsed = ConfigSchema.parse(options.config) as DriverConfig;
-      const sharedLink = parsed.sharedLink;
+      const sharedLink = parsedConfig.sharedLink;
       const spreadsheetId = extractSpreadsheetId(sharedLink);
       if (!spreadsheetId) {
         throw new Error(

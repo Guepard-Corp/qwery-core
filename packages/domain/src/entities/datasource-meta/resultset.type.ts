@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 /**
  * Normalized column types for frontend visualization.
@@ -144,7 +144,7 @@ export type ColumnHeader = z.infer<typeof ColumnHeaderSchema>;
 /**
  * A single row of data from query results.
  */
-export const DatasourceRowSchema = z.record(z.unknown());
+export const DatasourceRowSchema = z.record(z.string(), z.unknown());
 
 export type DatasourceRow = z.infer<typeof DatasourceRowSchema>;
 

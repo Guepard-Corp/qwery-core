@@ -1,5 +1,5 @@
 import { tool, jsonSchema } from 'ai';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import type { Tool } from 'ai';
 import type { ToolInfo, ToolContext, Model, ToolExecute } from './tool';
 import type { AgentInfoWithId } from '../agents/agent';
@@ -7,12 +7,12 @@ import { AskAgent, QueryAgent, CompactionAgent, SummaryAgent } from '../agents';
 import { TodoWriteTool, TodoReadTool } from './todo';
 import { WebFetchTool } from './webfetch';
 import { GetSchemaTool } from './get-schema';
-import { RunQueryTool } from './run-query';
 import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
 import { getMcpTools } from '../mcp/client.js';
+import { RunQueryTool } from './run-query';
 
 const todowriteInputSchema = jsonSchema<{
   todos: Array<{

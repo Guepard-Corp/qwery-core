@@ -6,7 +6,7 @@ import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import { DatasourceExtension } from '@qwery/extensions-sdk';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -26,11 +26,7 @@ import { DatasourceDocsLink } from './datasource-docs-link';
 export interface DatasourceConnectFormProps {
   extensionId: string;
   projectSlug: string;
-  extensionMeta: {
-    name: string;
-    logo: string;
-    description?: string;
-  };
+  extensionMeta: DatasourceExtension;
   onSuccess: () => void;
   onCancel: () => void;
   formId?: string;
@@ -278,11 +274,15 @@ export function DatasourceConnectForm({
       extension.data.formConfig,
     );
 
-    const dsMeta = await getDiscoveredDatasource(extension.data.id);
+    const dsMeta = extension.data as DatasourceExtension | undefined;
+    if (!dsMeta) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
     const driver =
-      dsMeta?.drivers.find(
+      dsMeta.drivers.find(
         (d) => d.id === (normalizedConfig as { driverId?: string })?.driverId,
-      ) ?? dsMeta?.drivers[0];
+      ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
@@ -363,9 +363,9 @@ export function DatasourceConnectForm({
         <header className="space-y-3 px-4">
           <div className="flex min-w-0 items-center gap-4">
             <div className="bg-muted/30 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl">
-              {extensionMeta.logo && (
+              {extensionMeta.icon && (
                 <img
-                  src={extensionMeta.logo}
+                  src={extensionMeta.icon}
                   alt={extensionMeta.name}
                   className={cn(
                     'h-9 w-9 object-contain',

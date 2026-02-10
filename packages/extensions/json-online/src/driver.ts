@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -36,6 +36,7 @@ type DriverConfig = z.infer<typeof ConfigSchema>;
 const VIEW_NAME = 'data';
 
 export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = ConfigSchema.parse(context.config);
   const instanceMap = new Map<string, Awaited<ReturnType<typeof createDuckDbInstance>>>();
 
   const createDuckDbInstance = async () => {
@@ -45,14 +46,14 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
     return instance;
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.jsonUrl;
+  const getInstance = async () => {
+    const key = parsedConfig.jsonUrl;
     if (!instanceMap.has(key)) {
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
 
       try {
-        const escapedUrl = config.jsonUrl.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.jsonUrl.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from JSON URL using read_json_auto
@@ -70,11 +71,9 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         const conn = await instance.connect();
 
         try {
@@ -100,8 +99,7 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
       );
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
       let shouldCloseConnection = false;
 
@@ -109,7 +107,7 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const escapedUrl = parsed.jsonUrl.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.jsonUrl.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from JSON URL using read_json_auto in main engine
@@ -119,7 +117,7 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
         `);
       } else {
         // Fallback for testConnection or when no connection provided - create temporary instance
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -209,9 +207,8 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const instance = await getInstance();
       const conn = await instance.connect();
 
       const startTime = performance.now();

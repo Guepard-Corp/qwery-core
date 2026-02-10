@@ -1,4 +1,4 @@
-import { getDatasourceTypeById } from '@qwery/datasource-registry';
+import { ExtensionsRegistry } from '@qwery/extensions-sdk';
 
 type Preset = string;
 type FormConfig = Record<string, unknown> | null | undefined;
@@ -70,7 +70,7 @@ export interface FormFieldsResult {
 }
 
 export function getFormFieldsForType(typeId: string): FormFieldsResult {
-  const entry = getDatasourceTypeById(typeId);
+  const entry = ExtensionsRegistry.get(typeId);
   const formConfig = entry?.formConfig as FormConfig;
   const preset = (formConfig?.preset as Preset) ?? 'sql';
   const connectionKeys = connectionKeysForPreset(preset, formConfig);

@@ -7,7 +7,7 @@ import {
   data,
 } from 'react-router';
 
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { CsrfTokenMeta } from '@qwery/csrf/client';
 import { createCsrfProtect } from '@qwery/csrf/server';

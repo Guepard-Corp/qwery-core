@@ -40,6 +40,7 @@ import {
   getDatasourcesKey,
   useGetDatasourceBySlug,
 } from '~/lib/queries/use-get-datasources';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { GetDatasourceBySlugService } from '@qwery/domain/services';
 import { DomainException } from '@qwery/domain/exceptions';
@@ -96,10 +97,9 @@ export default function ProjectDatasourceViewPage(props?: {
     ? { data: datasourceFromLoader, isLoading: false }
     : datasourceFromQuery;
 
-  // Load extension once datasource is loaded
-  const extension = useGetExtension(
-    datasource?.data?.datasource_provider || '',
-  );
+  const providerId = datasource?.data?.datasource_provider ?? '';
+  const extension = useGetExtension(providerId);
+  const extensionSchema = useExtensionSchema(providerId);
 
   // Focus input when editing starts
   React.useEffect(() => {
@@ -391,9 +391,9 @@ export default function ProjectDatasourceViewPage(props?: {
       <Card className="mx-auto w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center gap-4">
-            {extension.data?.logo && (
+            {extension.data?.icon && (
               <img
-                src={extension.data?.logo}
+                src={extension.data?.icon}
                 alt={extension.data?.name}
                 className={cn(
                   'h-12 w-12 rounded object-contain',
@@ -453,15 +453,21 @@ export default function ProjectDatasourceViewPage(props?: {
               )}
             </div>
           </div>
-          {extension.data?.schema && (
+          {extensionSchema.data ? (
             <FormRenderer
-              schema={extension.data.schema}
+              schema={extensionSchema.data}
               onSubmit={handleSubmit}
               formId="datasource-form"
               defaultValues={datasource.data?.config as Record<string, unknown>}
-              onFormReady={setFormValues}
+              onFormReady={(values) =>
+                setFormValues(values as Record<string, unknown> | null)
+              }
             />
-          )}
+          ) : extensionSchema.isLoading ? (
+            <div className="text-muted-foreground py-6 text-center text-sm">
+              Loading form…
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button

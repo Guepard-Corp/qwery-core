@@ -22,6 +22,9 @@
         "id": "mysql",
         "name": "MySQL",
         "description": "Connect to MySQL databases",
+        "tags": [
+          "SQL"
+        ],
         "icon": "media/MySQL.svg",
         "formConfig": {
           "preset": "sql",
@@ -39,63 +42,6 @@
           "fieldLabels": {
             "connectionString": "Connection string"
           }
-        },
-        "schema": {
-          "type": "object",
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "description": "MySQL server hostname"
-                },
-                "port": {
-                  "type": "number",
-                  "description": "MySQL server port",
-                  "default": 3306
-                },
-                "username": {
-                  "type": "string",
-                  "description": "MySQL username"
-                },
-                "user": {
-                  "type": "string",
-                  "description": "MySQL username (alias for username)"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "MySQL password secret:true",
-                  "format": "password"
-                },
-                "database": {
-                  "type": "string",
-                  "description": "MySQL database name"
-                },
-                "ssl": {
-                  "type": "boolean",
-                  "description": "Enable SSL connection",
-                  "default": false
-                }
-              },
-              "required": [
-                "host"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "connectionUrl": {
-                  "type": "string",
-                  "description": "MySQL connection string (mysql://user:pass@host:port/database) secret:true",
-                  "format": "uri"
-                }
-              },
-              "required": [
-                "connectionUrl"
-              ]
-            }
-          ]
         },
         "drivers": [
           "mysql.default"

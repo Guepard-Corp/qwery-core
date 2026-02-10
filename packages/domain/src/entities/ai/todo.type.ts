@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 export const TodoItemSchema = z.object({
   id: z.string().describe('Unique identifier for the todo item'),

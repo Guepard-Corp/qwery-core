@@ -24,6 +24,7 @@ import {
 } from '@qwery/ui/alert-dialog';
 import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { DatasourceExtension } from '@qwery/extensions-sdk';
 
 const SHEET_OVERLAY_Z = 'z-[100]';
 const SHEET_CONTENT_Z = 'z-[101]';
@@ -33,11 +34,7 @@ export interface DatasourceConnectSheetProps {
   onOpenChange: (open: boolean) => void;
   extensionId: string;
   projectSlug: string;
-  extensionMeta: {
-    name: string;
-    logo: string;
-    description?: string;
-  };
+  extensionMeta: DatasourceExtension;
   onSuccess: () => void;
   onCancel: () => void;
   className?: string;
@@ -169,9 +166,9 @@ export function DatasourceConnectSheet({
           >
             <div className="flex min-w-0 items-center gap-4">
               <div className="bg-muted/30 flex h-20 w-20 shrink-0 items-center justify-center rounded-xl">
-                {extensionMeta.logo && (
+                {extensionMeta.icon && (
                   <img
-                    src={extensionMeta.logo}
+                    src={extensionMeta.icon}
                     alt={extensionMeta.name}
                     className={cn(
                       'h-16 w-16 object-contain',

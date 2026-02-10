@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { ColumnArrayZodSchema } from './columns.type';
 
 export const MaterializedViewZodSchema = z

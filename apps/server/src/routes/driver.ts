@@ -2,15 +2,18 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { getDriverInstance } from '@qwery/extensions-loader';
-import type { DiscoveredDriver } from '@qwery/extensions-sdk';
-import { getDatasourceTypes } from '@qwery/datasource-registry';
+import {
+  ExtensionsRegistry,
+  type DatasourceExtension,
+} from '@qwery/extensions-sdk';
 import { getLogger } from '@qwery/shared/logger';
 
 const bodySchema = z.object({
-  action: z.literal('testConnection'),
+  action: z.enum(['testConnection', 'metadata', 'query']),
   datasourceProvider: z.string(),
   driverId: z.string().optional(),
   config: z.record(z.string(), z.unknown()),
+  sql: z.string().optional(),
 });
 
 export function createDriverRoutes() {
@@ -19,10 +22,11 @@ export function createDriverRoutes() {
   app.post('/command', zValidator('json', bodySchema), async (c) => {
     const logger = await getLogger();
     const body = c.req.valid('json');
-    const { action, datasourceProvider, driverId, config } = body;
+    const { action, datasourceProvider, driverId, config, sql } = body;
 
-    const types = getDatasourceTypes();
-    const dsMeta = types.find((ds) => ds.id === datasourceProvider);
+    const dsMeta = ExtensionsRegistry.get(datasourceProvider) as
+      | DatasourceExtension
+      | undefined;
     if (!dsMeta) {
       logger.error({ datasourceProvider, driverId }, 'Datasource not found');
       return c.json({ error: 'Datasource not found' }, 404);
@@ -47,15 +51,37 @@ export function createDriverRoutes() {
     }
 
     try {
-      const instance = await getDriverInstance(driver as DiscoveredDriver);
-      if (action === 'testConnection') {
-        await instance.testConnection(config);
-        return c.json({
-          success: true,
-          data: { connected: true, message: 'ok' },
-        });
+      const instance = await getDriverInstance(driver, {
+        config,
+      });
+
+      switch (action) {
+        case 'testConnection':
+          await instance.testConnection();
+          return c.json({
+            success: true,
+            data: { connected: true, message: 'ok' },
+          });
+        case 'metadata': {
+          const metadata = await instance.metadata();
+          return c.json({
+            success: true,
+            data: metadata,
+          });
+        }
+        case 'query': {
+          if (!sql) {
+            return c.json({ error: 'SQL is required for query action' }, 400);
+          }
+          const queryResult = await instance.query(sql);
+          return c.json({
+            success: true,
+            data: queryResult,
+          });
+        }
+        default:
+          return c.json({ error: 'Unknown action' }, 400);
       }
-      return c.json({ error: 'Unknown action' }, 400);
     } catch (error) {
       logger.error({ error }, 'Error executing driver action');
       const message = formatError(error);

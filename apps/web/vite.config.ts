@@ -103,11 +103,7 @@ export default defineConfig(({ command }) => ({
         bypass(req) {
           // Keep web app API routes local (server does not have these)
           const path = req.url ? new URL(req.url, 'http://x').pathname : '';
-          const webOnly =
-            path === '/api/init' ||
-            path.startsWith('/api/driver/') ||
-            path.startsWith('/api/extensions/') ||
-            path.startsWith('/api/notebook/');
+          const webOnly = path === '/api/init';
           if (webOnly && req.url) return req.url;
         },
       },

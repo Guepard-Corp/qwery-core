@@ -1,7 +1,12 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 const RouteMatchingEnd = z
-  .union([z.boolean(), z.function().args(z.string()).returns(z.boolean())])
+  .union([
+    z.boolean(),
+    z.custom<(path: string) => boolean>((val) => typeof val === 'function', {
+      message: 'Must be a boolean or a function (path: string) => boolean',
+    }),
+  ])
   .default(false)
   .optional();
 
