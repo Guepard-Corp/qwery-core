@@ -746,15 +746,15 @@ function AppContent({ state, dispatch }: AppContentProps) {
           });
         }
 
-        const messages = conv.messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
+        const lastUserMessage = {
+          role: 'user' as const,
+          content: prompt,
+        };
 
         const res = await sendChatMessage(
           api,
           slug ?? conv.slug!,
-          messages,
+          lastUserMessage,
           undefined,
           conv.datasources,
         );

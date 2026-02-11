@@ -5,8 +5,9 @@ import { Tool } from './tool';
 import { Registry } from './registry';
 import { TaskPrompt } from './prompts/task.prompt';
 import { runAgentToCompletion } from '../agents/run-agent-to-completion';
-import { createMessages, type WithParts } from '../llm/message';
+import { createMessages, type Message } from '../llm/message';
 import type { Repositories } from '@qwery/domain/repositories';
+import { messageRoleToUIRole } from '@qwery/shared/message-role-utils';
 
 const parameters = z.object({
   description: z
@@ -95,15 +96,15 @@ export const TaskTool = Tool.define('task', {
           const messagesApi = createMessages({
             messageRepository: repositories.message,
           });
-          const historyWithParts: WithParts[] = [];
+          const historyMessages: Message[] = [];
           for await (const m of messagesApi.stream(taskConversationId)) {
-            historyWithParts.push(m);
+            historyMessages.push(m);
           }
-          const historyReversed = [...historyWithParts].reverse();
+          const historyReversed = [...historyMessages].reverse();
           const historyAsUIMessage = historyReversed.map((m) => ({
-            id: m.info.id,
-            role: m.info.role as 'user' | 'assistant' | 'system',
-            parts: m.parts,
+            id: m.id,
+            role: messageRoleToUIRole(m.role),
+            parts: m.content?.parts ?? [],
           })) as UIMessage[];
           const newUserMessage: UIMessage = {
             id: uuidv4(),

@@ -1,6 +1,5 @@
 // Export all from subdirectories
 export * from './domain';
-export * from './ports';
 export * from './services';
 export * from './agents';
 

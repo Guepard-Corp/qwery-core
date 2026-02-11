@@ -808,11 +808,11 @@ export async function createDatasource(
 export async function sendChatMessage(
   baseUrl: string,
   slug: string,
-  messages: Array<{
+  message: {
     role: string;
     content: string;
     parts?: Array<{ type: string; text?: string }>;
-  }>,
+  },
   model?: string,
   datasources?: string[],
 ): Promise<Response> {
@@ -822,19 +822,18 @@ export async function sendChatMessage(
     content: string;
     parts: Array<{ type: string; text?: string }>;
   };
+  const payload: MessagePayload = {
+    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    role: message.role,
+    content: message.content,
+    parts: message.parts ?? [{ type: 'text', text: message.content }],
+  };
   const body: {
     messages: MessagePayload[];
     model: string;
     datasources?: string[];
   } = {
-    messages: messages.map(
-      (m): MessagePayload => ({
-        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        role: m.role,
-        content: m.content,
-        parts: m.parts ?? [{ type: 'text', text: m.content }],
-      }),
-    ),
+    messages: [payload],
     model: model ?? 'azure/gpt-5-mini',
   };
   if (datasources?.length) body.datasources = datasources;

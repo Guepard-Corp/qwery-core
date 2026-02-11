@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { WithParts } from '../llm/message';
+import type { Message } from '../llm/message';
 
 export type Model = { providerId: string; modelId: string };
 
@@ -22,7 +22,7 @@ export type ToolContext = {
   callId?: string;
   abort: AbortSignal;
   extra?: Record<string, unknown>;
-  messages: WithParts[];
+  messages: Message[];
   ask(req: AskRequest): Promise<void>;
   metadata(input: ToolMetadataInput): void | Promise<void>;
 };

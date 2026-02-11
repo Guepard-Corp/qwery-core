@@ -8,12 +8,13 @@ import {
 import type { Model } from './provider';
 import { Provider } from './provider';
 import { SystemPrompt } from './system';
-import { Messages, type WithParts } from './message';
+import type { Message } from '@qwery/domain/entities';
+import { Messages } from './message';
 
 export type StreamInput = {
   model?: string | Model;
   prompt?: string;
-  messages?: ModelMessage[] | WithParts[];
+  messages?: ModelMessage[] | Message[];
   system?: string;
   systemPrompt?: string;
   tools?: Record<string, Tool>;
@@ -28,16 +29,16 @@ export type StreamInput = {
 
 export type StreamOutput = ReturnType<typeof streamText>;
 
-function isWithPartsArray(
-  messages: ModelMessage[] | WithParts[],
-): messages is WithParts[] {
+function isMessageArray(
+  messages: ModelMessage[] | Message[],
+): messages is Message[] {
   if (messages.length === 0) return false;
   const first = messages[0];
   return (
     first !== null &&
     typeof first === 'object' &&
-    'info' in first &&
-    'parts' in first
+    'content' in first &&
+    'conversationId' in first
   );
 }
 
@@ -63,7 +64,7 @@ export const LLM = {
 
     let messages: ModelMessage[] | undefined;
     if (input.messages) {
-      if (isWithPartsArray(input.messages)) {
+      if (isMessageArray(input.messages)) {
         messages = await Messages.toModelMessages(input.messages, model);
       } else {
         messages = input.messages;

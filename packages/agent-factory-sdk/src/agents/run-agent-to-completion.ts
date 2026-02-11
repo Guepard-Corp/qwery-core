@@ -5,7 +5,11 @@ import { insertReminders } from './insert-reminders';
 import { Registry } from '../tools/registry';
 import type { AskRequest, ToolContext, ToolMetadataInput } from '../tools/tool';
 import { LLM, type StreamInput } from '../llm/llm';
-import type { WithParts } from '../llm/message';
+import type { Message } from '../llm/message';
+import {
+  messageRoleToUIRole,
+  uiRoleToMessageRole,
+} from '@qwery/shared/message-role-utils';
 import { Provider } from '../llm/provider';
 import { MessagePersistenceService } from '../services/message-persistence.service';
 import { UsagePersistenceService } from '../services/usage-persistence.service';
@@ -111,32 +115,38 @@ export async function runAgentToCompletion(
   const reminderContext = {
     attachedDatasourceNames: loadedDatasources.map((d: Datasource) => d.name),
   };
+  const now = new Date();
+  const msgsAsMessages: Message[] = messages.map((m) => ({
+    id: m.id,
+    conversationId,
+    content: { parts: m.parts },
+    role: uiRoleToMessageRole(m.role),
+    metadata: (m.metadata as Record<string, unknown>) ?? {},
+    createdAt: now,
+    updatedAt: now,
+    createdBy: 'system',
+    updatedBy: 'system',
+  }));
   const msgsWithReminders = insertReminders({
-    messages: messages.map((m) => ({
-      info: {
-        id: m.id,
-        conversationId,
-        role: m.role,
-      },
-      parts: m.parts,
-    })) as WithParts[],
+    messages: msgsAsMessages,
     agent: agentInfo,
     context: reminderContext,
   });
 
   const validated = await validateUIMessages({
     messages: msgsWithReminders.map((m) => ({
-      id: m.info.id,
-      role: m.info.role as 'user' | 'assistant' | 'system',
-      parts: m.parts,
+      id: m.id,
+      role: messageRoleToUIRole(m.role),
+      parts: m.content?.parts ?? [],
     })),
   });
 
-  const messagesForLlm = (
+  const messagesForLlm =
     msgsWithReminders.length > 0
-      ? msgsWithReminders
-      : await convertToModelMessages(validated, { tools })
-  ) as StreamInput['messages'];
+      ? (msgsWithReminders as StreamInput['messages'])
+      : ((await convertToModelMessages(validated, {
+          tools,
+        })) as StreamInput['messages']);
 
   const result = await LLM.stream({
     model,
@@ -227,7 +237,17 @@ export async function runAgentToCompletion(
     conversationSlug,
   );
   try {
-    const persistResult = await persistence.persistMessages(finishedMessages);
+    const persistResult = await persistence.persistMessages(
+      finishedMessages,
+      undefined,
+      {
+        defaultMetadata: {
+          modelId: model.id,
+          providerId: model.providerID,
+          agent: agentId,
+        },
+      },
+    );
     if (persistResult.errors.length > 0) {
       logger.warn(
         '[RunAgentToCompletion] Message persistence had errors:',

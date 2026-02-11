@@ -7,8 +7,7 @@ import type { Repositories } from '@qwery/domain/repositories';
 import type { TelemetryManager } from '@qwery/telemetry/otel';
 import { MessageRole } from '@qwery/domain/entities';
 import { createMessages, filterCompacted } from '../llm/message';
-import type { WithParts } from '../llm/message';
-import type { Part } from '../llm/message';
+import type { Message, MessageContentPart } from '../llm/message';
 import { SessionCompaction } from './session-compaction';
 import { getLogger } from '@qwery/shared/logger';
 import { Registry } from '../tools/registry';
@@ -58,25 +57,32 @@ function ensureTitle(_opts: {
   conversationSlug: string;
   conversationId: string;
   model: string;
-  msgs: WithParts[];
+  msgs: Message[];
   repositories: Repositories;
 }): void {
   // Placeholder: actual title logic runs on stream close.
 }
 
-function deriveState(msgs: WithParts[]) {
-  const lastUser = msgs.findLast((m: WithParts) => m.info.role === 'user');
-  const lastAssistant = msgs.findLast(
-    (m: WithParts) => m.info.role === 'assistant',
+function deriveState(msgs: Message[]) {
+  const lastUser = msgs.findLast((m) => m.role === MessageRole.USER);
+  const compactionUser = msgs.findLast(
+    (m) =>
+      m.role === MessageRole.USER &&
+      (m.content?.parts ?? []).some((p) => p.type === 'compaction'),
   );
+  const lastAssistant = msgs.findLast((m) => m.role === MessageRole.ASSISTANT);
   const lastFinished = msgs.findLast(
-    (m: WithParts) =>
-      m.info.role === 'assistant' && !!(m.info as { finish?: string }).finish,
+    (m) =>
+      m.role === MessageRole.ASSISTANT &&
+      !!(m.metadata as { finish?: string })?.finish,
   );
   const tasks = msgs
-    .flatMap((m: WithParts) => m.parts)
-    .filter((p): p is Part => p.type === 'compaction' || p.type === 'subtask');
-  return { lastUser, lastAssistant, lastFinished, tasks };
+    .flatMap((m) => m.content?.parts ?? [])
+    .filter(
+      (p): p is MessageContentPart =>
+        p.type === 'compaction' || p.type === 'subtask',
+    );
+  return { lastUser, compactionUser, lastAssistant, lastFinished, tasks };
 }
 
 /** One turn: loop with Messages.stream, steps, then return SSE Response. */
@@ -118,21 +124,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
   while (true) {
     const msgs = await filterCompacted(messagesApi.stream(conversationId));
-    const { lastUser, lastFinished, tasks } = deriveState(msgs);
-
-    const lastMsg = msgs.at(-1);
-    const lastMsgFinish =
-      lastMsg?.info.role === 'assistant'
-        ? (lastMsg.info as { finish?: string }).finish
-        : undefined;
-    const exitCondition =
-      lastMsg?.info.role === 'assistant' &&
-      lastMsgFinish &&
-      lastMsgFinish !== 'tool-calls' &&
-      lastMsgFinish !== 'unknown';
-    if (exitCondition) {
-      //break;
-    }
+    const { lastUser, compactionUser, lastFinished, tasks } = deriveState(msgs);
 
     step += 1;
     if (step === 1) {
@@ -153,7 +145,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
     if (task?.type === 'compaction') {
       const result = await SessionCompaction.process({
-        parentID: lastUser?.info.id ?? '',
+        parentID: compactionUser?.id ?? lastUser?.id ?? '',
         messages: msgs,
         conversationSlug,
         abort: abortController.signal,
@@ -164,21 +156,19 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       continue;
     }
 
-    const lastFinishedSummary = lastFinished
-      ? (lastFinished.info as { summary?: boolean }).summary
-      : undefined;
-    const lastFinishedTokens = lastFinished
-      ? (
-          lastFinished.info as {
-            tokens?: {
-              input: number;
-              output: number;
-              reasoning: number;
-              cache: { read: number; write: number };
-            };
-          }
-        ).tokens
-      : undefined;
+    const lastFinishedMeta = lastFinished?.metadata as
+      | {
+          summary?: boolean;
+          tokens?: {
+            input: number;
+            output: number;
+            reasoning: number;
+            cache: { read: number; write: number };
+          };
+        }
+      | undefined;
+    const lastFinishedSummary = lastFinishedMeta?.summary;
+    const lastFinishedTokens = lastFinishedMeta?.tokens;
     if (
       lastFinished &&
       !lastFinishedSummary &&
@@ -188,14 +178,16 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         model,
       }))
     ) {
-      const userInfo = lastUser?.info as {
-        agent?: string;
-        model?: { providerID: string; modelID: string };
-      };
+      const userMeta = lastUser?.metadata as
+        | {
+            agent?: string;
+            model?: { providerID: string; modelID: string };
+          }
+        | undefined;
       await SessionCompaction.create({
         conversationSlug,
-        agent: userInfo?.agent ?? agentId,
-        model: userInfo?.model ?? model,
+        agent: userMeta?.agent ?? agentId,
+        model: userMeta?.model ?? model,
         auto: true,
         repositories,
       });
@@ -274,34 +266,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       msgs.length > 0
         ? msgs
         : await convertToModelMessages(validated, { tools });
-
-    // Persist the last user message before processing (for web UI; idempotent)
-    const lastUserMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === 'user');
-    if (lastUserMessage) {
-      const persistence = new MessagePersistenceService(
-        repositories.message,
-        repositories.conversation,
-        conversationSlug,
-      );
-      try {
-        const persistResult = await persistence.persistMessages([
-          lastUserMessage,
-        ]);
-        if (persistResult.errors.length > 0) {
-          logger.warn(
-            `[AgentSession] User message persistence failed for ${conversationSlug}:`,
-            persistResult.errors.map((e) => e.message).join(', '),
-          );
-        }
-      } catch (error) {
-        logger.warn(
-          `[AgentSession] User message persistence threw for ${conversationSlug}:`,
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-    }
 
     const systemPromptForLlm =
       agentInfo.systemPrompt !== undefined && agentInfo.systemPrompt !== ''
@@ -409,8 +373,17 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           conversationSlug,
         );
         try {
-          const persistResult =
-            await persistence.persistMessages(finishedMessages);
+          const persistResult = await persistence.persistMessages(
+            finishedMessages,
+            undefined,
+            {
+              defaultMetadata: {
+                modelId: providerModel.id,
+                providerId: providerModel.providerID,
+                agent: agentId,
+              },
+            },
+          );
           if (persistResult.errors.length > 0) {
             const log = await getLogger();
             log.warn(
@@ -490,8 +463,11 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
                     Array.isArray(assistantMessage.content.parts)
                   ) {
                     assistantText = assistantMessage.content.parts
-                      .filter((part: { type?: string }) => part.type === 'text')
-                      .map((part: { text?: string }) => part.text ?? '')
+                      .filter(
+                        (part): part is { type: 'text'; text: string } =>
+                          part.type === 'text',
+                      )
+                      .map((part) => part.text ?? '')
                       .join(' ')
                       .trim();
                   }
@@ -581,9 +557,15 @@ export async function prompt(
       conversationSlug,
     );
     try {
-      const persistResult = await persistence.persistMessages([
-        lastUserMessage,
-      ]);
+      const persistResult = await persistence.persistMessages(
+        [lastUserMessage],
+        undefined,
+        {
+          defaultMetadata: {
+            agent: input.agentId ?? DEFAULT_AGENT_ID,
+          },
+        },
+      );
       if (persistResult.errors.length > 0) {
         logger.warn(
           `[AgentSession] User message persistence failed for ${conversationSlug}:`,

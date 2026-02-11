@@ -1,9 +1,14 @@
 import { convertToModelMessages, type ModelMessage, type UIMessage } from 'ai';
 import { z } from 'zod';
 import type { IMessageRepository } from '@qwery/domain/repositories';
-import type { Message } from '@qwery/domain/entities';
+import type { Message, MessageContent } from '@qwery/domain/entities';
 import type { Model } from './provider';
+
+export type { Message };
 import { fn } from './utils/fn';
+
+/** Part type from domain MessageContent (single element of content.parts array). */
+export type MessageContentPart = NonNullable<MessageContent['parts']>[number];
 
 function createNamedError<T extends z.ZodObject<Record<string, z.ZodTypeAny>>>(
   errorName: string,
@@ -73,353 +78,18 @@ export type NormalizedError =
   | z.infer<typeof APIError.Schema>
   | { name: 'Unknown'; message: string };
 
-/****************************************************
- * Part schemas for messages.
- ****************************************************/
-const PartBaseSchema = z.object({
-  id: z.string().optional(),
-  conversationId: z.string().optional(),
-  messageId: z.string().optional(),
-});
+function getParts(message: Message): MessageContentPart[] {
+  return message.content?.parts ?? [];
+}
 
-export const SnapshotPartSchema = PartBaseSchema.extend({
-  type: z.literal('snapshot'),
-  snapshot: z.string(),
-});
-export type SnapshotPart = z.infer<typeof SnapshotPartSchema>;
-
-export const PatchPartSchema = PartBaseSchema.extend({
-  type: z.literal('patch'),
-  hash: z.string(),
-  files: z.array(z.string()),
-});
-export type PatchPart = z.infer<typeof PatchPartSchema>;
-
-export const TextPartSchema = PartBaseSchema.extend({
-  type: z.literal('text'),
-  text: z.string(),
-  synthetic: z.boolean().optional(),
-  ignored: z.boolean().optional(),
-  time: z
-    .object({
-      start: z.number(),
-      end: z.number().optional(),
-    })
-    .optional(),
-  metadata: z.record(z.string(), z.any()).optional(),
-});
-export type TextPart = z.infer<typeof TextPartSchema>;
-
-export const ReasoningPartSchema = PartBaseSchema.extend({
-  type: z.literal('reasoning'),
-  text: z.string(),
-  metadata: z.record(z.string(), z.any()).optional(),
-  time: z
-    .object({
-      start: z.number(),
-      end: z.number().optional(),
-    })
-    .optional(),
-});
-export type ReasoningPart = z.infer<typeof ReasoningPartSchema>;
-
-const FilePartSourceTextSchema = z.object({
-  value: z.string(),
-  start: z.number().int(),
-  end: z.number().int(),
-});
-
-export const FileSourceSchema = FilePartSourceTextSchema.extend({
-  type: z.literal('file'),
-  path: z.string(),
-});
-export type FileSource = z.infer<typeof FileSourceSchema>;
-
-const RangeSchema = z.object({
-  start: z.object({ line: z.number(), character: z.number() }),
-  end: z.object({ line: z.number(), character: z.number() }),
-});
-
-export const SymbolSourceSchema = FilePartSourceTextSchema.extend({
-  type: z.literal('symbol'),
-  path: z.string(),
-  range: RangeSchema,
-  name: z.string(),
-  kind: z.number().int(),
-});
-export type SymbolSource = z.infer<typeof SymbolSourceSchema>;
-
-export const ResourceSourceSchema = FilePartSourceTextSchema.extend({
-  type: z.literal('resource'),
-  clientName: z.string(),
-  uri: z.string(),
-});
-export type ResourceSource = z.infer<typeof ResourceSourceSchema>;
-
-export const FilePartSourceSchema = z.discriminatedUnion('type', [
-  FileSourceSchema,
-  SymbolSourceSchema,
-  ResourceSourceSchema,
-]);
-export type FilePartSource = z.infer<typeof FilePartSourceSchema>;
-
-export const FilePartSchema = PartBaseSchema.extend({
-  type: z.literal('file'),
-  mime: z.string(),
-  filename: z.string().optional(),
-  url: z.string(),
-  source: FilePartSourceSchema.optional(),
-});
-export type FilePart = z.infer<typeof FilePartSchema>;
-
-export const AgentPartSchema = PartBaseSchema.extend({
-  type: z.literal('agent'),
-  name: z.string(),
-  source: z
-    .object({
-      value: z.string(),
-      start: z.number().int(),
-      end: z.number().int(),
-    })
-    .optional(),
-});
-export type AgentPart = z.infer<typeof AgentPartSchema>;
-
-export const CompactionPartSchema = PartBaseSchema.extend({
-  type: z.literal('compaction'),
-  auto: z.boolean(),
-});
-export type CompactionPart = z.infer<typeof CompactionPartSchema>;
-
-export const SubtaskPartSchema = PartBaseSchema.extend({
-  type: z.literal('subtask'),
-  prompt: z.string(),
-  description: z.string(),
-  agent: z.string(),
-  model: z
-    .object({
-      providerID: z.string(),
-      modelID: z.string(),
-    })
-    .optional(),
-  command: z.string().optional(),
-});
-export type SubtaskPart = z.infer<typeof SubtaskPartSchema>;
-
-export const RetryPartSchema = PartBaseSchema.extend({
-  type: z.literal('retry'),
-  attempt: z.number(),
-  error: APIError.Schema,
-  time: z.object({
-    created: z.number(),
-  }),
-});
-export type RetryPart = z.infer<typeof RetryPartSchema>;
-
-export const StepStartPartSchema = PartBaseSchema.extend({
-  type: z.literal('step-start'),
-  snapshot: z.string().optional(),
-});
-export type StepStartPart = z.infer<typeof StepStartPartSchema>;
-
-export const StepFinishPartSchema = PartBaseSchema.extend({
-  type: z.literal('step-finish'),
-  reason: z.string(),
-  snapshot: z.string().optional(),
-  cost: z.number(),
-  tokens: z.object({
-    input: z.number(),
-    output: z.number(),
-    reasoning: z.number(),
-    cache: z.object({
-      read: z.number(),
-      write: z.number(),
-    }),
-  }),
-});
-export type StepFinishPart = z.infer<typeof StepFinishPartSchema>;
-
-export const ToolStatePendingSchema = z.object({
-  status: z.literal('pending'),
-  input: z.record(z.string(), z.any()),
-  raw: z.string(),
-});
-export type ToolStatePending = z.infer<typeof ToolStatePendingSchema>;
-
-export const ToolStateRunningSchema = z.object({
-  status: z.literal('running'),
-  input: z.record(z.string(), z.any()),
-  title: z.string().optional(),
-  metadata: z.record(z.string(), z.any()).optional(),
-  time: z.object({
-    start: z.number(),
-  }),
-});
-export type ToolStateRunning = z.infer<typeof ToolStateRunningSchema>;
-
-export const ToolStateCompletedSchema = z.object({
-  status: z.literal('completed'),
-  input: z.record(z.string(), z.any()),
-  output: z.string(),
-  title: z.string().optional(),
-  metadata: z.record(z.string(), z.any()).optional(),
-  time: z.object({
-    start: z.number(),
-    end: z.number(),
-    compacted: z.number().optional(),
-  }),
-  attachments: z.array(FilePartSchema).optional(),
-});
-export type ToolStateCompleted = z.infer<typeof ToolStateCompletedSchema>;
-
-export const ToolStateErrorSchema = z.object({
-  status: z.literal('error'),
-  input: z.record(z.string(), z.any()),
-  error: z.string(),
-  metadata: z.record(z.string(), z.any()).optional(),
-  time: z.object({
-    start: z.number(),
-    end: z.number(),
-  }),
-});
-export type ToolStateError = z.infer<typeof ToolStateErrorSchema>;
-
-export const ToolStateSchema = z.discriminatedUnion('status', [
-  ToolStatePendingSchema,
-  ToolStateRunningSchema,
-  ToolStateCompletedSchema,
-  ToolStateErrorSchema,
-]);
-export type ToolState = z.infer<typeof ToolStateSchema>;
-
-export const ToolPartSchema = PartBaseSchema.extend({
-  type: z.literal('tool'),
-  callID: z.string(),
-  tool: z.string(),
-  state: ToolStateSchema,
-  metadata: z.record(z.string(), z.any()).optional(),
-});
-export type ToolPart = z.infer<typeof ToolPartSchema>;
-
-const StrictPartSchema = z.discriminatedUnion('type', [
-  TextPartSchema,
-  SubtaskPartSchema,
-  ReasoningPartSchema,
-  FilePartSchema,
-  ToolPartSchema,
-  StepStartPartSchema,
-  StepFinishPartSchema,
-  SnapshotPartSchema,
-  PatchPartSchema,
-  AgentPartSchema,
-  RetryPartSchema,
-  CompactionPartSchema,
-]);
-
-export const PartSchema = z.union([
-  StrictPartSchema,
-  z.object({ type: z.string() }).passthrough(),
-]);
-export type Part = z.infer<typeof PartSchema>;
-
-/****************************************************
- * Message info (user / assistant) with mandatory states.
- ****************************************************/
-const InfoBaseSchema = z.object({
-  id: z.string(),
-  conversationId: z.string(),
-  role: z.enum(['user', 'assistant']),
-});
-
-const UserInfoSchema = InfoBaseSchema.extend({
-  role: z.literal('user'),
-  time: z
-    .object({
-      created: z.number(),
-    })
-    .optional(),
-  summary: z
-    .object({
-      title: z.string().optional(),
-      body: z.string().optional(),
-      diffs: z.array(z.unknown()).optional(),
-    })
-    .optional(),
-  agent: z.string().optional(),
-  model: z
-    .object({
-      providerID: z.string(),
-      modelID: z.string(),
-    })
-    .optional(),
-  system: z.string().optional(),
-  tools: z.record(z.string(), z.boolean()).optional(),
-  variant: z.string().optional(),
-});
-
-const AssistantInfoSchema = InfoBaseSchema.extend({
-  role: z.literal('assistant'),
-  time: z
-    .object({
-      created: z.number(),
-      completed: z.number().optional(),
-    })
-    .optional(),
-  error: z.unknown().optional(),
-  parentId: z.string().optional(),
-  modelId: z.string().optional(),
-  providerId: z.string().optional(),
-  mode: z.string().optional(),
-  agent: z.string().optional(),
-  path: z
-    .object({
-      cwd: z.string(),
-      root: z.string(),
-    })
-    .optional(),
-  summary: z.boolean().optional(),
-  cost: z.number().optional(),
-  tokens: z
-    .object({
-      input: z.number(),
-      output: z.number(),
-      reasoning: z.number(),
-      cache: z.object({
-        read: z.number(),
-        write: z.number(),
-      }),
-    })
-    .optional(),
-  finish: z.string().optional(),
-});
-
-export const MessageInfoSchema = z.discriminatedUnion('role', [
-  UserInfoSchema,
-  AssistantInfoSchema,
-]);
-
-export type MessageInfo = z.infer<typeof MessageInfoSchema>;
-
-export const WithPartsSchema = z.object({
-  info: MessageInfoSchema,
-  parts: z.array(PartSchema),
-});
-
-export type WithParts = z.infer<typeof WithPartsSchema>;
-
-function messageToWithParts(message: Message): WithParts {
-  const content = message.content;
-  const parts = (content?.parts ?? []) as Part[];
+function getMessageInfo(message: Message) {
   const metadata = message.metadata ?? {};
-
-  const info: MessageInfo = {
+  return {
     id: message.id,
     conversationId: message.conversationId,
     role: message.role as 'user' | 'assistant',
-    ...(metadata as Record<string, unknown>),
+    ...metadata,
   };
-
-  return { info, parts };
 }
 
 function toModelOutput(
@@ -459,41 +129,47 @@ function toModelOutput(
 }
 
 export async function toModelMessages(
-  input: WithParts[],
+  messages: Message[],
   model: Model,
 ): Promise<ModelMessage[]> {
   const result: UIMessage[] = [];
   const toolNames = new Set<string>();
 
-  for (const msg of input) {
-    if (msg.parts.length === 0) continue;
+  for (const message of messages) {
+    const parts = getParts(message);
+    if (parts.length === 0) continue;
 
-    if (msg.info.role === 'user') {
+    const info = getMessageInfo(message);
+
+    if (info.role === 'user') {
       const userMessage: UIMessage = {
-        id: msg.info.id,
+        id: info.id,
         role: 'user',
         parts: [],
       };
       result.push(userMessage);
-      for (const part of msg.parts) {
-        if (part.type === 'text' && !(part as { ignored?: boolean }).ignored) {
+      for (const part of parts) {
+        const partRecord = part as Record<string, unknown>;
+        if (part.type === 'text' && !partRecord.ignored) {
           userMessage.parts.push({
             type: 'text',
-            text:
-              typeof (part as { text?: unknown }).text === 'string'
-                ? (part as { text: string }).text
-                : '',
+            text: typeof partRecord.text === 'string' ? partRecord.text : '',
           });
         }
         if (part.type === 'file') {
-          const fp = part as Record<string, unknown>;
-          const mime = fp.mime as string | undefined;
-          if (mime !== 'text/plain' && mime !== 'application/x-directory') {
+          const mime =
+            (partRecord.mediaType as string | undefined) ??
+            (partRecord.mime as string | undefined);
+          if (
+            mime &&
+            mime !== 'text/plain' &&
+            mime !== 'application/x-directory'
+          ) {
             userMessage.parts.push({
               type: 'file',
-              url: String(fp.url ?? ''),
-              mediaType: mime ?? 'application/octet-stream',
-              filename: fp.filename as string | undefined,
+              url: String(partRecord.url ?? ''),
+              mediaType: mime,
+              filename: partRecord.filename as string | undefined,
             });
           }
         }
@@ -512,8 +188,8 @@ export async function toModelMessages(
       }
     }
 
-    if (msg.info.role === 'assistant') {
-      const assistantMeta = msg.info as {
+    if (info.role === 'assistant') {
+      const assistantMeta = info as {
         providerId?: string;
         modelId?: string;
         error?: unknown;
@@ -526,41 +202,76 @@ export async function toModelMessages(
         assistantMeta.error &&
         !(
           AbortedError.isInstance(assistantMeta.error) &&
-          msg.parts.some(
-            (p) => p.type !== 'step-start' && p.type !== 'reasoning',
-          )
+          parts.some((p) => p.type !== 'step-start' && p.type !== 'reasoning')
         )
       ) {
         continue;
       }
 
       const assistantMessage: UIMessage = {
-        id: msg.info.id,
+        id: info.id,
         role: 'assistant',
         parts: [],
       };
-      for (const part of msg.parts) {
+      for (const part of parts) {
+        const partRecord = part as Record<string, unknown>;
         if (part.type === 'text') {
           const partMeta = differentModel
             ? undefined
-            : (part as Record<string, unknown>).metadata;
+            : (partRecord.metadata as Record<string, unknown> | undefined);
           assistantMessage.parts.push({
             type: 'text',
-            text: part.text ?? '',
-            ...(partMeta !== undefined
-              ? { providerMetadata: partMeta as Record<string, unknown> }
-              : {}),
+            text: (partRecord.text as string) ?? '',
+            ...(partMeta !== undefined ? { providerMetadata: partMeta } : {}),
           } as UIMessage['parts'][number]);
         }
         if (part.type === 'step-start') {
           assistantMessage.parts.push({ type: 'step-start' });
         }
+        if (
+          typeof part.type === 'string' &&
+          (part.type.startsWith('tool-') || part.type === 'dynamic-tool')
+        ) {
+          const tp = partRecord;
+          const toolName =
+            part.type === 'dynamic-tool'
+              ? String(tp.toolName ?? '')
+              : part.type.replace(/^tool-/, '');
+          toolNames.add(toolName);
+          const state = tp.state as string | undefined;
+          const compactedAt = tp.compactedAt as number | undefined;
+          const output =
+            compactedAt !== undefined
+              ? '[Old tool result content cleared]'
+              : tp.output;
+          if (state === 'output-error') {
+            assistantMessage.parts.push({
+              type: part.type as `tool-${string}`,
+              state: 'output-error',
+              toolCallId: String(tp.toolCallId ?? ''),
+              input: tp.input,
+              errorText: String(tp.errorText ?? ''),
+              ...(tp.title !== undefined && { title: String(tp.title) }),
+              ...(tp.isError !== undefined && { isError: Boolean(tp.isError) }),
+            } as UIMessage['parts'][number]);
+          } else {
+            assistantMessage.parts.push({
+              type: part.type as `tool-${string}`,
+              state: (state as 'output-available') ?? 'output-available',
+              toolCallId: String(tp.toolCallId ?? ''),
+              input: tp.input,
+              output,
+              ...(tp.title !== undefined && { title: String(tp.title) }),
+              ...(tp.isError !== undefined && { isError: Boolean(tp.isError) }),
+            } as UIMessage['parts'][number]);
+          }
+        }
         if (part.type === 'tool') {
-          const tp = part as Record<string, unknown>;
+          const tp = partRecord;
           const tool = String(tp.tool ?? '');
           const state = tp.state as {
-            status: string;
-            input: unknown;
+            status?: string;
+            input?: unknown;
             output?: string;
             error?: string;
             time?: { compacted?: number };
@@ -616,13 +327,11 @@ export async function toModelMessages(
         if (part.type === 'reasoning') {
           const partMeta = differentModel
             ? undefined
-            : (part as Record<string, unknown>).metadata;
+            : (partRecord.metadata as Record<string, unknown> | undefined);
           assistantMessage.parts.push({
             type: 'reasoning',
-            text: part.text ?? '',
-            ...(partMeta !== undefined
-              ? { providerMetadata: partMeta as Record<string, unknown> }
-              : {}),
+            text: (partRecord.text as string) ?? '',
+            ...(partMeta !== undefined ? { providerMetadata: partMeta } : {}),
           } as UIMessage['parts'][number]);
         }
       }
@@ -643,33 +352,34 @@ export async function toModelMessages(
 }
 
 export async function filterCompacted(
-  stream: AsyncIterable<WithParts>,
-): Promise<WithParts[]> {
-  const result: WithParts[] = [];
+  stream: AsyncIterable<Message>,
+): Promise<Message[]> {
+  const result: Message[] = [];
   const completed = new Set<string>();
-  for await (const msg of stream) {
-    result.push(msg);
-    const assistantMeta = msg.info as {
-      role: string;
-      id: string;
-      parentId?: string;
-      summary?: boolean;
-      finish?: string;
-    };
+  for await (const message of stream) {
+    result.push(message);
+    const metadata = message.metadata as
+      | {
+          parentId?: string;
+          summary?: boolean;
+          finish?: string;
+        }
+      | undefined;
+    const parts = getParts(message);
     if (
-      msg.info.role === 'user' &&
-      completed.has(msg.info.id) &&
-      msg.parts.some((p) => p.type === 'compaction')
+      message.role === 'user' &&
+      completed.has(message.id) &&
+      parts.some((p) => p.type === 'compaction')
     ) {
       break;
     }
     if (
-      msg.info.role === 'assistant' &&
-      assistantMeta.summary &&
-      assistantMeta.finish &&
-      assistantMeta.parentId
+      message.role === 'assistant' &&
+      metadata?.summary &&
+      metadata?.finish &&
+      metadata?.parentId
     ) {
-      completed.add(assistantMeta.parentId);
+      completed.add(metadata.parentId);
     }
   }
   result.reverse();
@@ -756,14 +466,14 @@ export function createMessages(deps: {
     const messages =
       await messageRepository.findByConversationId(conversationId);
     for (let i = messages.length - 1; i >= 0; i--) {
-      yield messageToWithParts(messages[i]!);
+      yield messages[i]!;
     }
   });
 
   const parts = fn(z.string(), async (messageId: string) => {
     const message = await messageRepository.findById(messageId);
     if (!message) return [];
-    const contentParts = (message.content as { parts?: Part[] })?.parts ?? [];
+    const contentParts = getParts(message);
     return [...contentParts].sort((a, b) =>
       ((a as { id?: string }).id ?? '').localeCompare(
         (b as { id?: string }).id ?? '',
@@ -776,7 +486,7 @@ export function createMessages(deps: {
       conversationId: z.string(),
       messageId: z.string(),
     }),
-    async (input): Promise<WithParts> => {
+    async (input): Promise<Message> => {
       const message = await messageRepository.findById(input.messageId);
       if (!message) {
         throw new Error(`Message not found: ${input.messageId}`);
@@ -786,7 +496,7 @@ export function createMessages(deps: {
           `Message ${input.messageId} does not belong to conversation ${input.conversationId}`,
         );
       }
-      return messageToWithParts(message);
+      return message;
     },
   );
 

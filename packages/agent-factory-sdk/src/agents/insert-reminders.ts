@@ -1,4 +1,5 @@
-import type { WithParts } from '../llm/message';
+import { MessageRole } from '@qwery/domain/entities';
+import type { Message, MessageContentPart } from '../llm/message';
 import type { AgentInfoWithId } from './agent';
 import { buildDatasourceReminder } from './prompts/datasource-reminder';
 
@@ -8,10 +9,11 @@ const TODO_REMINDER =
 const agentIdsWithDatasourceReminder = ['query', 'ask'];
 const agentIdsWithTodoReminder = ['query', 'ask'];
 
-function getLastUserMessageText(lastUser: WithParts): string {
-  return lastUser.parts
+function getLastUserMessageText(lastUser: Message): string {
+  const parts = lastUser.content?.parts ?? [];
+  return parts
     .filter(
-      (p): p is { type: 'text'; text: string } =>
+      (p): p is MessageContentPart & { type: 'text'; text: string } =>
         p.type === 'text' &&
         'text' in p &&
         typeof (p as { text?: string }).text === 'string',
@@ -47,22 +49,24 @@ export type ReminderContext = {
  * optional todo reminder when the last user message suggests a multi-step request.
  */
 export function insertReminders(input: {
-  messages: WithParts[];
+  messages: Message[];
   agent: AgentInfoWithId;
   context: ReminderContext;
-}): WithParts[] {
+}): Message[] {
   const { messages, agent, context } = input;
-  const lastUser = messages.findLast((m: WithParts) => m.info.role === 'user');
+  const lastUser = messages.findLast((m) => m.role === MessageRole.USER);
   if (!lastUser) return messages;
+
+  if (!lastUser.content) lastUser.content = {};
+  if (!lastUser.content.parts) lastUser.content.parts = [];
 
   if (context.attachedDatasourceNames !== undefined) {
     if (agentIdsWithDatasourceReminder.includes(agent.id)) {
-      lastUser.parts.push({
+      lastUser.content.parts.push({
         type: 'text',
         text: buildDatasourceReminder(context.attachedDatasourceNames),
         synthetic: true,
-        messageId: lastUser.info.id,
-      } as (typeof lastUser.parts)[number]);
+      });
     }
   }
 
@@ -70,12 +74,11 @@ export function insertReminders(input: {
     agentIdsWithTodoReminder.includes(agent.id) &&
     messageSuggestsMultiStep(getLastUserMessageText(lastUser))
   ) {
-    lastUser.parts.push({
+    lastUser.content.parts.push({
       type: 'text',
       text: TODO_REMINDER,
       synthetic: true,
-      messageId: lastUser.info.id,
-    } as (typeof lastUser.parts)[number]);
+    });
   }
 
   return messages;

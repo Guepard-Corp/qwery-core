@@ -25,9 +25,8 @@ function isUUID(str: string): boolean {
 }
 
 /**
- * Converts a UIMessage to the format that should be stored in MessageEntity.content
- * This stores the full UIMessage structure (id, role, metadata, parts) in the content field
- * for complete restoration to the UI
+ * Converts a UIMessage to the format that should be stored in MessageEntity.content.
+ * Metadata is stored only at the message root (input.metadata), not in content.
  */
 function convertUIMessageToContent(
   uiMessage: UIMessage,
@@ -35,10 +34,19 @@ function convertUIMessageToContent(
   return {
     id: uiMessage.id,
     role: uiMessage.role,
-    metadata: uiMessage.metadata,
     parts: uiMessage.parts,
   };
 }
+
+export type PersistMessageOptions = {
+  createdBy?: string;
+  /** Merged into each message's metadata when saving (e.g. modelId, providerId, agent). */
+  defaultMetadata?: {
+    modelId?: string;
+    providerId?: string;
+    agent?: string;
+  };
+};
 
 export class MessagePersistenceService {
   constructor(
@@ -49,6 +57,7 @@ export class MessagePersistenceService {
   async persistMessages(
     messages: UIMessage[],
     createdBy?: string,
+    options?: PersistMessageOptions,
   ): Promise<{ errors: Error[] }> {
     const useCase = new CreateMessageService(
       this.messageRepository,
@@ -57,6 +66,7 @@ export class MessagePersistenceService {
 
     const errors: Error[] = [];
 
+    const opts = options ?? {};
     let resolvedCreatedBy: string | null = null;
     try {
       const conversation = await this.conversationRepository.findBySlug(
@@ -64,6 +74,8 @@ export class MessagePersistenceService {
       );
       if (conversation && conversation.createdBy?.trim()) {
         resolvedCreatedBy = conversation.createdBy;
+      } else if (opts.createdBy?.trim()) {
+        resolvedCreatedBy = opts.createdBy;
       } else if (createdBy?.trim()) {
         resolvedCreatedBy = createdBy;
       }
@@ -104,13 +116,16 @@ export class MessagePersistenceService {
           }
         }
 
-        const hasMetadata =
-          message.metadata &&
-          typeof message.metadata === 'object' &&
-          Object.keys(message.metadata).length > 0;
-        const metadataInput = hasMetadata
-          ? { metadata: message.metadata as Record<string, unknown> }
-          : {};
+        const messageMeta =
+          message.metadata && typeof message.metadata === 'object'
+            ? (message.metadata as Record<string, unknown>)
+            : {};
+        const mergedMetadata = {
+          ...opts.defaultMetadata,
+          ...messageMeta,
+        };
+        const hasMetadata = Object.keys(mergedMetadata).length > 0;
+        const metadataInput = hasMetadata ? { metadata: mergedMetadata } : {};
 
         await useCase.execute({
           input: {
@@ -155,14 +170,11 @@ export class MessagePersistenceService {
         Array.isArray(message.content.parts) &&
         'role' in message.content
       ) {
-        // Content already contains full UIMessage structure - restore all fields
+        // Content has parts/role; metadata lives at message root only
         return {
           id: message.id, // Use MessageEntity.id as source of truth
           role: normalizeUIRole(message.content.role),
-          metadata:
-            'metadata' in message.content
-              ? (message.content.metadata as UIMessage['metadata'])
-              : undefined,
+          metadata: (message.metadata as UIMessage['metadata']) ?? undefined,
           parts: message.content.parts as UIMessage['parts'],
         };
       }

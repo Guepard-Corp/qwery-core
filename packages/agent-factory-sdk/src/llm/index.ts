@@ -5,12 +5,8 @@ export {
   Messages,
   toModelMessages,
   fromError,
-  type MessageInfo,
-  type Part,
-  type TextPart,
-  type FilePart,
-  type ToolPart,
-  type WithParts,
+  type Message,
+  type MessageContentPart,
   type NormalizedError,
 } from './message';
 export { Id, type IdPrefix } from '@qwery/domain/id';
