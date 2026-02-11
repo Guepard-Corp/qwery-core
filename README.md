@@ -68,7 +68,8 @@ cd qwery-core
 pnpm install
 
 # Start development server
-pnpm dev
+pnpm server:dev
+pnpm web:dev
 ```
 
 The web app will be available at `http://localhost:3000`
@@ -89,9 +90,7 @@ pnpm desktop:dev
 This is a Turborepo monorepo with the following structure:
 
 - `apps/web` - Main React Router SaaS application
-- `apps/cli` - Command-line interface
 - `apps/desktop` - Desktop application (Electron)
-- `apps/e2e` - Playwright end-to-end tests
 - `packages/features/*` - Feature packages
 - `packages/` - Shared packages and utilities
 - `tooling/` - Build tools and development scripts
@@ -103,8 +102,10 @@ This is a Turborepo monorepo with the following structure:
 pnpm dev
 
 # Start specific app
+pnpm --filter server dev     # Server app
 pnpm --filter web dev        # Web app (port 3000)
 pnpm --filter desktop dev    # Desktop app
+pnpm --filter tui dev        # Terminal app
 
 # Code Quality
 pnpm format:fix              # Auto-fix formatting

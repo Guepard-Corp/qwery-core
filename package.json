@@ -63,7 +63,10 @@
     "env:validate": "turbo gen validate-env",
     "check": "pnpm format:fix &&pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
     "security:react": "ts-node scripts/check-react-vulns.ts",
-    "security:react:audit": "ENABLE_PNPM_AUDIT=true ts-node scripts/check-react-vulns.ts"
+    "security:react:audit": "ENABLE_PNPM_AUDIT=true ts-node scripts/check-react-vulns.ts",
+    "server:dev": "pnpm --filter server dev",
+    "web:dev": "pnpm --filter web dev",
+    "tui:dev": "pnpm --filter tui dev"
   },
   "prettier": "@qwery/prettier-config",
   "packageManager": "pnpm@10.18.1",
