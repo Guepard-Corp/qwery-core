@@ -42,9 +42,13 @@ import { createPath } from '~/config/qwery.navigation.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useConversation } from '~/lib/mutations/use-conversation';
 import { usePlayground } from '~/lib/mutations/use-playground';
-import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
+import type { ProjectOutput } from '@qwery/domain/usecases';
 
-export default function WelcomePage() {
+export default function WelcomePage({
+  project: initialProject,
+}: {
+  project: ProjectOutput | null;
+}) {
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
@@ -57,7 +61,7 @@ export default function WelcomePage() {
   const [brandText, setBrandText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
-  const project = useGetProjectBySlug(repositories.project, project_id);
+  const project = { data: initialProject, isLoading: false };
 
   const suggestions = useMemo(() => getRandomizedSuggestions(3), []);
 
@@ -93,7 +97,7 @@ export default function WelcomePage() {
         { id: 'creating-conversation' },
       );
     },
-    workspace.projectId,
+    initialProject?.id ?? workspace.projectId,
   );
 
   useEffect(() => {

@@ -75,8 +75,15 @@ function convertMessageOutputToUIMessage(message: MessageOutput): UIMessage {
     Array.isArray(message.content.parts) &&
     'role' in message.content
   ) {
-    const existingMetadata =
-      'metadata' in message.content
+    // Metadata lives at message root; fall back to content for legacy stored messages
+    const rootMeta =
+      message.metadata && typeof message.metadata === 'object'
+        ? (message.metadata as Record<string, unknown>)
+        : {};
+    const contentMeta =
+      'metadata' in message.content &&
+      message.content.metadata &&
+      typeof message.content.metadata === 'object'
         ? (message.content.metadata as Record<string, unknown>)
         : {};
 
@@ -84,7 +91,8 @@ function convertMessageOutputToUIMessage(message: MessageOutput): UIMessage {
       id: message.id,
       role: normalizeUIRole(message.content.role),
       metadata: {
-        ...existingMetadata,
+        ...contentMeta,
+        ...rootMeta,
         createdAt,
       },
       parts: message.content.parts as UIMessage['parts'],

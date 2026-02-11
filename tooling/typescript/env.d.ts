@@ -15,5 +15,3 @@ interface ImportMetaEnv {
   VITE_LANGUAGE_PRIORITY: string;
 }
 
-
-

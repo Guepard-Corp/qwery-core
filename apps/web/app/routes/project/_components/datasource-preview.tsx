@@ -44,11 +44,7 @@ export const DatasourcePreview = forwardRef<
   {
     formValues: Record<string, unknown> | null;
     extensionId: string;
-    formConfig?: {
-      preset?: string;
-      connectionFieldKind?: string;
-      supportsPreview?: boolean;
-    } | null;
+    supportsPreview?: boolean;
     className?: string;
     isTestConnectionLoading?: boolean;
   }
@@ -56,16 +52,20 @@ export const DatasourcePreview = forwardRef<
   {
     formValues,
     extensionId,
-    formConfig,
+    supportsPreview: supportsPreviewProp,
     className,
     isTestConnectionLoading: _isTestConnectionLoading = false,
   },
   _ref,
 ) {
   const { theme, resolvedTheme } = useTheme();
+  const previewMeta = useMemo(
+    () => (supportsPreviewProp === true ? { supportsPreview: true } : null),
+    [supportsPreviewProp],
+  );
   const previewUrl = useMemo(
-    () => getDatasourcePreviewUrl(formValues, extensionId, formConfig),
-    [formValues, extensionId, formConfig],
+    () => getDatasourcePreviewUrl(formValues, extensionId, previewMeta),
+    [formValues, extensionId, previewMeta],
   );
   const dsType = getDatasourceType(extensionId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -307,7 +307,7 @@ export const DatasourcePreview = forwardRef<
   const isJsonOnline = dsType === 'json';
   const isParquetOnline = dsType === 'parquet';
 
-  const supportsPreview = formConfig?.supportsPreview === true;
+  const supportsPreview = supportsPreviewProp === true;
   const hasValidUrl = Boolean(previewUrl) && !validationError;
   const hasPreview = Boolean(debouncedPreviewUrl) && !validationError;
 

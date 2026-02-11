@@ -1,12 +1,15 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { z } from 'zod';
+import { z as zLib } from 'zod';
 import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
+import { DatasourceExtension } from '@qwery/extensions-sdk';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -16,21 +19,14 @@ import { useCreateDatasource } from '~/lib/mutations/use-create-datasource';
 import { generateRandomName } from '~/lib/names';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
-import {
-  normalizeProviderConfig,
-  validateProviderConfigWithZod,
-} from '~/lib/utils/datasource-form-config';
-import { DatasourceConnectionFields } from './datasource-connection-fields';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
+import { FormRenderer } from '@qwery/ui/form-renderer';
 import { DatasourceDocsLink } from './datasource-docs-link';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
   projectSlug: string;
-  extensionMeta: {
-    name: string;
-    logo: string;
-    description?: string;
-  };
+  extensionMeta: DatasourceExtension;
   onSuccess: () => void;
   onCancel: () => void;
   formId?: string;
@@ -84,10 +80,25 @@ export function DatasourceConnectForm({
     }
   }, [variant, actionsContainerReady, actionsContainerRef]);
 
+  const { i18n } = useTranslation();
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
   const projectRepository = repositories.project;
   const extension = useGetExtension(extensionId);
+  const extensionSchema = useExtensionSchema(extensionId);
+
+  /** Fallback when extension has no schema (e.g. 404 on schema.js). FormRenderer always used. */
+  const fallbackSchema = useMemo(
+    () =>
+      zLib
+        .object({
+          connectionUrl: zLib.string().optional(),
+          connectionString: zLib.string().optional(),
+        })
+        .passthrough(),
+    [],
+  );
+  const effectiveSchema = extensionSchema.data ?? fallbackSchema;
 
   const formatTestConnectionError = (error: unknown) => {
     if (error instanceof Error) {
@@ -192,32 +203,26 @@ export function DatasourceConnectForm({
       toast.error(<Trans i18nKey="datasources:formNotReady" />);
       return;
     }
-    const zodResult = validateProviderConfigWithZod(
-      formValues,
-      extensionId,
-      extension.data.formConfig,
-    );
-    if (!zodResult.success) {
-      toast.error(zodResult.error);
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
       return;
     }
-    const normalizedConfig = normalizeProviderConfig(
-      zodResult.data,
-      extensionId,
-      extension.data.formConfig,
-    );
+    const validData = parsed.data as Record<string, unknown>;
     const testDatasource: Partial<Datasource> = {
       datasource_provider: extension.data.id,
       datasource_driver: extension.data.id,
       datasource_kind: DatasourceKind.EMBEDDED,
       name: datasourceName || 'Test Connection',
-      config: normalizedConfig,
+      config: validData,
     };
     onTestConnectionLoadingChange?.(true);
     testConnectionMutation.mutate(testDatasource as Datasource);
   }, [
     extension.data,
     extensionId,
+    effectiveSchema,
     formValues,
     datasourceName,
     testConnectionMutation,
@@ -261,28 +266,24 @@ export function DatasourceConnectForm({
       return;
     }
 
-    const zodResult = validateProviderConfigWithZod(
-      formValues,
-      extensionId,
-      extension.data.formConfig,
-    );
-    if (!zodResult.success) {
-      toast.error(zodResult.error);
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
       setIsConnecting(false);
       return;
     }
+    const validData = parsed.data as Record<string, unknown>;
 
-    const normalizedConfig = normalizeProviderConfig(
-      zodResult.data,
-      extensionId,
-      extension.data.formConfig,
-    );
-
-    const dsMeta = await getDiscoveredDatasource(extension.data.id);
+    const dsMeta = extension.data as DatasourceExtension | undefined;
+    if (!dsMeta) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
     const driver =
-      dsMeta?.drivers.find(
-        (d) => d.id === (normalizedConfig as { driverId?: string })?.driverId,
-      ) ?? dsMeta?.drivers[0];
+      dsMeta.drivers.find(
+        (d) => d.id === (validData as { driverId?: string })?.driverId,
+      ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
@@ -296,12 +297,13 @@ export function DatasourceConnectForm({
       datasource_provider: extension.data.id || '',
       datasource_driver: extension.data.id || '',
       datasource_kind: datasourceKind as string,
-      config: normalizedConfig,
+      config: validData,
       createdBy: userId,
     });
   }, [
     extension.data,
     extensionId,
+    effectiveSchema,
     formValues,
     datasourceName,
     projectSlug,
@@ -363,9 +365,9 @@ export function DatasourceConnectForm({
         <header className="space-y-3 px-4">
           <div className="flex min-w-0 items-center gap-4">
             <div className="bg-muted/30 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl">
-              {extensionMeta.logo && (
+              {extensionMeta.icon && (
                 <img
-                  src={extensionMeta.logo}
+                  src={extensionMeta.icon}
                   alt={extensionMeta.name}
                   className={cn(
                     'h-9 w-9 object-contain',
@@ -378,10 +380,7 @@ export function DatasourceConnectForm({
               <span className="text-2xl font-semibold tracking-tight">
                 Connect to {extensionMeta.name}
               </span>
-              <DatasourceDocsLink
-                extensionId={extensionId}
-                formConfig={extension.data?.formConfig}
-              />
+              <DatasourceDocsLink docsUrl={extension.data?.docsUrl} />
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -464,12 +463,15 @@ export function DatasourceConnectForm({
             </div>
           ) : (
             <div className="space-y-6">
-              <DatasourceConnectionFields
-                extensionId={extensionId}
-                formConfig={extension.data?.formConfig}
-                onFormReady={handleFormReady}
+              <FormRenderer
+                schema={effectiveSchema}
+                onSubmit={() => {}}
+                formId={formId ?? 'datasource-form'}
+                locale={i18n.resolvedLanguage}
+                onFormReady={(values) =>
+                  handleFormReady(values as Record<string, unknown>)
+                }
                 onValidityChange={setIsFormValid}
-                _formId={formId ?? 'datasource-form'}
               />
             </div>
           )}

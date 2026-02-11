@@ -66,6 +66,7 @@ import {
   QweryPromptInput,
   type DatasourceItem,
   ToolPart,
+  TodoPart,
   useInfiniteMessages,
   VirtuosoMessageList,
 } from './ai';
@@ -73,6 +74,7 @@ import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
 import { DatasourceSelector } from './ai/datasource-selector';
 import { getUserFriendlyToolName } from './ai/utils/tool-name';
+import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 
@@ -863,7 +865,30 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                               })}
                             </Sources>
                           )}
+                        {(() => {
+                          const lastTodoIndex = getLastTodoPartIndex(
+                            message.parts,
+                          );
+                          return lastTodoIndex !== null ? (
+                            <TodoPart
+                              key={`${message.id}-todo`}
+                              part={
+                                message.parts[lastTodoIndex] as ToolUIPart & {
+                                  type: 'tool-todowrite' | 'tool-todoread';
+                                }
+                              }
+                              messageId={message.id}
+                              index={lastTodoIndex}
+                            />
+                          ) : null;
+                        })()}
                         {message.parts.map((part, i: number) => {
+                          if (
+                            part.type === 'tool-todowrite' ||
+                            part.type === 'tool-todoread'
+                          ) {
+                            return null;
+                          }
                           const isLastTextPart =
                             part.type === 'text' && i === lastTextPartIndex;
                           const isStreaming =

@@ -9,7 +9,8 @@
     ".": {
       "types": "./dist/driver.d.ts",
       "default": "./dist/driver.js"
-    }
+    },
+    "./schema": "./dist/schema.js"
   },
   "scripts": {
     "lint": "echo \"no lint configured\"",
@@ -22,38 +23,11 @@
         "id": "parquet-online",
         "name": "Parquet (Online)",
         "description": "Connect to public Parquet files via URL",
+        "tags": [
+          "Files"
+        ],
         "icon": "media/parquet.svg",
-        "formConfig": {
-          "preset": "fileUrl",
-          "connectionFieldKind": "fileUrl",
-          "showDetailsTab": false,
-          "showConnectionStringTab": true,
-          "placeholders": {
-            "connectionString": "https://example.com/data.parquet"
-          },
-          "fieldLabels": {
-            "connectionString": "Parquet file URL"
-          },
-          "normalizedKey": "url",
-          "acceptedKeys": [
-            "url",
-            "connectionUrl"
-          ],
-          "supportsPreview": true
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Public Parquet file URL",
-              "format": "uri"
-            }
-          },
-          "required": [
-            "url"
-          ]
-        },
+        "supportsPreview": true,
         "drivers": [
           "parquet-online.duckdb"
         ]

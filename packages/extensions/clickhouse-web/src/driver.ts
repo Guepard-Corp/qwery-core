@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client-web';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import type {
   DriverContext,
@@ -10,26 +10,11 @@ import type {
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
 import { extractConnectionUrl } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    connectionUrl: z.string().url().describe('secret:true').optional(),
-    host: z.string().optional(),
-    port: z.number().int().min(1).max(65535).optional(),
-    username: z.string().optional(),
-    user: z.string().optional(),
-    password: z.string().describe('secret:true').optional(),
-    database: z.string().optional(),
-  })
-  .refine(
-    (data) => data.connectionUrl || data.host,
-    {
-      message: 'Either connectionUrl or host must be provided',
-    },
-  );
+import { schema } from './schema';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+type Config = z.infer<typeof schema>;
 
-export function buildClickHouseConfigFromFields(fields: DriverConfig) {
+export function buildClickHouseConfigFromFields(fields: Config) {
   // Extract connection URL (either from connectionUrl or build from fields)
   const connectionUrl = extractConnectionUrl(
     fields as Record<string, unknown>,
@@ -52,12 +37,13 @@ function buildClickHouseConfig(connectionUrl: string) {
 }
 
 export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
   const clientMap = new Map<string, ReturnType<typeof createClient>>();
 
-  const getClient = (config: DriverConfig) => {
+  const getClient = () => {
     // Extract connection URL (either from connectionUrl or build from fields)
     const connectionUrl = extractConnectionUrl(
-      config as Record<string, unknown>,
+      parsedConfig as Record<string, unknown>,
       'clickhouse-web',
     );
     const key = connectionUrl;
@@ -70,9 +56,8 @@ export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver 
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async testConnection(): Promise<void> {
+      const client = getClient();
       await client.query({
         query: 'SELECT 1',
         format: 'JSON',
@@ -80,9 +65,8 @@ export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver 
       context.logger?.info?.('clickhouse: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async metadata(): Promise<DatasourceMetadata> {
+      const client = getClient();
 
       // Get databases (schemas)
       const databasesResult = await client.query({
@@ -253,9 +237,8 @@ export function makeClickHouseDriver(context: DriverContext): IDataSourceDriver 
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const client = getClient(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const client = getClient();
       const startTime = performance.now();
 
       const result = await client.query({

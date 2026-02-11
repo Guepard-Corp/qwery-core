@@ -21,9 +21,9 @@ import { convertMessages } from '~/lib/utils/messages-converter';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
 import { QweryContextProps } from 'node_modules/@qwery/ui/src/qwery/ai/context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import type { DatasourceItem } from '@qwery/ui/ai';
 import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
 import { useUpdateConversation } from '~/lib/mutations/use-conversation';
@@ -70,6 +70,7 @@ const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
       totalTokens: acc.totalTokens + curr.totalTokens,
       reasoningTokens: acc.reasoningTokens + curr.reasoningTokens,
       cachedInputTokens: acc.cachedInputTokens + curr.cachedInputTokens,
+      cost: acc.cost + (curr.cost ?? 0),
       maxContextSize: Math.max(acc.maxContextSize, curr.contextSize),
       modelId: curr.model,
     }),
@@ -79,37 +80,41 @@ const convertUsage = (usage: UsageOutput[] | undefined): QweryContextProps => {
       totalTokens: 0,
       reasoningTokens: 0,
       cachedInputTokens: 0,
+      cost: 0,
       maxContextSize: 128_000,
       modelId: '',
     },
   );
 
+  const usageObj: NonNullable<QweryContextProps['usage']> = {
+    inputTokens: aggregated.inputTokens,
+    outputTokens: aggregated.outputTokens,
+    totalTokens: aggregated.totalTokens,
+    reasoningTokens: aggregated.reasoningTokens,
+    cachedInputTokens: aggregated.cachedInputTokens,
+    inputTokenDetails: {
+      noCacheTokens: Math.max(
+        0,
+        aggregated.inputTokens - aggregated.cachedInputTokens,
+      ),
+      cacheReadTokens: aggregated.cachedInputTokens,
+      cacheWriteTokens: undefined,
+    },
+    outputTokenDetails: {
+      textTokens: Math.max(
+        0,
+        aggregated.outputTokens - aggregated.reasoningTokens,
+      ),
+      reasoningTokens: aggregated.reasoningTokens,
+    },
+  };
   return {
     usedTokens: aggregated.totalTokens,
     maxTokens: aggregated.maxContextSize,
     modelId: aggregated.modelId || undefined,
-    usage: {
-      inputTokens: aggregated.inputTokens,
-      outputTokens: aggregated.outputTokens,
-      totalTokens: aggregated.totalTokens,
-      reasoningTokens: aggregated.reasoningTokens,
-      cachedInputTokens: aggregated.cachedInputTokens,
-      inputTokenDetails: {
-        noCacheTokens: Math.max(
-          0,
-          aggregated.inputTokens - aggregated.cachedInputTokens,
-        ),
-        cacheReadTokens: aggregated.cachedInputTokens,
-        cacheWriteTokens: undefined,
-      },
-      outputTokenDetails: {
-        textTokens: Math.max(
-          0,
-          aggregated.outputTokens - aggregated.reasoningTokens,
-        ),
-        reasoningTokens: aggregated.reasoningTokens,
-      },
-    },
+    usage: { ...usageObj, cost: aggregated.cost } as NonNullable<
+      QweryContextProps['usage']
+    >,
   };
 };
 
@@ -260,21 +265,17 @@ export const AgentUIWrapper = forwardRef<
   );
 
   // Fetch extension metadata for datasource icons
-  const { data: pluginMetadata = [] } = useQuery({
-    queryKey: ['all-plugin-metadata'],
-    queryFn: () => getAllExtensionMetadata(),
-    staleTime: 60 * 1000,
-  });
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    pluginMetadata.forEach((plugin) => {
-      if (plugin?.id && plugin.logo) {
-        map.set(plugin.id, plugin.logo);
+    extensions.forEach((plugin) => {
+      if (plugin.icon) {
+        map.set(plugin.id, plugin.icon);
       }
     });
     return map;
-  }, [pluginMetadata]);
+  }, [extensions]);
 
   // Convert datasources to DatasourceItem format
   const datasourceItems = useMemo<DatasourceItem[]>(() => {
@@ -291,9 +292,9 @@ export const AgentUIWrapper = forwardRef<
 
   const transport = useMemo(
     () => (model: string) => {
-      return transportFactory(conversationSlug, model, repositories);
+      return transportFactory(conversationSlug, model);
     },
-    [conversationSlug, repositories],
+    [conversationSlug],
   );
 
   // Handle sendMessage and model from QweryAgentUI

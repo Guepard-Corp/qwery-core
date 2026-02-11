@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Entity } from '../../src/common/entity';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 const TestSchema = z.object({
   id: z.string().min(1),

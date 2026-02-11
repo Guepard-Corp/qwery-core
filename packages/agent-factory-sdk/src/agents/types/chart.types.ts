@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 /**
  * Chart types supported by the system.
@@ -28,10 +28,10 @@ export type ChartTypeSelection = z.infer<typeof ChartTypeSelectionSchema>;
 export const ChartConfigSchema = z.object({
   chartType: ChartTypeSchema,
   title: z.string().optional(),
-  data: z.array(z.record(z.unknown())),
+  data: z.array(z.record(z.string(), z.unknown())),
   config: z.object({
     colors: z.array(z.string()),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     xKey: z.string().optional(),
     yKey: z.string().optional(),
     nameKey: z.string().optional(),

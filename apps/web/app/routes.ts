@@ -11,38 +11,8 @@ const rootRoutes = [
   route('qwery/*', 'routes/ingest.$.ts'),
 ];
 
-const apiRoutes = [
-  route('api/chat/:slug', 'routes/api/chat.ts'),
-  route(
-    'api/organizations',
-    'routes/api/organization/get-all-organizations.ts',
-  ),
-  route('api/organizations/search', 'routes/api/organization/search.ts'),
-  route('api/organizations/bulk', 'routes/api/organization/bulk.ts'),
-  route('api/organizations/:id', 'routes/api/organization/organization.ts'),
-  route('api/projects', 'routes/api/project/get-all-projects.ts'),
-  route('api/projects/search', 'routes/api/project/search.ts'),
-  route('api/projects/bulk', 'routes/api/project/bulk.ts'),
-  route('api/projects/:id', 'routes/api/project/project.ts'),
-  route('api/datasources/:id?', 'routes/api/datasource/datasource.ts'),
-  route('api/driver/command', 'routes/api/driver/command.ts'),
-  route('api/extensions/registry', 'routes/api/extensions/registry.ts'),
-  route('api/notebooks', 'routes/api/notebook/get-all-notebooks.ts'),
-  route('api/notebooks/:id', 'routes/api/notebook/notebook.ts'),
-  route(
-    'api/conversations',
-    'routes/api/conversation/get-all-conversations.ts',
-  ),
-  route('api/conversations/:id', 'routes/api/conversation/conversation.ts'),
-  route(
-    'api/conversations/project/:projectId',
-    'routes/api/conversations/project/$projectId.ts',
-  ),
-  route('api/messages', 'routes/api/conversation/get-messages.ts'),
-  route('api/usage', 'routes/api/usage/usage.ts'),
-  route('api/notebook/prompt', 'routes/api/notebook/prompt.ts'),
-  route('api/notebook/query', 'routes/api/notebook/query.ts'),
-];
+// API routes kept in web (driver, extensions, notebook prompt/query); repository traffic goes to apps/server
+const apiRoutes = [route('api/init', 'routes/api/init.ts')];
 
 const appRoutes = layout('routes/layout/layout.tsx', [
   index('routes/index.tsx'),

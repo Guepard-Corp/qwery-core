@@ -1,0 +1,45 @@
+{
+  "name": "@qwery/tui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.tsx",
+  "scripts": {
+    "build": "tsup",
+    "dev": "QWERY_TUI_DEBUG_LOG=./tui-debug.log bun run --watch src/index.tsx",
+    "dev:debug": "QWERY_TUI_DEBUG_LOG=./tui-debug.log bun run --watch src/index.tsx",
+    "start": "node dist/index.js",
+    "format": "prettier --check \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\"",
+    "format:fix": "prettier --write \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\"",
+    "lint": "eslint src __tests__",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "bun run scripts/test-notebook-query.ts"
+  },
+  "bin": {
+    "qwery-tui": "dist/index.js"
+  },
+  "dependencies": {
+    "@ai-sdk/provider-utils": "^4.0.10",
+    "@opentui/core": "^0.1.75",
+    "@opentui/react": "^0.1.75",
+    "@qwery/extensions-sdk": "workspace:*",
+    "ai": "catalog:",
+    "react": "^19.2.3"
+  },
+  "devDependencies": {
+    "@qwery/eslint-config": "workspace:*",
+    "@qwery/prettier-config": "workspace:*",
+    "@qwery/tsconfig": "workspace:*",
+    "@types/bun": "latest",
+    "@types/react": "catalog:",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.0",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

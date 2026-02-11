@@ -1,5 +1,5 @@
 import { streamText, UIMessage, Experimental_Agent } from 'ai';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import type { AnyActorRef } from 'xstate';
 import type { PromptSource } from '../../domain/prompt-source.type';
 

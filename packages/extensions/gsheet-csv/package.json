@@ -9,7 +9,8 @@
     ".": {
       "types": "./dist/driver.d.ts",
       "default": "./dist/driver.js"
-    }
+    },
+    "./schema": "./dist/schema.js"
   },
   "scripts": {
     "lint": "echo \"no lint configured\"",
@@ -22,39 +23,13 @@
         "id": "gsheet-csv",
         "name": "Google Sheets (CSV)",
         "description": "Connect to public Google Sheets via CSV export",
+        "docsUrl": "https://support.google.com/docs/answer/2494822",
+        "supportsPreview": true,
+        "tags": [
+          "Files",
+          "SaaS"
+        ],
         "icon": "media/gsheet.svg",
-        "formConfig": {
-          "preset": "sharedLink",
-          "docsUrl": "https://support.google.com/docs/answer/2494822",
-          "connectionFieldKind": "sharedLink",
-          "showDetailsTab": false,
-          "showConnectionStringTab": true,
-          "placeholders": {
-            "connectionString": "https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
-          },
-          "fieldLabels": {
-            "connectionString": "Shared link"
-          },
-          "normalizedKey": "sharedLink",
-          "acceptedKeys": [
-            "sharedLink",
-            "url"
-          ],
-          "supportsPreview": true
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "sharedLink": {
-              "type": "string",
-              "description": "Public Google Sheets shared link (https://docs.google.com/spreadsheets/d/...)",
-              "format": "uri"
-            }
-          },
-          "required": [
-            "sharedLink"
-          ]
-        },
         "drivers": [
           "gsheet-csv.duckdb"
         ]

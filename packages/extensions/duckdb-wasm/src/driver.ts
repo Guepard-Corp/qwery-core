@@ -1,5 +1,4 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { z } from 'zod/v3';
 
 import type {
   DriverContext,
@@ -8,16 +7,12 @@ import type {
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import {
-  DatasourceMetadataZodSchema,
+  buildMetadataFromInformationSchema,
   withTimeout,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  database: z.string().default('playground').describe('Database name'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 interface DuckDBInstance {
   connection: duckdb.AsyncDuckDBConnection;
@@ -25,10 +20,11 @@ interface DuckDBInstance {
 }
 
 export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, DuckDBInstance>();
 
-  const getInstance = async (config: DriverConfig): Promise<DuckDBInstance> => {
-    const key = config.database || 'playground';
+  const getInstance = async (): Promise<DuckDBInstance> => {
+    const key = parsedConfig.database || 'playground';
     if (!instanceMap.has(key)) {
       // Use local files instead of CDN
       const baseUrl = typeof window !== 'undefined' 
@@ -55,11 +51,10 @@ export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver 
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
+    async testConnection(): Promise<void> {
       await withTimeout(
         (async () => {
-          const instance = await getInstance(parsed);
+          const instance = await getInstance();
           await instance.connection.query('SELECT 1');
           context.logger?.info?.('duckdb-wasm: testConnection ok');
         })(),
@@ -68,9 +63,8 @@ export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver 
       );
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async metadata(): Promise<DatasourceMetadata> {
+      const instance = await getInstance();
 
       const tablesResult = await instance.connection.query(`
         SELECT 
@@ -85,46 +79,7 @@ export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver 
         ORDER BY table_schema, table_name, ordinal_position;
       `);
 
-      let tableId = 1;
-      const tableMap = new Map<
-        string,
-        {
-          id: number;
-          schema: string;
-          name: string;
-          columns: Array<ReturnType<typeof buildColumn>>;
-        }
-      >();
-
-      const buildColumn = (
-        schema: string,
-        table: string,
-        name: string,
-        ordinal: number,
-        dataType: string,
-        nullable: string,
-      ) => ({
-        id: `${schema}.${table}.${name}`,
-        table_id: 0,
-        schema,
-        table,
-        name,
-        ordinal_position: ordinal,
-        data_type: dataType,
-        format: dataType,
-        is_identity: false,
-        identity_generation: null,
-        is_generated: false,
-        is_nullable: nullable === 'YES',
-        is_updatable: true,
-        is_unique: false,
-        check: null,
-        default_value: null,
-        enums: [],
-        comment: null,
-      });
-
-      const rows = tablesResult.toArray() as Array<{
+      const infoRows = tablesResult.toArray() as Array<{
         table_schema: string;
         table_name: string;
         column_name: string;
@@ -132,71 +87,15 @@ export function makeDuckDBWasmDriver(context: DriverContext): IDataSourceDriver 
         ordinal_position: number;
         is_nullable: string;
       }>;
-      for (const row of rows) {
-        const key = `${row.table_schema}.${row.table_name}`;
-        if (!tableMap.has(key)) {
-          tableMap.set(key, {
-            id: tableId++,
-            schema: row.table_schema,
-            name: row.table_name,
-            columns: [],
-          });
-        }
-        const entry = tableMap.get(key)!;
-        entry.columns.push(
-          buildColumn(
-            row.table_schema,
-            row.table_name,
-            row.column_name,
-            row.ordinal_position,
-            row.data_type,
-            row.is_nullable,
-          ),
-        );
-      }
 
-      const tables = Array.from(tableMap.values()).map((table) => ({
-        id: table.id,
-        schema: table.schema,
-        name: table.name,
-        rls_enabled: false,
-        rls_forced: false,
-        bytes: 0,
-        size: '0',
-        live_rows_estimate: 0,
-        dead_rows_estimate: 0,
-        comment: null,
-        primary_keys: [],
-        relationships: [],
-      }));
-
-      const columns = Array.from(tableMap.values()).flatMap((table) =>
-        table.columns.map((column) => ({
-          ...column,
-          table_id: table.id,
-        })),
-      );
-
-      const schemas = Array.from(
-        new Set(Array.from(tableMap.values()).map((table) => table.schema)),
-      ).map((name, idx) => ({
-        id: idx + 1,
-        name,
-        owner: 'unknown',
-      }));
-
-      return DatasourceMetadataZodSchema.parse({
-        version: '0.0.1',
+      return buildMetadataFromInformationSchema({
         driver: 'duckdb-wasm',
-        schemas,
-        tables,
-        columns,
+        rows: infoRows,
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const instance = await getInstance();
       const startTime = performance.now();
 
       try {

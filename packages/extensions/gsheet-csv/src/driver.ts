@@ -1,11 +1,13 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
 
 import type {
   DriverContext,
   IDataSourceDriver,
   DatasourceResultSet,
   DatasourceMetadata,
+  DriverAttachOptions,
+  DriverAttachResult,
+  DriverDetachOptions,
 } from '@qwery/extensions-sdk';
 import {
   DatasourceMetadataZodSchema,
@@ -16,15 +18,63 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  sharedLink: z.string().url().describe('Public Google Sheets shared link'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 const convertToCsvLink = (spreadsheetId: string, gid: number): string => {
   const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
   return gid === 0 ? base : `${base}&gid=${gid}`;
+};
+
+const extractSpreadsheetId = (url: string): string | null => {
+  const match = url.match(
+    /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+  );
+  return match?.[1] ?? null;
+};
+
+/** Fetch all tab metadata (gid + name) from spreadsheet HTML */
+const fetchSpreadsheetMetadata = async (
+  spreadsheetId: string,
+): Promise<Array<{ gid: number; name: string }>> => {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Qwery/1.0)' },
+    });
+    if (!response.ok) return [];
+    const html = await response.text();
+    const tabs: Array<{ gid: number; name: string }> = [];
+    const regex = /"sheetId":(\d+),"title":"([^"]+)"/g;
+    let m;
+    while ((m = regex.exec(html)) !== null) {
+      const gid = parseInt(m[1]!, 10);
+      const name = m[2]!;
+      if (!tabs.some((t) => t.gid === gid)) tabs.push({ gid, name });
+    }
+    return tabs;
+  } catch {
+    return [];
+  }
+};
+
+const extractGidsFromUrl = (url: string): number[] => {
+  const gids: number[] = [];
+  const queryMatch = url.match(/[?&]gid=(\d+)/);
+  if (queryMatch?.[1]) {
+    const gid = parseInt(queryMatch[1], 10);
+    if (!isNaN(gid)) gids.push(gid);
+  }
+  const hashMatch = url.match(/#gid=(\d+)/);
+  if (hashMatch?.[1]) {
+    const gid = parseInt(hashMatch[1], 10);
+    if (!isNaN(gid) && !gids.includes(gid)) gids.push(gid);
+  }
+  return gids;
+};
+
+const sanitizeTableName = (name: string): string => {
+  const cleaned = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+  return /^\d/.test(cleaned) ? `v_${cleaned}` : cleaned;
 };
 
 /**
@@ -39,13 +89,13 @@ const extractGidFromUrl = (url: string): number | null => {
   if (queryMatch) {
     return parseInt(queryMatch[1]!, 10);
   }
-  
+
   // Try to extract from hash fragment: #gid=1822465437
   const hashMatch = url.match(/#gid=(\d+)/);
   if (hashMatch) {
     return parseInt(hashMatch[1]!, 10);
   }
-  
+
   return null;
 };
 
@@ -59,22 +109,22 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
     const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_CONNECTION_TEST_TIMEOUT_MS);
-    
+
     try {
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; Qwery/1.0)',
         },
       });
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         return null;
       }
 
       const html = await response.text();
-      
+
       if (!html || html.length < 100) {
         return null;
       }
@@ -117,6 +167,7 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
 };
 
 export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<
     string,
     {
@@ -131,8 +182,8 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
     return instance;
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.sharedLink;
+  const getInstance = async () => {
+    const key = parsedConfig.sharedLink;
     if (!instanceMap.has(key)) {
       // Extract spreadsheet ID from various Google Sheets URL formats:
       // - https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
@@ -183,11 +234,9 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const { instance } = await getInstance(parsed);
+        const { instance } = await getInstance();
         const conn = await instance.connect();
 
         try {
@@ -212,31 +261,24 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       );
     },
 
-    async metadata(
-      config: unknown,
-      connection?: unknown,
-    ): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['instance']['connect']>>;
       let shouldCloseConnection = false;
 
-      // Check if connection parameter is provided, otherwise use queryEngineConnection from context
-      const queryEngineConn =
-        (connection && isQueryEngineConnection(connection)
-          ? connection
-          : null) || getQueryEngineConnection(context);
+      // Use queryEngineConnection from context
+      const queryEngineConn = getQueryEngineConnection(context);
 
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const match = parsed.sharedLink.match(
+        const match = parsedConfig.sharedLink.match(
           /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
         );
         if (!match) {
-          throw new Error(`Invalid Google Sheets link format: ${parsed.sharedLink}`);
+          throw new Error(`Invalid Google Sheets link format: ${parsedConfig.sharedLink}`);
         }
         const spreadsheetId = match[1]!;
-        let gid = extractGidFromUrl(parsed.sharedLink);
+        let gid = extractGidFromUrl(parsedConfig.sharedLink);
 
         // If no gid in URL, try to discover the first available gid
         if (gid === null) {
@@ -263,7 +305,7 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
         }
       } else {
         // Fallback for testConnection or when no connection provided - create temporary instance
-        const { instance } = await getInstance(parsed);
+        const { instance } = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -359,9 +401,8 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const { instance } = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const { instance } = await getInstance();
       const conn = await instance.connect();
 
       const startTime = performance.now();
@@ -426,6 +467,126 @@ export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
         );
       } finally {
         conn.closeSync();
+      }
+    },
+
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'gsheet-csv attach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const sharedLink = parsedConfig.sharedLink;
+      const spreadsheetId = extractSpreadsheetId(sharedLink);
+      if (!spreadsheetId) {
+        throw new Error(
+          `Invalid Google Sheets URL: ${sharedLink}. Expected https://docs.google.com/spreadsheets/d/{id}/...`,
+        );
+      }
+
+      const triedGids = new Set<number>();
+      const tabsWithUrl: Array<{ gid: number; csvUrl: string; name?: string }> =
+        [];
+
+      const addTab = (gid: number, name?: string) => {
+        if (triedGids.has(gid)) return;
+        triedGids.add(gid);
+        tabsWithUrl.push({
+          gid,
+          csvUrl: convertToCsvLink(spreadsheetId, gid),
+          name,
+        });
+      };
+
+      const metadata = await fetchSpreadsheetMetadata(spreadsheetId);
+      for (const m of metadata) addTab(m.gid, m.name);
+      for (const gid of extractGidsFromUrl(sharedLink)) addTab(gid);
+      addTab(0);
+
+      const validatedTabs: typeof tabsWithUrl = [];
+      for (const tab of tabsWithUrl) {
+        try {
+          const escaped = tab.csvUrl.replace(/'/g, "''");
+          const r = await conn.runAndReadAll(
+            `SELECT * FROM read_csv_auto('${escaped}') LIMIT 1`,
+          );
+          await r.readAll();
+          validatedTabs.push(tab);
+        } catch {
+          context.logger?.warn?.(
+            `gsheet-csv: tab gid=${tab.gid} not accessible, skipping`,
+          );
+        }
+      }
+
+      if (validatedTabs.length === 0) {
+        throw new Error(
+          `No accessible tabs in Google Sheet: ${sharedLink}. Ensure the sheet is publicly accessible.`,
+        );
+      }
+
+      const schemaName = options.schemaName ?? 'main';
+      const escapedSchema = schemaName.replace(/"/g, '""');
+      if (schemaName !== 'main') {
+        await conn.run(`CREATE SCHEMA IF NOT EXISTS "${escapedSchema}"`);
+      }
+
+      const resultTables: DriverAttachResult['tables'] = [];
+      const usedNames = new Set<string>();
+
+      for (const tab of validatedTabs) {
+        let tableName: string;
+        if (tab.name) {
+          tableName = sanitizeTableName(tab.name);
+          let n = tableName;
+          let c = 1;
+          while (usedNames.has(n)) {
+            n = `${tableName}_${c}`;
+            c += 1;
+          }
+          tableName = n;
+        } else {
+          tableName = `tab_${tab.gid}`;
+          let c = 1;
+          while (usedNames.has(tableName)) {
+            tableName = `tab_${tab.gid}_${c}`;
+            c += 1;
+          }
+        }
+        usedNames.add(tableName);
+
+        const escapedTable = tableName.replace(/"/g, '""');
+        const escapedUrl = tab.csvUrl.replace(/'/g, "''");
+        await conn.run(`
+          CREATE OR REPLACE VIEW "${escapedSchema}"."${escapedTable}" AS
+          SELECT * FROM read_csv_auto('${escapedUrl}')
+        `);
+        resultTables.push({
+          schema: schemaName,
+          table: tableName,
+          path: `${schemaName}.${tableName}`,
+        });
+      }
+
+      return { tables: resultTables };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'gsheet-csv detach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const schemaName = options.schemaName ?? 'main';
+      const escapedSchema = schemaName.replace(/"/g, '""');
+      const tableNames = options.tableNames ?? [];
+      for (const table of tableNames) {
+        const escapedTable = table.replace(/"/g, '""');
+        await conn.run(
+          `DROP VIEW IF EXISTS "${escapedSchema}"."${escapedTable}"`,
+        );
       }
     },
 

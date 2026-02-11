@@ -9,3 +9,4 @@ export * from './loader';
 export * from './message';
 export * from './conversation';
 export * from './sources';
+export * from './task';

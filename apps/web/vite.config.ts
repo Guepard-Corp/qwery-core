@@ -95,11 +95,18 @@ export default defineConfig(({ command }) => ({
     port: 3000,
     allowedHosts: ALLOWED_HOSTS,
     proxy: {
-      // Proxy specific agent API routes to the query agent service
-      //'/api': {
-      //  target: process.env.VITE_LOCAL_AGENT_URL || 'http://localhost:8000',
-      //  changeOrigin: true,
-      //},
+      // Proxy /api to apps/server when client uses relative URLs (VITE_API_URL unset)
+      // Enables breadcrumb, orgs, projects, datasources etc. to load from server
+      '/api': {
+        target: 'http://localhost:4096',
+        changeOrigin: true,
+        bypass(req) {
+          // Keep web app API routes local (server does not have these)
+          const path = req.url ? new URL(req.url, 'http://x').pathname : '';
+          const webOnly = path === '/api/init';
+          if (webOnly && req.url) return req.url;
+        },
+      },
     },
   },
   build: {
@@ -127,7 +134,6 @@ export default defineConfig(({ command }) => ({
       '@duckdb/node-api',
       '@duckdb/duckdb-wasm',
       '@qwery/agent-factory-sdk',
-      'tokenlens',
       '@dqbd/tiktoken',
     ],
     include: [

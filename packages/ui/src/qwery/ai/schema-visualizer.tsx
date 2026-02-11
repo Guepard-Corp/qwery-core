@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Database, Table2, ChevronDown } from 'lucide-react';
+import type { Column, DatasourceMetadata, Table } from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
 import {
   Collapsible,
@@ -11,28 +12,27 @@ import {
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { Trans } from '../trans';
 
-export interface SchemaColumn {
-  columnName: string;
-  columnType: string;
-}
-
-export interface SchemaTable {
-  tableName: string;
-  columns: SchemaColumn[];
-}
-
-export interface SchemaData {
-  databaseName: string;
-  schemaName: string;
-  tables: SchemaTable[];
-}
-
 export interface SchemaVisualizerProps {
-  schema: SchemaData;
+  schema: DatasourceMetadata;
   tableName?: string;
   className?: string;
   variant?: 'default' | 'minimal';
 }
+
+function getColumnsForTable(
+  metadata: DatasourceMetadata,
+  table: Table,
+): Column[] {
+  if (table.columns?.length) return table.columns;
+  return (metadata.columns ?? []).filter(
+    (c) =>
+      c.table_id === table.id &&
+      c.schema === table.schema &&
+      c.table === table.name,
+  );
+}
+
+type TableWithColumns = Table & { resolvedColumns: Column[] };
 
 /**
  * Specialized component for visualizing database schema information
@@ -43,50 +43,37 @@ export function SchemaVisualizer({
   className,
   variant = 'default',
 }: SchemaVisualizerProps) {
-  // Group tables by datasource
+  // Group tables by schema name (datasource group)
   const groupedTables = React.useMemo(() => {
-    const groups: Record<string, SchemaTable[]> = {};
+    const groups: Record<string, TableWithColumns[]> = {};
 
-    // Filter tables if tableName is provided
-    const filteredTables = tableName
-      ? schema.tables.filter((t) => t.tableName === tableName)
-      : schema.tables;
-
-    filteredTables.forEach((table) => {
-      let datasourceName = schema.databaseName || 'Main';
-
-      // Parse datasource from table name (format: datasource.schema.table)
-      if (table.tableName.includes('.')) {
-        const parts = table.tableName.split('.');
-        if (parts.length >= 2) {
-          // Usually [datasource, schema, table] or [datasource, table]
-          // We'll treat the first part as datasource if it looks like a path
-          datasourceName = parts[0]!;
-        }
-      } else if (schema.databaseName === 'main' || !schema.databaseName) {
-        datasourceName = 'Main Database';
-      }
-
-      const existingGroup = groups[datasourceName];
-      if (existingGroup) {
-        existingGroup.push(table);
-      } else {
-        groups[datasourceName] = [table];
-      }
+    const filteredTables = (schema.tables ?? []).filter((t) => {
+      if (!tableName) return true;
+      const fullName = t.schema ? `${t.schema}.${t.name}` : t.name;
+      return fullName === tableName || t.name === tableName;
     });
+
+    for (const table of filteredTables) {
+      const resolvedColumns = getColumnsForTable(schema, table).sort(
+        (a, b) => a.ordinal_position - b.ordinal_position,
+      );
+      const tableWithColumns: TableWithColumns = {
+        ...table,
+        resolvedColumns,
+      };
+      const groupName = table.schema || 'main';
+      const existing = groups[groupName];
+      if (existing) existing.push(tableWithColumns);
+      else groups[groupName] = [tableWithColumns];
+    }
 
     return groups;
   }, [schema, tableName]);
 
   const datasourceNames = Object.keys(groupedTables);
 
-  // Handle empty state: no tables, empty tables array, or no schema data
-  if (
-    !schema ||
-    !schema.tables ||
-    schema.tables.length === 0 ||
-    datasourceNames.length === 0
-  ) {
+  const hasTables = (schema?.tables?.length ?? 0) > 0;
+  if (!schema || !hasTables || datasourceNames.length === 0) {
     return (
       <div
         className={cn(
@@ -155,27 +142,24 @@ export function SchemaVisualizer({
             <div className="space-y-4 border-t p-4">
               {groupedTables[dsName]?.map((table) => (
                 <div
-                  key={table.tableName}
+                  key={`${table.schema}.${table.name}`}
                   className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                 >
-                  {/* Table Header */}
                   <div className="bg-muted/30 flex items-center justify-between border-b px-3 py-2">
                     <div className="flex items-center gap-2">
                       <Table2 className="text-primary/70 h-3.5 w-3.5" />
                       <h4 className="text-foreground/90 font-mono text-sm font-medium">
-                        {/* Display clean table name without datasource prefix for clarity inside group */}
-                        {table.tableName.includes('.')
-                          ? table.tableName.split('.').slice(1).join('.')
-                          : table.tableName}
+                        {table.schema
+                          ? `${table.schema}.${table.name}`
+                          : table.name}
                       </h4>
                     </div>
                     <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono text-[10px]">
-                      {table.columns.length} columns
+                      {table.resolvedColumns.length} columns
                     </span>
                   </div>
 
-                  {/* Columns Table */}
-                  {table.columns.length > 0 ? (
+                  {table.resolvedColumns.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
@@ -187,16 +171,16 @@ export function SchemaVisualizer({
                           </tr>
                         </thead>
                         <tbody className="divide-border/50 divide-y">
-                          {table.columns.map((col) => (
+                          {table.resolvedColumns.map((col) => (
                             <tr
-                              key={col.columnName}
+                              key={col.id}
                               className="hover:bg-muted/20 transition-colors"
                             >
                               <td className="text-foreground/90 px-3 py-1.5 text-xs font-medium break-all">
-                                {col.columnName}
+                                {col.name}
                               </td>
                               <td className="text-muted-foreground px-3 py-1.5 font-mono text-[10px]">
-                                {col.columnType}
+                                {col.data_type}
                               </td>
                             </tr>
                           ))}

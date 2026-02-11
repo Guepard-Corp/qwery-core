@@ -1,4 +1,4 @@
-import { DATASOURCES } from '~/lib/datasources-loader';
+import { DATASOURCES } from '~/lib/loaders/datasource-loader';
 
 import { NewDatasource } from '../_components/new-datasource';
 import type { Route } from './+types/sources';

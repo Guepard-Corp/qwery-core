@@ -60,3 +60,19 @@ pnpm typecheck
 - tests should be under <package_name>/__tests__
 - Use filename.test.ts naming convention to name test files
 - Use vitest and vitest istanbul for coverage
+
+
+## Logging
+
+Avoid using console.log, use the logging service like following (pseudo code):
+
+```typescript
+import { getLogger } from '@qwery/shared/logger';
+
+[...]
+
+
+const logger = await getLogger();
+logger.info()
+
+```

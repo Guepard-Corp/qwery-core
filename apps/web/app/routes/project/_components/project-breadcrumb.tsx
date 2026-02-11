@@ -2,15 +2,14 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
 
 import { toast } from 'sonner';
 
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
 } from '@qwery/ui/qwery-breadcrumb';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useProject } from '~/lib/context/project-context';
@@ -111,21 +110,17 @@ export function ProjectBreadcrumb() {
   );
 
   // Fetch extension metadata for datasource icons
-  const { data: pluginMetadata = [] } = useQuery({
-    queryKey: ['all-plugin-metadata'],
-    queryFn: () => getAllExtensionMetadata(),
-    staleTime: 60 * 1000,
-  });
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    pluginMetadata.forEach((plugin) => {
-      if (plugin?.id && plugin.logo) {
-        map.set(plugin.id, plugin.logo);
+    extensions.forEach((plugin) => {
+      if (plugin.icon) {
+        map.set(plugin.id, plugin.icon);
       }
     });
     return map;
-  }, [pluginMetadata]);
+  }, [extensions]);
 
   // Get current items from URL-derived data
   const currentOrg = useMemo(() => {

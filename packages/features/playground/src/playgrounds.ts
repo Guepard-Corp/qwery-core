@@ -1,30 +1,18 @@
-import type { Datasource, Playground } from '@qwery/domain/entities';
-import { DatasourceKind } from '@qwery/domain/entities';
+import type { Datasource } from '@qwery/domain/entities';
 import { IDatasourceRepository } from '@qwery/domain/repositories';
-import { getExtension } from '@qwery/extensions-loader';
+import { getDriverInstance } from '@qwery/extensions-loader';
+import {
+  DatasourceExtension,
+  ExtensionsRegistry,
+  type DriverExtension,
+} from '@qwery/extensions-sdk';
 
 import { PlaygroundFactory } from './factory/playground-factory';
 import { generateRandomName } from './utils/names';
 
-export const PLAYGROUNDS: Playground[] = [
-  {
-    id: 'pglite',
-    logo: '/images/datasources/postgresql_icon_big.png',
-    name: 'Embedded PostgreSQL',
-    description: 'Test PostgreSQL queries in your browser',
-    datasource: {
-      name: generateRandomName(),
-      description:
-        'PostgreSQL is a powerful, open source object-relational database system.',
-      datasource_provider: 'pglite',
-      datasource_driver: 'pglite.default',
-      datasource_kind: DatasourceKind.EMBEDDED,
-      config: {
-        driverId: 'pglite.default',
-      },
-    },
-  },
-];
+import { PLAYGROUNDS } from './constants';
+
+export { PLAYGROUNDS };
 
 export class PlaygroundBuilder {
   constructor(private readonly datasourceRepository: IDatasourceRepository) {}
@@ -66,23 +54,23 @@ export class PlaygroundBuilder {
 
     const datasourceProvider =
       selectedPlayground.datasource.datasource_provider;
-    const datasourceName = selectedPlayground.datasource.name;
-    const datasourceConfig = datasource.config || {};
 
-    const extension = await getExtension(datasourceProvider);
-    if (!extension) {
+    const dsMeta =
+      ExtensionsRegistry.get<DatasourceExtension>(datasourceProvider);
+    if (!dsMeta?.drivers?.length) {
       throw new Error(
         `Extension not found for datasource ${datasourceProvider}`,
       );
     }
-    const driver = await extension.getDriver(datasourceName, datasourceConfig);
-    if (!driver) {
-      throw new Error(`Driver not found for datasource ${datasourceProvider}`);
-    }
+    const driverMeta = dsMeta.drivers[0]!;
+    const driverInstance = await getDriverInstance(
+      driverMeta as DriverExtension,
+      { config: datasource.config ?? {} },
+    );
 
-    await playgroundDatabase.seed(driver, datasourceConfig);
-    if (driver.close) {
-      await driver.close();
+    await playgroundDatabase.seed(driverInstance);
+    if (driverInstance.close) {
+      await driverInstance.close();
     }
     return createdDatasource;
   }

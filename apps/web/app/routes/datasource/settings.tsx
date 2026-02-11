@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as React from 'react';
-
-import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Pencil } from 'lucide-react';
@@ -20,14 +20,8 @@ import {
   AlertDialogTitle,
 } from '@qwery/ui/alert-dialog';
 import { Button } from '@qwery/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@qwery/ui/card';
 import { Input } from '@qwery/ui/input';
+import { PageBody } from '@qwery/ui/page';
 import { Trans } from '@qwery/ui/trans';
 
 import pathsConfig from '~/config/paths.config';
@@ -37,14 +31,36 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import {
   getDatasourcesByProjectIdKey,
   getDatasourcesKey,
-  useGetDatasourceBySlug,
 } from '~/lib/queries/use-get-datasources';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
-export default function ProjectDatasourceViewPage() {
-  const navigate = useNavigate();
-  const params = useParams();
+import type { Route } from './+types/settings';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+
+export async function loader({ params }: Route.LoaderArgs) {
   const slug = params.slug as string;
+  if (!slug) return { datasource: null };
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) return { datasource: null };
+    throw error;
+  }
+}
+
+export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
+  const { i18n } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
@@ -58,14 +74,15 @@ export default function ProjectDatasourceViewPage() {
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
+  const datasourceFromLoader = props.loaderData.datasource;
+  const datasource = {
+    data: datasourceFromLoader,
+    isLoading: false,
+  };
 
-  // Load datasource by slug
-  const datasource = useGetDatasourceBySlug(datasourceRepository, slug);
-
-  // Load extension once datasource is loaded
-  const extension = useGetExtension(
-    datasource?.data?.datasource_provider || '',
-  );
+  const providerId = datasourceFromLoader?.datasource_provider ?? '';
+  const extension = useGetExtension(providerId);
+  const extensionSchema = useExtensionSchema(providerId);
 
   // Focus input when editing starts
   React.useEffect(() => {
@@ -76,10 +93,10 @@ export default function ProjectDatasourceViewPage() {
   }, [isEditingName]);
 
   React.useEffect(() => {
-    if (datasource.data?.name) {
-      setDatasourceName(datasource.data.name);
+    if (datasourceFromLoader?.name) {
+      setDatasourceName(datasourceFromLoader.name);
     }
-  }, [datasource.data]);
+  }, [datasourceFromLoader]);
 
   const handleNameSave = () => {
     if (datasourceName.trim()) {
@@ -115,11 +132,11 @@ export default function ProjectDatasourceViewPage() {
     },
   );
 
-  if (datasource.isLoading || extension.isLoading) {
+  if (extension.isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (!datasource.data) {
+  if (!datasourceFromLoader) {
     return <div>Datasource not found</div>;
   }
 
@@ -241,124 +258,138 @@ export default function ProjectDatasourceViewPage() {
   };
 
   return (
-    <div className="p-2 lg:p-4">
-      <Card className="mx-auto w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            {extension.data?.logo && (
-              <img
-                src={extension.data?.logo}
-                alt={extension.data?.name}
-                className="h-12 w-12 rounded object-contain"
+    <>
+      <PageBody className="flex h-full min-h-0 flex-col">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="mx-auto w-full max-w-2xl space-y-6">
+            <header className="flex items-center gap-4">
+              {extension.data?.icon && (
+                <img
+                  src={extension.data?.icon}
+                  alt={extension.data?.name}
+                  className="h-12 w-12 rounded object-contain"
+                />
+              )}
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  <Trans
+                    i18nKey="datasources:view_pageTitle"
+                    defaults={`Edit ${extension.data?.name} Connection`}
+                  />
+                </h1>
+                {extension.data?.description && (
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {extension.data?.description}
+                  </p>
+                )}
+              </div>
+            </header>
+
+            {/* Editable Datasource Name */}
+            <section className="border-border border-b pb-6">
+              <label className="text-muted-foreground mb-2 block text-sm font-medium">
+                Datasource Name
+              </label>
+              <div
+                className="flex items-center gap-2"
+                onMouseEnter={() => setIsHoveringName(true)}
+                onMouseLeave={() => setIsHoveringName(false)}
+              >
+                {isEditingName ? (
+                  <Input
+                    ref={nameInputRef}
+                    value={datasourceName}
+                    onChange={(e) => setDatasourceName(e.target.value)}
+                    onBlur={handleNameSave}
+                    onKeyDown={handleNameKeyDown}
+                    className="flex-1"
+                  />
+                ) : (
+                  <div className="group flex flex-1 items-center gap-2">
+                    <span className="text-base font-medium">
+                      {datasourceName}
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-7 w-7 transition-opacity ${isHoveringName ? 'opacity-100' : 'opacity-0'}`}
+                      onClick={() => setIsEditingName(true)}
+                      aria-label="Edit name"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {extensionSchema.data && (
+              <FormRenderer
+                schema={extensionSchema.data}
+                onSubmit={handleSubmit}
+                formId="datasource-form"
+                locale={i18n.resolvedLanguage}
+                defaultValues={
+                  datasource.data?.config as Record<string, unknown>
+                }
+                onFormReady={(values) =>
+                  setFormValues(values as Record<string, unknown> | null)
+                }
               />
             )}
-            <div>
-              <CardTitle>
-                <Trans
-                  i18nKey="datasources:view_pageTitle"
-                  defaults={`Edit ${extension.data?.name} Connection`}
-                />
-              </CardTitle>
-              {extension.data?.description && (
-                <CardDescription>{extension.data?.description}</CardDescription>
-              )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  onClick={handleTestConnection}
+                  disabled={
+                    testConnectionMutation.isPending ||
+                    isSubmitting ||
+                    !formValues
+                  }
+                >
+                  {testConnectionMutation.isPending
+                    ? 'Testing...'
+                    : 'Test Connection'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={isSubmitting || isDeleting}
+                  data-test="datasource-delete-button"
+                >
+                  Delete
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  disabled={
+                    isSubmitting ||
+                    testConnectionMutation.isPending ||
+                    isDeleting
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="datasource-form"
+                  disabled={
+                    isSubmitting ||
+                    testConnectionMutation.isPending ||
+                    isDeleting
+                  }
+                >
+                  {isSubmitting ? 'Updating...' : 'Update'}
+                </Button>
+              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Editable Datasource Name */}
-          <div className="border-border mb-6 border-b pb-6">
-            <label className="text-muted-foreground mb-2 block text-sm font-medium">
-              Datasource Name
-            </label>
-            <div
-              className="flex items-center gap-2"
-              onMouseEnter={() => setIsHoveringName(true)}
-              onMouseLeave={() => setIsHoveringName(false)}
-            >
-              {isEditingName ? (
-                <Input
-                  ref={nameInputRef}
-                  value={datasourceName}
-                  onChange={(e) => setDatasourceName(e.target.value)}
-                  onBlur={handleNameSave}
-                  onKeyDown={handleNameKeyDown}
-                  className="flex-1"
-                />
-              ) : (
-                <div className="group flex flex-1 items-center gap-2">
-                  <span className="text-base font-medium">
-                    {datasourceName}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={`h-7 w-7 transition-opacity ${isHoveringName ? 'opacity-100' : 'opacity-0'}`}
-                    onClick={() => setIsEditingName(true)}
-                    aria-label="Edit name"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-          {extension.data?.schema && (
-            <FormRenderer
-              schema={extension.data.schema}
-              onSubmit={handleSubmit}
-              formId="datasource-form"
-              defaultValues={datasource.data?.config as Record<string, unknown>}
-              onFormReady={setFormValues}
-            />
-          )}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                variant="outline"
-                onClick={handleTestConnection}
-                disabled={
-                  testConnectionMutation.isPending ||
-                  isSubmitting ||
-                  !formValues
-                }
-              >
-                {testConnectionMutation.isPending
-                  ? 'Testing...'
-                  : 'Test Connection'}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setIsDeleteDialogOpen(true)}
-                disabled={isSubmitting || isDeleting}
-                data-test="datasource-delete-button"
-              >
-                Delete
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate(-1)}
-                disabled={
-                  isSubmitting || testConnectionMutation.isPending || isDeleting
-                }
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                form="datasource-form"
-                disabled={
-                  isSubmitting || testConnectionMutation.isPending || isDeleting
-                }
-              >
-                {isSubmitting ? 'Updating...' : 'Update'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </PageBody>
 
       <AlertDialog
         open={isDeleteDialogOpen}
@@ -389,6 +420,6 @@ export default function ProjectDatasourceViewPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

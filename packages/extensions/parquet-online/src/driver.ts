@@ -1,11 +1,13 @@
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod/v3';
 
 import type {
   DriverContext,
   IDataSourceDriver,
   DatasourceResultSet,
   DatasourceMetadata,
+  DriverAttachOptions,
+  DriverAttachResult,
+  DriverDetachOptions,
 } from '@qwery/extensions-sdk';
 import {
   DatasourceMetadataZodSchema,
@@ -15,30 +17,12 @@ import {
   type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    url: z.string().url().optional().describe('Public Parquet file URL'),
-    connectionUrl: z
-      .string()
-      .url()
-      .optional()
-      .describe('Public Parquet file URL'),
-  })
-  .refine(
-    (data) => data.url || data.connectionUrl,
-    {
-      message: 'Either url or connectionUrl must be provided',
-    },
-  )
-  .transform((data) => ({
-    url: data.url || data.connectionUrl || '',
-  }));
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 const VIEW_NAME = 'data';
 
 export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, Awaited<ReturnType<typeof createDuckDbInstance>>>();
 
   const createDuckDbInstance = async () => {
@@ -47,8 +31,8 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
     return instance;
   };
 
-  const getInstance = async (config: DriverConfig) => {
-    const key = config.url;
+  const getInstance = async () => {
+    const key = parsedConfig.url;
     if (!instanceMap.has(key)) {
       const instance = await createDuckDbInstance();
       const conn = await instance.connect();
@@ -58,7 +42,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         await conn.run('INSTALL httpfs;');
         await conn.run('LOAD httpfs;');
 
-        const escapedUrl = config.url.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from Parquet URL using read_parquet
@@ -76,11 +60,9 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      
+    async testConnection(): Promise<void> {
       const testPromise = (async () => {
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         const conn = await instance.connect();
 
         try {
@@ -106,8 +88,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       );
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
+    async metadata(): Promise<DatasourceMetadata> {
       let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
       let shouldCloseConnection = false;
 
@@ -115,7 +96,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       if (queryEngineConn) {
         // Use provided connection - create view in main engine
         conn = queryEngineConn;
-        const escapedUrl = parsed.url.replace(/'/g, "''");
+        const escapedUrl = parsedConfig.url.replace(/'/g, "''");
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
         // Create view from Parquet URL using read_parquet in main engine
@@ -125,7 +106,7 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         `);
       } else {
         // Fallback for testConnection or when no connection provided - create temporary instance
-        const instance = await getInstance(parsed);
+        const instance = await getInstance();
         conn = await instance.connect();
         shouldCloseConnection = true;
       }
@@ -215,9 +196,8 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const instance = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const instance = await getInstance();
       const conn = await instance.connect();
 
       const startTime = performance.now();
@@ -280,6 +260,81 @@ export function makeParquetDriver(context: DriverContext): IDataSourceDriver {
         );
       } finally {
         conn.closeSync();
+      }
+    },
+
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'parquet-online attach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const url = parsedConfig.url;
+      if (!url) {
+        throw new Error(
+          'parquet-online attach requires url or connectionUrl in config',
+        );
+      }
+
+      await conn.run('INSTALL httpfs;');
+      await conn.run('LOAD httpfs;');
+
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const escapedCatalogForQuery = catalogName.replace(/'/g, "''");
+
+      // Use ATTACH to create a catalog (matches DuckDBNativeAttachmentStrategy and query path resolution)
+      // DuckDB resolves "catalog.table" as catalog; CREATE SCHEMA makes a schema, not a catalog
+      const dbListReader = await conn.runAndReadAll(
+        `SELECT name FROM pragma_database_list WHERE name = '${escapedCatalogForQuery}'`,
+      );
+      await dbListReader.readAll();
+      const existingDbs = dbListReader.getRowObjectsJS() as Array<{
+        name: string;
+      }>;
+      if (existingDbs.length === 0) {
+        await conn.run(`ATTACH ':memory:' AS "${escapedCatalog}"`);
+      }
+
+      const escapedViewName = VIEW_NAME.replace(/"/g, '""');
+      const escapedUrl = url.replace(/'/g, "''");
+      await conn.run(`
+        CREATE OR REPLACE VIEW "${escapedCatalog}"."${escapedViewName}" AS
+        SELECT * FROM read_parquet('${escapedUrl}')
+      `);
+
+      return {
+        tables: [
+          {
+            schema: catalogName,
+            table: VIEW_NAME,
+            path: `${catalogName}.${VIEW_NAME}`,
+          },
+        ],
+      };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error(
+          'parquet-online detach requires queryEngineConnection in DriverContext',
+        );
+      }
+      const catalogName = options.schemaName ?? 'main';
+      const escapedCatalog = catalogName.replace(/"/g, '""');
+      const tableNames = options.tableNames ?? [VIEW_NAME];
+      for (const table of tableNames) {
+        const escapedTable = table.replace(/"/g, '""');
+        await conn.run(
+          `DROP VIEW IF EXISTS "${escapedCatalog}"."${escapedTable}"`,
+        );
+      }
+      try {
+        await conn.run(`DETACH "${escapedCatalog}"`);
+      } catch {
+        // Catalog may already be detached (e.g. double detach)
       }
     },
 

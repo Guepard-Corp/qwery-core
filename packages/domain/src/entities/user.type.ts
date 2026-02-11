@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { Entity } from '../common/entity';
 import { Roles } from '../common/roles';
@@ -38,7 +38,7 @@ export class UserEntity extends Entity<string, typeof UserSchema> {
     this.updatedAt = data.updatedAt;
   }
 
-  protected getData(): User {
+  protected override getData(): User {
     return {
       id: this.getId(),
       username: this.username,

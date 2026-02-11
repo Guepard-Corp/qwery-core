@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { Workspace } from '@qwery/domain/entities';
 import type { Repositories } from '@qwery/domain/repositories';
-import { InitWorkspaceService } from '@qwery/domain/services';
 import { LoadingOverlay } from '@qwery/ui/loading-overlay';
 import { Trans } from '@qwery/ui/trans';
 
@@ -66,28 +65,42 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
   }, [workspaceQuery.data]);
 
   useEffect(() => {
-    if (!repositories || !workspaceQuery.data) {
+    if (!workspaceQuery.data) {
       return;
     }
 
     const initWorkspace = async () => {
       setIsInitializing(true);
       try {
-        const initWorkspaceService = new InitWorkspaceService(
-          repositories.user,
-          new WorkspaceService(),
-          repositories.organization,
-          repositories.project,
-          repositories.notebook,
-        );
-        const initializedWorkspace = await initWorkspaceService.execute({
-          userId: workspaceQuery.data?.userId as string,
-          organizationId: workspaceQuery.data?.organizationId as string,
-          projectId: workspaceQuery.data?.projectId as string,
+        const workspaceService = new WorkspaceService();
+        const runtime = await workspaceService.execute();
+        const initResponse = await fetch('/api/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: workspaceQuery.data?.userId ?? '',
+            organizationId: workspaceQuery.data?.organizationId,
+            projectId: workspaceQuery.data?.projectId,
+            mode: workspaceQuery.data?.mode,
+            runtime,
+          }),
         });
+        if (!initResponse.ok) {
+          const err = await initResponse.json().catch(() => ({}));
+          throw new Error(
+            (err as { error?: string }).error ||
+              `Init failed: ${initResponse.status}`,
+          );
+        }
+        const initializedWorkspace = (await initResponse.json()) as {
+          user: { id: string; username: string };
+          organization?: { id: string };
+          project?: { id: string };
+          isAnonymous: boolean;
+          mode: string;
+          runtime: string;
+        };
 
-        // Only update localStorage for organization/project changes, not for anonymous user IDs
-        // Anonymous users get new IDs each time, which would cause infinite loops
         const currentStored = getWorkspaceFromLocalStorage();
         const workspaceData: Workspace = {
           id: currentStored.id || uuidv4(),
@@ -97,8 +110,9 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
           organizationId: initializedWorkspace.organization?.id,
           projectId: initializedWorkspace.project?.id,
           isAnonymous: initializedWorkspace.isAnonymous,
-          mode: currentStored.mode || initializedWorkspace.mode,
-          runtime: initializedWorkspace.runtime,
+          mode: (currentStored.mode ||
+            initializedWorkspace.mode) as Workspace['mode'],
+          runtime: initializedWorkspace.runtime as Workspace['runtime'],
         };
         setWorkspaceInLocalStorage(workspaceData);
         setWorkspace(workspaceData);
@@ -108,7 +122,7 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
     };
 
     initWorkspace();
-  }, [repositories, workspaceQuery.data]);
+  }, [workspaceQuery.data]);
 
   const contextValue = useMemo(() => {
     if (!repositories || !workspace) {

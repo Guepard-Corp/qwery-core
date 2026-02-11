@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "moduleResolution": "bundler",
+    "module": "esnext"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "__tests__"]
+}

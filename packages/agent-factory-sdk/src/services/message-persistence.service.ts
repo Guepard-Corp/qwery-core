@@ -11,6 +11,7 @@ import {
   uiRoleToMessageRole,
   type UIMessageRole,
 } from '@qwery/shared/message-role-utils';
+import { getLogger } from '@qwery/shared/logger';
 
 /**
  * Validates if a string is a valid UUID format
@@ -24,9 +25,8 @@ function isUUID(str: string): boolean {
 }
 
 /**
- * Converts a UIMessage to the format that should be stored in MessageEntity.content
- * This stores the full UIMessage structure (id, role, metadata, parts) in the content field
- * for complete restoration to the UI
+ * Converts a UIMessage to the format that should be stored in MessageEntity.content.
+ * Metadata is stored only at the message root (input.metadata), not in content.
  */
 function convertUIMessageToContent(
   uiMessage: UIMessage,
@@ -34,10 +34,19 @@ function convertUIMessageToContent(
   return {
     id: uiMessage.id,
     role: uiMessage.role,
-    metadata: uiMessage.metadata,
     parts: uiMessage.parts,
   };
 }
+
+export type PersistMessageOptions = {
+  createdBy?: string;
+  /** Merged into each message's metadata when saving (e.g. modelId, providerId, agent). */
+  defaultMetadata?: {
+    modelId?: string;
+    providerId?: string;
+    agent?: string;
+  };
+};
 
 export class MessagePersistenceService {
   constructor(
@@ -48,6 +57,7 @@ export class MessagePersistenceService {
   async persistMessages(
     messages: UIMessage[],
     createdBy?: string,
+    options?: PersistMessageOptions,
   ): Promise<{ errors: Error[] }> {
     const useCase = new CreateMessageService(
       this.messageRepository,
@@ -56,6 +66,7 @@ export class MessagePersistenceService {
 
     const errors: Error[] = [];
 
+    const opts = options ?? {};
     let resolvedCreatedBy: string | null = null;
     try {
       const conversation = await this.conversationRepository.findBySlug(
@@ -63,18 +74,22 @@ export class MessagePersistenceService {
       );
       if (conversation && conversation.createdBy?.trim()) {
         resolvedCreatedBy = conversation.createdBy;
+      } else if (opts.createdBy?.trim()) {
+        resolvedCreatedBy = opts.createdBy;
       } else if (createdBy?.trim()) {
         resolvedCreatedBy = createdBy;
       }
     } catch (error) {
-      console.error(
+      const logger = await getLogger();
+      logger.error(
         'Error resolving conversation for message persistence:',
         error,
       );
     }
 
     if (!resolvedCreatedBy) {
-      console.warn(
+      const logger = await getLogger();
+      logger.warn(
         `MessagePersistenceService: no valid createdBy resolved for conversation '${this.conversationSlug}', skipping persistence`,
       );
       return { errors: [] };
@@ -96,15 +111,28 @@ export class MessagePersistenceService {
               continue;
             }
           } catch (error) {
-            console.error('Error checking if message already exists:', error);
+            const logger = await getLogger();
+            logger.error('Error checking if message already exists:', error);
           }
         }
+
+        const messageMeta =
+          message.metadata && typeof message.metadata === 'object'
+            ? (message.metadata as Record<string, unknown>)
+            : {};
+        const mergedMetadata = {
+          ...opts.defaultMetadata,
+          ...messageMeta,
+        };
+        const hasMetadata = Object.keys(mergedMetadata).length > 0;
+        const metadataInput = hasMetadata ? { metadata: mergedMetadata } : {};
 
         await useCase.execute({
           input: {
             content: convertUIMessageToContent(message),
             role: uiRoleToMessageRole(message.role),
             createdBy: resolvedCreatedBy,
+            ...metadataInput,
           },
           conversationSlug: this.conversationSlug,
         });
@@ -142,14 +170,11 @@ export class MessagePersistenceService {
         Array.isArray(message.content.parts) &&
         'role' in message.content
       ) {
-        // Content already contains full UIMessage structure - restore all fields
+        // Content has parts/role; metadata lives at message root only
         return {
           id: message.id, // Use MessageEntity.id as source of truth
           role: normalizeUIRole(message.content.role),
-          metadata:
-            'metadata' in message.content
-              ? (message.content.metadata as UIMessage['metadata'])
-              : undefined,
+          metadata: (message.metadata as UIMessage['metadata']) ?? undefined,
           parts: message.content.parts as UIMessage['parts'],
         };
       }

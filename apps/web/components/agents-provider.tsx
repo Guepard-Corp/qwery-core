@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext } from 'react';
 
 import type { IDatasourceRepository } from '@qwery/domain/repositories';
 import { GetDatasourceService } from '@qwery/domain/services';
@@ -6,10 +6,14 @@ import {
   DatasourceKind,
   type DatasourceMetadata,
 } from '@qwery/domain/entities';
-import { getDiscoveredDatasource } from '@qwery/extensions-sdk';
-import { getExtension } from '@qwery/extensions-loader';
+import {
+  DatasourceExtension,
+  type DriverExtension,
+} from '@qwery/extensions-sdk';
+import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { getDefaultModel } from '@qwery/agent-factory-sdk';
 import { apiPost } from '~/lib/repositories/api-client';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 interface NotebookPromptResponse {
   sqlQuery: string | null;
@@ -51,11 +55,7 @@ export function AgentsProvider({
   children,
   options = {},
 }: AgentsProviderProps) {
-  const _agent = useMemo(() => {
-    // TODO: Initialize agent with options
-    return null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options]);
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   const runQueryWithAgent = async (
     datasourceRepository: IDatasourceRepository,
@@ -74,9 +74,11 @@ export function AgentsProvider({
       }
 
       // Get driver metadata to check runtime
-      const dsMeta = await getDiscoveredDatasource(
-        datasource.datasource_provider,
-      );
+      // Find the extension from the list
+      const dsMeta = extensions.find(
+        (ext) => ext.id === datasource.datasource_provider,
+      ) as DatasourceExtension | undefined;
+
       if (!dsMeta) {
         throw new Error('Datasource metadata not found');
       }
@@ -101,37 +103,39 @@ export function AgentsProvider({
           throw new Error('Browser drivers require embedded datasources');
         }
 
-        const extension = await getExtension(datasource.datasource_provider);
-        if (!extension) {
-          throw new Error('Extension not found');
-        }
-
-        const driverStorageKey =
-          (datasource.config as { storageKey?: string })?.storageKey ??
-          datasource.id ??
-          datasource.slug ??
-          datasource.name;
-        const driverInstance = await extension.getDriver(
-          driverStorageKey,
-          datasource.config,
+        const driverInstance = await getBrowserDriverInstance(
+          driver as DriverExtension,
+          { config: datasource.config },
         );
-        if (!driverInstance) {
-          throw new Error('Driver not found');
-        }
 
-        metadata = await driverInstance.metadata(datasource.config);
+        metadata = await driverInstance.metadata();
       } else {
         // Handle node drivers (remote datasources) via API
-        const response = await apiPost<{
-          success: boolean;
-          data: DatasourceMetadata;
-        }>('/driver/command', {
-          action: 'metadata',
-          datasourceProvider: datasource.datasource_provider,
-          driverId: driver.id,
-          config: datasource.config,
+        const response = await fetch('/api/driver/command', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'metadata',
+            datasourceProvider: datasource.datasource_provider,
+            driverId: driver.id,
+            config: datasource.config,
+          }),
         });
-        metadata = response.data;
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ error: 'Failed to get datasource metadata' }));
+          throw new Error(error.error || 'Failed to get datasource metadata');
+        }
+
+        const result = await response.json();
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to get datasource metadata');
+        }
+        metadata = result.data;
       }
 
       if (!metadata) {

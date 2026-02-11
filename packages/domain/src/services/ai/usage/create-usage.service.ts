@@ -27,11 +27,12 @@ export class CreateUsageService implements CreateUsageUseCase {
     conversationSlug: string;
   }): Promise<UsageOutput> {
     const conversation =
-      await this.conversationRepository.findBySlug(conversationSlug);
+      (await this.conversationRepository.findBySlug(conversationSlug)) ??
+      (await this.conversationRepository.findById(conversationSlug));
     if (!conversation) {
       throw DomainException.new({
         code: Code.CONVERSATION_NOT_FOUND_ERROR,
-        overrideMessage: `Conversation with slug '${conversationSlug}' not found`,
+        overrideMessage: `Conversation with slug or id '${conversationSlug}' not found`,
         data: { conversationSlug },
       });
     }

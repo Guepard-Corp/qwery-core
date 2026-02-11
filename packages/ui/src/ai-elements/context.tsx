@@ -10,7 +10,6 @@ import { Progress } from '../shadcn/progress';
 import { cn } from '../lib/utils';
 import type { LanguageModelUsage } from 'ai';
 import { type ComponentProps, createContext, useContext } from 'react';
-import { computeCostUSD } from 'tokenlens';
 import React from 'react';
 
 const PERCENT_MAX = 100;
@@ -24,7 +23,7 @@ type ModelId = string;
 type ContextSchema = {
   usedTokens: number;
   maxTokens: number;
-  usage?: LanguageModelUsage;
+  usage?: LanguageModelUsage & { cost?: number };
   modelId?: ModelId;
 };
 
@@ -205,30 +204,14 @@ export const ContextContentFooter = ({
   className,
   ...props
 }: ContextContentFooterProps) => {
-  const { modelId, usage } = useContextValue();
-  const [totalCost, setTotalCost] = React.useState<string>('');
-
-  React.useEffect(() => {
-    if (!modelId || !usage) {
-      return;
-    }
-
-    (async function computeCost() {
-      const costUSD = await computeCostUSD({
-        modelId,
-        usage: {
-          input_tokens: usage?.inputTokens ?? 0,
-          output_tokens: usage?.outputTokens ?? 0,
-        },
-      });
-      setTotalCost(
-        new Intl.NumberFormat('en-US', {
+  const { usage } = useContextValue();
+  const totalCost =
+    usage && typeof (usage as { cost?: number }).cost === 'number'
+      ? new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency: 'USD',
-        }).format(costUSD.totalTokenCostUSD ?? 0),
-      );
-    })();
-  }, [modelId, usage]);
+        }).format((usage as { cost: number }).cost)
+      : '';
 
   return (
     <div
@@ -241,7 +224,7 @@ export const ContextContentFooter = ({
       {children ?? (
         <>
           <span className="text-muted-foreground">Total cost</span>
-          <span>{totalCost}</span>
+          <span>{totalCost || '—'}</span>
         </>
       )}
     </div>
@@ -255,9 +238,8 @@ export const ContextInputUsage = ({
   children,
   ...props
 }: ContextInputUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage } = useContextValue();
   const inputTokens = usage?.inputTokens ?? 0;
-  const [inputCostText, setInputCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -267,35 +249,13 @@ export const ContextInputUsage = ({
     return null;
   }
 
-  React.useEffect(() => {
-    if (!modelId || !usage) {
-      return;
-    }
-
-    (async function computeCost() {
-      const costUSD = await computeCostUSD({
-        modelId,
-        usage: {
-          input_tokens: usage?.inputTokens ?? 0,
-          output_tokens: usage?.outputTokens ?? 0,
-        },
-      });
-      setInputCostText(
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(costUSD.inputTokenCostUSD ?? 0),
-      );
-    })();
-  }, [modelId, usage]);
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-muted-foreground">Input</span>
-      <TokensWithCost costText={inputCostText} tokens={inputTokens} />
+      <TokensWithCost costText="" tokens={inputTokens} />
     </div>
   );
 };
@@ -307,9 +267,8 @@ export const ContextOutputUsage = ({
   children,
   ...props
 }: ContextOutputUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage } = useContextValue();
   const outputTokens = usage?.outputTokens ?? 0;
-  const [outputCostText, setOutputCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -319,35 +278,13 @@ export const ContextOutputUsage = ({
     return null;
   }
 
-  React.useEffect(() => {
-    if (!modelId || !usage) {
-      return;
-    }
-
-    (async function computeCost() {
-      const costUSD = await computeCostUSD({
-        modelId,
-        usage: {
-          input_tokens: usage?.inputTokens ?? 0,
-          output_tokens: usage?.outputTokens ?? 0,
-        },
-      });
-      setOutputCostText(
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(costUSD.outputTokenCostUSD ?? 0),
-      );
-    })();
-  }, [modelId, usage]);
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-muted-foreground">Output</span>
-      <TokensWithCost costText={outputCostText} tokens={outputTokens} />
+      <TokensWithCost costText="" tokens={outputTokens} />
     </div>
   );
 };
@@ -359,9 +296,8 @@ export const ContextReasoningUsage = ({
   children,
   ...props
 }: ContextReasoningUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage } = useContextValue();
   const reasoningTokens = usage?.reasoningTokens ?? 0;
-  const [reasoningCostText, setReasoningCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -371,35 +307,13 @@ export const ContextReasoningUsage = ({
     return null;
   }
 
-  React.useEffect(() => {
-    if (!modelId || !usage) {
-      return;
-    }
-
-    (async function computeCost() {
-      const costUSD = await computeCostUSD({
-        modelId,
-        usage: {
-          input_tokens: usage?.inputTokens ?? 0,
-          output_tokens: usage?.outputTokens ?? 0,
-        },
-      });
-      setReasoningCostText(
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(costUSD.reasoningTokenCostUSD ?? 0),
-      );
-    })();
-  }, [modelId, usage]);
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-muted-foreground">Reasoning</span>
-      <TokensWithCost costText={reasoningCostText} tokens={reasoningTokens} />
+      <TokensWithCost costText="" tokens={reasoningTokens} />
     </div>
   );
 };
@@ -411,9 +325,8 @@ export const ContextCacheUsage = ({
   children,
   ...props
 }: ContextCacheUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage } = useContextValue();
   const cacheTokens = usage?.cachedInputTokens ?? 0;
-  const [cacheCostText, setCacheCostText] = React.useState<string>('');
 
   if (children) {
     return children;
@@ -423,38 +336,13 @@ export const ContextCacheUsage = ({
     return null;
   }
 
-  React.useEffect(() => {
-    if (!modelId || !usage) {
-      return;
-    }
-
-    (async function computeCost() {
-      const costUSD = await computeCostUSD({
-        modelId,
-        usage: {
-          input_tokens: usage?.inputTokens ?? 0,
-          output_tokens: usage?.outputTokens ?? 0,
-        },
-      });
-      const cacheCost =
-        (costUSD.cacheReadTokenCostUSD || 0) +
-        (costUSD.cacheWriteTokenCostUSD || 0);
-      setCacheCostText(
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(cacheCost),
-      );
-    })();
-  }, [modelId, usage]);
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-muted-foreground">Cache</span>
-      <TokensWithCost costText={cacheCostText} tokens={cacheTokens} />
+      <TokensWithCost costText="" tokens={cacheTokens} />
     </div>
   );
 };

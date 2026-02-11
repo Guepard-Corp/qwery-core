@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 
 import { Navigate, useBlocker, useNavigate, useParams } from 'react-router';
 
@@ -31,7 +30,6 @@ import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources'
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import { NOTEBOOK_EVENTS, telemetry } from '@qwery/telemetry';
 import { Skeleton } from '@qwery/ui/skeleton';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
 import { useGetNotebookConversation } from '~/lib/queries/use-get-notebook-conversation';
 import {
@@ -39,6 +37,7 @@ import {
   type NotebookCellType,
 } from '@qwery/agent-factory-sdk';
 import { scrollToElementBySelector } from '@qwery/ui/ai';
+import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 export default function NotebookPage() {
   const params = useParams();
@@ -104,19 +103,16 @@ export default function NotebookPage() {
     workspace.projectId as string,
   );
 
-  const { data: pluginMetadata = [] } = useQuery({
-    queryKey: ['all-plugin-metadata'],
-    queryFn: () => getAllExtensionMetadata(),
-    staleTime: 60 * 1000,
-  });
+  const { data: pluginMetadata = [] } = useGetDatasourceExtensions();
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
     pluginMetadata.forEach((plugin) => {
-      if (plugin?.id && plugin.logo) {
-        map.set(plugin.id, plugin.logo);
+      if (plugin.icon) {
+        map.set(plugin.id, plugin.icon);
       }
     });
+
     return map;
   }, [pluginMetadata]);
 

@@ -1,7 +1,21 @@
-export * from './factory-agent';
-
-// Export actors
-export * from './actors';
+export * from './agent';
+export * from './ask-agent';
+export * from './query-agent';
+export * from './compaction-agent';
+export * from './summary-agent';
+export { prompt, loop, type AgentSessionPromptInput } from './agent-session';
+export {
+  SessionCompaction,
+  isOverflow,
+  prune,
+  process,
+  create,
+} from './session-compaction';
+export type {
+  IsOverflowInput,
+  ProcessInput,
+  CreateInput,
+} from './session-compaction';
 
 // Export types for use across the codebase
 export * from './types';

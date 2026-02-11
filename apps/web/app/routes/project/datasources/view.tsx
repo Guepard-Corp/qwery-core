@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as React from 'react';
-
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -40,9 +40,39 @@ import {
   getDatasourcesKey,
   useGetDatasourceBySlug,
 } from '~/lib/queries/use-get-datasources';
+import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
 
-export default function ProjectDatasourceViewPage() {
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+
+export async function loader({
+  params,
+}: {
+  params: Record<string, string | undefined>;
+}) {
+  const slug = params.slug as string;
+  if (!slug) return { datasource: null };
+
+  const repositories = await getRepositoriesForLoader();
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) return { datasource: null };
+    throw error;
+  }
+}
+
+export default function ProjectDatasourceViewPage(props?: {
+  loaderData?: { datasource: Awaited<ReturnType<typeof loader>>['datasource'] };
+}) {
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
   const params = useParams();
   const slug = params.slug as string;
@@ -59,14 +89,18 @@ export default function ProjectDatasourceViewPage() {
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const { repositories } = useWorkspace();
   const datasourceRepository = repositories.datasource;
-
-  // Load datasource by slug
-  const datasource = useGetDatasourceBySlug(datasourceRepository, slug);
-
-  // Load extension once datasource is loaded
-  const extension = useGetExtension(
-    datasource?.data?.datasource_provider || '',
+  const datasourceFromQuery = useGetDatasourceBySlug(
+    datasourceRepository,
+    slug,
   );
+  const datasourceFromLoader = props?.loaderData?.datasource;
+  const datasource = datasourceFromLoader
+    ? { data: datasourceFromLoader, isLoading: false }
+    : datasourceFromQuery;
+
+  const providerId = datasource?.data?.datasource_provider ?? '';
+  const extension = useGetExtension(providerId);
+  const extensionSchema = useExtensionSchema(providerId);
 
   // Focus input when editing starts
   React.useEffect(() => {
@@ -358,9 +392,9 @@ export default function ProjectDatasourceViewPage() {
       <Card className="mx-auto w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center gap-4">
-            {extension.data?.logo && (
+            {extension.data?.icon && (
               <img
-                src={extension.data?.logo}
+                src={extension.data?.icon}
                 alt={extension.data?.name}
                 className={cn(
                   'h-12 w-12 rounded object-contain',
@@ -420,15 +454,22 @@ export default function ProjectDatasourceViewPage() {
               )}
             </div>
           </div>
-          {extension.data?.schema && (
+          {extensionSchema.data ? (
             <FormRenderer
-              schema={extension.data.schema}
+              schema={extensionSchema.data}
               onSubmit={handleSubmit}
               formId="datasource-form"
+              locale={i18n.resolvedLanguage}
               defaultValues={datasource.data?.config as Record<string, unknown>}
-              onFormReady={setFormValues}
+              onFormReady={(values) =>
+                setFormValues(values as Record<string, unknown> | null)
+              }
             />
-          )}
+          ) : extensionSchema.isLoading ? (
+            <div className="text-muted-foreground py-6 text-center text-sm">
+              Loading form…
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button

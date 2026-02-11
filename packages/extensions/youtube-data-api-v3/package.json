@@ -11,7 +11,8 @@
       "import": "./dist/driver.js",
       "require": "./dist/driver.js",
       "default": "./dist/driver.js"
-    }
+    },
+    "./schema": "./dist/schema.js"
   },
   "scripts": {
     "lint": "echo \"no lint configured\"",
@@ -24,63 +25,14 @@
         "id": "youtube-data-api-v3",
         "name": "YouTube Data API v3",
         "description": "Query public YouTube video stats via API key",
+        "tags": [
+          "API"
+        ],
         "icon": "media/YouTube_2024.svg",
-        "formConfig": {
-          "preset": "apiKey",
-          "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
-          "connectionFieldKind": "apiKey",
-          "showDetailsTab": false,
-          "showConnectionStringTab": true,
-          "placeholders": {
-            "connectionString": "Your YouTube Data API key"
-          },
-          "fieldLabels": {
-            "connectionString": "API key"
-          },
-          "normalizedKey": "apiKey",
-          "acceptedKeys": [
-            "apiKey",
-            "connectionUrl",
-            "connectionString"
-          ]
-        },
-        "schema": {
-          "type": "object",
-          "properties": {
-            "apiKey": {
-              "type": "string",
-              "description": "YouTube Data API key secret:true",
-              "format": "password"
-            },
-            "channelId": {
-              "type": "string",
-              "description": "Channel ID (e.g., UC...)"
-            },
-            "maxResults": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50,
-              "description": "Max videos to load (default 25)"
-            },
-            "publishedAfter": {
-              "type": "string",
-              "format": "date-time",
-              "description": "Optional filter: published after (RFC3339)"
-            },
-            "publishedBefore": {
-              "type": "string",
-              "format": "date-time",
-              "description": "Optional filter: published before (RFC3339)"
-            }
-          },
-          "required": [
-            "apiKey",
-            "channelId"
-          ]
-        },
         "drivers": [
           "youtube-data-api-v3.default"
-        ]
+        ],
+        "docsUrl": "https://developers.google.com/youtube/v3/getting-started"
       }
     ],
     "drivers": [

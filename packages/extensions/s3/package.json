@@ -1,0 +1,55 @@
+{
+  "name": "@qwery/extension-s3",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/driver.js",
+  "types": "./dist/driver.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/driver.d.ts",
+      "default": "./dist/driver.js"
+    },
+    "./schema": "./dist/schema.js"
+  },
+  "scripts": {
+    "lint": "echo \"no lint configured\"",
+    "test": "vitest run --coverage --passWithNoTests",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "contributes": {
+    "datasources": [
+      {
+        "id": "s3",
+        "name": "S3 Object Storage",
+        "description": "Connect to S3-compatible storage (AWS, DigitalOcean, MinIO) and query Parquet or JSON files with wildcard filtering",
+        "tags": [
+          "Files",
+          "Storage"
+        ],
+        "icon": "media/s3.svg",
+        "drivers": [
+          "s3.duckdb"
+        ]
+      }
+    ],
+    "drivers": [
+      {
+        "id": "s3.duckdb",
+        "name": "DuckDB (Node)",
+        "description": "Node driver for S3 Parquet/JSON with wildcard support",
+        "runtime": "node",
+        "entry": "./dist/driver.js"
+      }
+    ]
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.2-r.1",
+    "@qwery/extensions-sdk": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vitest/coverage-istanbul": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,5 +1,5 @@
 import { Entity } from '../common/entity';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { Exclude, Expose, plainToClass, Type } from 'class-transformer';
 import { generateIdentity } from '../utils/identity.generator';
 import { CreateProjectInput, UpdateProjectInput } from '../usecases';

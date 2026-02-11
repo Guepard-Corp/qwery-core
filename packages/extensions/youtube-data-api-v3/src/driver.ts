@@ -1,7 +1,6 @@
 import { performance } from 'node:perf_hooks';
 
 import { google, youtube_v3 } from 'googleapis';
-import { z } from 'zod/v3';
 
 import type {
   DatasourceMetadata,
@@ -12,18 +11,13 @@ import type {
 import {
   DatasourceMetadataZodSchema,
   getQueryEngineConnection,
-  type QueryEngineConnection,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  apiKey: z.string().min(1, 'apiKey is required').describe('secret:true'),
-  channelId: z.string().min(1, 'channelId is required'),
-  maxResults: z.number().int().positive().max(50).default(25),
-  publishedAfter: z.string().datetime().optional(),
-  publishedBefore: z.string().datetime().optional(),
-});
+import type { z } from 'zod';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
+
+type DriverConfig = z.infer<typeof schema>;
 
 type VideoRow = {
   videoId: string;
@@ -444,21 +438,20 @@ async function toMetadataFromConnection(
 }
 
 export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
+
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      await ensureInstanceReady(parsed, context);
+    async testConnection(): Promise<void> {
+      await ensureInstanceReady(parsedConfig, context);
       context.logger?.info?.('youtube: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-
+    async metadata(): Promise<DatasourceMetadata> {
       const queryEngineConn = getQueryEngineConnection(context);
       if (queryEngineConn) {
         // Use provided connection - load data into main engine
         const connection = queryEngineConn;
-        const entry = await ensureInstanceReady(parsed, context);
+        const entry = await ensureInstanceReady(parsedConfig, context);
         const conn = await entry.instance.connect();
 
         try {
@@ -507,14 +500,13 @@ export function makeYouTubeDriver(context: DriverContext): IDataSourceDriver {
         }
       } else {
         // Fallback for testConnection or when no connection provided - use isolated instance
-        const entry = await ensureInstanceReady(parsed, context);
+        const entry = await ensureInstanceReady(parsedConfig, context);
         return toMetadata(entry);
       }
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const entry = await ensureInstanceReady(parsed, context);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const entry = await ensureInstanceReady(parsedConfig, context);
       const conn = await entry.instance.connect();
 
       const startTime = performance.now();

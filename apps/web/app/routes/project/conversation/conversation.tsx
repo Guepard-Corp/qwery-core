@@ -24,9 +24,6 @@ export default function ConversationPage() {
     repositories.conversation,
     repositories.message,
     slug as string,
-    {
-      refetchInterval: 2000,
-    },
   );
 
   const getConversation = useGetConversationBySlug(

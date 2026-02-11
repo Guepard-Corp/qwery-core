@@ -133,7 +133,7 @@ async function main() {
                   nodePaths: [nodeModulesPath],
                   packages: 'bundle', // Bundle npm packages, but externalize workspace ones
                 });
-                
+
                 // Copy PGlite WASM and data files if they exist
                 // These are needed at runtime and can't be bundled
                 if (pkg.name === '@qwery/extension-pglite') {
@@ -144,14 +144,14 @@ async function main() {
                     '..',
                     'node_modules',
                   );
-                  
+
                   // Try multiple possible paths for pnpm workspace structure
                   const pnpmPaths = await findPGliteInPnpm(rootNodeModules);
                   const possiblePaths = [
                     path.join(rootNodeModules, '@electric-sql', 'pglite', 'dist'),
                     ...pnpmPaths,
                   ];
-                  
+
                   const pgliteFiles = ['pglite.wasm', 'pglite.data'];
                   let copied = false;
                   for (const pgliteDistPath of possiblePaths) {
@@ -178,7 +178,7 @@ async function main() {
                     );
                   }
                 }
-                
+
                 // Copy DuckDB WASM worker files if they exist
                 // These are needed at runtime and can't be bundled
                 if (pkg.name === '@qwery/extension-duckdb-wasm') {
@@ -188,14 +188,14 @@ async function main() {
                     '..',
                     'node_modules',
                   );
-                  
+
                   // Try multiple possible paths for pnpm workspace structure
                   const duckdbPaths = await findDuckDBWasmInPnpm(rootNodeModules);
                   const possiblePaths = [
                     path.join(rootNodeModules, '@duckdb', 'duckdb-wasm', 'dist'),
                     ...duckdbPaths,
                   ];
-                  
+
                   // Copy worker files and WASM files that DuckDB WASM needs
                   const duckdbFiles = [
                     'duckdb-browser-eh.worker.js',
@@ -232,7 +232,7 @@ async function main() {
                     );
                   }
                 }
-                
+
                 console.log(
                   `[extensions-build] Bundled browser driver ${driver.id} to ${dest}`,
                 );
@@ -289,12 +289,64 @@ async function main() {
         id: ds.id,
         name: ds.name,
         description: ds.description,
+        scope: 'datasource',
+        tags: ds.tags ?? [],
         icon: iconPath,
-        schema: ds.schema,
+        schema: null,
         packageName: pkg.name,
         drivers: driverDescriptors,
-        formConfig: ds.formConfig ?? null,
+        docsUrl: ds.docsUrl ?? null,
+        supportsPreview: ds.supportsPreview === true,
       });
+
+      // Check for src/schema.ts and bundle it if it exists
+      const schemaSourcePath = path.resolve(pkgDir, 'src', 'schema.ts');
+      if (await fileExists(schemaSourcePath)) {
+        const schemaDestDir = path.join(publicRoot, ds.id);
+        await fs.mkdir(schemaDestDir, { recursive: true });
+        const schemaDest = path.join(schemaDestDir, 'schema.js');
+
+        if (esbuild) {
+          try {
+            await esbuild.build({
+              entryPoints: [schemaSourcePath],
+              bundle: true,
+              format: 'esm',
+              platform: 'browser',
+              target: 'es2020',
+              outfile: schemaDest,
+              external: [
+                '@qwery/ui',
+                'react',
+                'react-dom',
+              ],
+              alias: {
+                'node:fs/promises': 'data:text/javascript,export default {}',
+                'node:path': 'data:text/javascript,export default {}',
+                'node:url': 'data:text/javascript,export default {}',
+              },
+              banner: {
+                js: `
+// This file is bundled for browser use
+// It contains the Zod schema definition for the extension
+`,
+              },
+              sourcemap: false,
+              minify: false,
+              treeShaking: true,
+              logLevel: 'silent',
+            });
+            console.log(
+              `[extensions-build] Bundled schema for ${ds.id} to ${schemaDest}`,
+            );
+          } catch (error) {
+            console.error(
+              `[extensions-build] Failed to bundle schema for ${ds.id}:`,
+              error.message,
+            );
+          }
+        }
+      }
     }
   }
 

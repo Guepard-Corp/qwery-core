@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@qwery/domain": "workspace:*",
+    "@qwery/extensions-loader": "workspace:*",
     "@qwery/extensions-sdk": "workspace:*",
     "@qwery/shared": "workspace:*",
     "better-sqlite3": "^11.7.0",

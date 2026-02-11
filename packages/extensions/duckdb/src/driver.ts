@@ -1,5 +1,4 @@
 import * as duckdb from '@duckdb/node-api';
-import { z } from 'zod/v3';
 
 import type {
   DriverContext,
@@ -9,11 +8,7 @@ import type {
 } from '@qwery/extensions-sdk';
 import { DatasourceMetadataZodSchema } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z.object({
-  database: z.string().default(':memory:').describe('Database path (use :memory: for in-memory)'),
-});
-
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
 interface DuckDBInstance {
   instance: duckdb.DuckDBInstance;
@@ -21,10 +16,11 @@ interface DuckDBInstance {
 }
 
 export function makeDuckDBDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
   const instanceMap = new Map<string, DuckDBInstance>();
 
-  const getInstance = async (config: DriverConfig): Promise<DuckDBInstance> => {
-    const key = config.database || ':memory:';
+  const getInstance = async (): Promise<DuckDBInstance> => {
+    const key = parsedConfig.database || ':memory:';
     if (!instanceMap.has(key)) {
       const instance = await duckdb.DuckDBInstance.create(
         key === ':memory:' ? undefined : key,
@@ -36,16 +32,14 @@ export function makeDuckDBDriver(context: DriverContext): IDataSourceDriver {
   };
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      const { connection } = await getInstance(parsed);
+    async testConnection(): Promise<void> {
+      const { connection } = await getInstance();
       await connection.run('SELECT 1');
       context.logger?.info?.('duckdb: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-      const { connection } = await getInstance(parsed);
+    async metadata(): Promise<DatasourceMetadata> {
+      const { connection } = await getInstance();
 
       const result = await connection.run(`
         SELECT 
@@ -252,9 +246,8 @@ export function makeDuckDBDriver(context: DriverContext): IDataSourceDriver {
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const { connection } = await getInstance(parsed);
+    async query(sql: string): Promise<DatasourceResultSet> {
+      const { connection } = await getInstance();
       const startTime = Date.now();
 
       try {

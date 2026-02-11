@@ -57,7 +57,7 @@ export function ProjectChatNotebookSidebarContent() {
     projectId,
     { enabled: !!projectId },
   );
-  const notebooksList = notebooks.data || [];
+  const notebooksList = useMemo(() => notebooks.data || [], [notebooks.data]);
 
   const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
   const currentNotebookSlug = notebookSlugMatch?.[1];

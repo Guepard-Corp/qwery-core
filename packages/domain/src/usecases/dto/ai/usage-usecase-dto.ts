@@ -26,6 +26,8 @@ export class UsageOutput {
   @Expose()
   public cachedInputTokens!: number;
   @Expose()
+  public cost!: number;
+  @Expose()
   public contextSize!: number;
   @Expose()
   public creditsCap!: number;
@@ -58,6 +60,7 @@ export type CreateUsageInput = {
   totalTokens: number;
   reasoningTokens: number;
   cachedInputTokens: number;
+  cost: number;
   contextSize: number;
   creditsCap: number;
   creditsUsed: number;

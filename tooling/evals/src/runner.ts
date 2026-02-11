@@ -40,12 +40,16 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    function normalizeModelId(id: string): string {
-      const mapping: Record<string, string> = {
-        'Ministral-3B': 'ministral-3b',
-      };
+    const { getUsageFromCatalog } = await import('@qwery/shared/model-cost');
+    type Catalog = import('@qwery/shared/model-cost').ModelsDevCatalog;
 
-      return mapping[id] || id;
+    let catalog: Catalog | null = null;
+    async function fetchModelsDevCatalog(): Promise<Catalog> {
+      if (catalog) return catalog;
+      const res = await fetch('https://models.dev/api.json');
+      if (!res.ok) throw new Error(`Failed to fetch models catalog: ${res.status}`);
+      catalog = (await res.json()) as Catalog;
+      return catalog;
     }
 
     for (const file of files) {
@@ -53,23 +57,27 @@ async function main(): Promise<void> {
       await import(pathToFileURL(file).href);
       const { results, failed } = await runRegistry();
 
-      // Calculate costs for each result
-      const { createTokenlens } = await import('tokenlens');
-      const tokenlens = await createTokenlens({ catalog: 'models.dev' });
-
-      await tokenlens.refresh(true);
+      const modelsCatalog = await fetchModelsDevCatalog();
 
       for (const result of results) {
         if (result.model && result.usage) {
-          const costs = await tokenlens.computeCostUSD({
-            modelId: normalizeModelId(result.model.split('/')[1] as string),
-            provider: result.model.split('/')[0] as string,
-            usage: result.usage,
-          });
+          const usage = result.usage as {
+            inputTokens?: number;
+            outputTokens?: number;
+            reasoningTokens?: number;
+            cachedInputTokens?: number;
+          };
+          const { cost, inputTokenCostUSD, outputTokenCostUSD } =
+            getUsageFromCatalog(modelsCatalog, result.model, {
+              inputTokens: usage.inputTokens ?? 0,
+              outputTokens: usage.outputTokens ?? 0,
+              reasoningTokens: usage.reasoningTokens ?? 0,
+              cachedInputTokens: usage.cachedInputTokens ?? 0,
+            });
           result.costs = {
-            inputUSD: costs.inputTokenCostUSD || 0,
-            outputUSD: costs.outputTokenCostUSD || 0,
-            totalUSD: costs.totalTokenCostUSD || 0,
+            inputUSD: inputTokenCostUSD,
+            outputUSD: outputTokenCostUSD,
+            totalUSD: cost,
           };
         }
       }

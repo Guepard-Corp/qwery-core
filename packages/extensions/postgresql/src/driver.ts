@@ -1,42 +1,27 @@
 import { Client, type QueryResult as PgQueryResult } from 'pg';
 import type { ConnectionOptions } from 'tls';
-import { z } from 'zod/v3';
 
 import type {
   DriverContext,
   IDataSourceDriver,
   DatasourceResultSet,
+  PrimaryKeyRow,
+  ForeignKeyRow,
 } from '@qwery/extensions-sdk';
 import {
-  DatasourceMetadataZodSchema,
+  buildMetadataFromInformationSchema,
   extractConnectionUrl,
   withTimeout,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    connectionUrl: z.string().url().describe('secret:true').optional(),
-    host: z.string().optional(),
-    port: z.number().int().min(1).max(65535).optional(),
-    username: z.string().optional(),
-    user: z.string().optional(),
-    password: z.string().describe('secret:true').optional(),
-    database: z.string().optional(),
-    sslmode: z
-      .enum(['disable', 'require', 'prefer', 'verify-ca', 'verify-full'])
-      .optional(),
-  })
-  .refine(
-    (data) => data.connectionUrl || data.host,
-    {
-      message: 'Either connectionUrl or host must be provided',
-    },
-  );
+import type { z } from 'zod';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+import { schema } from './schema';
 
-export function buildPostgresConfig(config: DriverConfig) {
+type Config = z.infer<typeof schema>;
+
+export function buildPostgresConfig(config: Config) {
   // Extract connection URL (either from connectionUrl or build from fields)
   const connectionUrl = extractConnectionUrl(
     config as Record<string, unknown>,
@@ -67,6 +52,9 @@ function buildPgConfig(connectionUrl: string) {
 }
 
 export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
+  const connectionUrl = extractConnectionUrl(parsedConfig as Record<string, unknown>, 'postgresql');
+
   const withClient = async <T>(
     config: { connectionUrl: string },
     callback: (client: Client) => Promise<T>,
@@ -104,12 +92,7 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
   });
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'postgresql',
-      );
+    async testConnection(): Promise<void> {
       await withClient(
         { connectionUrl },
         async (client) => {
@@ -120,12 +103,7 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
       context.logger?.info?.('postgres: testConnection ok');
     },
 
-    async metadata(config: unknown) {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'postgresql',
-      );
+    async metadata() {
       const rows = await withClient({ connectionUrl }, async (client) => {
         const result = await client.query<{
           table_schema: string;
@@ -199,146 +177,15 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
         return result.rows;
       });
 
-      let tableId = 1;
-      const tableMap = new Map<
-        string,
-        {
-          id: number;
-          schema: string;
-          name: string;
-          columns: Array<ReturnType<typeof buildColumn>>;
-        }
-      >();
-
-      const buildColumn = (
-        schema: string,
-        table: string,
-        name: string,
-        ordinal: number,
-        dataType: string,
-        nullable: string,
-      ) => ({
-        id: `${schema}.${table}.${name}`,
-        table_id: 0,
-        schema,
-        table,
-        name,
-        ordinal_position: ordinal,
-        data_type: dataType,
-        format: dataType,
-        is_identity: false,
-        identity_generation: null,
-        is_generated: false,
-        is_nullable: nullable === 'YES',
-        is_updatable: true,
-        is_unique: false,
-        check: null,
-        default_value: null,
-        enums: [],
-        comment: null,
-      });
-
-      for (const row of rows) {
-        const key = `${row.table_schema}.${row.table_name}`;
-        if (!tableMap.has(key)) {
-          tableMap.set(key, {
-            id: tableId++,
-            schema: row.table_schema,
-            name: row.table_name,
-            columns: [],
-          });
-        }
-        const entry = tableMap.get(key)!;
-        entry.columns.push(
-          buildColumn(
-            row.table_schema,
-            row.table_name,
-            row.column_name,
-            row.ordinal_position,
-            row.data_type,
-            row.is_nullable,
-          ),
-        );
-      }
-
-      let relationshipId = 1;
-
-      const tables = Array.from(tableMap.values()).map((table) => {
-        const primary_keys = primaryKeyRows
-          .filter(
-            (pk) =>
-              pk.table_schema === table.schema && pk.table_name === table.name,
-          )
-          .map((pk) => ({
-            table_id: table.id,
-            name: pk.column_name,
-            schema: table.schema,
-            table_name: table.name,
-          }));
-
-        const relationships = foreignKeyRows
-          .filter(
-            (rel) =>
-              rel.source_schema === table.schema &&
-              rel.source_table_name === table.name,
-          )
-          .map((rel) => ({
-            id: relationshipId++,
-            constraint_name: rel.constraint_name,
-            source_schema: rel.source_schema,
-            source_table_name: rel.source_table_name,
-            source_column_name: rel.source_column_name,
-            target_table_schema: rel.target_table_schema,
-            target_table_name: rel.target_table_name,
-            target_column_name: rel.target_column_name,
-          }));
-
-        return {
-          id: table.id,
-          schema: table.schema,
-          name: table.name,
-          rls_enabled: false,
-          rls_forced: false,
-          bytes: 0,
-          size: '0',
-          live_rows_estimate: 0,
-          dead_rows_estimate: 0,
-          comment: null,
-          primary_keys,
-          relationships,
-        };
-      });
-
-      const columns = Array.from(tableMap.values()).flatMap((table) =>
-        table.columns.map((column) => ({
-          ...column,
-          table_id: table.id,
-        })),
-      );
-
-      const schemas = Array.from(
-        new Set(Array.from(tableMap.values()).map((table) => table.schema)),
-      ).map((name, idx) => ({
-        id: idx + 1,
-        name,
-        owner: 'unknown',
-      }));
-
-      return DatasourceMetadataZodSchema.parse({
-        version: '0.0.1',
+      return buildMetadataFromInformationSchema({
         driver: 'postgresql',
-        schemas,
-        tables,
-        columns,
+        rows,
+        primaryKeys: primaryKeyRows as PrimaryKeyRow[],
+        foreignKeys: foreignKeyRows as ForeignKeyRow[],
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'postgresql',
-      );
+    async query(sql: string): Promise<DatasourceResultSet> {
       const { rows, rowCount, fields } = (await withClient(
         { connectionUrl },
         (client) => client.query(sql),

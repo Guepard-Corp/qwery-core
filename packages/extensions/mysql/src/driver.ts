@@ -1,5 +1,5 @@
 import { createConnection, type Connection } from 'mysql2/promise';
-import { z } from 'zod/v3';
+import type { z } from 'zod';
 
 import type {
   DriverContext,
@@ -8,33 +8,17 @@ import type {
   DatasourceMetadata,
 } from '@qwery/extensions-sdk';
 import {
-  DatasourceMetadataZodSchema,
+  buildMetadataFromInformationSchema,
   extractConnectionUrl,
   withTimeout,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
 } from '@qwery/extensions-sdk';
 
-const ConfigSchema = z
-  .object({
-    connectionUrl: z.string().url().describe('secret:true').optional(),
-    host: z.string().optional(),
-    port: z.number().int().min(1).max(65535).optional(),
-    username: z.string().optional(),
-    user: z.string().optional(),
-    password: z.string().describe('secret:true').optional(),
-    database: z.string().optional(),
-    ssl: z.boolean().optional(),
-  })
-  .refine(
-    (data) => data.connectionUrl || data.host,
-    {
-      message: 'Either connectionUrl or host must be provided',
-    },
-  );
+import { schema } from './schema';
 
-type DriverConfig = z.infer<typeof ConfigSchema>;
+type Config = z.infer<typeof schema>;
 
-export function buildMysqlConfigFromFields(fields: DriverConfig) {
+export function buildMysqlConfigFromFields(fields: Config) {
   // Extract connection URL (either from connectionUrl or build from fields)
   const connectionUrl = extractConnectionUrl(
     fields as Record<string, unknown>,
@@ -117,6 +101,9 @@ function buildMysqlConfig(connectionUrl: string) {
 }
 
 export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
+  const parsedConfig = schema.parse(context.config);
+  const connectionUrl = extractConnectionUrl(parsedConfig as Record<string, unknown>, 'mysql');
+
   const withConnection = async <T>(
     config: { connectionUrl: string },
     callback: (connection: Connection) => Promise<T>,
@@ -153,12 +140,7 @@ export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
   });
 
   return {
-    async testConnection(config: unknown): Promise<void> {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'mysql',
-      );
+    async testConnection(): Promise<void> {
       await withConnection(
         { connectionUrl },
         async (connection) => {
@@ -169,12 +151,7 @@ export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
       context.logger?.info?.('mysql: testConnection ok');
     },
 
-    async metadata(config: unknown): Promise<DatasourceMetadata> {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'mysql',
-      );
+    async metadata(): Promise<DatasourceMetadata> {
       const rows = await withConnection({ connectionUrl }, async (connection) => {
         const [results] = await connection.query(`
           SELECT table_schema,
@@ -199,104 +176,24 @@ export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
         return row[key] ?? row[key.toUpperCase()];
       };
 
-      const tableMap = new Map<string, { id: number; schema: string; name: string; columns: Array<{ id: string; schema: string; table: string; name: string; ordinal_position: number; data_type: string; format: string; is_nullable: boolean }> }>();
-      let tableId = 1;
-
-      for (const row of rows as Array<Record<string, unknown>>) {
-        const schema = String(getValue(row, 'table_schema') ?? '').trim();
-        const tableName = String(getValue(row, 'table_name') ?? '').trim();
-        const columnName = String(getValue(row, 'column_name') ?? '').trim();
-        const dataType = String(getValue(row, 'data_type') ?? '').trim();
-        const ordinal = Number(getValue(row, 'ordinal_position') ?? 0);
-        const isNullable = String(getValue(row, 'is_nullable') ?? 'NO').trim() === 'YES';
-
-        if (!schema || !tableName || !columnName || !dataType || ordinal <= 0) {
-          continue;
-        }
-
-        const key = `${schema}.${tableName}`;
-        if (!tableMap.has(key)) {
-          tableMap.set(key, {
-            id: tableId++,
-            schema,
-            name: tableName,
-            columns: [],
-          });
-        }
-
-        tableMap.get(key)!.columns.push({
-          id: `${schema}.${tableName}.${columnName}`,
-          schema,
-          table: tableName,
-          name: columnName,
-          ordinal_position: ordinal,
-          data_type: dataType,
-          format: dataType,
-          is_nullable: isNullable,
-        });
-      }
-
-      const tables = Array.from(tableMap.values()).map((table) => ({
-        id: table.id,
-        schema: table.schema,
-        name: table.name,
-        rls_enabled: false,
-        rls_forced: false,
-        bytes: 0,
-        size: '0',
-        live_rows_estimate: 0,
-        dead_rows_estimate: 0,
-        comment: null,
-        primary_keys: [],
-        relationships: [],
-      }));
-
-      const columns = Array.from(tableMap.values()).flatMap((table) =>
-        table.columns.map((column) => ({
-          id: column.id,
-          table_id: table.id,
-          schema: column.schema,
-          table: column.table,
-          name: column.name,
-          ordinal_position: column.ordinal_position,
-          data_type: column.data_type,
-          format: column.format,
-          is_identity: false,
-          identity_generation: null,
-          is_generated: false,
-          is_nullable: column.is_nullable,
-          is_updatable: true,
-          is_unique: false,
-          check: null,
-          default_value: null,
-          enums: [],
-          comment: null,
-        })),
+      const normalizedRows = (rows as Array<Record<string, unknown>>).map((row) => ({
+        table_schema: String(getValue(row, 'table_schema') ?? '').trim(),
+        table_name: String(getValue(row, 'table_name') ?? '').trim(),
+        column_name: String(getValue(row, 'column_name') ?? '').trim(),
+        data_type: String(getValue(row, 'data_type') ?? '').trim(),
+        ordinal_position: Number(getValue(row, 'ordinal_position') ?? 0),
+        is_nullable: String(getValue(row, 'is_nullable') ?? 'NO').trim(),
+      })).filter(
+        (r) => r.table_schema && r.table_name && r.column_name && r.data_type && r.ordinal_position > 0,
       );
 
-      const schemas = Array.from(new Set(Array.from(tableMap.values()).map((t) => t.schema))).map(
-        (name, idx) => ({
-          id: idx + 1,
-          name,
-          owner: 'unknown',
-        }),
-      );
-
-      return DatasourceMetadataZodSchema.parse({
-        version: '0.0.1',
+      return buildMetadataFromInformationSchema({
         driver: 'mysql',
-        schemas,
-        tables,
-        columns,
+        rows: normalizedRows,
       });
     },
 
-    async query(sql: string, config: unknown): Promise<DatasourceResultSet> {
-      const parsed = ConfigSchema.parse(config);
-      const connectionUrl = extractConnectionUrl(
-        parsed as Record<string, unknown>,
-        'mysql',
-      );
+    async query(sql: string): Promise<DatasourceResultSet> {
       const startTime = Date.now();
       const result = await withConnection({ connectionUrl }, (connection) =>
         connection.query(sql),

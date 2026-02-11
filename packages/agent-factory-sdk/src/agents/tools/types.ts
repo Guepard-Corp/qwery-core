@@ -6,7 +6,7 @@
  */
 
 import { InferUITool, Tool } from 'ai';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import {
   ChartConfigSchema,
   ChartTypeSelectionSchema,
@@ -24,7 +24,7 @@ export { ChartConfigSchema, ChartTypeSelectionSchema };
 export const SQLQueryResultSchema = z.object({
   result: z.object({
     columns: z.array(z.string()),
-    rows: z.array(z.record(z.unknown())),
+    rows: z.array(z.record(z.string(), z.unknown())),
   }),
   businessContext: z
     .object({
@@ -43,6 +43,7 @@ export const SQLQueryResultSchema = z.object({
         }),
       ),
       vocabulary: z.record(
+        z.string(),
         z.object({
           businessTerm: z.string(),
           technicalTerms: z.array(z.string()),
@@ -75,7 +76,7 @@ export const ViewSheetDataSchema = z.object({
   totalRows: z.number(),
   displayedRows: z.number(),
   columns: z.array(z.string()),
-  rows: z.array(z.record(z.unknown())),
+  rows: z.array(z.record(z.string(), z.unknown())),
   message: z.string(),
 });
 

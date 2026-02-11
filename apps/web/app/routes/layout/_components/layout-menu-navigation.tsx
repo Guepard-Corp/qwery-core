@@ -3,7 +3,7 @@ import {
   BorderedNavigationMenuItem,
 } from '@qwery/ui/bordered-navigation-menu';
 import { NavigationConfigSchema } from '@qwery/ui/navigation-schema';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 import { AccountDropdownContainer } from '~/components/account-dropdown-container';
 import { AppLogo } from '~/components/app-logo';

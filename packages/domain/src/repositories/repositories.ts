@@ -7,6 +7,7 @@ import {
   IUserRepository,
   IMessageRepository,
   IUsageRepository,
+  ITodoRepository,
 } from './index';
 
 export type Repositories = {
@@ -18,4 +19,5 @@ export type Repositories = {
   conversation: IConversationRepository;
   message: IMessageRepository;
   usage: IUsageRepository;
+  todo: ITodoRepository;
 };

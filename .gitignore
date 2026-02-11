@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 build/
+qwery.db/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -70,6 +71,11 @@ web_modules/
 .env
 .env.*
 !.env.example
+
+# Local test scripts with credentials (DO Spaces, etc.)
+scripts/test-do-spaces-duckdb.sql
+packages/agent-factory-sdk/scripts/explore-do-spaces.mjs
+packages/agent-factory-sdk/scripts/upload-test-parquet-do.mjs
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -158,12 +164,6 @@ qwery.db-journal
 qwery.db-wal
 qwery-db-*
 
-# Workspace directories (DuckDB databases and view registries)
-**/workspace/
-packages/agent-factory-sdk/workspace/
-apps/cli/workspace/
-apps/web/workspace/
-
 # Test files (temporary test scripts)
 test-*.txt
 test-*.ts
@@ -179,3 +179,34 @@ packages/agent-factory-sdk/test-business-context/.vscode/
 
 # Evals
 **/packages/agent-factory-sdk/evals
+test.db
+qwery.db
+
+starlight
+
+# Workspace runtime dirs (not source)
+**/workspace/
+/workspace/
+apps/server/workspace/
+apps/cli/workspace/
+apps/web/workspace/
+packages/agent-factory-sdk/workspace/
+# Keep source code workspace dirs
+!apps/cli/src/infrastructure/workspace/
+!apps/web/lib/workspace/
+!packages/domain/src/services/workspace/
+!packages/domain/src/usecases/workspace/
+
+# React Router build output
+**/.react-router/
+
+# Build artifacts
+*.map
+apps/cli/bin/
+apps/cli/dist/
+apps/cli/build/
+
+# TUI investigation / scratch docs
+apps/tui/docs/
+# TUI dev verification scripts (run locally, not shipped)
+apps/tui/scripts/verify-*.ts

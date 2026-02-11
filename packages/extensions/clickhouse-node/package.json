@@ -22,84 +22,14 @@
         "id": "clickhouse-node",
         "name": "ClickHouse (Server)",
         "description": "Connect to ClickHouse databases",
+        "tags": [
+          "SQL"
+        ],
         "icon": "media/ClickHouseLogo_White_FNL.svg",
-        "formConfig": {
-          "preset": "sql",
-          "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
-          "defaultHost": "localhost",
-          "defaultPort": "8123",
-          "connectionFieldKind": "connectionString",
-          "showDetailsTab": true,
-          "showConnectionStringTab": true,
-          "showSslToggle": true,
-          "placeholders": {
-            "port": "8123",
-            "database": "default",
-            "username": "default",
-            "connectionString": "clickhouse://user:pass@host:8123/default or http://host:8123"
-          },
-          "fieldLabels": {
-            "connectionString": "Connection string"
-          }
-        },
-        "schema": {
-          "type": "object",
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "description": "ClickHouse server hostname"
-                },
-                "port": {
-                  "type": "number",
-                  "description": "ClickHouse server port",
-                  "default": 8123
-                },
-                "username": {
-                  "type": "string",
-                  "description": "ClickHouse username",
-                  "default": "default"
-                },
-                "user": {
-                  "type": "string",
-                  "description": "ClickHouse username (alias for username)",
-                  "default": "default"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "ClickHouse password secret:true",
-                  "format": "password"
-                },
-                "database": {
-                  "type": "string",
-                  "description": "ClickHouse database name",
-                  "default": "default"
-                }
-              },
-              "required": [
-                "host"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "connectionUrl": {
-                  "type": "string",
-                  "description": "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port) secret:true",
-                  "format": "uri"
-                }
-              },
-              "required": [
-                "connectionUrl"
-              ]
-            }
-          ]
-        },
         "drivers": [
           "clickhouse.node"
-        ]
+        ],
+        "docsUrl": "https://clickhouse.com/docs/en/interfaces/http"
       }
     ],
     "drivers": [
