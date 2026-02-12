@@ -77,6 +77,7 @@ import { getUserFriendlyToolName } from './ai/utils/tool-name';
 import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
+import type { FeedbackPayload } from './ai/feedback-types';
 
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
@@ -113,6 +114,10 @@ export interface QweryAgentUIProps {
     datasourceId?: string;
   };
   conversationSlug?: string;
+  onSubmitFeedback?: (
+    messageId: string,
+    feedback: FeedbackPayload,
+  ) => Promise<void>;
 }
 
 type UseChatTransport = NonNullable<
@@ -142,6 +147,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     onPasteToNotebook,
     notebookContext,
     conversationSlug,
+    onSubmitFeedback,
   } = props;
 
   const notebookContextRef = useRef(notebookContext);
@@ -782,6 +788,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     onCopyPart={setCopiedMessagePartId}
                     sendMessage={sendMessage}
                     onPasteToNotebook={onPasteToNotebook}
+                    onSubmitFeedback={onSubmitFeedback}
                     renderScrollButton={(scrollToBottom, isAtBottom) =>
                       !isAtBottom ? (
                         <Button

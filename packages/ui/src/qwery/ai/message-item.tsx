@@ -46,6 +46,11 @@ import { getLastTodoPartIndex } from './utils/todo-parts';
 import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
 import { useToolVariant } from './tool-variant-context';
+import { MessageFeedbackButton } from './message-feedback-button';
+import {
+  type FeedbackPayload,
+  getFeedbackFromMetadata,
+} from './feedback-types';
 
 export interface MessageItemProps {
   message: UIMessage;
@@ -84,6 +89,10 @@ export interface MessageItemProps {
     datasourceId: string,
     cellId: number,
   ) => void;
+  onSubmitFeedback?: (
+    messageId: string,
+    feedback: FeedbackPayload,
+  ) => Promise<void>;
 }
 
 function MessageItemComponent({
@@ -108,6 +117,7 @@ function MessageItemComponent({
   onCopyPart,
   sendMessage,
   onPasteToNotebook,
+  onSubmitFeedback,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
   const { variant } = useToolVariant();
@@ -596,6 +606,15 @@ function MessageItemComponent({
                                             <RefreshCcwIcon className="size-3" />
                                           </Button>
                                         )}
+                                      {onSubmitFeedback && (
+                                        <MessageFeedbackButton
+                                          messageId={message.id}
+                                          onSubmitFeedback={onSubmitFeedback}
+                                          existingFeedback={getFeedbackFromMetadata(
+                                            message.metadata,
+                                          )}
+                                        />
+                                      )}
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -697,6 +716,16 @@ function MessageItemComponent({
                                 >
                                   <RefreshCcwIcon className="size-3" />
                                 </Button>
+                              )}
+                            {message.role === 'assistant' &&
+                              onSubmitFeedback && (
+                                <MessageFeedbackButton
+                                  messageId={message.id}
+                                  onSubmitFeedback={onSubmitFeedback}
+                                  existingFeedback={getFeedbackFromMetadata(
+                                    message.metadata,
+                                  )}
+                                />
                               )}
                             <Button
                               variant="ghost"

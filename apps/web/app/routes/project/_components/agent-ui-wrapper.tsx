@@ -27,9 +27,13 @@ import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import type { DatasourceItem } from '@qwery/ui/ai';
 import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
 import { useUpdateConversation } from '~/lib/mutations/use-conversation';
+import { useSubmitFeedback } from '~/lib/mutations/use-submit-feedback';
 import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
 import { PROMPT_SOURCE, NOTEBOOK_CELL_TYPE } from '@qwery/agent-factory-sdk';
 import { useAgentStatus } from '@qwery/ui/ai';
+import type { FeedbackPayload } from '@qwery/ui/ai';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 type SendMessageFn = (
   message: { text: string },
@@ -125,6 +129,7 @@ export const AgentUIWrapper = forwardRef<
   { conversationSlug, initialMessages, isMessagesLoading = false },
   ref,
 ) {
+  const { t } = useTranslation('common');
   const sendMessageRef = useRef<((text: string) => Promise<void>) | null>(null);
   const internalSendMessageRef = useRef<SendMessageFn | null>(null);
   const setMessagesRef = useRef<
@@ -525,6 +530,18 @@ export const AgentUIWrapper = forwardRef<
     [],
   );
 
+  const submitFeedback = useSubmitFeedback(conversationSlug, {
+    onSuccess: () => toast.success(t('feedback.success')),
+    onError: () => toast.error(t('feedback.error')),
+  });
+
+  const handleSubmitFeedback = useCallback(
+    async (messageId: string, feedback: FeedbackPayload) => {
+      await submitFeedback.mutateAsync({ messageId, feedback });
+    },
+    [submitFeedback],
+  );
+
   const handleEmitFinish = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: getUsageKey(conversationSlug, workspace.userId),
@@ -643,6 +660,7 @@ export const AgentUIWrapper = forwardRef<
       datasourcesLoading={datasources.isLoading}
       onSendMessageReady={handleSendMessageReady}
       onPasteToNotebook={pasteHandler || undefined}
+      onSubmitFeedback={handleSubmitFeedback}
       notebookContext={notebookContext}
       isLoading={isLoading}
       conversationSlug={conversationSlug}

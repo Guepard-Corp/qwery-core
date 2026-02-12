@@ -13,6 +13,7 @@ import { createDatasourcesRoutes } from './routes/datasources';
 import { createDriverRoutes } from './routes/driver';
 import { createExtensionsRoutes } from './routes/extensions';
 import { createMessagesRoutes } from './routes/messages';
+import { createFeedbackRoutes } from './routes/feedback';
 import { createNotebooksRoutes } from './routes/notebooks';
 import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
@@ -92,6 +93,7 @@ export function createApp() {
   api.route('/chat', createChatRoutes());
   api.route('/conversations', createConversationsRoutes());
   api.route('/messages', createMessagesRoutes(getRepositories));
+  api.route('/feedback', createFeedbackRoutes(getRepositories));
   api.route('/notebooks', createNotebooksRoutes(getRepositories));
   api.route('/notebook/query', createNotebookQueryRoutes(getRepositories));
   api.route('/usage', createUsageRoutes(getRepositories));

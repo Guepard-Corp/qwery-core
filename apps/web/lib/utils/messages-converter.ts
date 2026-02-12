@@ -30,16 +30,23 @@ export function convertMessages(
       Array.isArray(message.content.parts) &&
       'role' in message.content
     ) {
-      const existingMetadata =
-        'metadata' in message.content
+      const contentMeta =
+        'metadata' in message.content &&
+        message.content.metadata &&
+        typeof message.content.metadata === 'object'
           ? (message.content.metadata as Record<string, unknown>)
+          : {};
+      const rootMeta =
+        message.metadata && typeof message.metadata === 'object'
+          ? (message.metadata as Record<string, unknown>)
           : {};
 
       return {
         id: message.id,
         role: normalizeUIRole(message.content.role),
         metadata: {
-          ...existingMetadata,
+          ...contentMeta,
+          ...rootMeta,
           createdAt,
         },
         parts: message.content.parts as UIMessage['parts'],

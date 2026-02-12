@@ -100,6 +100,17 @@ export {
   type UseConversationListReturn,
 } from './hooks/use-conversation-list';
 
+// Feedback types
+export {
+  type FeedbackPayload,
+  type FeedbackIssueType,
+  type FeedbackPositiveType,
+  type StoredFeedback,
+  FEEDBACK_ISSUE_TYPES,
+  FEEDBACK_POSITIVE_TYPES,
+  getFeedbackFromMetadata,
+} from './feedback-types';
+
 // Virtuoso message list component
 export {
   VirtuosoMessageList,

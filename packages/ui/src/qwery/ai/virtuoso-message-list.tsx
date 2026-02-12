@@ -107,6 +107,7 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.onCopyPart,
       messageItemProps.sendMessage,
       messageItemProps.onPasteToNotebook,
+      messageItemProps.onSubmitFeedback,
     ],
   );
 
