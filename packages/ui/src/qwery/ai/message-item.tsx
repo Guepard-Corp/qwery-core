@@ -87,6 +87,7 @@ export interface MessageItemProps {
   sendMessage?: ReturnType<
     typeof import('@ai-sdk/react').useChat
   >['sendMessage'];
+  onToolApproval?: (approvalId: string, approved: boolean) => void;
   onPasteToNotebook?: (
     sqlQuery: string,
     notebookCellType: NotebookCellType,
@@ -137,6 +138,7 @@ function MessageItemComponent({
   onBeforeSuggestionSend,
   onDatasourceNameClick,
   getDatasourceTooltip,
+  onToolApproval,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
   const { variant } = useToolVariant();
@@ -151,6 +153,11 @@ function MessageItemComponent({
     textParts.length > 0
       ? message.parts.findLastIndex((p) => p.type === 'text')
       : -1;
+
+  const selectedDatasourceItems =
+    datasources && selectedDatasources?.length
+      ? datasources.filter((ds) => selectedDatasources.includes(ds.id))
+      : undefined;
 
   return (
     <div
@@ -881,6 +888,9 @@ function MessageItemComponent({
                               defaultOpenWhenUncontrolled={isLastPart}
                               onPasteToNotebook={onPasteToNotebook}
                               notebookContext={notebookContext}
+                              onToolApproval={onToolApproval}
+                              pluginLogoMap={pluginLogoMap}
+                              selectedDatasourceItems={selectedDatasourceItems}
                             />
                           </div>
                         );
@@ -913,6 +923,9 @@ function MessageItemComponent({
                             }
                             onPasteToNotebook={onPasteToNotebook}
                             notebookContext={notebookContext}
+                            onToolApproval={onToolApproval}
+                            pluginLogoMap={pluginLogoMap}
+                            selectedDatasourceItems={selectedDatasourceItems}
                           />
                         </div>
                       );

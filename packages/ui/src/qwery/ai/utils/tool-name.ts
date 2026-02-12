@@ -11,6 +11,7 @@ export function getUserFriendlyToolName(type: string): string {
     'tool-getSchema': 'Get Schema',
     'tool-getTableSchema': 'Get Table Schema',
     'tool-runQuery': 'Run Query',
+    'tool-runQueries': 'Run Multiple Queries',
     'tool-selectChartType': 'Select Chart Type',
     'tool-generateChart': 'Generate Chart',
     'tool-deleteSheet': 'Delete Sheet',

@@ -88,6 +88,7 @@ CRITICAL - TOOL USAGE RULE:
 - **EFFICIENCY RULE**: Only call getSchema when you truly need to discover tables or get column information. If you already know the table structure from previous getSchema calls or conversation context, query directly with runQuery.
 - If the user asks a question about data and you DON'T know the table structure, call getSchema first, then runQuery.
 - If you already know the table name and structure from previous interactions, query directly with runQuery.
+- **MULTIPLE QUERIES**: When you need to run several independent SQL queries (e.g. row counts for multiple tables, sample rows for several tables), use **runQueries** once with an array of { id?, query, summary? }. The optional summary field should be a concise one-sentence description of what each query does (e.g., "Row count for customers table", "Sample rows from orders"). This summary will be displayed as the query label in the UI. Use **runQuery** only for a single query.
 - Your responses should reflect what the tools return, not what you think they might return.
 
 
@@ -242,7 +243,12 @@ Available tools:
      * **ALWAYS use the queryId** to retrieve results when calling tools like selectChartType or generateChart
      * After calling runQuery, DO NOT repeat the query results in your response - they're already visible in the tool output. Only provide insights, analysis, or answer the user's question based on the data.
 
-6. selectChartType: Selects the best chart type (${getSupportedChartTypes().join(', ')}) for visualizing query results. Uses business context to understand data semantics for better chart selection.
+6. runQueries: Runs multiple SQL queries in one call. Use when you need to execute several independent queries (e.g. COUNT(*) for multiple tables, or LIMIT 5 samples for several tables). Input: queries (array of { id?: string, query: string, summary?: string }).
+  The optional summary field should be a concise one-sentence description of what the query does (e.g., "Row count for customers table", "Sample rows from orders").
+  This summary will be displayed as the query label in the UI. Returns: { results: Array<{ id?, query, summary?, success, data?|error? }>, meta: { total, succeeded, failed } }.
+  Use runQuery for a single query; use runQueries for two or more independent queries.
+
+7. selectChartType: Selects the best chart type (${getSupportedChartTypes().join(', ')}) for visualizing query results. Uses business context to understand data semantics for better chart selection.
    - Input:
      * queryResults: { columns: string[], rows: Array<Record<string, unknown>> } - Extract from runQuery's result
      * sqlQuery: string - The SQL query string you used in runQuery
@@ -261,7 +267,7 @@ Available tools:
    - This tool analyzes the data, user request, and business context to determine the most appropriate chart type
    - MUST be called BEFORE generateChart when creating a visualization
 
-7. generateChart: Generates chart configuration JSON for the selected chart type. Uses business context to create better labels and understand data semantics.
+8. generateChart: Generates chart configuration JSON for the selected chart type. Uses business context to create better labels and understand data semantics.
    - Input:
      * chartType: ${getChartTypesUnionString()} - The chart type selected by selectChartType
      * queryResults: { columns: string[], rows: Array<Record<string, unknown>> } - Extract from runQuery's result

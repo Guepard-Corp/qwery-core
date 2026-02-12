@@ -7,18 +7,20 @@ import { AskAgent, QueryAgent, CompactionAgent, SummaryAgent } from '../agents';
 import { TodoWriteTool, TodoReadTool } from './todo';
 import { WebFetchTool } from './webfetch';
 import { GetSchemaTool } from './get-schema';
+import { RunQueryTool } from './run-query';
+import { RunQueriesTool } from './run-queries';
 import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
 import { getLogger } from '@qwery/shared/logger';
 import { getMcpTools } from '../mcp/client.js';
-import { RunQueryTool } from './run-query';
 import { GetTodoByConversationService } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
 
 const TASK_COMPLETING_TOOL_IDS = new Set([
   'runQuery',
+  'runQueries',
   'getSchema',
   'generateChart',
   'selectChartType',
@@ -68,6 +70,7 @@ function registerTools() {
   //tools.set(TestConnectionTool.id, TestConnectionTool as unknown as ToolInfo);
   tools.set(GetSchemaTool.id, GetSchemaTool as unknown as ToolInfo);
   tools.set(RunQueryTool.id, RunQueryTool as unknown as ToolInfo);
+  tools.set(RunQueriesTool.id, RunQueriesTool as unknown as ToolInfo);
   tools.set(SelectChartTypeTool.id, SelectChartTypeTool as unknown as ToolInfo);
   tools.set(GenerateChartTool.id, GenerateChartTool as unknown as ToolInfo);
   tools.set(GetSkillTool.id, GetSkillTool as unknown as ToolInfo);

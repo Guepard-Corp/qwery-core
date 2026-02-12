@@ -57,6 +57,7 @@ export const RunQueryTool = Tool.define('runQuery', {
         result: null,
         shouldPaste: true,
         sqlQuery: query,
+        executed: false,
       };
     }
 
@@ -132,6 +133,7 @@ export const RunQueryTool = Tool.define('runQuery', {
       return {
         result: fullResult,
         sqlQuery: query,
+        executed: true,
       };
     } finally {
       if (typeof instance.close === 'function') {

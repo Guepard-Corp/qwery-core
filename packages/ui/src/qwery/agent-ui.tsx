@@ -266,6 +266,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     regenerate,
     stop,
     setMessages,
+    addToolApprovalResponse,
   } = useChat<AiSdkUIMessage>({
     messages: initialMessages as unknown as AiSdkUIMessage[] | undefined,
     experimental_throttle: 100,
@@ -1001,6 +1002,9 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     onEditDatasourcesChange={setEditDatasources}
                     onRegenerate={handleRegenerate}
                     onCopyPart={setCopiedMessagePartId}
+                    onToolApproval={(approvalId, approved) =>
+                      addToolApprovalResponse({ id: approvalId, approved })
+                    }
                     sendMessage={sendMessage}
                     onPasteToNotebook={onPasteToNotebook}
                     onSubmitFeedback={onSubmitFeedback}

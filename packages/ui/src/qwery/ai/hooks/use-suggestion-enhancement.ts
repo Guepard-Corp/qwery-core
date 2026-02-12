@@ -192,7 +192,7 @@ export function useSuggestionEnhancement({
               return;
             }
 
-            let omitText = isLastAgentResponse && tagName === 'LI';
+            const omitText = isLastAgentResponse && tagName === 'LI';
 
             if (suggestionMatches && suggestionMatches.length > 1) {
               const { cleanup } = injectMultipleSuggestionButtons(
