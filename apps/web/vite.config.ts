@@ -123,12 +123,6 @@ export default defineConfig(({ command }) => ({
       '/api': {
         target: 'http://localhost:4096',
         changeOrigin: true,
-        bypass(req) {
-          // Keep web app API routes local (server does not have these)
-          const path = req.url ? new URL(req.url, 'http://x').pathname : '';
-          const webOnly = path === '/api/init';
-          if (webOnly && req.url) return req.url;
-        },
       },
     },
   },
