@@ -152,6 +152,114 @@ export const readDataAgent = async (
     supportedConnectors,
   );
 
+  async function runOneQuery(
+    query: string,
+  ): Promise<{
+    result: { columns: string[]; rows: Record<string, unknown>[] };
+    queryId: string;
+  }> {
+    if (!queryEngine) throw new Error('Query engine not available');
+    if (!repositories) throw new Error('Repositories not available');
+    const startTime = performance.now();
+    const orchestration =
+      await datasourceOrchestrationService.ensureAttachedAndCached(
+        {
+          conversationId,
+          repositories,
+          queryEngine,
+          metadataDatasources,
+        },
+        orchestrationResult ?? undefined,
+      );
+    if (orchestration.datasources.length > 0) {
+      const attachedDbNames = new Set(
+        orchestration.datasources.map((d) =>
+          getDatasourceDatabaseName(d.datasource),
+        ),
+      );
+      const tablePaths = extractTablePathsFromQuery(query);
+      const referencedDatasources = new Set<string>();
+      for (const tablePath of tablePaths) {
+        const parts = tablePath.split('.');
+        if (parts.length >= 2 && parts[0])
+          referencedDatasources.add(parts[0]);
+      }
+      const invalidDatasources = Array.from(referencedDatasources).filter(
+        (dbName) => !attachedDbNames.has(dbName),
+      );
+      if (invalidDatasources.length > 0)
+        throw new Error(
+          `Query references unattached datasources: ${invalidDatasources.join(', ')}. Only these datasources are attached: ${Array.from(attachedDbNames).join(', ')}`,
+        );
+    }
+    const schemaCache = orchestration.schemaCache;
+    const tablePaths = extractTablePathsFromQuery(query);
+    const allAvailablePaths =
+      schemaCache.getAllTablePathsFromAllDatasources();
+    const missingTables: string[] = [];
+    for (const tablePath of tablePaths) {
+      if (
+        !schemaCache.hasTablePath(tablePath) &&
+        !allAvailablePaths.includes(tablePath) &&
+        tablePath.includes('.')
+      )
+        missingTables.push(tablePath);
+    }
+    if (missingTables.length > 0)
+      throw new Error(
+        `The following tables are not available in attached datasources: ${missingTables.join(', ')}. Available tables: ${allAvailablePaths.slice(0, 20).join(', ')}${allAvailablePaths.length > 20 ? '...' : ''}. Please check the attached datasources list and use only tables that exist.`,
+      );
+    let rewrittenQuery = query;
+    const replacements: Array<{ from: string; to: string }> = [];
+    for (const tablePath of tablePaths) {
+      const parts = tablePath.split('.');
+      if (parts.length === 3) {
+        const [datasourceName, schemaName, tableName] = parts;
+        if (schemaName !== 'main') {
+          const queryPath =
+            schemaCache.getQueryPathForDisplayPath(tablePath);
+          if (queryPath) replacements.push({ from: tablePath, to: queryPath });
+          else {
+            const constructedQueryPath = `${datasourceName}.main.${tableName}`;
+            if (schemaCache.getAllTablePathsFromAllDatasources().includes(constructedQueryPath))
+              replacements.push({ from: tablePath, to: constructedQueryPath });
+          }
+        }
+      }
+    }
+    for (const { from, to } of replacements) {
+      const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const patterns = [
+        new RegExp(`\\b${escapedFrom}\\b`, 'g'),
+        new RegExp(`"${escapedFrom}"`, 'g'),
+        new RegExp(`'${escapedFrom}'`, 'g'),
+      ];
+      for (const pattern of patterns)
+        rewrittenQuery = rewrittenQuery.replace(pattern, (match) => {
+          if (match.startsWith('"') && match.endsWith('"')) return `"${to}"`;
+          if (match.startsWith("'") && match.endsWith("'")) return `'${to}'`;
+          return to;
+        });
+    }
+    const result = await queryEngine.query(rewrittenQuery);
+    const columnNames = result.columns.map((col) =>
+      typeof col === 'string' ? col : col.name || String(col),
+    );
+    const queryId = storeQueryResult(
+      conversationId,
+      query,
+      columnNames,
+      result.rows,
+    );
+    logger.debug(
+      `[ReadDataAgent] [PERF] runOneQuery took ${(performance.now() - startTime).toFixed(2)}ms, rows: ${result.rows.length}`,
+    );
+    return {
+      result: { columns: columnNames, rows: result.rows },
+      queryId,
+    };
+  }
+
   const result = new Agent({
     model: await resolveModel(model),
     instructions: agentPrompt,
@@ -664,6 +772,7 @@ export const readDataAgent = async (
         inputSchema: z.object({
           query: z.string(),
         }),
+        needsApproval: true,
         execute: async ({ query }) => {
           // TEMPORARY OVERRIDE: When needChart is true AND inline mode, execute query for chart generation
           const isChartRequestInInlineMode =
@@ -696,6 +805,7 @@ export const readDataAgent = async (
               result: null,
               shouldPaste: true,
               sqlQuery: query,
+              executed: false,
             };
           }
 
@@ -708,299 +818,71 @@ export const readDataAgent = async (
             logger.debug('[runQuery] Executing query normally');
           }
 
-          // Normal execution path for chat mode or when needSQL is false
-          const startTime = performance.now();
-
-          if (!queryEngine) {
-            throw new Error('Query engine not available');
-          }
-
-          if (!repositories) {
-            throw new Error('Repositories not available');
-          }
-
-          // Use orchestration service to ensure datasources are attached and cached
-          const orchestration =
-            await datasourceOrchestrationService.ensureAttachedAndCached(
-              {
-                conversationId,
-                repositories,
-                queryEngine,
-                metadataDatasources,
-              },
-              orchestrationResult || undefined,
-            );
-
-          // Validate that query only references attached datasources
-          if (orchestration.datasources.length > 0) {
-            try {
-              // Get attached datasource database names
-              const attachedDbNames = new Set(
-                orchestration.datasources.map((d) =>
-                  getDatasourceDatabaseName(d.datasource),
-                ),
-              );
-
-              // Extract table references from SQL query using proper extraction function
-              const tablePaths = extractTablePathsFromQuery(query);
-              const referencedDatasources = new Set<string>();
-
-              for (const tablePath of tablePaths) {
-                // Extract datasource name (first part before dot)
-                // Handle both formats:
-                // - datasource.schema.table (3 parts)
-                // - datasource.table (2 parts)
-                // - table (1 part - main database, skip validation)
-                const parts = tablePath.split('.');
-                if (parts.length >= 2 && parts[0]) {
-                  // Only validate if table path has at least 2 parts (datasource.table or datasource.schema.table)
-                  // Simple table names without datasource prefix are in main database and don't need validation
-                  const datasourceName = parts[0];
-                  referencedDatasources.add(datasourceName);
-                }
-                // Skip simple table names (no dots) - they're in main database
-              }
-
-              // Check if all referenced datasources are attached
-              const invalidDatasources = Array.from(
-                referencedDatasources,
-              ).filter((dbName) => !attachedDbNames.has(dbName));
-
-              if (invalidDatasources.length > 0) {
-                throw new Error(
-                  `Query references unattached datasources: ${invalidDatasources.join(', ')}. Only these datasources are attached: ${Array.from(attachedDbNames).join(', ')}`,
-                );
-              }
-            } catch (error) {
-              // If validation fails, log but don't block execution (query engine will handle errors)
-              if (
-                error instanceof Error &&
-                error.message.includes('unattached datasources')
-              ) {
-                throw error; // Re-throw validation errors
-              }
-              logger.warn(
-                '[runQuery] Datasource validation failed, continuing with query execution:',
-                error,
-              );
-            }
-          }
-
-          // Sync is handled by ensureAttachedAndCached above
-          const syncTime = 0; // Time is tracked in orchestration service
-
-          // Validate that all table paths in the query exist in attached datasources
-          // Note: We validate the original query paths (display format), not rewritten paths
-          // The rewriting happens after validation
-          try {
-            const schemaCache = orchestration.schemaCache;
-            const tablePaths = extractTablePathsFromQuery(query);
-            const allAvailablePaths =
-              schemaCache.getAllTablePathsFromAllDatasources();
-            const missingTables: string[] = [];
-
-            for (const tablePath of tablePaths) {
-              // Check if table exists in cache (handles both display and query paths)
-              // For ClickHouse, hasTablePath checks both datasource.default.table and datasource.main.table
-              if (
-                !schemaCache.hasTablePath(tablePath) &&
-                !allAvailablePaths.includes(tablePath)
-              ) {
-                // Also check if it's a simple table name that might be in main database
-                const isSimpleName = !tablePath.includes('.');
-                if (!isSimpleName) {
-                  missingTables.push(tablePath);
-                }
-              }
-            }
-
-            if (missingTables.length > 0) {
-              const availablePaths = allAvailablePaths.slice(0, 20).join(', ');
-              throw new Error(
-                `The following tables are not available in attached datasources: ${missingTables.join(', ')}. Available tables: ${availablePaths}${allAvailablePaths.length > 20 ? '...' : ''}. Please check the attached datasources list and use only tables that exist.`,
-              );
-            }
-          } catch (error) {
-            // If validation fails with our custom error, throw it
-            if (
-              error instanceof Error &&
-              error.message.includes('not available in attached datasources')
-            ) {
-              throw error;
-            }
-            // Otherwise, log warning but continue (might be a complex query we can't parse)
-            logger.warn(
-              '[ReadDataAgent] Failed to validate table paths in query:',
-              error,
-            );
-          }
-
-          // Rewrite table paths for ClickHouse (convert default -> main) before execution
-          // For ClickHouse, agent generates queries with datasource.default.table
-          // but DuckDB needs datasource.main.table (SQLite attached databases only support 'main' schema)
-          logger.debug(
-            `[QueryRewrite] Starting rewrite for query: ${query.substring(0, 100)}...`,
-          );
-          let rewrittenQuery = query;
-          const schemaCache = orchestration.schemaCache;
-          const tablePaths = extractTablePathsFromQuery(query);
-          logger.debug(
-            `[QueryRewrite] Extracted ${tablePaths.length} table path(s): ${tablePaths.join(', ')}`,
-          );
-          const replacements: Array<{ from: string; to: string }> = [];
-
-          for (const tablePath of tablePaths) {
-            logger.debug(`[QueryRewrite] Processing table path: ${tablePath}`);
-            // Check if this is a three-part path (datasource.schema.table)
-            const parts = tablePath.split('.');
-            if (parts.length === 3) {
-              const [datasourceName, schemaName, tableName] = parts;
-              logger.debug(
-                `[QueryRewrite] Parsed: datasource=${datasourceName}, schema=${schemaName}, table=${tableName}`,
-              );
-
-              // For ClickHouse, if schema is not 'main', it's a display path that needs rewriting
-              if (schemaName !== 'main') {
-                logger.debug(
-                  `[QueryRewrite] Schema is not 'main', checking if display path exists in cache...`,
-                );
-                const hasPath = schemaCache.hasTablePath(tablePath);
-                logger.debug(
-                  `[QueryRewrite] hasTablePath(${tablePath}) = ${hasPath}`,
-                );
-
-                // Try to get the query path from the mapping first
-                const queryPath =
-                  schemaCache.getQueryPathForDisplayPath(tablePath);
-                logger.debug(
-                  `[QueryRewrite] getQueryPathForDisplayPath(${tablePath}) = ${queryPath || 'null'}`,
-                );
-
-                if (queryPath) {
-                  replacements.push({ from: tablePath, to: queryPath });
-                  logger.debug(
-                    `[QueryRewrite] ✓ Found mapping: ${tablePath} -> ${queryPath}`,
-                  );
-                } else {
-                  // Fallback: construct query path manually and verify it exists
-                  // This handles cases where mapping might not be set up correctly
-                  const constructedQueryPath = `${datasourceName}.main.${tableName}`;
-                  logger.debug(
-                    `[QueryRewrite] Trying fallback: constructed query path = ${constructedQueryPath}`,
-                  );
-                  const allPaths =
-                    schemaCache.getAllTablePathsFromAllDatasources();
-                  logger.debug(
-                    `[QueryRewrite] All available paths (${allPaths.length} total): ${allPaths.slice(0, 10).join(', ')}${allPaths.length > 10 ? '...' : ''}`,
-                  );
-                  const pathExists = allPaths.includes(constructedQueryPath);
-                  logger.debug(
-                    `[QueryRewrite] Path ${constructedQueryPath} exists in cache: ${pathExists}`,
-                  );
-
-                  if (pathExists) {
-                    replacements.push({
-                      from: tablePath,
-                      to: constructedQueryPath,
-                    });
-                    logger.debug(
-                      `[QueryRewrite] ✓ Using fallback: ${tablePath} -> ${constructedQueryPath}`,
-                    );
-                  } else {
-                    logger.warn(
-                      `[QueryRewrite] ✗ Could not find query path for ${tablePath}`,
-                    );
-                    logger.warn(
-                      `[QueryRewrite] Available paths: ${allPaths.slice(0, 10).join(', ')}${allPaths.length > 10 ? '...' : ''}`,
-                    );
-                  }
-                }
-              } else {
-                logger.debug(
-                  `[QueryRewrite] Schema is 'main', no rewriting needed for ${tablePath}`,
-                );
-              }
-            } else {
-              logger.debug(
-                `[QueryRewrite] Path has ${parts.length} parts, skipping (not three-part)`,
-              );
-            }
-          }
-
-          // Apply all replacements
-          if (replacements.length > 0) {
-            for (const { from, to } of replacements) {
-              // Replace with word boundaries to avoid partial matches
-              // Handle both quoted and unquoted identifiers
-              const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const patterns = [
-                new RegExp(`\\b${escapedFrom}\\b`, 'g'), // Unquoted
-                new RegExp(`"${escapedFrom}"`, 'g'), // Double-quoted
-                new RegExp(`'${escapedFrom}'`, 'g'), // Single-quoted
-              ];
-
-              for (const pattern of patterns) {
-                rewrittenQuery = rewrittenQuery.replace(pattern, (match) => {
-                  // Preserve quote style
-                  if (match.startsWith('"') && match.endsWith('"')) {
-                    return `"${to}"`;
-                  }
-                  if (match.startsWith("'") && match.endsWith("'")) {
-                    return `'${to}'`;
-                  }
-                  return to;
-                });
-              }
-            }
-            logger.debug(
-              `[QueryRewrite] Rewrote ${replacements.length} table path(s) for ClickHouse:`,
-              replacements.map((r) => `${r.from} -> ${r.to}`).join(', '),
-            );
-          }
-
-          const queryStartTime = performance.now();
-          const result = await queryEngine.query(rewrittenQuery);
-          const queryTime = performance.now() - queryStartTime;
-          const totalTime = performance.now() - startTime;
-          logger.debug(
-            `[ReadDataAgent] [PERF] runQuery TOTAL took ${totalTime.toFixed(2)}ms (sync: ${syncTime.toFixed(2)}ms, query: ${queryTime.toFixed(2)}ms, rows: ${result.rows.length})`,
-          );
-
-          // Store full results in cache to avoid injecting into agent context
-          const columnNames = result.columns.map((col) =>
-            typeof col === 'string' ? col : col.name || String(col),
-          );
-          // Store original query (not rewritten) for display
-          const queryId = storeQueryResult(
-            conversationId,
-            query,
-            columnNames,
-            result.rows,
-          );
-
-          // Return full results for UI display, but agent should use queryId to avoid token waste
-          // The prompt instructs the agent to ignore the full results and only use queryId
-          const fullResult = {
-            columns: columnNames,
-            rows: result.rows,
-          };
-
-          if (isChartRequestInInlineMode) {
-            // Chart request in inline mode: return full results + SQL for pasting
+          const data = await runOneQuery(query);
+          if (isChartRequestInInlineMode)
             return {
-              result: fullResult,
+              ...data,
               shouldPaste: true,
               sqlQuery: query,
               chartExecutionOverride: true,
-              queryId, // Agent should use this, not the full results
+              executed: true,
             };
-          }
-
-          // Return full results for UI display
-          // Agent prompt instructs to ignore full results and use queryId instead
           return {
-            result: fullResult,
-            queryId, // Agent should use this to retrieve results for tools
+            ...data,
+            executed: true,
+          };
+        },
+      }),
+      runQueries: tool({
+        description:
+          'Run multiple SQL queries in one call. Use this when you need to execute several independent queries (e.g. row counts for multiple tables, sample rows for several tables). Each item can have an optional id to correlate results and an optional summary field (concise one-sentence description of what the query does, e.g., "Row count for customers table"). The summary will be displayed as the query label in the UI. Queries run sequentially; use runQuery for a single query.',
+        inputSchema: z.object({
+          queries: z
+            .array(
+              z.object({
+                id: z.string().optional(),
+                query: z.string(),
+              }),
+            )
+            .min(1),
+        }),
+        execute: async ({ queries }) => {
+          const startTime = Date.now();
+          const results: Array<{
+            id?: string;
+            query: string;
+            success: boolean;
+            data?: unknown;
+            error?: string;
+          }> = [];
+          for (const item of queries) {
+            try {
+              const data = await runOneQuery(item.query);
+              results.push({
+                id: item.id,
+                query: item.query,
+                success: true,
+                data,
+              });
+            } catch (err) {
+              results.push({
+                id: item.id,
+                query: item.query,
+                success: false,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+          const succeeded = results.filter((r) => r.success).length;
+          const durationMs = Date.now() - startTime;
+          return {
+            results,
+            meta: {
+              total: results.length,
+              succeeded,
+              failed: results.length - succeeded,
+              durationMs,
+            },
           };
         },
       }),

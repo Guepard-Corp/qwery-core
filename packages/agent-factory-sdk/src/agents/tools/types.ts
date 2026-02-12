@@ -53,6 +53,9 @@ export const SQLQueryResultSchema = z.object({
     })
     .nullable()
     .optional(),
+  // Indicates whether the query was actually executed against the engine
+  // or only prepared/pasted (e.g. inline SQL planning).
+  executed: z.boolean().optional(),
 });
 
 export const SchemaDataSchema = z.object({
