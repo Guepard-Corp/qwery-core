@@ -1,27 +1,45 @@
-Ignore the build output directory. This is the most important one!
+# Ignore the build output directory. This is the most important one!
 target/
+**/build/
 
-Ignore local environment files.
-.env
-env.example
+# Ignore node_modules - dependencies are installed fresh in the container
+node_modules/
 
-Ignore Git directory and files
+# Ignore local environment files
+**/.env
+**/.env.example
+
+# Ignore Git directory and files
 .git/
 .gitignore
 
-Ignore IDE-specific files
+# Ignore IDE-specific files
 .idea/
 .vscode/
 
-Ignore documentation, scripts, and other non-source files
-that aren't needed in the final image.
+# Ignore test files and config (not needed in production image)
+**/__tests__/
+**/vitest.config.ts
+**/vitest.setup.ts
+**/coverage/
+
+# Ignore system and cache files
+**/.DS_Store
+**/.turbo/
+
+# Ignore local database (created at runtime)
+qwery.db
+**/qwery.db/
+
+# Ignore documentation, scripts, and other non-source files
+# that aren't needed in the final image.
 docs/
 chocolatey/
 Formula/
 snap/
 resources/
-*.md
-*.sh
+**/*.md
+**/*.sh
 Makefile
 LICENCE
 LICENSE_SHORT

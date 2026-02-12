@@ -11,6 +11,7 @@ import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
+import { getLogger } from '@qwery/shared/logger';
 import { getMcpTools } from '../mcp/client.js';
 import { RunQueryTool } from './run-query';
 
@@ -221,13 +222,26 @@ export const Registry = {
 
       const mcpServerUrl = forAgentOptions?.mcpServerUrl;
       if (mcpServerUrl) {
-        const { tools: mcpTools, close } = await getMcpTools(mcpServerUrl, {
-          namePrefix: forAgentOptions?.mcpNamePrefix,
-        });
-        return {
-          tools: { ...result, ...mcpTools },
-          close,
-        };
+        try {
+          const { tools: mcpTools, close } = await getMcpTools(mcpServerUrl, {
+            namePrefix: forAgentOptions?.mcpNamePrefix,
+          });
+          return {
+            tools: { ...result, ...mcpTools },
+            close,
+          };
+        } catch (mcpError) {
+          const logger = await getLogger();
+          logger.warn(
+            {
+              err: mcpError,
+              mcpServerUrl,
+              message:
+                mcpError instanceof Error ? mcpError.message : String(mcpError),
+            },
+            'MCP server unavailable, continuing without MCP tools',
+          );
+        }
       }
 
       return { tools: result };

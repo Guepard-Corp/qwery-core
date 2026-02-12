@@ -11,9 +11,6 @@ const rootRoutes = [
   route('qwery/*', 'routes/ingest.$.ts'),
 ];
 
-// API routes kept in web (driver, extensions, notebook prompt/query); repository traffic goes to apps/server
-const apiRoutes = [route('api/init', 'routes/api/init.ts')];
-
 const appRoutes = layout('routes/layout/layout.tsx', [
   index('routes/index.tsx'),
 ]);
@@ -51,7 +48,6 @@ const catchAllRoute = route('*', 'routes/404.tsx');
 
 export default [
   ...rootRoutes,
-  ...apiRoutes,
   appRoutes,
   organisationsLayout,
   orgRoutes,

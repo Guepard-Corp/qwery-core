@@ -8,7 +8,7 @@ const AppConfigSchema = z
       .string({
         error: (issue) =>
           issue.input === undefined
-            ? 'Please provide the variable VITE_PRODUCT_NAME'
+            ? 'Please provide the value'
             : 'Expected string',
       })
       .min(1),
@@ -16,7 +16,7 @@ const AppConfigSchema = z
       .string({
         error: (issue) =>
           issue.input === undefined
-            ? 'Please provide the variable VITE_SITE_TITLE'
+            ? 'Please provide the value'
             : 'Expected string',
       })
       .min(1),
@@ -91,14 +91,14 @@ const AppConfigSchema = z
   );
 
 const appConfig = AppConfigSchema.parse({
-  name: import.meta.env.VITE_PRODUCT_NAME,
-  title: import.meta.env.VITE_SITE_TITLE,
-  description: import.meta.env.VITE_SITE_DESCRIPTION,
-  url: import.meta.env.VITE_SITE_URL,
-  locale: import.meta.env.VITE_DEFAULT_LOCALE,
-  theme: import.meta.env.VITE_DEFAULT_THEME_MODE,
-  themeColor: import.meta.env.VITE_THEME_COLOR,
-  themeColorDark: import.meta.env.VITE_THEME_COLOR_DARK,
+  name: 'Qwery',
+  title: 'Qwery Data Platform',
+  description: import.meta.env.VITE_SITE_DESCRIPTION || 'Qwery Data Platform',
+  url: import.meta.env.VITE_SITE_URL || 'http://localhost:3000',
+  locale: 'en',
+  theme: 'dark',
+  themeColor: '#ffffff',
+  themeColorDark: '#0a0a0a',
   production,
 });
 

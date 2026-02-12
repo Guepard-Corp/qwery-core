@@ -3,6 +3,7 @@ import { logger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { basicAuth } from 'hono/basic-auth';
 import { DomainException } from '@qwery/domain/exceptions';
+import { getLogger } from '@qwery/shared/logger';
 import { getRepositories } from './lib/repositories';
 import { createChatRoutes } from './routes/chat';
 import { createConversationsRoutes } from './routes/conversations';
@@ -45,7 +46,16 @@ export function createApp() {
 
   app.use('*', logger());
 
-  app.onError((err) => {
+  app.onError(async (err) => {
+    const logger = await getLogger();
+    logger.error(
+      {
+        err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      'Unhandled request error',
+    );
     return handleError(err);
   });
 

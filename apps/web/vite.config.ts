@@ -66,7 +66,29 @@ function wasmMimeTypePlugin(): Plugin {
 const ALLOWED_HOSTS =
   process.env.NODE_ENV === 'development' ? ['host.docker.internal'] : [];
 
+// Polyfill require() in ESM for deps that use it (e.g. turndown -> @mixmark-io/domino)
+function requirePolyfillPlugin(): Plugin {
+  return {
+    name: 'replace-domino-require',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id || !id.includes('node_modules/turndown')) return null;
+      const pattern = /require\(['"]@mixmark-io\/domino['"]\)/g;
+      if (pattern.test(code)) {
+        const replaced = code.replace(pattern, 'undefined');
+        return { code: replaced, map: null };
+      }
+      return null;
+    },
+  };
+}
+
 export default defineConfig(({ command }) => ({
+  resolve: {
+    // Dedupe i18next and react-i18next to ensure single instance across all packages
+    // This is critical for monorepo setups where multiple packages use these libraries
+    dedupe: ['i18next', 'react-i18next', 'react', 'react-dom'],
+  },
   ssr: {
     noExternal:
       command === 'build'
@@ -88,6 +110,7 @@ export default defineConfig(({ command }) => ({
     tsconfigPaths(),
     wasm(),
     topLevelAwait(),
+    requirePolyfillPlugin(),
     ...tailwindCssVitePlugin.plugins,
   ],
   server: {
@@ -121,8 +144,6 @@ export default defineConfig(({ command }) => ({
           return true;
         }
         if (id.startsWith('node:')) return true;
-        if (id.startsWith('@opentelemetry/')) return true;
-        if (id.startsWith('@dqbd/tiktoken')) return true;
         return false;
       },
     },
@@ -134,7 +155,6 @@ export default defineConfig(({ command }) => ({
       '@duckdb/node-api',
       '@duckdb/duckdb-wasm',
       '@qwery/agent-factory-sdk',
-      '@dqbd/tiktoken',
     ],
     include: [
       '@codemirror/state',
@@ -144,6 +164,8 @@ export default defineConfig(({ command }) => ({
       '@codemirror/lang-sql',
       '@codemirror/theme-one-dark',
       '@uiw/react-codemirror',
+      'i18next',
+      'react-i18next',
     ],
     entries: [
       './app/root.tsx',

@@ -37,7 +37,7 @@
   "scripts": {
     "pretest": "pnpm exec playwright install chromium firefox webkit || true",
     "turbo": "turbo",
-    "postinstall": "manypkg fix && node node_modules/.pnpm/electron@39.1.1/node_modules/electron/install.js",
+    "postinstall": "manypkg fix",
     "build": "turbo build --cache-dir=.turbo",
     "clean": "git clean -xdf node_modules dist",
     "clean:workspaces": "turbo clean",
@@ -66,7 +66,9 @@
     "security:react:audit": "ENABLE_PNPM_AUDIT=true ts-node scripts/check-react-vulns.ts",
     "server:dev": "pnpm --filter server dev",
     "web:dev": "pnpm --filter web dev",
-    "tui:dev": "pnpm --filter tui dev"
+    "tui:dev": "pnpm --filter tui dev",
+    "docker:build": "docker buildx build --platform linux/amd64 -t qwery-core -f Dockerfile .",
+    "docker:run": "docker run -p 3000:3000 --env-file apps/server/.env qwery-core"
   },
   "prettier": "@qwery/prettier-config",
   "packageManager": "pnpm@10.18.1",
@@ -84,7 +86,6 @@
       "@duckdb/node-api",
       "@sentry/cli",
       "@tailwindcss/oxide",
-      "better-sqlite3",
       "core-js",
       "core-js-pure",
       "electron",

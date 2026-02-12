@@ -24,17 +24,10 @@ if (existsSync(envPath)) {
   }
 }
 
-const storageEnv =
-  process.env.QWERY_STORAGE_DIR ??
-  process.env.VITE_DATABASE_PATH ??
-  process.env.DATABASE_PATH;
-if (storageEnv && !isAbsolute(storageEnv)) {
-  const resolved = resolve(serverRoot, storageEnv);
-  if (process.env.QWERY_STORAGE_DIR) process.env.QWERY_STORAGE_DIR = resolved;
-  else if (process.env.VITE_DATABASE_PATH)
-    process.env.VITE_DATABASE_PATH = resolved;
-  else if (process.env.DATABASE_PATH) process.env.DATABASE_PATH = resolved;
-}
+const storageDir = process.env.QWERY_STORAGE_DIR ?? 'qwery.db';
+process.env.QWERY_STORAGE_DIR = isAbsolute(storageDir)
+  ? storageDir
+  : resolve(serverRoot, storageDir);
 
 const raw =
   process.env.WORKSPACE?.trim() ||

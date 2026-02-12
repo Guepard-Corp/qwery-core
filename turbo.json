@@ -5,10 +5,7 @@
   ],
   "ui": "stream",
   "globalEnv": [
-    "VITE_STRIPE_PUBLISHABLE_KEY",
-    "VITE_PRODUCT_NAME",
     "VITE_SITE_URL",
-    "VITE_MONITORING_PROVIDER",
     "VITE_SENTRY_DSN",
     "LOGGER"
   ],
