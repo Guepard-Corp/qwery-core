@@ -170,7 +170,9 @@ function DatasourceSelectWithPagination({
       );
     }
     return [...list].sort((a, b) => {
-      const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      const cmp = a.name.localeCompare(b.name, undefined, {
+        sensitivity: 'base',
+      });
       return sortOrder === 'asc' ? cmp : -cmp;
     });
   }, [datasources, search, sortOrder]);
@@ -239,7 +241,7 @@ function DatasourceSelectWithPagination({
                   e.stopPropagation();
                   handleClearSearchOrSelection();
                 }}
-                className="text-muted-foreground hover:text-foreground absolute right-0 top-1/2 flex shrink-0 -translate-y-1/2 rounded p-1 transition-colors"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-0 flex shrink-0 -translate-y-1/2 rounded p-1 transition-colors"
                 aria-label={search.trim() ? 'Clear search' : 'Clear selection'}
               >
                 <X className="h-3.5 w-3.5" />
@@ -281,54 +283,54 @@ function DatasourceSelectWithPagination({
           className="flex shrink-0 flex-col overflow-hidden"
           style={{ height: listHeightPx }}
         >
-            {paginatedDatasources.map((ds) => (
-              <SelectItem key={ds.id} value={ds.id} className="min-h-[32px]">
-                {renderDatasourceOption(ds)}
-              </SelectItem>
-            ))}
-            {paginatedDatasources.length === 0 && (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
-                No datasources found
-              </div>
-            )}
-          </div>
-          {totalPages > 0 && (
-            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-zinc-200/90 px-2 py-1.5 dark:bg-zinc-800/90">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentPage((p) => Math.max(1, p - 1));
-                }}
-                disabled={currentPage === 1}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              <span className="text-muted-foreground text-[10px] font-medium">
-                {currentPage}/{totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentPage((p) => Math.min(totalPages, p + 1));
-                }}
-                disabled={currentPage === totalPages}
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-3 w-3" />
-              </Button>
+          {paginatedDatasources.map((ds) => (
+            <SelectItem key={ds.id} value={ds.id} className="min-h-[32px]">
+              {renderDatasourceOption(ds)}
+            </SelectItem>
+          ))}
+          {paginatedDatasources.length === 0 && (
+            <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
+              No datasources found
             </div>
           )}
+        </div>
+        {totalPages > 0 && (
+          <div className="border-border flex shrink-0 items-center justify-between gap-2 border-t bg-zinc-200/90 px-2 py-1.5 dark:bg-zinc-800/90">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCurrentPage((p) => Math.max(1, p - 1));
+              }}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="text-muted-foreground text-[10px] font-medium">
+              {currentPage}/{totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+              }}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </SelectContent>
     </Select>
   );
@@ -551,7 +553,6 @@ function NotebookCellComponent({
     const exists = datasources.some((ds) => ds.id === primaryId);
     return exists ? primaryId : null;
   }, [cell.datasources, datasources]);
-
 
   useEffect(() => {
     isEditingRef.current = false;
@@ -791,7 +792,7 @@ function NotebookCellComponent({
         </button>
         {(isQueryCell || isPromptCell) && (
           <div
-            className="absolute left-1/2 top-10 flex -translate-x-1/2 justify-center"
+            className="absolute top-10 left-1/2 flex -translate-x-1/2 justify-center"
             aria-hidden
           >
             {isQueryCell && (
@@ -952,7 +953,7 @@ function NotebookCellComponent({
               <>
                 <div
                   ref={editorContainerRef}
-                  className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 border-border shrink-0 max-h-[400px] min-h-[88px] overflow-y-auto border-b [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+                  className="[&_.cm-scroller::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&_.cm-scroller::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 border-border max-h-[400px] min-h-[88px] shrink-0 overflow-y-auto border-b [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                 >
                   <div
                     ref={codeMirrorRef}
