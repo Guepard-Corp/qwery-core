@@ -14,7 +14,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../../../shadcn/chart';
-import { getColorsForBarLine } from './chart-utils';
+import {
+  getColorsForBarLine,
+  resolveChartKeys,
+} from './chart-utils';
+import { validateChartData } from './chart-data-validator';
 import { ChartContext } from './chart-wrapper';
 
 export interface BarChartConfig {
@@ -37,43 +41,26 @@ export function BarChart({ chartConfig }: BarChartProps) {
   const { xKey = 'name', yKey = 'value', colors, labels } = config;
   const { showAxisLabels } = useContext(ChartContext);
 
-  // Validate and fix data keys if needed
-  const { actualXKey, actualYKey } = useMemo(() => {
-    if (!data || data.length === 0) {
-      return { actualXKey: xKey, actualYKey: yKey };
-    }
-    const firstItem = data[0];
-    if (firstItem && typeof firstItem === 'object') {
-      const hasXKey = xKey in firstItem;
-      const hasYKey = yKey in firstItem;
-      if (hasXKey && hasYKey) {
-        return { actualXKey: xKey, actualYKey: yKey };
-      }
-      // Keys don't match, try to find alternatives
-      const availableKeys = Object.keys(firstItem);
-      // Try to find alternative keys
-      const altXKey =
-        availableKeys.find(
-          (k) =>
-            k.toLowerCase().includes('name') ||
-            k.toLowerCase().includes('category') ||
-            k.toLowerCase().includes('label'),
-        ) || availableKeys[0];
-      const altYKey =
-        availableKeys.find(
-          (k) =>
-            k.toLowerCase().includes('value') ||
-            k.toLowerCase().includes('count') ||
-            k.toLowerCase().includes('amount'),
-        ) ||
-        availableKeys[1] ||
-        availableKeys[0];
-      if (altXKey && altYKey && altXKey !== altYKey) {
-        return { actualXKey: altXKey, actualYKey: altYKey };
-      }
-    }
-    return { actualXKey: xKey, actualYKey: yKey };
-  }, [data, xKey, yKey]);
+  const { valid } = validateChartData(data);
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
+
+  const resolvedKeys = useMemo(
+    () =>
+      resolveChartKeys(data, { xKey, yKey }, 'bar') as {
+        xKey: string;
+        yKey: string;
+      },
+    [data, xKey, yKey],
+  );
+
+  const actualXKey = resolvedKeys.xKey;
+  const actualYKey = resolvedKeys.yKey;
 
   const chartColors = useMemo(() => {
     const colorsArray = getColorsForBarLine(colors);
