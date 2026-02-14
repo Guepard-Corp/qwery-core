@@ -1,4 +1,6 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
+import type { DatasourceResultSet } from '@qwery/domain/entities';
+import { driverCommand } from '~/lib/repositories/api-client';
 
 let db: duckdb.AsyncDuckDB | null = null;
 
@@ -52,30 +54,17 @@ async function fetchDataFromServer(
     const driverId =
       format === 'parquet' ? 'parquet-online.duckdb' : 'gsheet-csv.csv';
 
-    const response = await fetch('/api/driver/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'query',
-        datasourceProvider,
-        driverId,
-        config: { url },
-        sql:
-          format === 'parquet'
-            ? `SELECT * FROM read_parquet('${url}') LIMIT ${limit}`
-            : `SELECT * FROM read_csv_auto('${url}') LIMIT ${limit}`,
-      }),
+    const result = await driverCommand<DatasourceResultSet>('query', {
+      datasourceProvider,
+      driverId,
+      config: { url },
+      sql:
+        format === 'parquet'
+          ? `SELECT * FROM read_parquet('${url}') LIMIT ${limit}`
+          : `SELECT * FROM read_csv_auto('${url}') LIMIT ${limit}`,
     });
 
-    const result = await response.json();
-    if (!response.ok || result.error) {
-      return {
-        data: null,
-        error: result.error || `Server error: ${response.statusText}`,
-      };
-    }
-
-    return { data: result.data.rows, error: null };
+    return { data: result.rows ?? null, error: null };
   } catch (error) {
     return {
       data: null,

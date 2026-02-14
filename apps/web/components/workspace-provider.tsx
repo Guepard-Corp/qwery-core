@@ -23,9 +23,13 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
     getWorkspaceFromLocalStorage(),
   );
 
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+
   useEffect(() => {
     const handleStorageChange = () => {
-      setLocalWorkspace(getWorkspaceFromLocalStorage());
+      const updated = getWorkspaceFromLocalStorage();
+      setLocalWorkspace(updated);
+      setWorkspace((prev) => (prev ? { ...prev, ...updated } : null));
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -42,7 +46,6 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
   }, []);
 
   const workspaceQuery = useWorkspaceMode(localWorkspace);
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [repositories, setRepositories] = useState<Repositories | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -74,45 +77,17 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
       try {
         const workspaceService = new WorkspaceService();
         const runtime = await workspaceService.execute();
-        const initResponse = await fetch('/api/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: workspaceQuery.data?.userId ?? '',
-            organizationId: workspaceQuery.data?.organizationId,
-            projectId: workspaceQuery.data?.projectId,
-            mode: workspaceQuery.data?.mode,
-            runtime,
-          }),
-        });
-        if (!initResponse.ok) {
-          const err = await initResponse.json().catch(() => ({}));
-          throw new Error(
-            (err as { error?: string }).error ||
-              `Init failed: ${initResponse.status}`,
-          );
-        }
-        const initializedWorkspace = (await initResponse.json()) as {
-          user: { id: string; username: string };
-          organization?: { id: string };
-          project?: { id: string };
-          isAnonymous: boolean;
-          mode: string;
-          runtime: string;
-        };
 
         const currentStored = getWorkspaceFromLocalStorage();
         const workspaceData: Workspace = {
           id: currentStored.id || uuidv4(),
-          userId: currentStored.userId || initializedWorkspace.user.id,
-          username:
-            currentStored.username || initializedWorkspace.user.username,
-          organizationId: initializedWorkspace.organization?.id,
-          projectId: initializedWorkspace.project?.id,
-          isAnonymous: initializedWorkspace.isAnonymous,
-          mode: (currentStored.mode ||
-            initializedWorkspace.mode) as Workspace['mode'],
-          runtime: initializedWorkspace.runtime as Workspace['runtime'],
+          userId: currentStored.userId,
+          username: currentStored.username,
+          organizationId: currentStored.organizationId,
+          projectId: currentStored.projectId,
+          isAnonymous: currentStored.isAnonymous,
+          mode: currentStored.mode as Workspace['mode'],
+          runtime: runtime,
         };
         setWorkspaceInLocalStorage(workspaceData);
         setWorkspace(workspaceData);

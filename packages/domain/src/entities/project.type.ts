@@ -5,7 +5,7 @@ import { generateIdentity } from '../utils/identity.generator';
 import { CreateProjectInput, UpdateProjectInput } from '../usecases';
 
 export const ProjectSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the project'),
+  id: z.uuid().describe('The unique identifier for the project'),
   organizationId: z
     .string()
     .uuid()

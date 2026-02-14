@@ -12,13 +12,13 @@ import pathsConfig, { createPath } from '~/config/paths.config';
 
 import { ListDatasources } from '../_components/list-datasources';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug as string;
   if (!slug) {
     return { project: null, datasources: [] };
   }
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getProjectService = new GetProjectBySlugService(repositories.project);
   const getDatasourcesService = new GetDatasourcesByProjectIdService(
     repositories.datasource,

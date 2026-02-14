@@ -27,8 +27,8 @@ export const WorkspaceRuntimeSchema = z.nativeEnum(WorkspaceRuntimeEnum);
 export type WorkspaceRuntime = z.infer<typeof WorkspaceRuntimeSchema>;
 
 export const WorkspaceSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the workspace'),
-  userId: z.string().uuid().describe('The id of the user'),
+  id: z.uuid().describe('The unique identifier for the workspace'),
+  userId: z.uuid().describe('The id of the user'),
   username: z
     .string()
     .min(1)
@@ -40,7 +40,7 @@ export const WorkspaceSchema = z.object({
     .uuid()
     .optional()
     .describe('The id of the organization'),
-  projectId: z.string().uuid().optional().describe('The id of the project'),
+  projectId: z.uuid().optional().describe('The id of the project'),
   isAnonymous: z
     .boolean()
     .default(true)

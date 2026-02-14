@@ -6,13 +6,13 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import WelcomePage from './_components/welcome';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug as string;
   if (!slug) {
     return { project: null };
   }
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getProjectService = new GetProjectBySlugService(repositories.project);
 
   try {

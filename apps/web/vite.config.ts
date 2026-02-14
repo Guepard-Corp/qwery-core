@@ -140,6 +140,17 @@ export default defineConfig(({ command }) => ({
         if (id.startsWith('node:')) return true;
         return false;
       },
+      output: {
+        manualChunks: (id) => {
+          // Bundle ai and @ai-sdk/react together so Chat class loads before agent-ui
+          if (
+            id.includes('node_modules/ai/') ||
+            id.includes('node_modules/@ai-sdk/react')
+          ) {
+            return 'ai-sdk';
+          }
+        },
+      },
     },
   },
   optimizeDeps: {
@@ -160,6 +171,7 @@ export default defineConfig(({ command }) => ({
       '@uiw/react-codemirror',
       'i18next',
       'react-i18next',
+      'ai',
     ],
     entries: [
       './app/root.tsx',

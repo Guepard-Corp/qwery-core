@@ -3,8 +3,9 @@ import { Logger as LoggerInstance } from './logger';
 // Use globalThis to avoid importing node:process; that module is externalized in the
 // browser and cannot be accessed in client code. In Node, globalThis.process exists.
 const LOGGER =
-  (typeof globalThis !== 'undefined' && globalThis.process?.env?.LOGGER) ??
-  'pino';
+  typeof globalThis !== 'undefined' && globalThis.process?.env?.LOGGER
+    ? 'pino'
+    : 'console';
 
 /*
  * Logger

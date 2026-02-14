@@ -10,11 +10,8 @@ export enum DatasourceKind {
 }
 
 export const DatasourceSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the datasource'),
-  projectId: z
-    .string()
-    .uuid()
-    .describe('The unique identifier for the project'),
+  id: z.uuid().describe('The unique identifier for the datasource'),
+  projectId: z.uuid().describe('The unique identifier for the project'),
   name: z.string().min(1).max(255).describe('The name of the datasource'),
   description: z
     .string()
@@ -35,8 +32,8 @@ export const DatasourceSchema = z.object({
   updatedAt: z
     .date()
     .describe('The date and time the datasource was last updated'),
-  createdBy: z.string().describe('The user who created the datasource'),
-  updatedBy: z.string().describe('The user who last updated the datasource'),
+  createdBy: z.uuid().describe('The user who created the datasource'),
+  updatedBy: z.uuid().describe('The user who last updated the datasource'),
   isPublic: z
     .boolean()
     .default(false)

@@ -19,10 +19,10 @@ const TUI_TASK_ID = '550e8400-e29b-41d4-a716-446655440001';
 const createBodySchema = z.object({
   title: z.string().optional().default('New Conversation'),
   seedMessage: z.string().optional().default(''),
-  projectId: z.string().uuid().optional(),
-  taskId: z.string().uuid().optional(),
+  projectId: z.uuid().optional(),
+  taskId: z.uuid().optional(),
   datasources: z.array(z.string()).optional().default([]),
-  createdBy: z.string().optional().default('tui'),
+  createdBy: z.uuid().optional().default('tui'),
 });
 
 let repositoriesPromise: Promise<Repositories> | undefined;

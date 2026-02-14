@@ -16,7 +16,7 @@ import { AccountDropdownContainer } from '~/components/account-dropdown-containe
 import pathsConfig from '~/config/paths.config';
 import { createNavigationConfig } from '~/config/project.navigation.config';
 import { createPath } from '~/config/qwery.navigation.config';
-import { Shortcuts } from 'node_modules/@qwery/ui/src/qwery/shortcuts';
+import { Shortcuts } from '@qwery/ui/shortcuts';
 import { useTelemetry, PROJECT_EVENTS } from '@qwery/telemetry';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';

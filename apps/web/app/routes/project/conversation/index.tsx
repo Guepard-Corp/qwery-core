@@ -49,13 +49,13 @@ function formatRelativeTime(date: Date): string {
   return `${day} ${month} ${year} at ${timeStr}`;
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug;
   if (!slug) {
     return { project: null, conversations: [] };
   }
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getProjectService = new GetProjectBySlugService(repositories.project);
   const getConversationsService = new GetConversationsByProjectIdService(
     repositories.conversation,

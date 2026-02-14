@@ -103,18 +103,18 @@ export default function NotebookPage() {
     workspace.projectId as string,
   );
 
-  const { data: pluginMetadata = [] } = useGetDatasourceExtensions();
+  const { data: extensions = [] } = useGetDatasourceExtensions();
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    pluginMetadata.forEach((plugin) => {
+    extensions.forEach((plugin) => {
       if (plugin.icon) {
         map.set(plugin.id, plugin.icon);
       }
     });
 
     return map;
-  }, [pluginMetadata]);
+  }, [extensions]);
 
   // Save notebook mutation
   const saveNotebookMutation = useNotebook(
@@ -366,7 +366,7 @@ export default function NotebookPage() {
               ...(existingConversation.datasources || []),
               datasourceId,
             ],
-            updatedBy: workspace.username || workspace.userId || 'system',
+            updatedBy: workspace.userId,
             updatedAt: new Date(),
           });
         }
@@ -386,8 +386,8 @@ export default function NotebookPage() {
           datasources: [datasourceId],
           createdAt: now,
           updatedAt: now,
-          createdBy: workspace.userId || 'system',
-          updatedBy: workspace.username || workspace.userId || 'system',
+          createdBy: workspace.userId,
+          updatedBy: workspace.userId,
           seedMessage: '',
           isPublic: false,
         });

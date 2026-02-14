@@ -50,6 +50,7 @@ class MockDatasourceRepository implements IDatasourceRepository {
 }
 
 describe('UpdateDatasourceService', () => {
+  const userId = '550e8400-e29b-41d4-a716-446655440001';
   const createTestDatasource = (): Datasource => ({
     id: '550e8400-e29b-41d4-a716-446655440000',
     projectId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
@@ -62,8 +63,8 @@ describe('UpdateDatasourceService', () => {
     config: {},
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
-    createdBy: 'user1',
-    updatedBy: 'user1',
+    createdBy: userId,
+    updatedBy: userId,
   });
 
   it('should update datasource name', async () => {
@@ -247,12 +248,13 @@ describe('UpdateDatasourceService', () => {
     const datasource = createTestDatasource();
     await repository.create(datasource);
 
+    const updatedByUserId = '550e8400-e29b-41d4-a716-446655440002';
     const result = await service.execute({
       id: datasource.id,
       name: 'Updated Name',
-      updatedBy: 'user2',
+      updatedBy: updatedByUserId,
     });
 
-    expect(result.updatedBy).toBe('user2');
+    expect(result.updatedBy).toBe(updatedByUserId);
   });
 });

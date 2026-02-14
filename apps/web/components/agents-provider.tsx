@@ -12,7 +12,7 @@ import {
 } from '@qwery/extensions-sdk';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { getDefaultModel } from '@qwery/agent-factory-sdk';
-import { apiPost } from '~/lib/repositories/api-client';
+import { apiPost, driverCommand } from '~/lib/repositories/api-client';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 interface NotebookPromptResponse {
@@ -111,31 +111,11 @@ export function AgentsProvider({
         metadata = await driverInstance.metadata();
       } else {
         // Handle node drivers (remote datasources) via API
-        const response = await fetch('/api/driver/command', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'metadata',
-            datasourceProvider: datasource.datasource_provider,
-            driverId: driver.id,
-            config: datasource.config,
-          }),
+        metadata = await driverCommand<DatasourceMetadata>('metadata', {
+          datasourceProvider: datasource.datasource_provider,
+          driverId: driver.id,
+          config: datasource.config,
         });
-
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: 'Failed to get datasource metadata' }));
-          throw new Error(error.error || 'Failed to get datasource metadata');
-        }
-
-        const result = await response.json();
-        if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to get datasource metadata');
-        }
-        metadata = result.data;
       }
 
       if (!metadata) {

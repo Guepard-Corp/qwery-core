@@ -26,8 +26,7 @@
     "./usecases": "./src/usecases/index.ts",
     "./protocol": "./src/protocol/index.ts",
     "./ports": "./src/ports/index.ts",
-    "./utils": "./src/utils/index.ts",
-    "./id": "./src/id/index.ts"
+    "./utils": "./src/utils/index.ts"
   },
   "dependencies": {
     "class-transformer": "^0.5.1",

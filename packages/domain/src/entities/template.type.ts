@@ -14,7 +14,7 @@ export const TemplateKindSchema = z.enum([
 export type TemplateKind = z.infer<typeof TemplateKindSchema>;
 
 export const TemplateSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the template'),
+  id: z.uuid().describe('The unique identifier for the template'),
   name: z.string().min(1).max(255).describe('The name of the template'),
   description: z
     .string()

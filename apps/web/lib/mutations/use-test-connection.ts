@@ -4,6 +4,7 @@ import {
   DatasourceExtension,
   type DriverExtension,
 } from '@qwery/extensions-sdk';
+import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
@@ -53,27 +54,19 @@ export function useTestConnection(
         };
       }
 
-      const response = await fetch('/api/driver/command', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'testConnection',
-          datasourceProvider: payload.datasource_provider,
-          driverId: driver?.id,
-          config: payload.config,
-        }),
+      const data = await driverCommand<{
+        connected: boolean;
+        message: string;
+      }>('testConnection', {
+        datasourceProvider: payload.datasource_provider,
+        driverId: driver?.id ?? '',
+        config: payload.config,
       });
 
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: 'Failed to test connection' }));
-        throw new Error(error.error || 'Failed to test connection');
-      }
-
-      return response.json();
+      return {
+        success: true,
+        data,
+      };
     },
     onSuccess,
     onError,

@@ -4,18 +4,15 @@ import { Exclude, Expose, plainToClass } from 'class-transformer';
 import { CreateUsageInput } from '../../usecases';
 
 export const UsageSchema = z.object({
-  id: z
-    .number()
-    .describe('The unique identifier for the action')
-    .default(Date.now()),
+  id: z.uuid().describe('Usage id'),
   conversationId: z
-    .string()
+    .uuid()
     .describe('The unique identifier for the conversation'),
-  projectId: z.string().describe('The unique identifier for the project'),
+  projectId: z.uuid().describe('The unique identifier for the project'),
   organizationId: z
-    .string()
+    .uuid()
     .describe('The unique identifier for the organization'),
-  userId: z.string().describe('The unique identifier for the user'),
+  userId: z.uuid().describe('The unique identifier for the user'),
   model: z.string().describe('The name of the model'),
   inputTokens: z
     .number()
@@ -52,14 +49,18 @@ export const UsageSchema = z.object({
   network: z.number().describe('The network usage in percentage').default(0),
   gpu: z.number().describe('The GPU usage in percentage').default(0),
   storage: z.number().describe('The storage usage in percentage').default(0),
+  timestamp: z
+    .date()
+    .default(new Date())
+    .describe('The timestamp of the usage'),
 });
 
 export type Usage = z.infer<typeof UsageSchema>;
 
 @Exclude()
-export class UsageEntity extends Entity<number, typeof UsageSchema> {
+export class UsageEntity extends Entity<string, typeof UsageSchema> {
   @Expose()
-  declare public id: number;
+  declare public id: string;
   @Expose()
   public conversationId!: string;
   @Expose()
@@ -83,7 +84,23 @@ export class UsageEntity extends Entity<number, typeof UsageSchema> {
   @Expose()
   public cost!: number;
   @Expose()
+  public creditsCap!: number;
+  @Expose()
+  public creditsUsed!: number;
+  @Expose()
+  public cpu!: number;
+  @Expose()
+  public memory!: number;
+  @Expose()
+  public network!: number;
+  @Expose()
+  public gpu!: number;
+  @Expose()
+  public storage!: number;
+  @Expose()
   public contextSize!: number;
+  @Expose()
+  public timestamp!: Date;
 
   public static new(usage: CreateUsageInput): UsageEntity {
     return plainToClass(UsageEntity, UsageSchema.parse(usage), {

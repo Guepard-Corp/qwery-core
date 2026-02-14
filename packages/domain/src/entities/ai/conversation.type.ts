@@ -14,13 +14,13 @@ import {
 } from '../../usecases';
 
 export const ConversationSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the action'),
+  id: z.uuid().describe('The unique identifier for the action'),
   title: z.string().describe('The title of the conversation'),
   seedMessage: z
     .string()
     .optional()
     .describe('The seed message for the conversation'),
-  taskId: z.string().uuid().describe('The unique identifier for the task'),
+  taskId: z.uuid().describe('The unique identifier for the task'),
   projectId: z
     .string()
     .uuid()
@@ -35,8 +35,8 @@ export const ConversationSchema = z.object({
   updatedAt: z
     .date()
     .describe('The date and time the conversation was last updated'),
-  createdBy: z.string().describe('The user who created the conversation'),
-  updatedBy: z.string().describe('The user who last updated the conversation'),
+  createdBy: z.uuid().describe('The user who created the conversation'),
+  updatedBy: z.uuid().describe('The user who last updated the conversation'),
   isPublic: z
     .boolean()
     .default(false)
