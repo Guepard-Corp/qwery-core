@@ -6,7 +6,7 @@ import type { Route } from '~/types/app/routes/organizations/+types/layout';
 
 import { LayoutTopBar } from '../layout/_components/layout-topbar';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

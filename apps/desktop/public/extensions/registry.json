@@ -1,0 +1,340 @@
+{
+  "datasources": [
+    {
+      "id": "clickhouse-node",
+      "name": "ClickHouse (Server)",
+      "description": "Connect to ClickHouse databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/clickhouse-node/ClickHouseLogo_White_FNL.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-clickhouse-node",
+      "drivers": [
+        {
+          "id": "clickhouse.node",
+          "name": "ClickHouse (Server)",
+          "description": "Node runtime ClickHouse driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+      "supportsPreview": false
+    },
+    {
+      "id": "clickhouse-web",
+      "name": "ClickHouse (Browser)",
+      "description": "Connect to ClickHouse databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/clickhouse-web/ClickHouseLogo_White_FNL.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-clickhouse-web",
+      "drivers": [
+        {
+          "id": "clickhouse.web",
+          "name": "ClickHouse (Browser)",
+          "description": "Browser runtime ClickHouse driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "docsUrl": "https://clickhouse.com/docs/en/interfaces/http",
+      "supportsPreview": false
+    },
+    {
+      "id": "csv-online",
+      "name": "CSV (Online)",
+      "description": "Connect to public CSV files via URL",
+      "scope": "datasource",
+      "tags": [
+        "Files"
+      ],
+      "schema": null,
+      "packageName": "@qwery/extension-csv-online",
+      "drivers": [
+        {
+          "id": "csv-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for CSV files",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": null,
+      "supportsPreview": true
+    },
+    {
+      "id": "duckdb",
+      "name": "DuckDB",
+      "description": "Connect to DuckDB databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/duckdb/DuckDB_stack-darkmode.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-duckdb",
+      "drivers": [
+        {
+          "id": "duckdb.default",
+          "name": "DuckDB (Node)",
+          "description": "Default Node runtime DuckDB driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+      "supportsPreview": false
+    },
+    {
+      "id": "duckdb-wasm",
+      "name": "DuckDB (WASM)",
+      "description": "Run DuckDB queries in your browser using WebAssembly",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/duckdb-wasm/DuckDB_stack-darkmode.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-duckdb-wasm",
+      "drivers": [
+        {
+          "id": "duckdb-wasm.default",
+          "name": "DuckDB WASM (Browser)",
+          "description": "Browser runtime DuckDB WASM driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "docsUrl": "https://duckdb.org/docs/connectivity/overview",
+      "supportsPreview": false
+    },
+    {
+      "id": "gsheet-csv",
+      "name": "Google Sheets (CSV)",
+      "description": "Connect to public Google Sheets via CSV export",
+      "scope": "datasource",
+      "tags": [
+        "Files",
+        "SaaS"
+      ],
+      "icon": "/extensions/gsheet-csv/gsheet.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-gsheet-csv",
+      "drivers": [
+        {
+          "id": "gsheet-csv.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for Google Sheets CSV",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://support.google.com/docs/answer/2494822",
+      "supportsPreview": true
+    },
+    {
+      "id": "json-online",
+      "name": "JSON (Online)",
+      "description": "Connect to public JSON files via URL",
+      "scope": "datasource",
+      "tags": [
+        "Files"
+      ],
+      "icon": "/extensions/json-online/json.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-json-online",
+      "drivers": [
+        {
+          "id": "json-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for JSON files",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": null,
+      "supportsPreview": true
+    },
+    {
+      "id": "mysql",
+      "name": "MySQL",
+      "description": "Connect to MySQL databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/mysql/MySQL.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-mysql",
+      "drivers": [
+        {
+          "id": "mysql.default",
+          "name": "MySQL (Node)",
+          "description": "Default Node runtime MySQL driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html",
+      "supportsPreview": false
+    },
+    {
+      "id": "parquet-online",
+      "name": "Parquet (Online)",
+      "description": "Connect to public Parquet files via URL",
+      "scope": "datasource",
+      "tags": [
+        "Files"
+      ],
+      "icon": "/extensions/parquet-online/parquet.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-parquet-online",
+      "drivers": [
+        {
+          "id": "parquet-online.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node runtime DuckDB driver for Parquet files",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": null,
+      "supportsPreview": true
+    },
+    {
+      "id": "pglite",
+      "name": "Embedded PostgreSQL",
+      "description": "Test PostgreSQL queries in your browser using PGlite",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/pglite/pglite.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-pglite",
+      "drivers": [
+        {
+          "id": "pglite.default",
+          "name": "PGlite (Browser)",
+          "description": "Browser runtime PGlite driver",
+          "runtime": "browser",
+          "entry": "driver.js"
+        }
+      ],
+      "docsUrl": "https://github.com/electric-sql/pglite",
+      "supportsPreview": false
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Connect to PostgreSQL databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL"
+      ],
+      "icon": "/extensions/postgresql/postgresql.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html",
+      "supportsPreview": false
+    },
+    {
+      "id": "postgresql-supabase",
+      "name": "Supabase",
+      "description": "Connect to Supabase databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL",
+        "SaaS"
+      ],
+      "icon": "/extensions/postgresql-supabase/supabase-logo-wordmark--dark.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres",
+      "supportsPreview": false
+    },
+    {
+      "id": "postgresql-neon",
+      "name": "Neon",
+      "description": "Connect to Neon databases",
+      "scope": "datasource",
+      "tags": [
+        "SQL",
+        "SaaS"
+      ],
+      "icon": "/extensions/postgresql-neon/neon-logo-dark-color.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-postgresql",
+      "drivers": [
+        {
+          "id": "postgresql.default",
+          "name": "PostgreSQL (Node)",
+          "description": "Default Node runtime PostgreSQL driver",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://neon.tech/docs/connect/connect-intro",
+      "supportsPreview": false
+    },
+    {
+      "id": "s3",
+      "name": "S3 Object Storage",
+      "description": "Connect to S3-compatible storage (AWS, DigitalOcean, MinIO) and query Parquet or JSON files with wildcard filtering",
+      "scope": "datasource",
+      "tags": [
+        "Files",
+        "Storage"
+      ],
+      "icon": "/extensions/s3/s3.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-s3",
+      "drivers": [
+        {
+          "id": "s3.duckdb",
+          "name": "DuckDB (Node)",
+          "description": "Node driver for S3 Parquet/JSON with wildcard support",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": null,
+      "supportsPreview": false
+    },
+    {
+      "id": "youtube-data-api-v3",
+      "name": "YouTube Data API v3",
+      "description": "Query public YouTube video stats via API key",
+      "scope": "datasource",
+      "tags": [
+        "API"
+      ],
+      "icon": "/extensions/youtube-data-api-v3/YouTube_2024.svg",
+      "schema": null,
+      "packageName": "@qwery/extension-youtube-data-api-v3",
+      "drivers": [
+        {
+          "id": "youtube-data-api-v3.default",
+          "name": "YouTube Data API v3 (Node)",
+          "description": "Node runtime driver using googleapis client + DuckDB",
+          "runtime": "node"
+        }
+      ],
+      "docsUrl": "https://developers.google.com/youtube/v3/getting-started",
+      "supportsPreview": false
+    }
+  ]
+}

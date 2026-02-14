@@ -35,7 +35,7 @@ const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
 // LocalStorage key for persisting notebook sidebar open/closed state
 const NOTEBOOK_SIDEBAR_OPEN_KEY = 'notebook-sidebar-open';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

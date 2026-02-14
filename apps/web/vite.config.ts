@@ -6,8 +6,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
+import { execSync } from 'node:child_process';
 
 import tailwindCssVitePlugin from '@qwery/tailwind-config/vite';
+
+const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+const gitHash = execSync('git rev-parse --short HEAD').toString().trim();
 
 // Plugin to set correct MIME type for WASM files and extension drivers
 function wasmMimeTypePlugin(): Plugin {
@@ -84,6 +88,10 @@ function requirePolyfillPlugin(): Plugin {
 }
 
 export default defineConfig(({ command }) => ({
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_GIT_HASH': JSON.stringify(gitHash),
+  },
   resolve: {
     // Dedupe i18next and react-i18next to ensure single instance across all packages
     // This is critical for monorepo setups where multiple packages use these libraries

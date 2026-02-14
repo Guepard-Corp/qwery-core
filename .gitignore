@@ -154,9 +154,11 @@ storybook-static
 # Desktop app
 apps/desktop/release
 apps/desktop/dist
+apps/desktop/src-tauri/binaries
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 qwery-db
 qwery.db-shm

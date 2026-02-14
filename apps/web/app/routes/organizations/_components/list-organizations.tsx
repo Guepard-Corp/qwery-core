@@ -51,8 +51,8 @@ import {
 import { ConfirmDeleteDialog } from '@qwery/ui/qwery/confirm-delete-dialog';
 import { OrganizationCard } from '@qwery/ui/organization';
 
-import pathsConfig, { createPath } from '~/config/paths.config';
-import { useBulkOrganizations } from '~/lib/mutations/use-bulk-operations';
+import pathsConfig, { createPath } from '../../../../config/paths.config';
+import { useBulkOrganizations } from '../../../../lib/mutations/use-bulk-operations';
 import { OrganizationDialog } from './organization-dialog';
 import { BulkActionBar } from '../../_components/bulk-action-bar';
 

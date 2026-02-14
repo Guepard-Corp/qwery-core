@@ -1,6 +1,7 @@
 import type { Usage } from '@qwery/domain/entities';
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import { IUsageRepository } from '@qwery/domain/repositories';
+import { v4 as uuidv4 } from 'uuid';
 import * as Storage from './storage.js';
 
 const ENTITY = 'usage';

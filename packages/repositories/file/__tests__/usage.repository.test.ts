@@ -91,7 +91,9 @@ describe('UsageRepository', () => {
     });
 
     it('returns null when not found', async () => {
-      const result = await repository.findById('999999');
+      const result = await repository.findById(
+        '99999999-9999-9999-9999-999999999999',
+      );
       expect(result).toBeNull();
     });
   });
@@ -200,7 +202,9 @@ describe('UsageRepository', () => {
     });
 
     it('returns false when not found', async () => {
-      const result = await repository.delete('999999');
+      const result = await repository.delete(
+        '99999999-9999-9999-9999-999999999999',
+      );
       expect(result).toBe(false);
     });
   });

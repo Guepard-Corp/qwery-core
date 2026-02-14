@@ -12,7 +12,7 @@ import {
 } from '@qwery/ui/dropdown-menu';
 import { Trans } from '@qwery/ui/trans';
 
-import { createNavigationConfig } from '~/config/qwery.navigation.config';
+import { createNavigationConfig } from '../../../../config/qwery.navigation.config';
 
 export function LayoutMobileNavigation() {
   const params = useParams();

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e293b"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#16a34a"/></linearGradient>
+  </defs>
+  <rect x="16" y="24" width="96" height="80" rx="16" fill="url(#bg)"/>
+  <rect x="26" y="34" width="76" height="8" rx="4" fill="#38bdf8" opacity="0.9"/>
+  <rect x="32" y="52" width="20" height="20" rx="4" fill="url(#green)"/>
+  <rect x="54" y="52" width="20" height="20" rx="4" fill="url(#green)" opacity="0.9"/>
+  <rect x="76" y="52" width="20" height="20" rx="4" fill="url(#green)" opacity="0.8"/>
+  <rect x="32" y="76" width="20" height="12" rx="3" fill="#0ea5e9" opacity="0.9"/>
+  <rect x="54" y="76" width="20" height="12" rx="3" fill="#0ea5e9" opacity="0.8"/>
+  <rect x="76" y="76" width="20" height="12" rx="3" fill="#0ea5e9" opacity="0.7"/>
+</svg>

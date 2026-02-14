@@ -14,10 +14,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@qwery/ui/collapsible';
-import { LogoImage } from '~/components/app-logo';
+import { LogoImage } from '../../components/app-logo';
 
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetProjectById } from '~/lib/queries/use-get-projects';
+import { useWorkspace } from '../../lib/context/workspace-context';
+import { useGetProjectById } from '../../lib/queries/use-get-projects';
 
 function SidebarSkeleton() {
   return (
