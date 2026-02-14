@@ -111,6 +111,9 @@ export {
   getFeedbackFromMetadata,
 } from './feedback-types';
 
+// Context types (for usage display)
+export type { QweryContextProps } from './context';
+
 // Virtuoso message list component
 export {
   VirtuosoMessageList,

@@ -177,6 +177,45 @@ export async function apiPut<T>(
   }
 }
 
+export interface DriverCommandBasePayload {
+  datasourceProvider: string;
+  driverId: string;
+  config: unknown;
+}
+
+export interface DriverCommandQueryPayload extends DriverCommandBasePayload {
+  sql: string;
+}
+
+export type DriverCommandPayload =
+  | DriverCommandBasePayload
+  | DriverCommandQueryPayload;
+
+interface DriverCommandResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export async function driverCommand<T>(
+  action: 'testConnection' | 'query' | 'metadata',
+  payload: DriverCommandPayload,
+  options?: ApiRequestOptions,
+): Promise<T> {
+  const body = { ...payload, action };
+  const result = await apiPost<DriverCommandResponse<T>>(
+    '/driver/command',
+    body,
+    options,
+  );
+
+  if (!result.success || result.data === undefined) {
+    throw new Error(result.error || 'Driver command failed');
+  }
+
+  return result.data;
+}
+
 export async function apiDelete(
   endpoint: string,
   options?: ApiRequestOptions,

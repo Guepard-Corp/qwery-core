@@ -40,11 +40,11 @@ import { DomainException } from '@qwery/domain/exceptions';
 import type { Route } from './+types/settings';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug;
   if (!slug) return { datasource: null };
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getDatasourceService = new GetDatasourceBySlugService(
     repositories.datasource,
   );
@@ -274,6 +274,7 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
                 <h1 className="text-2xl font-semibold tracking-tight">
                   <Trans
                     i18nKey="datasources:view_pageTitle"
+                    values={{ name: extension.data?.name }}
                     defaults={`Edit ${extension.data?.name} Connection`}
                   />
                 </h1>

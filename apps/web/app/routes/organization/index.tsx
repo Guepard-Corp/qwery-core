@@ -11,13 +11,13 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListProjects } from './_components/list-projects';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug;
   if (!slug) {
     return { organization: null, projects: [] };
   }
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getOrgService = new GetOrganizationBySlugService(
     repositories.organization,
   );

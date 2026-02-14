@@ -17,6 +17,7 @@ import {
   useGetProjectById,
 } from '~/lib/queries/use-get-projects';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
+import { updateWorkspaceProjectInLocalStorage } from '~/lib/workspace/workspace-helper';
 
 const STORAGE_KEY = 'qwery:last-project-slug';
 
@@ -124,6 +125,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     else if (isDsRoute && projectFromDs.data?.slug)
       setStoredSlug(projectFromDs.data.slug);
   }, [pathSlug, isDsRoute, projectFromDs.data?.slug]);
+
+  useEffect(() => {
+    if (project?.id && project?.organizationId) {
+      updateWorkspaceProjectInLocalStorage(project.organizationId, project.id);
+    }
+  }, [project?.id, project?.organizationId]);
 
   const value: ProjectContextValue = useMemo(
     () => ({

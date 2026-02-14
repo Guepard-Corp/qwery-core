@@ -100,6 +100,9 @@ class MockConversationRepository implements IConversationRepository {
 describe('CreateMessageService', () => {
   const conversationId = '550e8400-e29b-41d4-a716-446655440000';
   const conversationSlug = 'test-conversation';
+  const userId = '550e8400-e29b-41d4-a716-446655440001';
+  const projectId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+  const taskId = '7ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
   it('should create a new message', async () => {
     const messageRepository = new MockMessageRepository();
@@ -109,14 +112,14 @@ describe('CreateMessageService', () => {
     const conversation: Conversation = {
       id: conversationId,
       slug: conversationSlug,
-      projectId: 'project-id',
-      taskId: 'task-id',
+      projectId,
+      taskId,
       title: 'Test Conversation',
       datasources: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: 'user-id',
-      updatedBy: 'user-id',
+      createdBy: userId,
+      updatedBy: userId,
     };
     await conversationRepository.create(conversation);
 
@@ -130,7 +133,7 @@ describe('CreateMessageService', () => {
         content: { text: 'Hello, world!' },
         role: MessageRole.USER,
         metadata: { source: 'web' },
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -141,7 +144,7 @@ describe('CreateMessageService', () => {
     expect(result.content).toEqual({ text: 'Hello, world!' });
     expect(result.role).toBe(MessageRole.USER);
     expect(result.metadata).toEqual({ source: 'web' });
-    expect(result.createdBy).toBe('user-id');
+    expect(result.createdBy).toBe(userId);
     expect(result.createdAt).toBeInstanceOf(Date);
     expect(result.updatedAt).toBeInstanceOf(Date);
   });
@@ -153,14 +156,14 @@ describe('CreateMessageService', () => {
     const conversation: Conversation = {
       id: conversationId,
       slug: conversationSlug,
-      projectId: 'project-id',
-      taskId: 'task-id',
+      projectId,
+      taskId,
       title: 'Test Conversation',
       datasources: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: 'user-id',
-      updatedBy: 'user-id',
+      createdBy: userId,
+      updatedBy: userId,
     };
     await conversationRepository.create(conversation);
 
@@ -173,7 +176,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'Test' },
         role: MessageRole.ASSISTANT,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -188,14 +191,14 @@ describe('CreateMessageService', () => {
     const conversation: Conversation = {
       id: conversationId,
       slug: conversationSlug,
-      projectId: 'project-id',
-      taskId: 'task-id',
+      projectId,
+      taskId,
       title: 'Test Conversation',
       datasources: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: 'user-id',
-      updatedBy: 'user-id',
+      createdBy: userId,
+      updatedBy: userId,
     };
     await conversationRepository.create(conversation);
 
@@ -208,7 +211,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'Message 1' },
         role: MessageRole.USER,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -217,7 +220,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'Message 2' },
         role: MessageRole.ASSISTANT,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -232,14 +235,14 @@ describe('CreateMessageService', () => {
     const conversation: Conversation = {
       id: conversationId,
       slug: conversationSlug,
-      projectId: 'project-id',
-      taskId: 'task-id',
+      projectId,
+      taskId,
       title: 'Test Conversation',
       datasources: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: 'user-id',
-      updatedBy: 'user-id',
+      createdBy: userId,
+      updatedBy: userId,
     };
     await conversationRepository.create(conversation);
 
@@ -252,7 +255,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'User message' },
         role: MessageRole.USER,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -261,7 +264,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'Agent message' },
         role: MessageRole.ASSISTANT,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });
@@ -270,7 +273,7 @@ describe('CreateMessageService', () => {
       input: {
         content: { text: 'System message' },
         role: MessageRole.SYSTEM,
-        createdBy: 'user-id',
+        createdBy: userId,
       },
       conversationSlug,
     });

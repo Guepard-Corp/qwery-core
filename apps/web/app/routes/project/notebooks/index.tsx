@@ -11,13 +11,13 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListNotebooks } from '../_components/list-notebooks';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug;
   if (!slug) {
     return { project: null, notebooks: [] };
   }
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getProjectService = new GetProjectBySlugService(repositories.project);
   const getNotebooksService = new GetNotebooksByProjectIdService(
     repositories.notebook,

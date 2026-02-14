@@ -7,13 +7,6 @@ const ENTITY = 'usage';
 
 type Row = Record<string, unknown>;
 
-function generateTimestampId(): number {
-  const baseTime = Date.now();
-  const hrtime = process.hrtime();
-  const microseconds = Math.floor(hrtime[1] / 1000);
-  return baseTime * 1_000_000 + microseconds;
-}
-
 function serialize(usage: Usage): Row {
   return {
     id: usage.id,
@@ -36,12 +29,13 @@ function serialize(usage: Usage): Row {
     network: usage.network ?? 0,
     gpu: usage.gpu ?? 0,
     storage: usage.storage ?? 0,
+    timestamp: usage.timestamp ?? new Date(),
   };
 }
 
 function deserialize(row: Row): Usage {
   return {
-    id: row.id as number,
+    id: row.id as string,
     conversationId: row.conversationId as string,
     projectId: row.projectId as string,
     organizationId: row.organizationId as string,
@@ -61,6 +55,7 @@ function deserialize(row: Row): Usage {
     network: (row.network as number) ?? 0,
     gpu: (row.gpu as number) ?? 0,
     storage: (row.storage as number) ?? 0,
+    timestamp: (row.timestamp as Date) ?? new Date(),
   };
 }
 
@@ -70,7 +65,7 @@ export class UsageRepository extends IUsageRepository {
     const items = await Promise.all(
       keys.map((key) => Storage.read<Row>(key).then(deserialize)),
     );
-    items.sort((a, b) => b.id - a.id);
+    items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     const offset = options?.offset ?? 0;
     const limit = options?.limit;
     return limit ? items.slice(offset, offset + limit) : items.slice(offset);
@@ -92,7 +87,7 @@ export class UsageRepository extends IUsageRepository {
   async findByConversationId(conversationId: string): Promise<Usage[]> {
     const all = await this.findAll();
     const filtered = all.filter((u) => u.conversationId === conversationId);
-    filtered.sort((a, b) => b.id - a.id);
+    filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     return filtered;
   }
 
@@ -110,13 +105,8 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async create(entity: Usage): Promise<Usage> {
-    const entityWithId = {
-      ...entity,
-      id: entity.id && entity.id > 0 ? entity.id : generateTimestampId(),
-    };
-    const key = String(entityWithId.id);
-    await Storage.write([ENTITY, key], serialize(entityWithId));
-    return entityWithId;
+    await Storage.write([ENTITY, entity.id], serialize(entity));
+    return entity;
   }
 
   async update(entity: Usage): Promise<Usage> {

@@ -13,11 +13,11 @@ import { DomainException } from '@qwery/domain/exceptions';
 import type { Route } from './+types/table';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const slug = params.slug as string;
+export async function loader(args: Route.LoaderArgs) {
+  const slug = args.params.slug;
   if (!slug) return { datasource: null };
 
-  const repositories = await getRepositoriesForLoader();
+  const repositories = await getRepositoriesForLoader(args.request);
   const getDatasourceService = new GetDatasourceBySlugService(
     repositories.datasource,
   );

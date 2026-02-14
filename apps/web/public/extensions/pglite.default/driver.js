@@ -22889,8 +22889,8 @@ var DatasourceKind = /* @__PURE__ */ ((DatasourceKind2) => {
   return DatasourceKind2;
 })(DatasourceKind || {});
 var DatasourceSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the datasource"),
-  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
+  id: external_exports.uuid().describe("The unique identifier for the datasource"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
   name: external_exports.string().min(1).max(255).describe("The name of the datasource"),
   description: external_exports.string().min(1).max(1024).describe("The description of the datasource"),
   slug: external_exports.string().min(1).describe("The slug of the datasource"),
@@ -22903,7 +22903,7 @@ var DatasourceSchema = external_exports.object({
   createdBy: external_exports.string().describe("The user who created the datasource"),
   updatedBy: external_exports.string().describe("The user who last updated the datasource"),
   isPublic: external_exports.boolean().default(false).describe("If true, this datasource is publicly viewable"),
-  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this datasource was remixed from another datasource")
+  remixedFrom: external_exports.uuid().optional().nullable().describe("If set, this datasource was remixed from another datasource")
 });
 var DatasourceEntity = class extends Entity {
   static create(newDatasource) {
@@ -23022,8 +23022,8 @@ var CellSchema = external_exports.object({
   title: external_exports.string().optional().describe("The optional title of the cell")
 });
 var NotebookSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the notebook"),
-  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
+  id: external_exports.uuid().describe("The unique identifier for the notebook"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
   title: external_exports.string().min(1).max(255).describe("The title of the notebook"),
   description: external_exports.string().min(1).max(1024).optional().describe("The description of the notebook"),
   slug: external_exports.string().min(1).describe("The slug of the notebook"),
@@ -23032,9 +23032,9 @@ var NotebookSchema = external_exports.object({
   updatedAt: external_exports.date().describe("The date and time the notebook was last updated"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the Notebook"),
   cells: external_exports.array(CellSchema),
-  createdBy: external_exports.string().uuid().optional().describe("The user who created the notebook"),
+  createdBy: external_exports.uuid().optional().describe("The user who created the notebook"),
   isPublic: external_exports.boolean().default(false).describe("If true, this notebook is publicly viewable"),
-  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this notebook was remixed from another notebook")
+  remixedFrom: external_exports.uuid().optional().nullable().describe("If set, this notebook was remixed from another notebook")
 });
 var NotebookEntity = class extends Entity {
   static create(newNotebook) {
@@ -23145,11 +23145,11 @@ var WorkspaceRuntimeEnum = /* @__PURE__ */ ((WorkspaceRuntimeEnum2) => {
 var WorkspaceModeSchema = external_exports.nativeEnum(WorkspaceModeEnum);
 var WorkspaceRuntimeSchema = external_exports.nativeEnum(WorkspaceRuntimeEnum);
 var WorkspaceSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the workspace"),
-  userId: external_exports.string().uuid().describe("The id of the user"),
+  id: external_exports.uuid().describe("The unique identifier for the workspace"),
+  userId: external_exports.uuid().describe("The id of the user"),
   username: external_exports.string().min(1).max(255).default("anonymous").describe("The username of the user"),
-  organizationId: external_exports.string().uuid().optional().describe("The id of the organization"),
-  projectId: external_exports.string().uuid().optional().describe("The id of the project"),
+  organizationId: external_exports.uuid().optional().describe("The id of the organization"),
+  projectId: external_exports.uuid().optional().describe("The id of the project"),
   isAnonymous: external_exports.boolean().default(true).describe("Whether the user is anonymous"),
   mode: WorkspaceModeSchema.describe("The mode of the workspace"),
   runtime: WorkspaceRuntimeSchema.describe("The runtime of the workspace")
@@ -23157,10 +23157,10 @@ var WorkspaceSchema = external_exports.object({
 
 // packages/domain/src/entities/organization.type.ts
 var OrganizationSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The id of the organization"),
+  id: external_exports.uuid().describe("The id of the organization"),
   name: external_exports.string().describe("The name of the organization"),
   slug: external_exports.string().min(1).describe("The slug of the organization"),
-  userId: external_exports.string().uuid().describe("The id of the user who is the owner of the organization"),
+  userId: external_exports.uuid().describe("The id of the user who is the owner of the organization"),
   // timestamps
   createdAt: external_exports.date().describe("The date and time the organization was created"),
   updatedAt: external_exports.date().describe("The date and time the organization was last updated"),
@@ -23237,8 +23237,8 @@ OrganizationEntity = __decorateClass([
 
 // packages/domain/src/entities/project.type.ts
 var ProjectSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the project"),
-  organizationId: external_exports.string().uuid().describe("The unique identifier for the organisation"),
+  id: external_exports.uuid().describe("The unique identifier for the project"),
+  organizationId: external_exports.uuid().describe("The unique identifier for the organisation"),
   name: external_exports.string().min(1).max(255).describe("The name of the project"),
   slug: external_exports.string().min(1).describe("The slug of the project"),
   description: external_exports.string().min(1).max(1024).optional().describe("The description of the project"),
@@ -23326,7 +23326,7 @@ var Roles = /* @__PURE__ */ ((Roles2) => {
 // packages/domain/src/entities/user.type.ts
 var UserRoleSchema = external_exports.nativeEnum(Roles).default("USER" /* USER */);
 var UserSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the user"),
+  id: external_exports.uuid().describe("The unique identifier for the user"),
   username: external_exports.string().min(1).max(32).regex(/^[a-zA-Z0-9-]+$/, {
     message: "Username must contain only alphanumeric characters and dashes"
   }).describe("The name of the user (alphanumeric and dashes only)"),
@@ -23371,7 +23371,7 @@ var TemplateKindSchema = external_exports.enum([
   "report"
 ]);
 var TemplateSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the template"),
+  id: external_exports.uuid().describe("The unique identifier for the template"),
   name: external_exports.string().min(1).max(255).describe("The name of the template"),
   description: external_exports.string().min(1).max(1024).describe("The description of the template"),
   slug: external_exports.string().min(1).describe("The slug of the template"),
@@ -23385,7 +23385,7 @@ var TemplateSchema = external_exports.object({
 
 // packages/domain/src/entities/ai/agent.type.ts
 var AgentSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the agent"),
+  id: external_exports.uuid().describe("The unique identifier for the agent"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   description: external_exports.string().min(1).max(1024).describe("The description of the agent"),
   role: external_exports.string().min(1).max(255).describe("The role of the agent"),
@@ -23430,7 +23430,7 @@ AgentEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/action.type.ts
 var ActionSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23457,7 +23457,7 @@ ActionEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/context.type.ts
 var ContextSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23484,11 +23484,11 @@ ContextEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/conversation.type.ts
 var ConversationSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   title: external_exports.string().describe("The title of the conversation"),
   seedMessage: external_exports.string().optional().describe("The seed message for the conversation"),
-  taskId: external_exports.string().uuid().describe("The unique identifier for the task"),
-  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
+  taskId: external_exports.uuid().describe("The unique identifier for the task"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
   slug: external_exports.string().describe("The slug of the conversation"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the conversation"),
   createdAt: external_exports.date().describe("The date and time the conversation was created"),
@@ -23496,7 +23496,7 @@ var ConversationSchema = external_exports.object({
   createdBy: external_exports.string().describe("The user who created the conversation"),
   updatedBy: external_exports.string().describe("The user who last updated the conversation"),
   isPublic: external_exports.boolean().default(false).describe("If true, this conversation is publicly viewable"),
-  remixedFrom: external_exports.string().uuid().optional().nullable().describe(
+  remixedFrom: external_exports.uuid().optional().nullable().describe(
     "If set, this conversation was remixed from another conversation"
   )
 });
@@ -23589,7 +23589,7 @@ ConversationEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/memory.type.ts
 var MemorySchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23660,8 +23660,8 @@ var MessageMetadataSchema = external_exports.object({
   }).optional()
 }).passthrough();
 var MessageSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
-  conversationId: external_exports.string().uuid().describe("The unique identifier for the conversation"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  conversationId: external_exports.uuid().describe("The unique identifier for the conversation"),
   content: MessageContentSchema.describe("The content of the message"),
   role: external_exports.nativeEnum(MessageRole).describe("The role of the message"),
   metadata: MessageMetadataSchema.describe("The metadata of the message"),
@@ -23732,7 +23732,7 @@ MessageEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/model.type.ts
 var ModelSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23759,7 +23759,7 @@ ModelEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/observation.type.ts
 var ObservationSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23786,7 +23786,7 @@ ObservationEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/outcome.type.ts
 var OutcomeSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23813,7 +23813,7 @@ OutcomeEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/plan.type.ts
 var PlanSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23840,7 +23840,7 @@ PlanEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/prompt.type.ts
 var PromptSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23867,7 +23867,7 @@ PromptEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/task.type.ts
 var TaskSchema = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
@@ -23978,7 +23978,7 @@ var TodoSchema = external_exports.array(TodoItemSchema);
 
 // packages/domain/src/entities/ai/workspace.type.ts
 var WorkspaceSchema2 = external_exports.object({
-  id: external_exports.string().uuid().describe("The unique identifier for the action"),
+  id: external_exports.uuid().describe("The unique identifier for the action"),
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),

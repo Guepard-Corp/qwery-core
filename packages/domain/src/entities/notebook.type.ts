@@ -32,7 +32,7 @@ type Cell = z.infer<typeof CellSchema>;
  * This schema is used to validate the notebook data
  */
 const NotebookSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the notebook'),
+  id: z.uuid().describe('The unique identifier for the notebook'),
   projectId: z
     .string()
     .uuid()

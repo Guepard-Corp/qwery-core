@@ -255,8 +255,8 @@ export const MessageSchema = z.object({
   updatedAt: z
     .date()
     .describe('The date and time the message was last updated'),
-  createdBy: z.string().describe('The user who created the message'),
-  updatedBy: z.string().describe('The user who last updated the message'),
+  createdBy: z.uuid().describe('The user who created the message'),
+  updatedBy: z.uuid().describe('The user who last updated the message'),
 });
 
 export type Message = z.infer<typeof MessageSchema>;

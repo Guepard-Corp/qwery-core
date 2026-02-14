@@ -8,6 +8,7 @@ import {
   DatasourceExtension,
   type DriverExtension,
 } from '@qwery/extensions-sdk';
+import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
@@ -79,36 +80,12 @@ export function useRunQuery(
 
       // Handle node drivers (remote datasources) via API
       if (runtime === 'node') {
-        const response = await fetch('/api/driver/command', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'query',
-            datasourceProvider: datasource.datasource_provider,
-            driverId: driver.id,
-            config: datasource.config,
-            sql: query,
-          }),
+        return driverCommand<DatasourceResultSet>('query', {
+          datasourceProvider: datasource.datasource_provider,
+          driverId: driver.id,
+          config: datasource.config,
+          sql: query,
         });
-
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: 'Failed to execute query' }));
-          throw new Error(error.error || 'Failed to execute query');
-        }
-
-        const apiResult = await response.json();
-        if (!apiResult.success || !apiResult.data) {
-          throw new Error(
-            apiResult.error || 'Query execution failed on server',
-          );
-        }
-
-        const result = apiResult.data as DatasourceResultSet;
-        return result;
       }
 
       throw new Error(`Unsupported driver runtime: ${runtime}`);

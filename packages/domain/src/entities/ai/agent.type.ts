@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Exclude, Expose } from 'class-transformer';
 
 export const AgentSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the agent'),
+  id: z.uuid().describe('The unique identifier for the agent'),
   name: z.string().min(1).max(255).describe('The name of the agent'),
   description: z
     .string()
@@ -15,8 +15,8 @@ export const AgentSchema = z.object({
   policies: z.array(z.string()).describe('The policies of the agent'),
   createdAt: z.date().describe('The date and time the agent was created'),
   updatedAt: z.date().describe('The date and time the agent was last updated'),
-  createdBy: z.string().describe('The user who created the agent'),
-  updatedBy: z.string().describe('The user who last updated the agent'),
+  createdBy: z.uuid().describe('The user who created the agent'),
+  updatedBy: z.uuid().describe('The user who last updated the agent'),
 });
 
 export type Agent = z.infer<typeof AgentSchema>;

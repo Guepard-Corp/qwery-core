@@ -8,7 +8,7 @@ export const UserRoleSchema = z.nativeEnum(Roles).default(Roles.USER);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserSchema = z.object({
-  id: z.string().uuid().describe('The unique identifier for the user'),
+  id: z.uuid().describe('The unique identifier for the user'),
   username: z
     .string()
     .min(1)

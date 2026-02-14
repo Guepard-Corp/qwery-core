@@ -38,3 +38,23 @@ export function setWorkspaceInLocalStorage(workspace: Workspace) {
   }
   localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
 }
+
+/**
+ * Updates the workspace's organizationId and projectId in localStorage.
+ * Dispatches 'workspace-updated' so WorkspaceProvider picks up the change.
+ * Use when the user navigates to a project so the next visit redirects correctly.
+ */
+export function updateWorkspaceProjectInLocalStorage(
+  organizationId: string,
+  projectId: string,
+): void {
+  const current = getWorkspaceFromLocalStorage();
+  setWorkspaceInLocalStorage({
+    ...current,
+    organizationId,
+    projectId,
+  });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('workspace-updated'));
+  }
+}

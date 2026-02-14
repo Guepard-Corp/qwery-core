@@ -10,7 +10,7 @@ import { CreateOrganizationInput, UpdateOrganizationInput } from '../usecases';
  * This schema is used to validate the organization data
  */
 export const OrganizationSchema = z.object({
-  id: z.string().uuid().describe('The id of the organization'),
+  id: z.uuid().describe('The id of the organization'),
   name: z.string().describe('The name of the organization'),
   slug: z.string().min(1).describe('The slug of the organization'),
   userId: z

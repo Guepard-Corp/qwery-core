@@ -20,7 +20,7 @@ import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
 import { convertMessages } from '~/lib/utils/messages-converter';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
-import { QweryContextProps } from 'node_modules/@qwery/ui/src/qwery/ai/context';
+import type { QweryContextProps } from '@qwery/ui/ai';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
@@ -216,7 +216,7 @@ export const AgentUIWrapper = forwardRef<
         {
           id: conversation.id,
           datasources: [cellDatasource],
-          updatedBy: workspace.username || workspace.userId || 'system',
+          updatedBy: workspace.userId,
         },
         {
           onSuccess: () => {
@@ -366,8 +366,7 @@ export const AgentUIWrapper = forwardRef<
                   {
                     id: conversation.id,
                     datasources: datasourcesToUse,
-                    updatedBy:
-                      workspace.username || workspace.userId || 'system',
+                    updatedBy: workspace.userId,
                   },
                   {
                     onSuccess: () => {
@@ -573,7 +572,7 @@ export const AgentUIWrapper = forwardRef<
             {
               id: conversation.id,
               datasources: datasourceIds,
-              updatedBy: workspace.username || workspace.userId || 'system',
+              updatedBy: workspace.userId,
             },
             {
               onSuccess: () => {

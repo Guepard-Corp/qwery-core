@@ -5,6 +5,7 @@ import {
   DatasourceExtension,
   type DriverExtension,
 } from '@qwery/extensions-sdk';
+import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { useGetDatasourceExtensions } from './use-get-extension';
 
@@ -70,31 +71,11 @@ export function useGetDatasourceMetadata(
 
       // Handle node drivers (remote datasources) via API
       if (runtime === 'node') {
-        const response = await fetch('/api/driver/command', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'metadata',
-            datasourceProvider: datasource.datasource_provider,
-            driverId: driver.id,
-            config: datasource.config,
-          }),
+        return driverCommand<DatasourceMetadata>('metadata', {
+          datasourceProvider: datasource.datasource_provider,
+          driverId: driver.id,
+          config: datasource.config,
         });
-
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: 'Failed to get datasource metadata' }));
-          throw new Error(error.error || 'Failed to get datasource metadata');
-        }
-
-        const result = await response.json();
-        if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to get datasource metadata');
-        }
-        return result.data;
       }
 
       throw new Error(`Unsupported driver runtime: ${runtime}`);
