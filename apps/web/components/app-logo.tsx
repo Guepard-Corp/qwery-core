@@ -2,8 +2,8 @@ import { useId, useMemo } from 'react';
 import { Link } from 'react-router';
 
 import { cn } from '@qwery/ui/utils';
-import { getWorkspaceFromLocalStorage } from '~/lib/workspace/workspace-helper';
-import pathsConfig from '~/config/paths.config';
+import { getWorkspaceFromLocalStorage } from '../lib/workspace/workspace-helper';
+import pathsConfig from '../config/paths.config';
 
 export function LogoImage({
   className,

@@ -27,7 +27,7 @@ async function ensureDir(): Promise<string> {
 }
 
 function keyToPath(dir: string, key: string[]): string {
-  return path.join(dir, ...key) + '.json';
+  return path.join(dir, ...key.map(String)) + '.json';
 }
 
 async function withErrorHandling<T>(body: () => Promise<T>): Promise<T> {

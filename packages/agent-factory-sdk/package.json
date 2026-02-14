@@ -71,6 +71,7 @@
     "@tanstack/react-query": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/turndown": "^5.0.6",
     "@vitest/coverage-istanbul": "catalog:",
     "eslint": "^9.39.0",
     "lucide-react": "^0.552.0",

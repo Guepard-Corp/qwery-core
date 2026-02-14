@@ -1,43 +1,40 @@
 {
   "name": "desktop",
-  "description": "Qwery Studio Desktop Application",
-  "author": {
-    "url": "https://guepard.run",
-    "name": "Guepard Inc."
-  },
-  "private": false,
+  "private": true,
   "version": "0.1.0",
-  "main": "dist/main.js",
-  "type": "commonjs",
-  "sideEffects": false,
+  "type": "module",
   "scripts": {
-    "clean": "rimraf dist release tsconfig.tsbuildinfo",
-    "compile": "cross-env NODE_ENV=production tsc -p tsconfig.json",
-    "compile:watch": "cross-env NODE_ENV=development tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "prepare:renderer": "node ./scripts/prepare-renderer.mjs",
-    "build": "pnpm clean && pnpm i && pnpm --filter web build && pnpm compile && pnpm prepare:renderer",
-    "dev": "concurrently -c cyan,magenta -n compile,electron \"pnpm compile:watch\" \"pnpm start:electron\"",
-    "dev:standalone": "concurrently -c cyan,magenta,green -n compile,electron,renderer \"pnpm compile:watch\" \"pnpm start:electron\" \"pnpm --filter web dev\"",
-    "start:electron": "wait-on file:dist/main.js http-get://localhost:3000 --timeout 60000 && cross-env NODE_ENV=development nodemon --watch dist --ext js --exec \"electron dist/main.js\"",
-    "package": "pnpm build && electron-builder -c electron-builder.yml",
-    "start": "pnpm build && cross-env NODE_ENV=production electron dist/main.js"
+    "dev": "react-router dev",
+    "build": "pnpm -w run extensions:build && tsc && react-router build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@qwery/ui": "workspace:*",
+    "@react-router/node": "^7.13.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "isbot": "^5.1.31",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-router": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
     "@qwery/prettier-config": "workspace:*",
     "@qwery/tailwind-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
-    "concurrently": "^9.1.0",
-    "cross-env": "^10.1.0",
-    "electron": "39.1.1",
-    "electron-builder": "^25.1.8",
-    "eslint": "^9.39.0",
-    "nodemon": "^3.1.9",
-    "rimraf": "^6.0.1",
+    "@react-router/dev": "^7.13.0",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "4.1.16",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "catalog:",
-    "wait-on": "^7.2.0"
-  },
-  "dependencies": {
-    "@qwery/shared": "workspace:*"
+    "vite": "catalog:",
+    "vite-plugin-devtools-json": "^1.0.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

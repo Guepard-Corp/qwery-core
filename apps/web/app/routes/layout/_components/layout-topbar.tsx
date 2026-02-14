@@ -7,7 +7,7 @@ import { FileText } from 'lucide-react';
 import { Button } from '@qwery/ui/button';
 import { PageTopBar } from '@qwery/ui/page';
 
-import { AppLogo } from '~/components/app-logo';
+import { AppLogo } from '../../../../components/app-logo';
 
 export function LayoutTopBar() {
   return (

@@ -269,14 +269,14 @@ export function ProjectDialog({
         id: project.id,
         name: data.name,
         description: data.description,
-        updatedBy: workspace.userId || 'system',
+        updatedBy: workspace.userId,
       });
     } else {
       createMutation.mutate({
         organizationId,
         name: data.name,
         description: data.description,
-        createdBy: workspace.userId || 'system',
+        createdBy: workspace.userId,
       });
     }
   };

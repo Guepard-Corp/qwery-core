@@ -3,7 +3,7 @@ import { SwitchWorkspaceModeService } from '@qwery/domain/services';
 import {
   getWorkspaceFromLocalStorage,
   setWorkspaceInLocalStorage,
-} from '~/lib/workspace/workspace-helper';
+} from '../workspace/workspace-helper';
 
 export class WorkspaceModeService extends SwitchWorkspaceModeService {
   public async setWorkspaceMode(mode: WorkspaceModeEnum): Promise<void> {

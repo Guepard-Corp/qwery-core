@@ -17,7 +17,7 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 import { GetDatasourceBySlugService } from '@qwery/domain/services';
 import { DomainException } from '@qwery/domain/exceptions';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
     return { datasource: null };

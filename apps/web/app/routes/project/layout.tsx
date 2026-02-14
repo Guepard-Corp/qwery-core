@@ -32,7 +32,7 @@ import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

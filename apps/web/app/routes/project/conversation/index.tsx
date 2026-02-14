@@ -49,7 +49,7 @@ function formatRelativeTime(date: Date): string {
   return `${day} ${month} ${year} at ${timeStr}`;
 }
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
     return { project: null, conversations: [] };

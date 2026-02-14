@@ -42,8 +42,9 @@ describe('UsageRepository', () => {
     resetStorageDir();
   });
 
+  const defaultUsageId = '11111111-1111-1111-1111-111111111111';
   const createTestUsage = (overrides?: Partial<Usage>): Usage => ({
-    id: overrides?.id ?? 1,
+    id: overrides?.id ?? defaultUsageId,
     conversationId,
     projectId,
     organizationId,
@@ -62,33 +63,40 @@ describe('UsageRepository', () => {
 
       expect(result.id).toBeDefined();
       expect(result.model).toBe(usage.model);
-      await assertFileExists(String(result.id));
-      const raw = await fs.readFile(entityFilePath(String(result.id)), 'utf-8');
+      await assertFileExists(result.id);
+      const raw = await fs.readFile(entityFilePath(result.id), 'utf-8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       expect(parsed.model).toBe(usage.model);
     });
 
-    it('uses generateTimestampId when id not provided or zero', async () => {
-      const usage = createTestUsage({ id: 0 });
+    it('generates uuid when id not provided', async () => {
+      const usage = createTestUsage({ id: '' });
       const result = await repository.create(usage);
-      expect(result.id).toBeGreaterThan(0);
-      await assertFileExists(String(result.id));
+      expect(typeof result.id).toBe('string');
+      expect(result.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      await assertFileExists(result.id);
     });
   });
 
   describe('findById', () => {
     it('finds by id', async () => {
-      const usage = createTestUsage({ id: 12345 });
+      const usage = createTestUsage({
+        id: '12345678-1234-1234-1234-123456789012',
+      });
       await repository.create(usage);
-      await assertFileExists(String(usage.id));
+      await assertFileExists(usage.id);
 
-      const result = await repository.findById(String(usage.id));
+      const result = await repository.findById(usage.id);
       expect(result).not.toBeNull();
       expect(result?.id).toBe(usage.id);
     });
 
     it('returns null when not found', async () => {
-      const result = await repository.findById('999999');
+      const result = await repository.findById(
+        '99999999-9999-9999-9999-999999999999',
+      );
       expect(result).toBeNull();
     });
   });
@@ -102,7 +110,9 @@ describe('UsageRepository', () => {
 
   describe('findAll', () => {
     it('supports offset and limit', async () => {
-      const usage = createTestUsage({ id: 33333 });
+      const usage = createTestUsage({
+        id: '33333333-3333-3333-3333-333333333333',
+      });
       await repository.create(usage);
       const all = await repository.findAll();
       expect(all.length).toBeGreaterThanOrEqual(1);
@@ -155,39 +165,50 @@ describe('UsageRepository', () => {
 
   describe('update', () => {
     it('updates and persists to disk', async () => {
-      const usage = createTestUsage({ id: 11111 });
+      const usage = createTestUsage({
+        id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      });
       await repository.create(usage);
       const updated = await repository.update({
         ...usage,
         outputTokens: 100,
       });
       expect(updated.outputTokens).toBe(100);
-      const raw = await fs.readFile(entityFilePath(String(usage.id)), 'utf-8');
+      const raw = await fs.readFile(entityFilePath(usage.id), 'utf-8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       expect(parsed.outputTokens).toBe(100);
     });
 
     it('throws when usage not found', async () => {
-      const usage = createTestUsage({ id: 99999 });
-      await expect(repository.update({ ...usage, id: 88888 })).rejects.toThrow(
-        'not found',
-      );
+      const usage = createTestUsage({
+        id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      });
+      await expect(
+        repository.update({
+          ...usage,
+          id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        }),
+      ).rejects.toThrow('not found');
     });
   });
 
   describe('delete', () => {
     it('deletes and removes file from disk', async () => {
-      const usage = createTestUsage({ id: 22222 });
+      const usage = createTestUsage({
+        id: '22222222-2222-2222-2222-222222222222',
+      });
       await repository.create(usage);
-      await assertFileExists(String(usage.id));
+      await assertFileExists(usage.id);
 
-      const result = await repository.delete(String(usage.id));
+      const result = await repository.delete(usage.id);
       expect(result).toBe(true);
-      await expect(fs.stat(entityFilePath(String(usage.id)))).rejects.toThrow();
+      await expect(fs.stat(entityFilePath(usage.id))).rejects.toThrow();
     });
 
     it('returns false when not found', async () => {
-      const result = await repository.delete('999999');
+      const result = await repository.delete(
+        '99999999-9999-9999-9999-999999999999',
+      );
       expect(result).toBe(false);
     });
   });

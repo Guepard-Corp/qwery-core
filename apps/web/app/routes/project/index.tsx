@@ -6,7 +6,7 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import WelcomePage from './_components/welcome';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug as string;
   if (!slug) {
     return { project: null };

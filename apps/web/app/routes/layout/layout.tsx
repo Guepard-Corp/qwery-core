@@ -13,7 +13,7 @@ import { LayoutFooter } from './_components/layout-footer';
 import { LayoutMobileNavigation } from './_components/layout-mobile-navigation';
 import { LayoutTopBar } from './_components/layout-topbar';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

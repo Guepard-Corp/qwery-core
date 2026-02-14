@@ -3,7 +3,7 @@ import { DATASOURCES } from '~/lib/loaders/datasource-loader';
 import { NewDatasource } from '../_components/new-datasource';
 import type { Route } from './+types/sources';
 
-export async function loader() {
+export async function clientLoader() {
   return { pluginDatasources: DATASOURCES };
 }
 

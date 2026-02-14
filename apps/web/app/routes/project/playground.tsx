@@ -3,7 +3,7 @@ import { PLAYGROUNDS } from '@qwery/playground/constants';
 import type { Route } from './+types/playground';
 import { ListPlaygrounds } from './_components/list-playgrounds';
 
-export async function loader() {
+export async function clientLoader() {
   return { playgrounds: PLAYGROUNDS };
 }
 

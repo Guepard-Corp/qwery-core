@@ -6,7 +6,7 @@ import {
 } from '@react-router/dev/routes';
 
 const rootRoutes = [
-  route('version', 'routes/version.ts'),
+  route('version', 'routes/version.tsx'),
   route('healthcheck', 'routes/healthcheck.ts'),
   route('qwery/*', 'routes/ingest.$.ts'),
 ];

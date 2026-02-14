@@ -390,7 +390,7 @@ function S3DatasourceForm({
   );
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const extension = DATASOURCES.find((ds) => ds.id === params.id);
 
   if (!extension) {

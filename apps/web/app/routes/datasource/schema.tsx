@@ -8,7 +8,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 import type { Route } from './+types/schema';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) return { datasource: null };
 

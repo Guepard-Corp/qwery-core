@@ -1,0 +1,11 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M8 6h10v10H8V6z" fill="#50ABF1"/>
+  <path d="M20 6h10v10H20V6z" fill="#50ABF1" opacity="0.7"/>
+  <path d="M32 6h10v10H32V6z" fill="#50ABF1" opacity="0.4"/>
+  <path d="M8 18h10v10H8V18z" fill="#50ABF1" opacity="0.7"/>
+  <path d="M20 18h10v10H20V18z" fill="#50ABF1"/>
+  <path d="M32 18h10v10H32V18z" fill="#50ABF1" opacity="0.7"/>
+  <path d="M8 30h10v10H8V30z" fill="#50ABF1" opacity="0.4"/>
+  <path d="M20 30h10v10H20V30z" fill="#50ABF1" opacity="0.7"/>
+  <path d="M32 30h10v10H32V30z" fill="#50ABF1"/>
+</svg>

@@ -1,6 +1,7 @@
 import type { Usage } from '@qwery/domain/entities';
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import { IUsageRepository } from '@qwery/domain/repositories';
+import { v4 as uuidv4 } from 'uuid';
 import * as Storage from './storage.js';
 
 const ENTITY = 'usage';
@@ -105,8 +106,10 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async create(entity: Usage): Promise<Usage> {
-    await Storage.write([ENTITY, entity.id], serialize(entity));
-    return entity;
+    const id = entity.id || uuidv4();
+    const entityWithId: Usage = { ...entity, id };
+    await Storage.write([ENTITY, id], serialize(entityWithId));
+    return entityWithId;
   }
 
   async update(entity: Usage): Promise<Usage> {

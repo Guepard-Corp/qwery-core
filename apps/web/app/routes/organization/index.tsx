@@ -11,7 +11,7 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListProjects } from './_components/list-projects';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
     return { organization: null, projects: [] };

@@ -184,28 +184,6 @@ export const Registry = {
               abortSignal: options.abortSignal,
             });
             const raw = await resolved.execute(args, context);
-            const toTruncate =
-              typeof raw === 'string'
-                ? raw
-                : typeof raw === 'object' &&
-                    raw !== null &&
-                    'output' in raw &&
-                    Object.keys(raw).length === 1
-                  ? (raw as { output: string }).output
-                  : null;
-            if (toTruncate != null) {
-              try {
-                const { truncateOutput } = await import('./truncation');
-                const truncated = await truncateOutput(toTruncate);
-                if (truncated.truncated) {
-                  return typeof raw === 'string'
-                    ? truncated.content
-                    : { output: truncated.content };
-                }
-              } catch {
-                // truncation not available (e.g. browser or Node without fs); return as-is
-              }
-            }
             if (typeof raw === 'string') return raw;
             if (
               typeof raw === 'object' &&

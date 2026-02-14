@@ -11,7 +11,7 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 import { ListNotebooks } from '../_components/list-notebooks';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
     return { project: null, notebooks: [] };

@@ -12,7 +12,7 @@ import pathsConfig, { createPath } from '~/config/paths.config';
 
 import { ListDatasources } from '../_components/list-datasources';
 
-export async function loader(args: Route.LoaderArgs) {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug as string;
   if (!slug) {
     return { project: null, datasources: [] };

@@ -12,8 +12,8 @@ import {
   ConversationStateManagerProvider,
 } from '@qwery/ui/ai';
 
-import { i18nResolver } from '~/lib/i18n/i18n.resolver';
-import { getI18nSettings } from '~/lib/i18n/i18n.settings';
+import { i18nResolver } from '../lib/i18n/i18n.resolver';
+import { getI18nSettings } from '../lib/i18n/i18n.settings';
 
 import { AgentsProvider } from './agents-provider';
 import { ReactQueryProvider } from './react-query-provider';

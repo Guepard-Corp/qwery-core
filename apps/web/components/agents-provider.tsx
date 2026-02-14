@@ -10,10 +10,10 @@ import {
   DatasourceExtension,
   type DriverExtension,
 } from '@qwery/extensions-sdk';
-import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { getBrowserDriverInstance } from '../lib/services/browser-driver';
 import { getDefaultModel } from '@qwery/agent-factory-sdk';
-import { apiPost, driverCommand } from '~/lib/repositories/api-client';
-import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import { apiPost, driverCommand } from '../lib/repositories/api-client';
+import { useGetDatasourceExtensions } from '../lib/queries/use-get-extension';
 
 interface NotebookPromptResponse {
   sqlQuery: string | null;

@@ -34,6 +34,16 @@ const publicRoot = path.resolve(
   'extensions',
 );
 
+const desktopPublicRoot = path.resolve(
+  here,
+  '..',
+  '..',
+  'apps',
+  'desktop',
+  'public',
+  'extensions',
+);
+
 const extensionsLoaderSrc = path.resolve(
   here,
   '..',
@@ -359,6 +369,12 @@ async function main() {
   const publicRegistryPath = path.join(publicRoot, 'registry.json');
   await fs.writeFile(publicRegistryPath, JSON.stringify(registry, null, 2));
   console.log(`[extensions-build] Registry written to ${publicRegistryPath}`);
+
+  // Copy extensions to desktop app public folder for Tauri/desktop build
+  await fs.rm(desktopPublicRoot, { recursive: true, force: true });
+  await fs.mkdir(path.dirname(desktopPublicRoot), { recursive: true });
+  await fs.cp(publicRoot, desktopPublicRoot, { recursive: true });
+  console.log(`[extensions-build] Copied extensions to ${desktopPublicRoot}`);
 }
 
 async function findPGliteInPnpm(nodeModulesPath) {
