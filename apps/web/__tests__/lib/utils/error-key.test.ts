@@ -7,7 +7,57 @@ import {
 } from '~/lib/utils/error-key';
 
 describe('getErrorKey', () => {
-  describe('permission / RLS', () => {
+  describe('errorKey from API (preferred)', () => {
+    it('returns permissionDenied i18n key when error has errorKey permissionDenied', () => {
+      expect(getErrorKey({ errorKey: 'permissionDenied' })).toBe(
+        ERROR_KEYS.permissionDenied,
+      );
+    });
+
+    it('returns notFound i18n key when error has errorKey notFound', () => {
+      expect(getErrorKey({ errorKey: 'notFound' })).toBe(ERROR_KEYS.notFound);
+    });
+
+    it('returns network i18n key when error has errorKey network', () => {
+      expect(getErrorKey({ errorKey: 'network' })).toBe(ERROR_KEYS.network);
+    });
+
+    it('returns generic i18n key when error has errorKey generic', () => {
+      expect(getErrorKey({ errorKey: 'generic' })).toBe(ERROR_KEYS.generic);
+    });
+
+    it('falls back to message when errorKey is invalid', () => {
+      expect(getErrorKey({ errorKey: 'invalid', message: 'forbidden' })).toBe(
+        ERROR_KEYS.generic,
+      );
+    });
+  });
+
+  describe('status-based (fallback)', () => {
+    it('returns permissionDenied for status 403', () => {
+      expect(getErrorKey({ status: 403, message: 'Forbidden' })).toBe(
+        ERROR_KEYS.permissionDenied,
+      );
+    });
+
+    it('returns permissionDenied for status 401', () => {
+      expect(getErrorKey({ status: 401 })).toBe(ERROR_KEYS.permissionDenied);
+    });
+
+    it('returns notFound for status 404', () => {
+      expect(getErrorKey({ status: 404 })).toBe(ERROR_KEYS.notFound);
+    });
+
+    it('returns network for status 502', () => {
+      expect(getErrorKey({ status: 502 })).toBe(ERROR_KEYS.network);
+    });
+
+    it('returns generic for status 500', () => {
+      expect(getErrorKey({ status: 500 })).toBe(ERROR_KEYS.generic);
+    });
+  });
+
+  describe('permission / RLS (message fallback)', () => {
     it('returns permissionDenied for row-level security message', () => {
       expect(
         getErrorKey(

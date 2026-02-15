@@ -1,4 +1,8 @@
 import { DomainException } from '@qwery/domain/exceptions';
+import {
+  getErrorKeyFromError,
+  SAFE_ERROR_MESSAGE,
+} from '@qwery/shared/error-keys';
 
 export function handleDomainException(error: unknown): Response {
   if (error instanceof DomainException) {
@@ -8,16 +12,20 @@ export function handleDomainException(error: unknown): Response {
         : error.code >= 400 && error.code < 500
           ? error.code
           : 500;
+    const errorKey = getErrorKeyFromError(error);
     return Response.json(
       {
-        error: error.message,
+        errorKey,
         code: error.code,
         data: error.data,
+        error: SAFE_ERROR_MESSAGE,
       },
       { status },
     );
   }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
+  const errorKey = getErrorKeyFromError(error);
+  return Response.json(
+    { errorKey, error: SAFE_ERROR_MESSAGE },
+    { status: 500 },
+  );
 }

@@ -4,10 +4,12 @@ import { Code } from '@qwery/domain/common';
 import { DomainException } from '@qwery/domain/exceptions';
 
 import {
+  getErrorKeyFromError,
   handleDomainException,
   isUUID,
   parseLimit,
   parsePositiveInt,
+  SAFE_ERROR_MESSAGE,
 } from '../../src/lib/http-utils';
 
 describe('parsePositiveInt', () => {
@@ -64,63 +66,110 @@ describe('isUUID', () => {
   });
 });
 
+describe('getErrorKeyFromError', () => {
+  it('returns notFound for DomainException with code in 2000-2999', () => {
+    const error = DomainException.new({
+      code: Code.NOTEBOOK_NOT_FOUND_ERROR,
+      overrideMessage: 'Not found',
+    });
+    expect(getErrorKeyFromError(error)).toBe('notFound');
+  });
+
+  it('returns permissionDenied for RLS-like message', () => {
+    expect(
+      getErrorKeyFromError(
+        new Error('new row violates row-level security policy for table "x"'),
+      ),
+    ).toBe('permissionDenied');
+  });
+
+  it('returns generic for unknown Error', () => {
+    expect(getErrorKeyFromError(new Error('Something failed'))).toBe('generic');
+  });
+});
+
 describe('handleDomainException', () => {
-  it('returns 404 for DomainException with code in 2000-2999', async () => {
+  it('returns 404 and errorKey for DomainException with code in 2000-2999', async () => {
     const error = DomainException.new({
       code: Code.NOTEBOOK_NOT_FOUND_ERROR,
       overrideMessage: 'Not found',
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: string; code: number };
-    expect(body.error).toBe('Not found');
+    const body = (await res.json()) as {
+      errorKey: string;
+      error: string;
+      code: number;
+    };
+    expect(body.errorKey).toBe('notFound');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
     expect(body.code).toBe(2000);
   });
 
-  it('returns error.code for DomainException with code in 400-499', async () => {
+  it('returns error.code and errorKey for DomainException with code in 400-499', async () => {
     const error = DomainException.new({
       code: Code.BAD_REQUEST_ERROR,
       overrideMessage: 'Bad request',
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string; code: number };
-    expect(body.error).toBe('Bad request');
+    const body = (await res.json()) as { errorKey: string; error: string };
+    expect(body.errorKey).toBe('generic');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
   });
 
-  it('returns 500 for DomainException with other codes', async () => {
+  it('returns 500 and errorKey for DomainException with other codes', async () => {
     const error = DomainException.new({
       code: Code.INTERNAL_ERROR,
       overrideMessage: 'Internal',
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Internal');
+    const body = (await res.json()) as { errorKey: string; error: string };
+    expect(body.errorKey).toBe('generic');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
   });
 
-  it('returns 500 for generic Error', async () => {
+  it('returns 500 with errorKey and safe message for generic Error (no raw message)', async () => {
     const res = handleDomainException(new Error('Something failed'));
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Something failed');
+    const body = (await res.json()) as { errorKey: string; error: string };
+    expect(body.errorKey).toBe('generic');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
   });
 
-  it('returns 500 and generic message for non-Error throw', async () => {
+  it('returns 500 with errorKey and safe message for non-Error throw', async () => {
     const res = handleDomainException('string error');
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Internal server error');
+    const body = (await res.json()) as { errorKey: string; error: string };
+    expect(body.errorKey).toBe('generic');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
   });
 
-  it('includes data when DomainException has data', async () => {
+  it('returns errorKey permissionDenied and safe message for RLS error (no raw SQL)', async () => {
+    const res = handleDomainException(
+      new Error('new row violates row-level security policy for table "conversations"'),
+    );
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { errorKey: string; error: string };
+    expect(body.errorKey).toBe('permissionDenied');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
+  });
+
+  it('includes data and errorKey when DomainException has data', async () => {
     const error = DomainException.new({
       code: Code.NOTEBOOK_NOT_FOUND_ERROR,
       overrideMessage: 'Not found',
       data: { notebookId: '123' },
     });
     const res = handleDomainException(error);
-    const body = (await res.json()) as { error: string; data: unknown };
+    const body = (await res.json()) as {
+      errorKey: string;
+      error: string;
+      data: unknown;
+    };
+    expect(body.errorKey).toBe('notFound');
+    expect(body.error).toBe(SAFE_ERROR_MESSAGE);
     expect(body.data).toEqual({ notebookId: '123' });
   });
 });

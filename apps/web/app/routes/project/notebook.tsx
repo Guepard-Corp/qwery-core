@@ -162,7 +162,7 @@ export default function NotebookPage() {
     (error, cellId) => {
       setCellErrors((prev) => {
         const next = new Map(prev);
-        next.set(cellId, error.message);
+        next.set(cellId, t(getErrorKey(error)));
         return next;
       });
       // Clear result on error
@@ -302,14 +302,10 @@ export default function NotebookPage() {
       }
       setLoadingCellId(null);
     },
-    (error, cellId, query) => {
+    (error, cellId) => {
       setCellErrors((prev) => {
         const next = new Map(prev);
-        next.set(
-          cellId,
-          `${error.message} 
-          query: ${query}`,
-        );
+        next.set(cellId, t(getErrorKey(error)));
         return next;
       });
       // Clear result on error
