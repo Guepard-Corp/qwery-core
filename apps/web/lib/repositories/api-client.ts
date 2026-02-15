@@ -1,3 +1,9 @@
+import {
+  type ApiErrorResponseBody,
+  type UserFacingErrorKey,
+  isUserFacingErrorKey,
+} from '@qwery/shared/error-keys';
+
 function getApiBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env) {
     const url = process.env.VITE_API_URL ?? process.env.SERVER_API_URL ?? '';
@@ -12,6 +18,7 @@ export class ApiError extends Error {
     public status: number,
     public code?: number,
     public data?: unknown,
+    public errorKey?: UserFacingErrorKey,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -27,15 +34,23 @@ async function handleResponse<T>(
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({
+    const errorData = (await response.json().catch(() => ({
       error: response.statusText || 'Unknown error',
-    }));
+    }))) as Partial<ApiErrorResponseBody> & {
+      error?: string;
+      message?: string;
+    };
+
+    const errorKey = isUserFacingErrorKey(errorData.errorKey)
+      ? errorData.errorKey
+      : undefined;
 
     throw new ApiError(
-      errorData.error || errorData.message || 'Request failed',
+      errorData.error ?? errorData.message ?? 'Request failed',
       response.status,
       errorData.code,
       errorData.data,
+      errorKey,
     );
   }
 
@@ -210,7 +225,7 @@ export async function driverCommand<T>(
   );
 
   if (!result.success || result.data === undefined) {
-    throw new Error(result.error || 'Driver command failed');
+    throw new ApiError('Request failed', 500, undefined, undefined, 'generic');
   }
 
   return result.data;

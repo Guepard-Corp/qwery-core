@@ -21,7 +21,8 @@
     "./registry": "./src/registry/index.ts",
     "./desktop": "./src/desktop/index.ts",
     "./message-constants": "./src/message-constants.ts",
-    "./message-role-utils": "./src/utils/message-role.ts"
+    "./message-role-utils": "./src/utils/message-role.ts",
+    "./error-keys": "./src/error-keys.ts"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
