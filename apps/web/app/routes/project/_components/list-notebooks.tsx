@@ -54,6 +54,7 @@ import type { NotebookOutput } from '@qwery/domain/usecases';
 import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -67,7 +68,7 @@ export function ListNotebooks({
   notebooks: NotebookOutput[];
   unsavedNotebookIds?: string[];
 }) {
-  const { t } = useTranslation('notebooks');
+  const { t } = useTranslation(['notebooks', 'common']);
   const navigate = useNavigate();
   const { projectId } = useProject();
   const { repositories } = useWorkspace();
@@ -75,10 +76,7 @@ export function ListNotebooks({
     repositories.notebook,
     (notebook) =>
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
-    (error) =>
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create notebook',
-      ),
+    (error) => toast.error(t(getErrorKey(error))),
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');

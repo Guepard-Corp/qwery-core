@@ -33,6 +33,7 @@ import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { usePlayground } from '~/lib/mutations/use-playground';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { useGetProjectBySlug } from '~/lib/queries/use-get-projects';
 
 const ITEMS_PER_PAGE = 9;
@@ -66,9 +67,7 @@ export function ListPlaygrounds({
       });
     },
     (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
-      );
+      toast.error(t(getErrorKey(error)));
     },
   );
 

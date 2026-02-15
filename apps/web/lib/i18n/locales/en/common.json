@@ -28,6 +28,12 @@
   "pageNotFoundSubHeading": "Apologies, the page you were looking for was not found",
   "genericError": "Sorry, something went wrong.",
   "genericErrorSubHeading": "Apologies, an error occurred while processing your request. Please contact us if the issue persists.",
+  "errors": {
+    "permissionDenied": "You don't have permission to perform this action.",
+    "network": "Network error. Please check your connection and try again.",
+    "notFound": "The requested resource was not found.",
+    "generic": "Something went wrong. Please try again."
+  },
   "anonymousUser": "Anonymous",
   "tryAgain": "Try Again",
   "theme": "Theme",

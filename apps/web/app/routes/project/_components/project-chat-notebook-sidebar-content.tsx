@@ -26,6 +26,8 @@ import {
   useDeleteConversation,
 } from '~/lib/mutations/use-conversation';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { useAgentStatus } from '@qwery/ui/ai';
 import {
   SidebarConversationHistory,
@@ -39,6 +41,7 @@ import {
 import type { NotebookOutput } from '@qwery/domain/usecases';
 
 export function ProjectChatNotebookSidebarContent() {
+  const { t } = useTranslation('common');
   const projectContext = useProjectOptional();
   const { workspace, repositories } = useWorkspace();
   const projectId = projectContext?.projectId;
@@ -103,9 +106,7 @@ export function ProjectChatNotebookSidebarContent() {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(
-        `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      toast.error(t(getErrorKey(error)));
     },
     projectId,
   );
@@ -156,9 +157,7 @@ export function ProjectChatNotebookSidebarContent() {
       {
         onSuccess: () => toast.success('Conversation title updated'),
         onError: (error) =>
-          toast.error(
-            `Failed to update conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          ),
+          toast.error(t(getErrorKey(error))),
       },
     );
   };
@@ -172,9 +171,7 @@ export function ProjectChatNotebookSidebarContent() {
         }
       },
       onError: (error) =>
-        toast.error(
-          `Failed to delete conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ),
+        toast.error(t(getErrorKey(error))),
     });
   };
 
@@ -202,9 +199,7 @@ export function ProjectChatNotebookSidebarContent() {
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
     },
     (error) => {
-      toast.error(
-        `Failed to create notebook: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      toast.error(t(getErrorKey(error)));
     },
   );
 
@@ -225,10 +220,7 @@ export function ProjectChatNotebookSidebarContent() {
         navigate(createPath(pathsConfig.app.project, projectSlug || ''));
       }
     },
-    (error) =>
-      toast.error(
-        `Failed to delete notebook: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      ),
+    (error) => toast.error(t(getErrorKey(error))),
   );
 
   const onNotebookDelete = (notebookId: string) => {
