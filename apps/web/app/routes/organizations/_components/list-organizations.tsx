@@ -22,9 +22,11 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import type { Organization } from '@qwery/domain/entities';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -67,6 +69,7 @@ export function ListOrganizations({
 }: {
   organizations: Organization[];
 }) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,7 +114,7 @@ export function ListOrganizations({
       );
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete organizations');
+      toast.error(t(getErrorKey(error)));
     },
   });
 

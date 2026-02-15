@@ -39,6 +39,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from './+types/settings';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 export async function loader(args: Route.LoaderArgs) {
   const slug = args.params.slug;
@@ -59,7 +60,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,13 +123,15 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
       if (result.success && result.data?.connected) {
         toast.success('Connection test successful');
       } else {
-        toast.error(result.error || 'Connection test failed');
+        toast.error(
+          result.error
+            ? t(getErrorKey(new Error(result.error)))
+            : 'Connection test failed',
+        );
       }
     },
     (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to test connection',
-      );
+      toast.error(t(getErrorKey(error)));
     },
   );
 
@@ -187,9 +190,7 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
         navigate(-1);
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update datasource';
-      toast.error(errorMessage);
+      toast.error(t(getErrorKey(error)));
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -247,9 +248,7 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
         navigate(-1);
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to delete datasource',
-      );
+      toast.error(t(getErrorKey(error)));
       console.error(error);
     } finally {
       setIsDeleting(false);

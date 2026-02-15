@@ -57,6 +57,7 @@ import { generateRandomName } from '~/lib/names';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { DATASOURCES } from '~/lib/loaders/datasource-loader';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 import type { Route } from './+types/new';
 
@@ -410,7 +411,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
-  const { t, i18n } = useTranslation('datasources');
+  const { t, i18n } = useTranslation(['datasources', 'common']);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
   );
@@ -434,18 +435,14 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         toast.success(<Trans i18nKey="datasources:connectionTestSuccess" />);
       } else {
         toast.error(
-          result.error || <Trans i18nKey="datasources:connectionTestFailed" />,
+          result.error
+            ? t(getErrorKey(new Error(result.error)))
+            : i18n.t('datasources:connectionTestFailed'),
         );
       }
     },
     (error) => {
-      toast.error(
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:connectionTestError" />
-        ),
-      );
+      toast.error(t(getErrorKey(error)));
     },
   );
 
@@ -458,13 +455,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       });
     },
     (error) => {
-      const errorMessage =
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:saveFailed" />
-        );
-      toast.error(errorMessage);
+      toast.error(t(getErrorKey(error)));
       console.error(error);
     },
   );
@@ -689,11 +680,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         const project = await getProjectBySlugService.execute(project_id);
         projectId = project.id;
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Unable to resolve project context for datasource',
-        );
+        toast.error(t(getErrorKey(error)));
         return;
       }
     }

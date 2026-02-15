@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 import { NewDatasource } from '@qwery/datasources/new-datasource';
 import {
@@ -38,6 +39,7 @@ import {
 import { Loader2, Plus } from 'lucide-react';
 
 export function ProjectSidebar() {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { workspace, repositories } = useWorkspace();
   const telemetry = useTelemetry();
@@ -57,19 +59,13 @@ export function ProjectSidebar() {
     notebookRepository,
     (notebook) =>
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
-    (error) =>
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create notebook',
-      ),
+    (error) => toast.error(t(getErrorKey(error))),
   );
 
   const deleteNotebookMutation = useDeleteNotebook(
     notebookRepository,
     undefined,
-    (error) => {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to delete notebook: ${message}`);
-    },
+    (error) => toast.error(t(getErrorKey(error))),
   );
 
   const _handleDeleteNotebook = useCallback(
@@ -110,13 +106,12 @@ export function ProjectSidebar() {
       }
       toast.success('All notebooks deleted');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to delete notebooks: ${message}`);
+      toast.error(t(getErrorKey(error)));
     } finally {
       setIsBulkDeleting(false);
       setShowDeleteAllDialog(false);
     }
-  }, [deleteNotebookMutation, notebooksList, workspace.projectId]);
+  }, [t, deleteNotebookMutation, notebooksList, workspace.projectId]);
 
   const generateNotebookTitle = useCallback(() => {
     const base = 'Untitled notebook';
