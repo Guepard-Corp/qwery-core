@@ -82,7 +82,58 @@ async function main() {
         const runtime = driver.runtime ?? 'node';
 
         let copiedEntry;
-        if (runtime === 'browser') {
+        if (runtime === 'node' && esbuild) {
+          // Bundle node drivers for desktop: packaged app cannot resolve
+          // workspace deps (e.g. @qwery/extensions-sdk) from extension's node_modules
+          const bunEntry = pkg.exports?.['.']?.bun;
+          const entryToUse = bunEntry || entryFile;
+          const sourcePath = path.resolve(
+            pkgDir,
+            entryToUse.replace(/^\.\//, ''),
+          );
+          const destPath = path.resolve(pkgDir, 'dist', 'driver.js');
+          if (await fileExists(sourcePath)) {
+            try {
+              const nodeModulesPath = path.resolve(
+                pkgDir,
+                '..',
+                '..',
+                '..',
+                'node_modules',
+              );
+              await fs.mkdir(path.dirname(destPath), { recursive: true });
+              await esbuild.build({
+                entryPoints: [sourcePath],
+                bundle: true,
+                format: 'esm',
+                platform: 'node',
+                target: 'es2020',
+                outfile: destPath,
+                external: [
+                  // Native bindings - must stay external
+                  '@duckdb/node-api',
+                  'better-sqlite3',
+                  'pg-native',
+                  'mysql2',
+                ],
+                packages: 'bundle',
+                nodePaths: [nodeModulesPath],
+                sourcemap: false,
+                minify: false,
+                treeShaking: true,
+                logLevel: 'silent',
+              });
+              console.log(
+                `[extensions-build] Bundled node driver ${driver.id} to ${destPath}`,
+              );
+            } catch (error) {
+              console.error(
+                `[extensions-build] Failed to bundle node driver ${driver.id}:`,
+                error.message,
+              );
+            }
+          }
+        } else if (runtime === 'browser') {
           const sourcePath = path.resolve(pkgDir, entryFile);
           if (await fileExists(sourcePath)) {
             const driverOutDir = path.join(publicRoot, driver.id);
@@ -375,6 +426,7 @@ async function main() {
   await fs.mkdir(path.dirname(desktopPublicRoot), { recursive: true });
   await fs.cp(publicRoot, desktopPublicRoot, { recursive: true });
   console.log(`[extensions-build] Copied extensions to ${desktopPublicRoot}`);
+
 }
 
 async function findPGliteInPnpm(nodeModulesPath) {
