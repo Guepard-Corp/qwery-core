@@ -1,3 +1,6 @@
+import '@qwery/extensions-loader';
+import { ExtensionsRegistry, ExtensionScope } from '@qwery/extensions-sdk';
+import { getLogger } from '@qwery/shared/logger';
 import { createApp } from './server';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, isAbsolute } from 'node:path';
@@ -39,6 +42,11 @@ process.env.WORKSPACE = isAbsolute(raw) ? raw : resolve(serverRoot, raw);
 const PORT = Number(process.env.PORT ?? 4096);
 const HOSTNAME = process.env.HOSTNAME ?? '0.0.0.0';
 
+const logger = await getLogger();
+const extensionsCount = ExtensionsRegistry.list(ExtensionScope.DATASOURCE)
+  .length;
+logger.info(`Discovered ${extensionsCount} datasource extensions`);
+
 const app = createApp();
 
 const server = Bun.serve({
@@ -48,4 +56,7 @@ const server = Bun.serve({
   idleTimeout: 120,
 });
 
-console.log(`[Server] Listening on http://${server.hostname}:${server.port}`);
+logger.info(
+  { hostname: server.hostname, port: server.port },
+  `Listening on http://${server.hostname}:${server.port}`,
+);

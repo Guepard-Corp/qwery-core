@@ -84,14 +84,13 @@ export class ConversationRepository extends IConversationRepository {
 
   async create(entity: Conversation): Promise<Conversation> {
     const now = new Date();
-    const userId = 'system';
     const entityWithId = {
       ...entity,
       id: entity.id || uuidv4(),
       createdAt: entity.createdAt || now,
       updatedAt: entity.updatedAt || now,
-      createdBy: entity.createdBy || userId,
-      updatedBy: entity.updatedBy || userId,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
     };
     const entityWithSlug = {
       ...entityWithId,
@@ -106,11 +105,10 @@ export class ConversationRepository extends IConversationRepository {
     if (!existing) {
       throw new Error(`Conversation with id ${entity.id} not found`);
     }
-    const userId = 'system';
     const updated = {
       ...entity,
       updatedAt: entity.updatedAt || new Date(),
-      updatedBy: entity.updatedBy || userId,
+      updatedBy: entity.updatedBy,
       slug: this.shortenId(entity.id),
     };
     await Storage.write([ENTITY, entity.id], serialize(updated));
