@@ -1,14 +1,31 @@
 {
-  "extends": "../../../tsconfig.json",
   "compilerOptions": {
-    "module": "esnext",
     "target": "es2020",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "resolveJsonModule": true
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "__tests__"]
+  "include": [
+    "src",
+    "__tests__"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

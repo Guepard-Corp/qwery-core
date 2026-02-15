@@ -99,14 +99,13 @@ export class ProjectRepository extends IProjectRepository {
       throw new Error(`Project with id ${id} already exists`);
     }
     const now = new Date();
-    const userId = 'system';
     const entityWithId = {
       ...entity,
       id,
       createdAt: entity.createdAt || now,
       updatedAt: entity.updatedAt || now,
-      createdBy: entity.createdBy || userId,
-      updatedBy: entity.updatedBy || userId,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
       status: entity.status || 'active',
     };
     const entityWithSlug = {
@@ -122,11 +121,10 @@ export class ProjectRepository extends IProjectRepository {
     if (!existing) {
       throw new Error(`Project with id ${entity.id} not found`);
     }
-    const userId = 'system';
     const updated = {
       ...entity,
       updatedAt: entity.updatedAt || new Date(),
-      updatedBy: entity.updatedBy || userId,
+      updatedBy: entity.updatedBy,
       slug: this.shortenId(entity.id),
     };
     await Storage.write([ENTITY, entity.id], serialize(updated));

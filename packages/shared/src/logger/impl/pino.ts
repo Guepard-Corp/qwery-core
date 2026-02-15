@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 /**
  * @name getPinoLogger
  * @description A logger implementation using Pino

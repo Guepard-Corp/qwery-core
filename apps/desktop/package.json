@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "react-router dev",
-    "build": "pnpm -w run extensions:build && tsc && react-router build",
+    "build": "node scripts/validate-extensions-bundle.js && pnpm -w run extensions:build && pnpm --filter server build && node scripts/download-bun.js && tsc && react-router build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "validate:extensions": "node scripts/validate-extensions-bundle.js"
   },
   "dependencies": {
     "@qwery/ui": "workspace:*",

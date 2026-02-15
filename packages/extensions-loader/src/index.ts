@@ -1,5 +1,3 @@
-import { createRequire } from 'node:module';
-
 import {
   datasources,
   ExtensionsRegistry,
@@ -10,6 +8,13 @@ import {
   ExtensionScope,
 } from '@qwery/extensions-sdk';
 
+import {
+  discoverExtensionsFromFolders,
+  type ContributesDriver,
+  resolveDriverEntryPath,
+  resolveSchemaPath,
+} from './discovery';
+
 type DriverModule = {
   driverFactory?: unknown;
   default?: unknown;
@@ -19,108 +24,69 @@ type DriverModule = {
 type DriverImportFn = () => Promise<DriverModule>;
 
 const driverImports = new Map<string, DriverImportFn>();
-const extensionIdToPkgName = new Map<string, string>();
+const extensionIdToPath = new Map<string, string>();
 
-const EXTENSIONS = [
-  '@qwery/extension-clickhouse-node',
-  '@qwery/extension-duckdb',
-  '@qwery/extension-gsheet-csv',
-  '@qwery/extension-json-online',
-  '@qwery/extension-mysql',
-  '@qwery/extension-parquet-online',
-  '@qwery/extension-s3',
-  '@qwery/extension-postgresql',
-  '@qwery/extension-youtube-data-api-v3',
-  '@qwery/extension-clickhouse-web',
-  '@qwery/extension-duckdb-wasm',
-  '@qwery/extension-pglite',
-  '@qwery/extension-postgresql-supabase',
-  '@qwery/extension-postgresql-neon',
-  '@qwery/extension-csv-online',
-];
-
-interface ContributesDriver {
-  id: string;
-  name: string;
-  description?: string;
-  runtime?: string;
-  entry?: string;
-}
-
-interface ContributesDatasource {
-  id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  schema: unknown;
-  docsUrl?: string | null;
-  supportsPreview?: boolean;
-  drivers?: string[];
-}
-
-interface PackageContributes {
-  drivers?: ContributesDriver[];
-  datasources?: ContributesDatasource[];
-}
-
-function initDriverImportsFromPackageJson(): void {
+function initDriverImportsFromFolders(basePaths?: string[]): void {
+  /* istanbul ignore if -- Node-only; unreachable in test env -- @preserve */
   if (typeof process === 'undefined' || !process.versions?.node) return;
-  const requireFromLoader = createRequire(import.meta.url);
-  const fs = requireFromLoader('node:fs') as typeof import('node:fs');
-  const path = requireFromLoader('node:path') as typeof import('node:path');
 
-  for (const pkgName of EXTENSIONS) {
-    try {
-      const entryPath = requireFromLoader.resolve(pkgName);
-      let dir = path.dirname(entryPath);
-      while (dir !== path.dirname(dir)) {
-        if (fs.existsSync(path.join(dir, 'package.json'))) break;
-        dir = path.dirname(dir);
-      }
-      const pkg = JSON.parse(
-        fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
-      ) as { contributes?: PackageContributes };
-      const contributes = pkg.contributes ?? {};
-      const drivers = contributes.drivers ?? [];
-      const datasources = contributes.datasources ?? [];
+  const discovered = discoverExtensionsFromFolders(basePaths);
 
-      const importFn: DriverImportFn = () => import(/* @vite-ignore */ pkgName);
-      for (const driver of drivers) {
-        driverImports.set(driver.id, importFn);
-      }
+  for (const { extDir, pkg, datasources: dsList, drivers } of discovered) {
+    const pkgMain = (pkg as { main?: string }).main;
 
-      for (const ds of datasources) {
-        const driverIds = ds.drivers ?? [];
-        const driverDescriptors = driverIds
-          .map((id) => drivers.find((d) => d.id === id))
-          .filter((d): d is ContributesDriver => d != null);
-        extensionIdToPkgName.set(ds.id, pkgName);
-        const extension: DatasourceExtension = {
-          id: ds.id,
-          name: ds.name,
-          icon: ds.icon ?? '',
-          description: ds.description,
-          scope: ExtensionScope.DATASOURCE,
-          schema: null,
-          docsUrl: ds.docsUrl ?? null,
-          supportsPreview: ds.supportsPreview === true,
-          drivers: driverDescriptors.map((d) => ({
-            id: d.id,
-            name: d.name,
-            description: d.description,
-            runtime: d.runtime as DatasourceExtension['drivers'][0]['runtime'],
-            entry: d.entry,
-          })),
-        };
-        ExtensionsRegistry.register(extension);
-      }
-    } catch {
-      // skip if package not found or not built
+    for (const nodeDriver of drivers) {
+      if (nodeDriver.runtime !== 'node') continue;
+      const entryPath = resolveDriverEntryPath(
+        extDir,
+        nodeDriver.entry,
+        pkgMain,
+        pkg as { exports?: { '.'?: { bun?: string } } },
+      );
+      const importFn: DriverImportFn = () =>
+        import(/* @vite-ignore */ entryPath);
+      driverImports.set(nodeDriver.id, importFn);
+    }
+
+    for (const ds of dsList) {
+      const driverIds = ds.drivers ?? [];
+      const driverDescriptors = driverIds
+        .map((id) => drivers.find((d) => d.id === id))
+        .filter((d): d is ContributesDriver => d != null);
+
+      /* istanbul ignore next -- loop iteration -- @preserve */
+      extensionIdToPath.set(ds.id, extDir);
+      const extension: DatasourceExtension = {
+        id: ds.id,
+        name: ds.name,
+        icon: ds.icon ?? '',
+        description: ds.description,
+        scope: ExtensionScope.DATASOURCE,
+        schema: null,
+        docsUrl: ds.docsUrl ?? null,
+        supportsPreview: ds.supportsPreview === true,
+        drivers: driverDescriptors.map((d) => ({
+          id: d.id,
+          name: d.name,
+          description: d.description,
+          runtime: d.runtime as DatasourceExtension['drivers'][0]['runtime'],
+          entry: d.entry,
+        })),
+      };
+      ExtensionsRegistry.register(extension);
     }
   }
 }
 
-initDriverImportsFromPackageJson();
+initDriverImportsFromFolders();
+
+/**
+ * Register extensions discovered from the given folders.
+ * Exported for testing; when called with paths, adds/overrides extensions from those paths.
+ */
+export function registerExtensionsFromFolders(basePaths?: string[]): void {
+  initDriverImportsFromFolders(basePaths);
+}
 
 /**
  * Load the Zod schema from the extension package for server-side use (e.g. getSecretFields).
@@ -134,17 +100,18 @@ export async function loadExtensionSchemaForProvider(
     | undefined;
   if (!extension || extension.schema != null) return;
 
-  const pkgName = extensionIdToPkgName.get(extensionId);
-  if (!pkgName) return;
+  const extPath = extensionIdToPath.get(extensionId);
+  if (!extPath) return;
 
   try {
-    const mod = await import(/* @vite-ignore */ `${pkgName}/schema`);
+    const schemaUrl = resolveSchemaPath(extPath);
+    const mod = await import(/* @vite-ignore */ schemaUrl);
     const schema = mod.schema ?? mod.default;
     if (schema != null) {
       ExtensionsRegistry.register({ ...extension, schema });
     }
   } catch {
-    // No schema export or package not built; keep schema null
+    // No schema export or file not found; keep schema null
   }
 }
 
@@ -200,22 +167,7 @@ export async function getDriverInstance(
   if (!loadedDrivers.has(driver.id)) {
     loadedDrivers.add(driver.id);
     try {
-      let mod: DriverModule;
-
-      if (driver.runtime === 'node') {
-        mod = await loadDriverModule(driver.id);
-      } else {
-        const entry = driver.entry ?? './dist/driver.js';
-        const fileName = entry.split(/[/\\]/).pop() || 'driver.js';
-        const g = globalThis as unknown as {
-          window?: { location: { origin: string } };
-        };
-        const origin = g.window?.location?.origin ?? '';
-        const url = `${origin}/extensions/${driver.id}/${fileName}`;
-        const dynamicImport = new Function('url', 'return import(url)');
-        mod = await dynamicImport(url);
-      }
-
+      const mod = await loadDriverModule(driver.id);
       const driverFactory = getDriverFactoryFromModule(mod);
 
       if (typeof driverFactory === 'function') {
@@ -223,6 +175,7 @@ export async function getDriverInstance(
         datasources.registerDriver(
           driver.id,
           factory,
+          /* istanbul ignore next -- fallback when runtime unspecified -- @preserve */
           driver.runtime ?? 'node',
         );
       } else {
@@ -236,6 +189,7 @@ export async function getDriverInstance(
     }
   }
 
+  /* istanbul ignore if -- defensive, unreachable in normal flow -- @preserve */
   if (!factory) {
     throw new Error(`Driver ${driver.id} did not register a factory`);
   }

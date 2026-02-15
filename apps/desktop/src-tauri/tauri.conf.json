@@ -32,7 +32,12 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/api-server"
-    ]
+      "binaries/api-server",
+      "binaries/bun"
+    ],
+    "resources": {
+      "../../../packages/extensions/": "extensions/",
+      "binaries/node_modules/": "node_modules/"
+    }
   }
 }
