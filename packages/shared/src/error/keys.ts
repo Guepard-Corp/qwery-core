@@ -1,4 +1,5 @@
 import { DomainException } from '@qwery/domain/exceptions';
+import { getErrorCategory, getErrorCategoryFromStatus } from './codes';
 
 export type UserFacingErrorKey =
   | 'permissionDenied'
@@ -15,11 +16,17 @@ export const USER_FACING_ERROR_KEYS: readonly UserFacingErrorKey[] = [
 
 export const SAFE_ERROR_MESSAGE = 'Something went wrong';
 
+export const ERROR_I18N_KEYS: Record<UserFacingErrorKey, string> = {
+  permissionDenied: 'common:errors.permissionDenied',
+  network: 'common:errors.network',
+  notFound: 'common:errors.notFound',
+  generic: 'common:errors.generic',
+} as const;
+
 export type ApiErrorResponseBody = {
-  errorKey: UserFacingErrorKey;
-  error: string;
-  code?: number;
-  data?: unknown;
+  code: number;
+  params?: unknown;
+  details?: string;
 };
 
 type MessageRule = {
@@ -80,10 +87,16 @@ export function isUserFacingErrorKey(
 
 export function getErrorKeyFromError(error: unknown): UserFacingErrorKey {
   if (error instanceof DomainException) {
-    if (error.code >= 2000 && error.code < 3000) return 'notFound';
-    if (error.code === 401 || error.code === 403) return 'permissionDenied';
-    if (error.code >= 400 && error.code < 500) return 'generic';
-    return 'generic';
+    return getErrorCategory(error.code);
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'number'
+  ) {
+    return getErrorCategory((error as { code: number }).code);
   }
 
   if (
@@ -92,8 +105,7 @@ export function getErrorKeyFromError(error: unknown): UserFacingErrorKey {
     'status' in error &&
     typeof (error as { status: number }).status === 'number'
   ) {
-    const status = (error as { status: number }).status;
-    if (status === 402) return 'generic';
+    return getErrorCategoryFromStatus((error as { status: number }).status);
   }
 
   const code =
