@@ -7,7 +7,9 @@ import {
   CollapsibleTrigger,
 } from '../shadcn/collapsible';
 import { cn } from '../lib/utils';
+import { toUserFacingError } from '../qwery/ai/user-facing-error';
 import type { ToolUIPart } from 'ai';
+import { useTranslation } from 'react-i18next';
 import { getUserFriendlyToolName } from '../qwery/ai/utils/tool-name';
 import {
   BarChart3Icon,
@@ -298,6 +300,7 @@ export const ToolOutput = ({
   isTestConnection = false,
   ...props
 }: ToolOutputProps) => {
+  const { t } = useTranslation('common');
   if (!(output || errorText)) {
     return null;
   }
@@ -333,6 +336,9 @@ export const ToolOutput = ({
   }
 
   if (errorText) {
+    const { message, details } = toUserFacingError(errorText, (key: string) =>
+      t(key, { defaultValue: key }),
+    );
     return (
       <div
         className={cn(
@@ -347,9 +353,19 @@ export const ToolOutput = ({
             <span>Execution Error</span>
           </div>
           <div className="bg-background/80 rounded-lg p-4 backdrop-blur-sm">
-            <pre className="text-muted-foreground text-xs leading-relaxed whitespace-pre-wrap">
-              {errorText}
-            </pre>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {message}
+            </p>
+            {details && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs underline">
+                  View details
+                </summary>
+                <pre className="text-muted-foreground mt-2 text-xs leading-relaxed whitespace-pre-wrap">
+                  {details}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       </div>
