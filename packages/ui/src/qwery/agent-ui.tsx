@@ -78,6 +78,8 @@ import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 import type { FeedbackPayload } from './ai/feedback-types';
+import { toUserFacingError } from './ai/user-facing-error';
+import { useTranslation } from 'react-i18next';
 
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
@@ -1535,6 +1537,7 @@ function PromptInputInner({
   datasourcesLoading?: boolean;
   scrollToBottomRef: React.RefObject<(() => void) | null>;
 }) {
+  const { t } = useTranslation('common');
   const attachments = usePromptInputAttachments();
   const controller = usePromptInputController();
   const previousMessagesLengthRef = useRef(_messages.length);
@@ -1619,8 +1622,11 @@ function PromptInputInner({
       });
       // Don't clear input here - it's already cleared on submit
       // The input should only be cleared on explicit user action (submit button or Enter)
-    } catch {
-      toast.error('Failed to send message. Please try again.');
+    } catch (error) {
+      toast.error(
+        toUserFacingError(error, (key: string) => t(key, { defaultValue: key }))
+          .message,
+      );
       // On error, restore the input so user can retry
       if (message.text) {
         setState((prev) => ({ ...prev, input: message.text }));

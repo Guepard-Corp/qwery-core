@@ -24,6 +24,8 @@ import {
   MessageContent,
   MessageResponse,
 } from '../../ai-elements/message';
+import { toUserFacingError } from './user-facing-error';
+import { useTranslation } from 'react-i18next';
 
 interface VirtuosoMessageListProps extends Omit<MessageItemProps, 'message'> {
   messages: UIMessage[];
@@ -52,6 +54,7 @@ export const VirtuosoMessageList = forwardRef<
   VirtuosoMessageListRef,
   VirtuosoMessageListProps
 >(function VirtuosoMessageList(props, ref) {
+  const { t } = useTranslation('common');
   const {
     messages,
     firstItemIndex,
@@ -162,6 +165,10 @@ export const VirtuosoMessageList = forwardRef<
       },
       Footer: () => {
         if (loadError) {
+          const { message, details } = toUserFacingError(
+            loadError,
+            (key: string) => t(key, { defaultValue: key }),
+          );
           return (
             <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
               <BotAvatar size={6} isLoading={false} className="mt-1 shrink-0" />
@@ -170,10 +177,17 @@ export const VirtuosoMessageList = forwardRef<
                   <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
                     <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
                       <p className="font-medium">Error</p>
-                      <p className="text-destructive/80 mt-1">
-                        {loadError.message ??
-                          'Failed to get response from agent. Please try again.'}
-                      </p>
+                      <p className="text-destructive/80 mt-1">{message}</p>
+                      {details && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs underline">
+                            View details
+                          </summary>
+                          <pre className="text-destructive/80 mt-2 text-xs whitespace-pre-wrap">
+                            {details}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   </MessageContent>
                 </Message>
@@ -208,6 +222,7 @@ export const VirtuosoMessageList = forwardRef<
       isLoadingOlder,
       loadError,
       onRetryLoadOlder,
+      t,
       status,
       lastAssistantHasText,
       lastMessageIsAssistant,
