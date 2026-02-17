@@ -4,7 +4,6 @@ import {
   getErrorCategoryFromStatus,
 } from './codes';
 import type { UserFacingErrorKey } from './keys';
-import { ERROR_REGISTRY_OVERRIDES } from './overrides';
 
 const CODE_TO_PROPERTY_NAME = new Map<number, string>();
 for (const [key, code] of Object.entries(ERROR_CODES)) {
@@ -25,6 +24,26 @@ function toCamelCase(str: string): string {
     .join('');
 }
 
+/**
+ * Transforms error code property names to i18n keys.
+ *
+ * Transformation patterns (in order of precedence):
+ * 1. Single word: NOTEBOOK -> common:errors.notebook
+ * 2. Simple flat errors: BAD_REQUEST -> common:errors.badRequest
+ * 3. Use case patterns: USE_CASE_* -> common:errors.useCase*
+ * 4. Not found patterns: ENTITY_NOT_FOUND -> common:errors.entity.notFound
+ * 5. Already exists: ENTITY_ALREADY_EXISTS -> common:errors.entity.alreadyExists
+ * 6. Agent-specific patterns: AGENT_SESSION_NOT_FOUND -> common:errors.agent.sessionNotFound
+ * 7. State machine patterns: STATE_MACHINE_NOT_FOUND -> common:errors.agent.stateMachineNotFound
+ * 8. Invalid state transition: INVALID_STATE_TRANSITION -> common:errors.agent.invalidStateTransition
+ * 9. Agent action not found: AGENT_ACTION_NOT_FOUND -> common:errors.agent.actionNotFound
+ * 10. Agent actions: AGENT_ACTION -> common:errors.agent.action
+ * 11. Entity-action patterns: ENTITY_ACTION -> common:errors.entity.action
+ * 12. Fallback: Transform entire name to camelCase
+ *
+ * @param propertyName - Error code property name (e.g., "NOTEBOOK_NOT_FOUND")
+ * @returns i18n key (e.g., "common:errors.notebook.notFound")
+ */
 function transformPropertyNameToI18nKey(propertyName: string): string {
   let name = propertyName;
   const hadErrorSuffix = name.endsWith('_ERROR');
@@ -35,6 +54,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
 
   const parts = name.split('_');
 
+  // Pattern 1: Single word errors
   if (parts.length === 1) {
     const base = toCamelCase(name);
     return hadErrorSuffix
@@ -45,6 +65,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
   const firstPart = parts[0]!;
   const remainingParts = parts.slice(1);
 
+  // Pattern 2: Simple flat errors (BAD_REQUEST, WRONG_CREDENTIALS, etc.)
   const simpleFlatErrors = ['BAD', 'WRONG', 'ENTITY', 'USE', 'VALUE'];
 
   if (
@@ -56,6 +77,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.${toCamelCase(fullName)}`;
   }
 
+  // Pattern 3: Use case patterns (USE_CASE_PORT_VALIDATION_ERROR)
   if (
     firstPart === 'USE' &&
     remainingParts.length >= 2 &&
@@ -65,6 +87,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.${toCamelCase(fullName)}`;
   }
 
+  // Pattern 4: Not found patterns (NOTEBOOK_NOT_FOUND -> notebook.notFound)
   if (
     remainingParts.length === 2 &&
     remainingParts[0] === 'NOT' &&
@@ -74,6 +97,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.${entity}.notFound`;
   }
 
+  // Pattern 5: Already exists patterns (NOTEBOOK_ALREADY_EXISTS -> notebook.alreadyExists)
   if (
     remainingParts.length === 2 &&
     remainingParts[0] === 'ALREADY' &&
@@ -83,6 +107,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.${entity}.alreadyExists`;
   }
 
+  // Pattern 6: Agent session not found (special case)
   if (
     firstPart === 'AGENT' &&
     remainingParts.length >= 3 &&
@@ -93,6 +118,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.agent.sessionNotFound`;
   }
 
+  // Pattern 7: State machine not found (special case)
   if (
     firstPart === 'STATE' &&
     remainingParts.length >= 3 &&
@@ -103,6 +129,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.agent.stateMachineNotFound`;
   }
 
+  // Pattern 8: Invalid state transition (special case)
   if (
     firstPart === 'INVALID' &&
     remainingParts.length === 2 &&
@@ -112,6 +139,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.agent.invalidStateTransition`;
   }
 
+  // Pattern 9: Agent action not found (AGENT_ACTION_NOT_FOUND -> agent.actionNotFound)
   if (
     firstPart === 'AGENT' &&
     remainingParts.length >= 2 &&
@@ -123,11 +151,13 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
     return `common:errors.agent.${action}NotFound`;
   }
 
+  // Pattern 10: Agent actions (AGENT_ACTION -> agent.action)
   if (firstPart === 'AGENT' && remainingParts.length > 0) {
     const action = toCamelCase(remainingParts.join('_'));
     return `common:errors.agent.${action}`;
   }
 
+  // Pattern 11: Entity-action patterns (NOTEBOOK_UPDATE_ERROR -> notebook.updateError)
   if (parts.length >= 2 && firstPart) {
     const entity = toCamelCase(firstPart);
     const action = toCamelCase(remainingParts.join('_'));
@@ -136,6 +166,7 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
       : `common:errors.${entity}.${action}`;
   }
 
+  // Pattern 12: Fallback - transform entire name
   const base = toCamelCase(name);
   return hadErrorSuffix
     ? `common:errors.${base}Error`
@@ -145,9 +176,18 @@ function transformPropertyNameToI18nKey(propertyName: string): string {
 const i18nKeyCache = new Map<number, string>();
 
 let translationKeySet: Set<string> | null = null;
+let translationKeySetHash: string | null = null;
+let initializationLock = false;
 const isDevelopment =
-  typeof process !== 'undefined' &&
-  process.env.NODE_ENV === 'development';
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
+
+function simpleHash(obj: unknown): string {
+  try {
+    return JSON.stringify(obj);
+  } catch {
+    return String(obj);
+  }
+}
 
 function buildTranslationKeySet(
   obj: Record<string, unknown>,
@@ -156,11 +196,7 @@ function buildTranslationKeySet(
   const keys = new Set<string>();
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value)
-    ) {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const nestedKeys = buildTranslationKeySet(
         value as Record<string, unknown>,
         fullKey,
@@ -175,7 +211,28 @@ function buildTranslationKeySet(
 export function initializeTranslationValidation(
   translations: Record<string, unknown>,
 ): void {
-  translationKeySet = buildTranslationKeySet(translations);
+  if (initializationLock) {
+    return;
+  }
+
+  const newHash = simpleHash(translations);
+  if (translationKeySet && translationKeySetHash === newHash) {
+    return;
+  }
+
+  initializationLock = true;
+  try {
+    translationKeySet = buildTranslationKeySet(translations);
+    translationKeySetHash = newHash;
+  } finally {
+    initializationLock = false;
+  }
+}
+
+export function clearErrorResolutionCache(): void {
+  i18nKeyCache.clear();
+  translationKeySet = null;
+  translationKeySetHash = null;
 }
 
 function validateI18nKey(i18nKey: string): boolean {
@@ -215,12 +272,7 @@ export function getI18nKeyForErrorCode(
   code: number,
   options: ErrorResolutionOptions = {},
 ): string | undefined {
-  const {
-    overrides,
-    validateKey,
-    onValidationFailure,
-    translations,
-  } = options;
+  const { overrides, validateKey, onValidationFailure, translations } = options;
 
   if (translations && !translationKeySet) {
     initializeTranslationValidation(translations);
@@ -238,9 +290,7 @@ export function getI18nKeyForErrorCode(
   const propertyName = CODE_TO_PROPERTY_NAME.get(code);
   if (!propertyName) {
     if (isDevelopment) {
-      console.warn(
-        `[Error Registry] No property name found for code ${code}`,
-      );
+      console.warn(`[Error Registry] No property name found for code ${code}`);
     }
     return undefined;
   }
@@ -269,6 +319,7 @@ export function getI18nKeyForErrorCode(
     } else {
       logMissingKey(i18nKey, code);
     }
+    return i18nKey;
   }
 
   i18nKeyCache.set(code, i18nKey);
@@ -293,7 +344,12 @@ export function resolveError(
   const { translate, defaultMessages, ...resolutionOptions } = options;
 
   function getErrorCode(err: unknown): number | undefined {
-    if (err && typeof err === 'object' && 'code' in err) {
+    if (
+      err !== null &&
+      err !== undefined &&
+      typeof err === 'object' &&
+      'code' in err
+    ) {
       const code = (err as { code: unknown }).code;
       if (typeof code === 'number') return code;
     }
@@ -301,7 +357,12 @@ export function resolveError(
   }
 
   function getDetails(err: unknown): string | undefined {
-    if (err && typeof err === 'object' && 'details' in err) {
+    if (
+      err !== null &&
+      err !== undefined &&
+      typeof err === 'object' &&
+      'details' in err
+    ) {
       const details = (err as { details?: unknown }).details;
       if (typeof details === 'string') {
         return details;
@@ -311,9 +372,19 @@ export function resolveError(
   }
 
   function getParams(err: unknown): Record<string, unknown> | undefined {
-    if (err && typeof err === 'object' && 'params' in err) {
+    if (
+      err !== null &&
+      err !== undefined &&
+      typeof err === 'object' &&
+      'params' in err
+    ) {
       const params = (err as { params?: unknown }).params;
-      if (params && typeof params === 'object' && !Array.isArray(params)) {
+      if (
+        params !== null &&
+        params !== undefined &&
+        typeof params === 'object' &&
+        !Array.isArray(params)
+      ) {
         return params as Record<string, unknown>;
       }
     }
@@ -330,16 +401,20 @@ export function resolveError(
       translations: options.translations,
     });
     if (i18nKey && translate) {
-      const translated = translate(i18nKey, params);
-      if (translated !== i18nKey) {
-        const category = getErrorCategory(code);
-        return {
-          key: category,
-          message: translated,
-          i18nKey,
-          details,
-          code,
-        };
+      try {
+        const translated = translate(i18nKey, params);
+        if (translated && translated !== i18nKey && translated.trim() !== '') {
+          const category = getErrorCategory(code);
+          return {
+            key: category,
+            message: translated,
+            i18nKey,
+            details,
+            code,
+          };
+        }
+      } catch {
+        // Translation function threw, fall through to category fallback
       }
     }
 
@@ -347,11 +422,20 @@ export function resolveError(
     const categoryI18nKey = `common:errors.${category}`;
     let message: string;
     if (translate) {
-      const translated = translate(categoryI18nKey, params);
-      message =
-        translated !== categoryI18nKey
-          ? translated
-          : (defaultMessages?.[category] ?? categoryI18nKey);
+      try {
+        const translated = translate(categoryI18nKey, params);
+        if (
+          translated &&
+          translated !== categoryI18nKey &&
+          translated.trim() !== ''
+        ) {
+          message = translated;
+        } else {
+          message = defaultMessages?.[category] ?? categoryI18nKey;
+        }
+      } catch {
+        message = defaultMessages?.[category] ?? categoryI18nKey;
+      }
     } else {
       message = defaultMessages?.[category] ?? categoryI18nKey;
     }
@@ -376,11 +460,25 @@ export function resolveError(
   if (status !== undefined) {
     const category = getErrorCategoryFromStatus(status);
     const categoryI18nKey = `common:errors.${category}`;
-    const message = translate
-      ? translate(categoryI18nKey, params) !== categoryI18nKey
-        ? translate(categoryI18nKey, params)
-        : (defaultMessages?.[category] ?? categoryI18nKey)
-      : (defaultMessages?.[category] ?? categoryI18nKey);
+    let message: string;
+    if (translate) {
+      try {
+        const translated = translate(categoryI18nKey, params);
+        if (
+          translated &&
+          translated !== categoryI18nKey &&
+          translated.trim() !== ''
+        ) {
+          message = translated;
+        } else {
+          message = defaultMessages?.[category] ?? categoryI18nKey;
+        }
+      } catch {
+        message = defaultMessages?.[category] ?? categoryI18nKey;
+      }
+    } else {
+      message = defaultMessages?.[category] ?? categoryI18nKey;
+    }
 
     return {
       key: category,
@@ -392,11 +490,25 @@ export function resolveError(
 
   const category: UserFacingErrorKey = 'generic';
   const categoryI18nKey = `common:errors.${category}`;
-  const message = translate
-    ? translate(categoryI18nKey, params) !== categoryI18nKey
-      ? translate(categoryI18nKey, params)
-      : (defaultMessages?.[category] ?? categoryI18nKey)
-    : (defaultMessages?.[category] ?? categoryI18nKey);
+  let message: string;
+  if (translate) {
+    try {
+      const translated = translate(categoryI18nKey, params);
+      if (
+        translated &&
+        translated !== categoryI18nKey &&
+        translated.trim() !== ''
+      ) {
+        message = translated;
+      } else {
+        message = defaultMessages?.[category] ?? categoryI18nKey;
+      }
+    } catch {
+      message = defaultMessages?.[category] ?? categoryI18nKey;
+    }
+  } else {
+    message = defaultMessages?.[category] ?? categoryI18nKey;
+  }
 
   return {
     key: category,

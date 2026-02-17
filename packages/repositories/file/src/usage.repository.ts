@@ -8,8 +8,9 @@ const ENTITY = 'usage';
 type Row = Record<string, unknown>;
 
 function serialize(usage: Usage): Row {
+  const idValue = usage.id as string | number;
   return {
-    id: usage.id,
+    id: typeof idValue === 'number' ? idValue : idValue,
     conversationId: usage.conversationId,
     projectId: usage.projectId,
     organizationId: usage.organizationId,
@@ -34,8 +35,9 @@ function serialize(usage: Usage): Row {
 }
 
 function deserialize(row: Row): Usage {
+  const idValue = row.id;
   return {
-    id: row.id as string,
+    id: (typeof idValue === 'number' ? idValue : idValue) as string & number,
     conversationId: row.conversationId as string,
     projectId: row.projectId as string,
     organizationId: row.organizationId as string,
@@ -105,8 +107,17 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async create(entity: Usage): Promise<Usage> {
-    await Storage.write([ENTITY, entity.id], serialize(entity));
-    return entity;
+    const idValue = entity.id as string | number | undefined;
+    const idNum =
+      !idValue || idValue === '0' || idValue === 0
+        ? Date.now()
+        : typeof idValue === 'number'
+          ? idValue
+          : Number(idValue) || Number(idValue);
+    const id = idNum;
+    const entityWithId = { ...entity, id: id as string & number };
+    await Storage.write([ENTITY, String(id)], serialize(entityWithId));
+    return entityWithId as Usage;
   }
 
   async update(entity: Usage): Promise<Usage> {

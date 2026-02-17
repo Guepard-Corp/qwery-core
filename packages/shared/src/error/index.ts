@@ -19,6 +19,7 @@ export { ERROR_REGISTRY_OVERRIDES } from './overrides';
 
 export {
   initializeTranslationValidation,
+  clearErrorResolutionCache,
   type ErrorResolutionOptions,
   getI18nKeyForErrorCode,
   type ResolveErrorOptions,

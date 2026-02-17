@@ -6,7 +6,16 @@ import {
 } from '@qwery/shared/error';
 import commonTranslations from '../i18n/locales/en/common.json';
 
-initializeTranslationValidation(commonTranslations);
+let initialized = false;
+
+export function initializeErrorHandling(): void {
+  if (!initialized) {
+    initializeTranslationValidation(commonTranslations);
+    initialized = true;
+  }
+}
+
+initializeErrorHandling();
 
 export const ERROR_KEYS = ERROR_I18N_KEYS;
 
