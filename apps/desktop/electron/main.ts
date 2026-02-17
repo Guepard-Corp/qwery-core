@@ -233,7 +233,7 @@ const createMainWindow = async (): Promise<BrowserWindow> => {
       window.webContents.executeJavaScript(`
         document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; font-family: system-ui; color: #fff; background: #111827;">
           <h1 style="font-size: 24px; margin-bottom: 16px;">Failed to load application</h1>
-          <p style="color: #9ca3af; margin-bottom: 8px;">Error: ${error instanceof Error ? error.message : String(error)}</p>
+          <p style="color: #9ca3af; margin-bottom: 8px;">Something went wrong while starting the app. Please restart and try again.</p>
           <p style="color: #9ca3af; font-size: 14px;">URL: ${rendererUrl}</p>
         </div>';
       `).catch(() => {});
