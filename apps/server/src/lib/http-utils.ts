@@ -1,10 +1,19 @@
 import { DomainException } from '@qwery/domain/exceptions';
-import {
-  getErrorKeyFromError,
-  SAFE_ERROR_MESSAGE,
-} from '@qwery/shared/error-keys';
+import { Code, type CodeDescription } from '@qwery/domain/common';
+import { SAFE_ERROR_MESSAGE } from '@qwery/shared/error';
 
-export { getErrorKeyFromError, SAFE_ERROR_MESSAGE };
+function getTechnicalDetails(error: unknown): string | undefined {
+  if (error instanceof DomainException) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message !== SAFE_ERROR_MESSAGE ? error.message : undefined;
+  }
+  if (typeof error === 'string') {
+    return error !== SAFE_ERROR_MESSAGE ? error : undefined;
+  }
+  return undefined;
+}
 
 export function handleDomainException(error: unknown): Response {
   if (error instanceof DomainException) {
@@ -14,22 +23,47 @@ export function handleDomainException(error: unknown): Response {
         : error.code >= 400 && error.code < 500
           ? error.code
           : 500;
-    const errorKey = getErrorKeyFromError(error);
+    const details = getTechnicalDetails(error);
+
     return Response.json(
       {
-        errorKey,
         code: error.code,
-        data: error.data,
-        error: SAFE_ERROR_MESSAGE,
+        params: error.data,
+        details,
       },
       { status },
     );
   }
-  const errorKey = getErrorKeyFromError(error);
+  const details = getTechnicalDetails(error);
   return Response.json(
-    { errorKey, error: SAFE_ERROR_MESSAGE },
+    {
+      code: 500,
+      details,
+    },
     { status: 500 },
   );
+}
+
+export function createValidationErrorResponse(
+  message: string,
+  code: CodeDescription = Code.BAD_REQUEST_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
+}
+
+export function createNotFoundErrorResponse(
+  message: string,
+  code: CodeDescription = Code.ENTITY_NOT_FOUND_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
 }
 
 export function parsePositiveInt(
