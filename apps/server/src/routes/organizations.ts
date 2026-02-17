@@ -13,7 +13,10 @@ import {
   parseLimit,
   parsePositiveInt,
   isUUID,
+  createValidationErrorResponse,
+  createNotFoundErrorResponse,
 } from '../lib/http-utils';
+import { Code } from '@qwery/domain/common';
 
 type BulkOrganizationOperation = 'delete' | 'export';
 
@@ -119,7 +122,7 @@ export function createOrganizationsRoutes(
 
       const ids = body.ids.map((id: string) => id.trim()).filter(Boolean);
       if (ids.length === 0) {
-        return c.json({ error: 'ids cannot be empty' }, 400);
+        return createValidationErrorResponse('ids cannot be empty');
       }
 
       if (body.operation === 'delete') {
@@ -162,7 +165,11 @@ export function createOrganizationsRoutes(
   app.get('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Not found' }, 404);
+      if (!id)
+        return createNotFoundErrorResponse(
+          'Not found',
+          Code.ORGANIZATION_NOT_FOUND_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = isUUID(id)
@@ -178,7 +185,11 @@ export function createOrganizationsRoutes(
   app.put('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const body = await c.req.json();
@@ -193,7 +204,11 @@ export function createOrganizationsRoutes(
   app.delete('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = new DeleteOrganizationService(repos.organization);
