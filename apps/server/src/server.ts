@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { basicAuth } from 'hono/basic-auth';
-import { DomainException } from '@qwery/domain/exceptions';
 import { getLogger } from '@qwery/shared/logger';
 import { getRepositories } from './lib/repositories';
 import { createChatRoutes } from './routes/chat';
@@ -19,33 +18,7 @@ import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
-import { getErrorKeyFromError, SAFE_ERROR_MESSAGE } from './lib/http-utils';
-
-function handleError(error: unknown): Response {
-  if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
-    const errorKey = getErrorKeyFromError(error);
-    return Response.json(
-      {
-        errorKey,
-        code: error.code,
-        data: error.data,
-        error: SAFE_ERROR_MESSAGE,
-      },
-      { status },
-    );
-  }
-  const errorKey = getErrorKeyFromError(error);
-  return Response.json(
-    { errorKey, error: SAFE_ERROR_MESSAGE },
-    { status: 500 },
-  );
-}
+import { handleDomainException } from './lib/http-utils';
 
 export function createApp() {
   const app = new Hono();
@@ -62,7 +35,7 @@ export function createApp() {
       },
       'Unhandled request error',
     );
-    return handleError(err);
+    return handleDomainException(err);
   });
 
   const password = process.env.QWERY_SERVER_PASSWORD;
