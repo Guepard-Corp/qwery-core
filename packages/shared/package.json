@@ -22,7 +22,7 @@
     "./desktop": "./src/desktop/index.ts",
     "./message-constants": "./src/message-constants.ts",
     "./message-role-utils": "./src/utils/message-role.ts",
-    "./error-keys": "./src/error-keys.ts"
+    "./error": "./src/error/index.ts"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
@@ -30,6 +30,7 @@
     "@qwery/tailwind-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
     "@types/react": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
     "eslint": "^9.39.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
