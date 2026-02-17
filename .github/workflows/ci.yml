@@ -94,6 +94,9 @@ jobs:
       - name: Run type check
         run: pnpm typecheck
 
+      - name: Validate error i18n keys
+        run: pnpm validate:error-keys
+
   test:
     name: Test
     runs-on: ubuntu-latest

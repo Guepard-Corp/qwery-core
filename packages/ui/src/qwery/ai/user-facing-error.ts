@@ -1,15 +1,9 @@
 import {
   resolveError,
   ERROR_REGISTRY_OVERRIDES,
+  DEFAULT_ERROR_MESSAGES,
   type UserFacingErrorKey,
 } from '@qwery/shared/error';
-
-const DEFAULT_MESSAGES: Record<UserFacingErrorKey, string> = {
-  permissionDenied: "You don't have permission to do that.",
-  notFound: 'That was not found.',
-  network: 'Network error. Please try again.',
-  generic: 'Something went wrong. Please try again.',
-};
 
 export function toUserFacingError(
   error: unknown,
@@ -22,7 +16,7 @@ export function toUserFacingError(
 } {
   const resolved = resolveError(error, {
     translate,
-    defaultMessages: DEFAULT_MESSAGES,
+    defaultMessages: DEFAULT_ERROR_MESSAGES,
     overrides: ERROR_REGISTRY_OVERRIDES,
   });
 

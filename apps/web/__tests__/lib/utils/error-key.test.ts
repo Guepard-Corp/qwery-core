@@ -447,7 +447,7 @@ describe('resolveError edge cases', () => {
     });
 
     it('handles null params gracefully', () => {
-      const t = vi.fn((key: string, params?: Record<string, unknown>) => key);
+      const t = vi.fn((key: string, _params?: Record<string, unknown>) => key);
       const error = {
         status: 404,
         code: ERROR_CODES.NOTEBOOK_NOT_FOUND,
@@ -465,7 +465,7 @@ describe('resolveError edge cases', () => {
     });
 
     it('handles array params (should be ignored)', () => {
-      const t = vi.fn((key: string, params?: Record<string, unknown>) => key);
+      const t = vi.fn((key: string, _params?: Record<string, unknown>) => key);
       const error = {
         status: 404,
         code: ERROR_CODES.NOTEBOOK_NOT_FOUND,

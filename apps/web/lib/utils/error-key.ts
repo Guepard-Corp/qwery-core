@@ -3,6 +3,7 @@ import {
   initializeTranslationValidation,
   ERROR_REGISTRY_OVERRIDES,
   ERROR_I18N_KEYS,
+  DEFAULT_ERROR_MESSAGES,
 } from '@qwery/shared/error';
 import commonTranslations from '../i18n/locales/en/common.json';
 
@@ -29,6 +30,7 @@ export function getErrorKey(
 
   const resolved = resolveError(error, {
     translate: t,
+    defaultMessages: DEFAULT_ERROR_MESSAGES,
     overrides: ERROR_REGISTRY_OVERRIDES,
     translations: commonTranslations,
   });
