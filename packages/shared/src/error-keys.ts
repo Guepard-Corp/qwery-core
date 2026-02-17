@@ -85,6 +85,17 @@ export function getErrorKeyFromError(error: unknown): UserFacingErrorKey {
     if (error.code >= 400 && error.code < 500) return 'generic';
     return 'generic';
   }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    typeof (error as { status: number }).status === 'number'
+  ) {
+    const status = (error as { status: number }).status;
+    if (status === 402) return 'generic';
+  }
+
   const code =
     error &&
     typeof error === 'object' &&
