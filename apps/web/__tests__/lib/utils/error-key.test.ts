@@ -1,168 +1,183 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ERROR_KEYS, getErrorKey, toastError } from '~/lib/utils/error-key';
+import {
+  ERROR_CODES,
+  getI18nKeyForErrorCode,
+  ERROR_REGISTRY_OVERRIDES,
+} from '@qwery/shared/error';
+import { ApiError } from '~/lib/repositories/api-client';
+
+const mockT = vi.fn((key: string, _params?: Record<string, unknown>) => key);
 
 describe('getErrorKey', () => {
-  describe('errorKey from API (preferred)', () => {
-    it('returns permissionDenied i18n key when error has errorKey permissionDenied', () => {
-      expect(getErrorKey({ errorKey: 'permissionDenied' })).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
+  describe('code-based (preferred)', () => {
+    it('returns translated message for known error code', () => {
+      const t = vi.fn((key: string, _params?: Record<string, unknown>) => {
+        if (key === 'common:errors.notebook.notFound')
+          return 'Notebook not found';
+        return key;
+      });
+      const error = new ApiError(404, ERROR_CODES.NOTEBOOK_NOT_FOUND);
+      expect(getErrorKey(error, t)).toBe('Notebook not found');
     });
 
-    it('returns notFound i18n key when error has errorKey notFound', () => {
-      expect(getErrorKey({ errorKey: 'notFound' })).toBe(ERROR_KEYS.notFound);
+    it('returns category i18n key when code not in registry', () => {
+      const error = new ApiError(404, 2999);
+      expect(getErrorKey(error, mockT)).toBe(ERROR_KEYS.notFound);
     });
 
-    it('returns network i18n key when error has errorKey network', () => {
-      expect(getErrorKey({ errorKey: 'network' })).toBe(ERROR_KEYS.network);
-    });
-
-    it('returns generic i18n key when error has errorKey generic', () => {
-      expect(getErrorKey({ errorKey: 'generic' })).toBe(ERROR_KEYS.generic);
-    });
-
-    it('falls back to message when errorKey is invalid', () => {
-      expect(getErrorKey({ errorKey: 'invalid', message: 'forbidden' })).toBe(
-        ERROR_KEYS.generic,
-      );
+    it('returns generic when code is undefined', () => {
+      expect(getErrorKey({}, mockT)).toBe(ERROR_KEYS.generic);
     });
   });
 
   describe('status-based (fallback)', () => {
     it('returns permissionDenied for status 403', () => {
-      expect(getErrorKey({ status: 403, message: 'Forbidden' })).toBe(
+      expect(getErrorKey({ status: 403 }, mockT)).toBe(
         ERROR_KEYS.permissionDenied,
       );
     });
 
     it('returns permissionDenied for status 401', () => {
-      expect(getErrorKey({ status: 401 })).toBe(ERROR_KEYS.permissionDenied);
+      expect(getErrorKey({ status: 401 }, mockT)).toBe(
+        ERROR_KEYS.permissionDenied,
+      );
     });
 
     it('returns notFound for status 404', () => {
-      expect(getErrorKey({ status: 404 })).toBe(ERROR_KEYS.notFound);
+      expect(getErrorKey({ status: 404 }, mockT)).toBe(ERROR_KEYS.notFound);
     });
 
     it('returns network for status 502', () => {
-      expect(getErrorKey({ status: 502 })).toBe(ERROR_KEYS.network);
+      expect(getErrorKey({ status: 502 }, mockT)).toBe(ERROR_KEYS.network);
     });
 
     it('returns generic for status 500', () => {
-      expect(getErrorKey({ status: 500 })).toBe(ERROR_KEYS.generic);
+      expect(getErrorKey({ status: 500 }, mockT)).toBe(ERROR_KEYS.generic);
     });
   });
 
-  describe('permission / RLS (message fallback)', () => {
-    it('returns permissionDenied for row-level security message', () => {
-      expect(
-        getErrorKey(
-          new Error(
-            'new row violates row-level security policy for table "conversations"',
-          ),
-        ),
-      ).toBe(ERROR_KEYS.permissionDenied);
-    });
-
-    it('returns permissionDenied for violates + policy', () => {
-      expect(getErrorKey(new Error('violates some policy'))).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
-    });
-
-    it('returns permissionDenied for permission denied', () => {
-      expect(getErrorKey(new Error('Permission denied'))).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
-    });
-
-    it('returns permissionDenied for forbidden', () => {
-      expect(getErrorKey(new Error('Forbidden'))).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
-    });
-  });
-
-  describe('network', () => {
-    it('returns network for Failed to fetch', () => {
-      expect(getErrorKey(new Error('Failed to fetch'))).toBe(
-        ERROR_KEYS.network,
-      );
-    });
-
-    it('returns network for ECONNRESET', () => {
-      expect(getErrorKey(new Error('ECONNRESET'))).toBe(ERROR_KEYS.network);
-    });
-
-    it('returns network for ETIMEDOUT', () => {
-      expect(getErrorKey(new Error('ETIMEDOUT'))).toBe(ERROR_KEYS.network);
-    });
-
-    it('returns network for load failed', () => {
-      expect(getErrorKey(new Error('Load failed'))).toBe(ERROR_KEYS.network);
-    });
-  });
-
-  describe('not found', () => {
-    it('returns notFound for 404', () => {
-      expect(getErrorKey(new Error('404 Not Found'))).toBe(ERROR_KEYS.notFound);
-    });
-
-    it('returns notFound for not found', () => {
-      expect(getErrorKey(new Error('Resource not found'))).toBe(
-        ERROR_KEYS.notFound,
-      );
-    });
-
-    it('returns notFound for PGRST116', () => {
-      expect(getErrorKey(new Error('PGRST116'))).toBe(ERROR_KEYS.notFound);
-    });
-  });
-
-  describe('generic fallback', () => {
-    it('returns generic for unknown error message', () => {
-      expect(getErrorKey(new Error('Something else'))).toBe(ERROR_KEYS.generic);
-    });
-
-    it('returns generic for empty Error', () => {
-      expect(getErrorKey(new Error(''))).toBe(ERROR_KEYS.generic);
-    });
-  });
-
-  describe('input types', () => {
-    it('handles string input', () => {
-      expect(getErrorKey('row-level security')).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
-      expect(getErrorKey('random string')).toBe(ERROR_KEYS.generic);
-    });
-
-    it('handles non-Error object (stringified)', () => {
-      expect(getErrorKey({ message: 'forbidden' })).toBe(ERROR_KEYS.generic);
-    });
-  });
-
-  describe('case insensitivity', () => {
-    it('matches permission phrases case-insensitively', () => {
-      expect(getErrorKey(new Error('ROW-LEVEL SECURITY'))).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
-      expect(getErrorKey(new Error('FORBIDDEN'))).toBe(
-        ERROR_KEYS.permissionDenied,
-      );
+  describe('without translation function', () => {
+    it('returns i18n key string when t is not provided', () => {
+      const error = new ApiError(404, ERROR_CODES.NOTEBOOK_NOT_FOUND);
+      expect(getErrorKey(error)).toBe(ERROR_KEYS.generic);
     });
   });
 });
 
 describe('toastError', () => {
-  it('calls toast.error with translated key for the error', () => {
-    const t = vi.fn((key: string) => key);
+  it('calls toast.error with translated message for the error', () => {
+    const t = vi.fn((key: string, _params?: Record<string, unknown>) => {
+      if (key === 'common:errors.notebook.notFound')
+        return 'Notebook not found';
+      return key;
+    });
     const toast = { error: vi.fn() };
-    const error = new Error('row-level security');
+    const error = new ApiError(404, ERROR_CODES.NOTEBOOK_NOT_FOUND);
 
     toastError(error, t, toast);
 
-    expect(t).toHaveBeenCalledWith(ERROR_KEYS.permissionDenied);
-    expect(toast.error).toHaveBeenCalledWith(ERROR_KEYS.permissionDenied);
+    expect(t).toHaveBeenCalledWith(
+      'common:errors.notebook.notFound',
+      undefined,
+    );
+    expect(toast.error).toHaveBeenCalledWith('Notebook not found');
+  });
+
+  it('passes params to translate function when error has params', () => {
+    const t = vi.fn((key: string, params?: Record<string, unknown>) => {
+      if (key === 'common:errors.notebook.notFound' && params?.notebookId) {
+        return `Notebook ${params.notebookId} not found`;
+      }
+      return key;
+    });
+    const toast = { error: vi.fn() };
+    const error = {
+      status: 404,
+      code: ERROR_CODES.NOTEBOOK_NOT_FOUND,
+      params: { notebookId: '123' },
+    };
+
+    toastError(error, t, toast);
+
+    expect(t).toHaveBeenCalledWith('common:errors.notebook.notFound', {
+      notebookId: '123',
+    });
+    expect(toast.error).toHaveBeenCalledWith('Notebook 123 not found');
+  });
+});
+
+describe('getI18nKeyForErrorCode', () => {
+  it('transforms NOTEBOOK_NOT_FOUND to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.NOTEBOOK_NOT_FOUND, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.notebook.notFound');
+  });
+
+  it('transforms BAD_REQUEST to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.BAD_REQUEST, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.badRequest');
+  });
+
+  it('transforms AGENT_SESSION_NOT_FOUND to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.AGENT_SESSION_NOT_FOUND, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.agent.sessionNotFound');
+  });
+
+  it('transforms STATE_MACHINE_NOT_FOUND to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.STATE_MACHINE_NOT_FOUND, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.agent.stateMachineNotFound');
+  });
+
+  it('transforms INVALID_STATE_TRANSITION to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.INVALID_STATE_TRANSITION, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.agent.invalidStateTransition');
+  });
+
+  it('transforms NOTEBOOK_UPDATE_ERROR to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.NOTEBOOK_UPDATE_ERROR, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.notebook.updateError');
+  });
+
+  it('transforms USE_CASE_PORT_VALIDATION_ERROR to correct i18n key', () => {
+    expect(
+      getI18nKeyForErrorCode(ERROR_CODES.USE_CASE_PORT_VALIDATION_ERROR, {
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      }),
+    ).toBe('common:errors.useCasePortValidationError');
+  });
+
+  it('returns undefined for unknown error code', () => {
+    expect(getI18nKeyForErrorCode(9999)).toBeUndefined();
+  });
+
+  it('caches transformations', () => {
+    const code = ERROR_CODES.NOTEBOOK_NOT_FOUND;
+    const first = getI18nKeyForErrorCode(code, {
+      overrides: ERROR_REGISTRY_OVERRIDES,
+    });
+    const second = getI18nKeyForErrorCode(code, {
+      overrides: ERROR_REGISTRY_OVERRIDES,
+    });
+    expect(first).toBe(second);
+    expect(first).toBe('common:errors.notebook.notFound');
   });
 });
