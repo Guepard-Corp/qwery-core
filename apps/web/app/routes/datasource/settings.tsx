@@ -125,13 +125,13 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
       } else {
         toast.error(
           result.error
-            ? t(getErrorKey(new Error(result.error)))
+            ? getErrorKey(new Error(result.error), t)
             : 'Connection test failed',
         );
       }
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -190,7 +190,7 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
         navigate(-1);
       }
     } catch (error) {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -248,7 +248,7 @@ export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
         navigate(-1);
       }
     } catch (error) {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
       console.error(error);
     } finally {
       setIsDeleting(false);

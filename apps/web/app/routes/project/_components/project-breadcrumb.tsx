@@ -200,7 +200,7 @@ export function ProjectBreadcrumb() {
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) => handleNotebookSelect(toBreadcrumbNodeItem(notebook)),
-    (error) => toast.error(t(getErrorKey(error))),
+    (error) => toast.error(getErrorKey(error, t)),
   );
 
   const handleNewOrg = () => {

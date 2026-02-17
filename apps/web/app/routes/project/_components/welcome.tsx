@@ -72,7 +72,7 @@ export default function WelcomePage({
     repositories.datasource,
     () => {},
     (error) => {
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-playground',
       });
     },
@@ -92,7 +92,7 @@ export default function WelcomePage({
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-conversation',
       });
     },
@@ -229,14 +229,14 @@ export default function WelcomePage({
             );
           },
           onError: (error) => {
-            toast.error(t(getErrorKey(error)), {
+            toast.error(getErrorKey(error, t), {
               id: 'creating-conversation',
             });
           },
         },
       );
     } catch (error) {
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-playground',
       });
     }

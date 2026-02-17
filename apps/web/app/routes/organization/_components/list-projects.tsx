@@ -136,7 +136,7 @@ export function ListProjects({
       );
     },
     onError: (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 
@@ -151,7 +151,7 @@ export function ListProjects({
       );
     },
     onError: (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 

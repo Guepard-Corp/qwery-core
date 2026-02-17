@@ -114,7 +114,7 @@ export function ListOrganizations({
       );
     },
     onError: (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 

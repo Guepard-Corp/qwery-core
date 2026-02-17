@@ -78,7 +78,7 @@ export function OrganizationDialog({
       }
     },
     onError: (error: unknown) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 
@@ -89,7 +89,7 @@ export function OrganizationDialog({
       onSuccess?.();
     },
     onError: (error: unknown) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 

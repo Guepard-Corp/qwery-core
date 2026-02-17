@@ -78,7 +78,7 @@ export function ProjectChatNotebookSidebarContent() {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
     projectId,
   );
@@ -128,7 +128,7 @@ export function ProjectChatNotebookSidebarContent() {
       },
       {
         onSuccess: () => toast.success('Conversation title updated'),
-        onError: (error) => toast.error(t(getErrorKey(error))),
+        onError: (error) => toast.error(getErrorKey(error, t)),
       },
     );
   };
@@ -141,7 +141,7 @@ export function ProjectChatNotebookSidebarContent() {
           navigate(createPath(pathsConfig.app.project, projectSlug || ''));
         }
       },
-      onError: (error) => toast.error(t(getErrorKey(error))),
+      onError: (error) => toast.error(getErrorKey(error, t)),
     });
   };
 
@@ -169,7 +169,7 @@ export function ProjectChatNotebookSidebarContent() {
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug));
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -190,7 +190,7 @@ export function ProjectChatNotebookSidebarContent() {
         navigate(createPath(pathsConfig.app.project, projectSlug || ''));
       }
     },
-    (error) => toast.error(t(getErrorKey(error))),
+    (error) => toast.error(getErrorKey(error, t)),
   );
 
   const onNotebookDelete = (notebookId: string) => {

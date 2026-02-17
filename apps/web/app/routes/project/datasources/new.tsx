@@ -436,13 +436,13 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       } else {
         toast.error(
           result.error
-            ? t(getErrorKey(new Error(result.error)))
+            ? getErrorKey(new Error(result.error), t)
             : i18n.t('datasources:connectionTestFailed'),
         );
       }
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -455,7 +455,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       });
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
       console.error(error);
     },
   );
@@ -680,7 +680,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         const project = await getProjectBySlugService.execute(project_id);
         projectId = project.id;
       } catch (error) {
-        toast.error(t(getErrorKey(error)));
+        toast.error(getErrorKey(error, t));
         return;
       }
     }
