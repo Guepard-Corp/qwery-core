@@ -1833,6 +1833,9 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.3
+      '@vitest/coverage-istanbul':
+        specifier: 'catalog:'
+        version: 4.0.18(vitest@4.0.18)
       eslint:
         specifier: ^9.39.0
         version: 9.39.1(jiti@2.6.1)
@@ -2219,6 +2222,19 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.3.6
+
+  tooling/error-validation:
+    dependencies:
+      '@qwery/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.6
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   tooling/eslint:
     dependencies:
