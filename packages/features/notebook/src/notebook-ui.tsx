@@ -38,7 +38,7 @@ import {
   NotebookCell,
   type NotebookCellData,
 } from './components/notebook-cell';
-import { DataGrid } from '@qwery/ui/ai';
+import { NotebookDataGrid } from './components/notebook-datagrid';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -335,11 +335,7 @@ function FullViewDialog({
           {isQueryCell && result && (
             <div className="overflow-hidden rounded-md border">
               <div className="h-[60vh] min-h-[400px] p-4">
-                <DataGrid
-                  columns={result.columns?.map((col) => col.name) ?? []}
-                  rows={result.rows ?? []}
-                  pageSize={50}
-                />
+                <NotebookDataGrid result={result} className="h-full" />
               </div>
             </div>
           )}

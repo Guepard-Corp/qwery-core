@@ -7,7 +7,10 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const config: StorybookConfig = {
-  stories: ['../../../packages/ui/src/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
+  stories: [
+    '../../../packages/ui/src/**/*.stories.@(js|jsx|ts|tsx|mdx)',
+    '../../../packages/features/notebook/src/**/*.stories.@(js|jsx|ts|tsx|mdx)',
+  ],
   addons: [
     '@storybook/addon-links',
     '@storybook/addon-essentials',

@@ -67,7 +67,10 @@
     "streamdown": "^2.2.0",
     "tailwind-merge": "^3.3.1",
     "use-stick-to-bottom": "^1.1.1",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "vega": "^6.2.0",
+    "vega-embed": "^7.1.0",
+    "vega-lite": "^6.4.2"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
@@ -191,7 +194,9 @@
     "./qwery/datasource/tables": "./src/qwery/datasource/tables.tsx",
     "./qwery/datasource/columns": "./src/qwery/datasource/columns.tsx",
     "./qwery/datasource": "./src/qwery/datasource/index.ts",
-    "./qwery/confirm-delete-dialog": "./src/qwery/confirm-delete-dialog.tsx"
+    "./qwery/datagrid": "./src/qwery/datagrid/index.ts",
+    "./qwery/confirm-delete-dialog": "./src/qwery/confirm-delete-dialog.tsx",
+    "./qwery/report": "./src/qwery/report/index.ts"
   },
   "typesVersions": {
     "*": {

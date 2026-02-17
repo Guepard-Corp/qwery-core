@@ -19,9 +19,12 @@ import {
   AlignLeft,
   ArrowDown,
   ArrowUp,
+  BarChart3,
   Check,
   Copy,
   DatabaseIcon,
+  FileJson,
+  FileText,
   GripVertical,
   Loader2,
   Maximize2,
@@ -29,6 +32,7 @@ import {
   Pencil,
   PlayIcon,
   Sparkles,
+  Table2,
   Trash2,
   X,
 } from 'lucide-react';
@@ -53,14 +57,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@qwery/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@qwery/ui/tabs';
 import { Textarea } from '@qwery/ui/textarea';
 import { cn } from '@qwery/ui/utils';
+import { ReportRenderer, ResultReportView } from '@qwery/ui/qwery/report';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { NotebookCellAiPopup } from './notebook-cell-ai-popup';
-import { DataGrid } from '@qwery/ui/ai';
+import { NotebookDataGrid } from './notebook-datagrid';
 import { notebookMarkdownComponents } from './notebook-markdown-components';
 
 export interface NotebookCellData {
@@ -113,6 +119,8 @@ interface NotebookCellProps {
   totalCellCount?: number;
   triggerTitleEdit?: boolean;
   isNotebookLoading?: boolean;
+  /** Pre-rendered report markdown (with vega-lite blocks). When provided, Report tab shows this instead of auto-chart from result. */
+  reportContent?: string | null;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -258,6 +266,7 @@ function NotebookCellComponent({
   isAdvancedMode = true,
   triggerTitleEdit = false,
   isNotebookLoading = false,
+  reportContent,
 }: NotebookCellProps) {
   const { resolvedTheme } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -285,6 +294,9 @@ function NotebookCellComponent({
   const isScrollingRef = useRef(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [deleteAnimating, setDeleteAnimating] = useState(false);
+  const [resultView, setResultView] = useState<
+    'table' | 'graphs' | 'api' | 'data-app' | 'report'
+  >('table');
 
   // Cell title state - inline editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -1045,6 +1057,7 @@ function NotebookCellComponent({
                     const target = e.target as HTMLElement;
                     if (
                       target.closest('button') ||
+                      target.closest('[role="tablist"]') ||
                       target.closest('[role="combobox"]') ||
                       target.closest('[role="option"]') ||
                       target.closest('[role="menu"]')
@@ -1205,6 +1218,54 @@ function NotebookCellComponent({
               </DropdownMenu>
             </div>
 
+            {isQueryCell && result && (
+              <Tabs
+                value={resultView}
+                onValueChange={(v) =>
+                  setResultView(
+                    v as 'table' | 'graphs' | 'api' | 'data-app' | 'report',
+                  )
+                }
+              >
+                <TabsList className="bg-muted/50 h-8 gap-0.5 p-0.5">
+                  <TabsTrigger
+                    value="table"
+                    className="data-[state=active]:bg-background h-7 gap-1.5 px-2.5 text-xs"
+                  >
+                    <Table2 className="h-3.5 w-3.5" />
+                    Table
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="graphs"
+                    className="data-[state=active]:bg-background h-7 gap-1.5 px-2.5 text-xs"
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    Graphs
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="api"
+                    className="data-[state=active]:bg-background h-7 gap-1.5 px-2.5 text-xs"
+                  >
+                    <FileJson className="h-3.5 w-3.5" />
+                    API
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="data-app"
+                    className="data-[state=active]:bg-background h-7 gap-1.5 px-2.5 text-xs"
+                  >
+                    Data App
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="report"
+                    className="data-[state=active]:bg-background h-7 gap-1.5 px-2.5 text-xs"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Report
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
             <div className="flex items-center gap-2">
               {(isQueryCell || isPromptCell) && (
                 <DatasourceSelectWithPagination
@@ -1218,14 +1279,44 @@ function NotebookCellComponent({
             </div>
           </div>
 
-          {/* Results Grid */}
+          {/* Results - Table/Graphs/API/Data App/Report */}
           {isQueryCell && result && (
-            <div className="border-border max-h-[400px] border-t p-0">
-              <DataGrid
-                columns={result.columns?.map((col) => col.name) ?? []}
-                rows={result.rows ?? []}
-                pageSize={50}
-              />
+            <div
+              className="border-border flex flex-shrink-0 flex-col overflow-hidden border-t p-0"
+              data-test="notebook-query-results"
+              style={{ height: 400 }}
+            >
+              {resultView === 'table' && (
+                <NotebookDataGrid result={result} className="h-full" />
+              )}
+              {resultView === 'graphs' && (
+                <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                  Graphs view – coming soon
+                </div>
+              )}
+              {resultView === 'api' && (
+                <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                  API view – coming soon
+                </div>
+              )}
+              {resultView === 'data-app' && (
+                <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                  Data App – coming soon
+                </div>
+              )}
+              {resultView === 'report' && (
+                <div className="h-full overflow-auto px-4 py-2">
+                  {reportContent ? (
+                    <ReportRenderer content={reportContent} />
+                  ) : result ? (
+                    <ResultReportView result={result} />
+                  ) : (
+                    <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                      Run the query to see a report
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

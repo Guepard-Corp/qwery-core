@@ -59,7 +59,7 @@ import {
   type NotebookCellData,
   type NotebookDatasourceInfo,
 } from './notebook-cell';
-import { DataGrid } from '@qwery/ui/ai';
+import { NotebookDataGrid } from './notebook-datagrid';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -94,6 +94,8 @@ interface NotebookUIProps {
   workspaceMode?: WorkspaceModeEnum;
   hasUnsavedChanges?: boolean;
   isNotebookLoading?: boolean;
+  /** Pre-rendered report markdown for the Report tab in query cells */
+  reportContent?: string | null;
 }
 
 // Visual indicator for duplication mode
@@ -143,6 +145,7 @@ const SortableCell = React.memo(function SortableCellComponent({
   isDuplicating,
   totalCellCount,
   isNotebookLoading,
+  reportContent,
 }: {
   cell: NotebookCellData;
   onQueryChange: (cellId: number, query: string) => void;
@@ -171,6 +174,7 @@ const SortableCell = React.memo(function SortableCellComponent({
   isDuplicating?: boolean;
   totalCellCount: number;
   isNotebookLoading?: boolean;
+  reportContent?: string | null;
 }) {
   const {
     attributes,
@@ -301,6 +305,7 @@ const SortableCell = React.memo(function SortableCellComponent({
         onCloseAiPopup={onCloseAiPopup}
         totalCellCount={totalCellCount}
         isNotebookLoading={isNotebookLoading}
+        reportContent={reportContent}
       />
     </div>
   );
@@ -476,11 +481,7 @@ function FullViewDialog({
           {isQueryCell && result && (
             <div className="overflow-hidden rounded-md border">
               <div className="h-[60vh] min-h-[400px] p-4">
-                <DataGrid
-                  columns={result.columns?.map((col) => col.name) ?? []}
-                  rows={result.rows ?? []}
-                  pageSize={50}
-                />
+                <NotebookDataGrid result={result} className="h-full" />
               </div>
             </div>
           )}
@@ -593,6 +594,7 @@ export function NotebookUI({
   workspaceMode,
   hasUnsavedChanges = false,
   isNotebookLoading = false,
+  reportContent,
 }: NotebookUIProps) {
   // Initialize cells from notebook or initialCells, default to empty array
   const [cells, setCells] = React.useState<NotebookCellData[]>(() => {
@@ -1407,6 +1409,7 @@ export function NotebookUI({
                         isDuplicating && activeId === cell.cellId.toString()
                       }
                       isNotebookLoading={isNotebookLoading}
+                      reportContent={reportContent}
                     />
                     {/* Error Display - Between cells */}
                     {cell.cellType === 'query' && cellError && (
