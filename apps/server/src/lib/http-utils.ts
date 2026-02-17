@@ -15,7 +15,14 @@ function getTechnicalDetails(error: unknown): string | undefined {
   return undefined;
 }
 
+const isProduction = () =>
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+
 export function handleDomainException(error: unknown): Response {
+  const rawDetails = getTechnicalDetails(error);
+  const details =
+    !isProduction() && rawDetails !== undefined ? rawDetails : undefined;
+
   if (error instanceof DomainException) {
     const status =
       error.code >= 2000 && error.code < 3000
@@ -23,22 +30,20 @@ export function handleDomainException(error: unknown): Response {
         : error.code >= 400 && error.code < 500
           ? error.code
           : 500;
-    const details = getTechnicalDetails(error);
 
     return Response.json(
       {
         code: error.code,
         params: error.data,
-        details,
+        ...(details !== undefined && { details }),
       },
       { status },
     );
   }
-  const details = getTechnicalDetails(error);
   return Response.json(
     {
       code: 500,
-      details,
+      ...(details !== undefined && { details }),
     },
     { status: 500 },
   );

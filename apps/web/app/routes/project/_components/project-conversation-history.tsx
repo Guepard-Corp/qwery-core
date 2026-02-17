@@ -14,7 +14,7 @@ import {
 } from '~/lib/mutations/use-conversation';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { getErrorKey } from '~/lib/utils/error-key';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 
 export function ProjectConversationHistory() {
   const { t } = useTranslation('common');
@@ -96,7 +96,7 @@ export function ProjectConversationHistory() {
 
   const onNewConversation = () => {
     if (!projectId) {
-      toast.error(t('errors.notFound'));
+      toast.error(t(ERROR_KEYS.notFound));
       return;
     }
     createConversationMutation.mutate({

@@ -399,9 +399,23 @@ export function resolveError(
     return undefined;
   }
 
+  function getStatus(err: unknown): number | undefined {
+    if (
+      err !== null &&
+      err !== undefined &&
+      typeof err === 'object' &&
+      'status' in err
+    ) {
+      const s = (err as { status: unknown }).status;
+      if (typeof s === 'number') return s;
+    }
+    return undefined;
+  }
+
   const code = getErrorCode(error);
   const details = getDetails(error);
   const params = getParams(error);
+  const status = getStatus(error);
 
   if (code !== undefined) {
     const i18nKey = getI18nKeyForErrorCode(code, {
@@ -429,7 +443,10 @@ export function resolveError(
       }
     }
 
-    const category = getErrorCategory(code);
+    const category =
+      !i18nKey && status !== undefined
+        ? getErrorCategoryFromStatus(status)
+        : getErrorCategory(code);
     onFallbackToCategory?.(code, category);
     const categoryI18nKey = `common:errors.${category}`;
     let message: string;
@@ -460,14 +477,6 @@ export function resolveError(
       code,
     };
   }
-
-  const status =
-    error &&
-    typeof error === 'object' &&
-    'status' in error &&
-    typeof (error as { status: number }).status === 'number'
-      ? (error as { status: number }).status
-      : undefined;
 
   if (status !== undefined) {
     const category = getErrorCategoryFromStatus(status);
