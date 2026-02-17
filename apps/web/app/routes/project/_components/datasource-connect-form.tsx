@@ -41,7 +41,11 @@ import {
   validateDatasourceUrl,
 } from '~/lib/utils/datasource-utils';
 import { DatasourceDocsLink } from './datasource-docs-link';
-import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
+import {
+  ERROR_KEYS,
+  getErrorKey,
+  getFirstZodValidationMessage,
+} from '~/lib/utils/error-key';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
@@ -261,7 +265,8 @@ export function DatasourceConnectForm({
     }
     const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
     if (!parsed.success) {
-      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      const msg =
+        getFirstZodValidationMessage(parsed.error) || 'Invalid configuration';
       toast.error(msg);
       return;
     }
@@ -319,7 +324,8 @@ export function DatasourceConnectForm({
 
     const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
     if (!parsed.success) {
-      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      const msg =
+        getFirstZodValidationMessage(parsed.error) || 'Invalid configuration';
       toast.error(msg);
       setIsConnecting(false);
       return;

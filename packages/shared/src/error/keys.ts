@@ -29,53 +29,6 @@ export type ApiErrorResponseBody = {
   details?: string;
 };
 
-type MessageRule = {
-  key: UserFacingErrorKey;
-  any?: string[];
-  all?: string[][];
-};
-
-const MESSAGE_RULES: readonly MessageRule[] = [
-  {
-    key: 'permissionDenied',
-    any: ['row-level security', 'permission denied', 'forbidden'],
-    all: [['violates', 'policy']],
-  },
-  {
-    key: 'network',
-    any: [
-      'fetch',
-      'network',
-      'econnreset',
-      'etimedout',
-      'failed to fetch',
-      'load failed',
-    ],
-  },
-  { key: 'notFound', any: ['404', 'not found', 'pgrst116'] },
-];
-
-function getMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  try {
-    return String(error);
-  } catch {
-    return '';
-  }
-}
-
-function matchMessageRules(msg: string): UserFacingErrorKey | null {
-  const lower = msg.toLowerCase();
-  for (const rule of MESSAGE_RULES) {
-    if (rule.any?.some((s) => lower.includes(s))) return rule.key;
-    if (rule.all?.some((group) => group.every((s) => lower.includes(s)))) {
-      return rule.key;
-    }
-  }
-  return null;
-}
-
 export function isUserFacingErrorKey(
   value: unknown,
 ): value is UserFacingErrorKey {
@@ -107,20 +60,6 @@ export function getErrorKeyFromError(error: unknown): UserFacingErrorKey {
   ) {
     return getErrorCategoryFromStatus((error as { status: number }).status);
   }
-
-  const code =
-    error &&
-    typeof error === 'object' &&
-    'code' in error &&
-    typeof (error as { code: unknown }).code === 'string'
-      ? (error as { code: string }).code
-      : '';
-  if (code === 'PGRST116') return 'notFound';
-  if (code === '42501') return 'permissionDenied';
-
-  const msg = getMessage(error);
-  const matched = matchMessageRules(msg);
-  if (matched) return matched;
 
   return 'generic';
 }

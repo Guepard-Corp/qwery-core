@@ -74,12 +74,12 @@ describe('getErrorKeyFromError', () => {
     expect(getErrorKeyFromError(error)).toBe('notFound');
   });
 
-  it('returns permissionDenied for RLS-like message', () => {
+  it('returns generic for raw Error with no code/status (message-rule matching is app-layer responsibility; shared resolves only code/status)', () => {
     expect(
       getErrorKeyFromError(
         new Error('new row violates row-level security policy for table "x"'),
       ),
-    ).toBe('permissionDenied');
+    ).toBe('generic');
   });
 
   it('returns generic for unknown Error', () => {
@@ -167,5 +167,18 @@ describe('handleDomainException', () => {
     };
     expect(body.code).toBe(2000);
     expect(body.params).toEqual({ notebookId: '123' });
+  });
+
+  it('strips details in production (NODE_ENV === "production")', async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const res = handleDomainException(new Error('internal message'));
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBe(500);
+      expect(body.details).toBeUndefined();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
   });
 });

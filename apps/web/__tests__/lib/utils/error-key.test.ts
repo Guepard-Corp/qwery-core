@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
-import { ERROR_KEYS, getErrorKey, toastError } from '~/lib/utils/error-key';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 import {
   ERROR_CODES,
   getI18nKeyForErrorCode,
   ERROR_REGISTRY_OVERRIDES,
+  DEFAULT_ERROR_MESSAGES,
   initializeTranslationValidation,
   resolveError,
 } from '@qwery/shared/error';
@@ -24,39 +26,62 @@ describe('getErrorKey', () => {
       expect(getErrorKey(error, t)).toBe('Notebook not found');
     });
 
-    it('returns category i18n key when code not in registry', () => {
+    it('returns category message when code not in registry', () => {
       const error = new ApiError(404, 2999);
-      expect(getErrorKey(error, mockT)).toBe(ERROR_KEYS.notFound);
+      expect(getErrorKey(error, mockT)).toBe(DEFAULT_ERROR_MESSAGES.notFound);
     });
 
-    it('returns generic when code is undefined', () => {
-      expect(getErrorKey({}, mockT)).toBe(ERROR_KEYS.generic);
+    it('returns generic message when code is undefined', () => {
+      expect(getErrorKey({}, mockT)).toBe(DEFAULT_ERROR_MESSAGES.generic);
+    });
+
+    it('returns network message when raw error matches adapter network rule', () => {
+      const error = new Error('failed to fetch');
+      expect(getErrorKey(error, mockT)).toBe(DEFAULT_ERROR_MESSAGES.network);
+    });
+
+    it('returns first Zod validation message when error is ZodError', () => {
+      const schema = z.object({ name: z.string().min(1, 'Name is required') });
+      const result = schema.safeParse({ name: '' });
+      if (result.success) throw new Error('expected failure');
+      expect(getErrorKey(result.error, mockT)).toBe('Name is required');
+    });
+
+    it('returns generic when ZodError has no errors (edge case)', () => {
+      const emptyZodError = new z.ZodError([]);
+      expect(getErrorKey(emptyZodError, mockT)).toBe(ERROR_KEYS.generic);
     });
   });
 
   describe('status-based (fallback)', () => {
-    it('returns permissionDenied for status 403', () => {
+    it('returns permissionDenied message for status 403', () => {
       expect(getErrorKey({ status: 403 }, mockT)).toBe(
-        ERROR_KEYS.permissionDenied,
+        DEFAULT_ERROR_MESSAGES.permissionDenied,
       );
     });
 
-    it('returns permissionDenied for status 401', () => {
+    it('returns permissionDenied message for status 401', () => {
       expect(getErrorKey({ status: 401 }, mockT)).toBe(
-        ERROR_KEYS.permissionDenied,
+        DEFAULT_ERROR_MESSAGES.permissionDenied,
       );
     });
 
-    it('returns notFound for status 404', () => {
-      expect(getErrorKey({ status: 404 }, mockT)).toBe(ERROR_KEYS.notFound);
+    it('returns notFound message for status 404', () => {
+      expect(getErrorKey({ status: 404 }, mockT)).toBe(
+        DEFAULT_ERROR_MESSAGES.notFound,
+      );
     });
 
-    it('returns network for status 502', () => {
-      expect(getErrorKey({ status: 502 }, mockT)).toBe(ERROR_KEYS.network);
+    it('returns network message for status 502', () => {
+      expect(getErrorKey({ status: 502 }, mockT)).toBe(
+        DEFAULT_ERROR_MESSAGES.network,
+      );
     });
 
-    it('returns generic for status 500', () => {
-      expect(getErrorKey({ status: 500 }, mockT)).toBe(ERROR_KEYS.generic);
+    it('returns generic message for status 500', () => {
+      expect(getErrorKey({ status: 500 }, mockT)).toBe(
+        DEFAULT_ERROR_MESSAGES.generic,
+      );
     });
   });
 
@@ -65,48 +90,6 @@ describe('getErrorKey', () => {
       const error = new ApiError(404, ERROR_CODES.NOTEBOOK_NOT_FOUND);
       expect(getErrorKey(error)).toBe(ERROR_KEYS.generic);
     });
-  });
-});
-
-describe('toastError', () => {
-  it('calls toast.error with translated message for the error', () => {
-    const t = vi.fn((key: string, _params?: Record<string, unknown>) => {
-      if (key === 'common:errors.notebook.notFound')
-        return 'Notebook not found';
-      return key;
-    });
-    const toast = { error: vi.fn() };
-    const error = new ApiError(404, ERROR_CODES.NOTEBOOK_NOT_FOUND);
-
-    toastError(error, t, toast);
-
-    expect(t).toHaveBeenCalledWith(
-      'common:errors.notebook.notFound',
-      undefined,
-    );
-    expect(toast.error).toHaveBeenCalledWith('Notebook not found');
-  });
-
-  it('passes params to translate function when error has params', () => {
-    const t = vi.fn((key: string, params?: Record<string, unknown>) => {
-      if (key === 'common:errors.notebook.notFound' && params?.notebookId) {
-        return `Notebook ${params.notebookId} not found`;
-      }
-      return key;
-    });
-    const toast = { error: vi.fn() };
-    const error = {
-      status: 404,
-      code: ERROR_CODES.NOTEBOOK_NOT_FOUND,
-      params: { notebookId: '123' },
-    };
-
-    toastError(error, t, toast);
-
-    expect(t).toHaveBeenCalledWith('common:errors.notebook.notFound', {
-      notebookId: '123',
-    });
-    expect(toast.error).toHaveBeenCalledWith('Notebook 123 not found');
   });
 });
 
@@ -512,6 +495,28 @@ describe('resolveError edge cases', () => {
       const result = resolveError(error, { translate: mockT });
       expect(result.key).toBe('network');
       expect(result.message).toBe(ERROR_KEYS.network);
+    });
+  });
+
+  describe('front-only: unmapped code + status uses status for category', () => {
+    it('uses status when code is unmapped (e.g. ApiError(0, 0) for network)', () => {
+      const error = { code: 0, status: 0 };
+      const result = resolveError(error, { translate: mockT });
+      expect(result.key).toBe('network');
+      expect(result.message).toBe(ERROR_KEYS.network);
+    });
+
+    it('uses getErrorCategory(code) when code is mapped (backend code)', () => {
+      const error = {
+        code: ERROR_CODES.NOTEBOOK_NOT_FOUND,
+        status: 404,
+      };
+      const result = resolveError(error, {
+        translate: mockT,
+        overrides: ERROR_REGISTRY_OVERRIDES,
+      });
+      expect(result.key).toBe('notFound');
+      expect(result.message).toBe(ERROR_KEYS.notFound);
     });
   });
 
