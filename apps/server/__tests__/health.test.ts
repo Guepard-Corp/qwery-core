@@ -47,8 +47,9 @@ describe('Server API – health and OpenAPI', () => {
         body: JSON.stringify({}),
       });
       expect(res.status).toBe(400);
-      const body = (await res.json()) as { error?: string };
-      expect(body.error).toBeDefined();
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBe(400);
+      expect(body.details).toBeDefined();
     });
     it('returns JSON (404 for unknown datasource)', async () => {
       const res = await app.request('http://localhost/api/notebook/query', {
@@ -61,8 +62,10 @@ describe('Server API – health and OpenAPI', () => {
         }),
       });
       expect(res.status).toBe(404);
-      const body = (await res.json()) as { error?: string };
-      expect(body.error).toContain('not found');
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBeGreaterThanOrEqual(2000);
+      expect(body.code).toBeLessThan(3000);
+      expect(body.details).toBeDefined();
     });
   });
 });
