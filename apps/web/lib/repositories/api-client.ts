@@ -1,8 +1,4 @@
-import {
-  type ApiErrorResponseBody,
-  type UserFacingErrorKey,
-  isUserFacingErrorKey,
-} from '@qwery/shared/error-keys';
+import { type ApiErrorResponseBody } from '@qwery/shared/error';
 
 function getApiBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env) {
@@ -14,13 +10,12 @@ function getApiBaseUrl(): string {
 
 export class ApiError extends Error {
   constructor(
-    message: string,
     public status: number,
-    public code?: number,
-    public data?: unknown,
-    public errorKey?: UserFacingErrorKey,
+    public code: number,
+    public params?: unknown,
+    public details?: string,
   ) {
-    super(message);
+    super(`API Error ${code}`);
     this.name = 'ApiError';
   }
 }
@@ -35,22 +30,14 @@ async function handleResponse<T>(
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({
-      error: response.statusText || 'Unknown error',
-    }))) as Partial<ApiErrorResponseBody> & {
-      error?: string;
-      message?: string;
-    };
-
-    const errorKey = isUserFacingErrorKey(errorData.errorKey)
-      ? errorData.errorKey
-      : undefined;
+      code: 500,
+    }))) as Partial<ApiErrorResponseBody>;
 
     throw new ApiError(
-      errorData.error ?? errorData.message ?? 'Request failed',
       response.status,
-      errorData.code,
-      errorData.data,
-      errorKey,
+      errorData.code ?? 500,
+      errorData.params,
+      errorData.details,
     );
   }
 
@@ -141,7 +128,7 @@ export async function apiPost<T>(
 
     const result = await handleResponse<T>(response, false);
     if (result === null) {
-      throw new ApiError('Unexpected null response', response.status);
+      throw new ApiError(response.status, 500);
     }
     return result;
   } catch (error) {
@@ -181,7 +168,7 @@ export async function apiPut<T>(
 
     const result = await handleResponse<T>(response, false);
     if (result === null) {
-      throw new ApiError('Unexpected null response', response.status);
+      throw new ApiError(response.status, 500);
     }
     return result;
   } catch (error) {
@@ -225,7 +212,7 @@ export async function driverCommand<T>(
   );
 
   if (!result.success || result.data === undefined) {
-    throw new ApiError('Request failed', 500, undefined, undefined, 'generic');
+    throw new ApiError(500, 500);
   }
 
   return result.data;
