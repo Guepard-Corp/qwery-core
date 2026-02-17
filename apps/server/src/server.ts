@@ -19,10 +19,7 @@ import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
-import {
-  getErrorKeyFromError,
-  SAFE_ERROR_MESSAGE,
-} from './lib/http-utils';
+import { getErrorKeyFromError, SAFE_ERROR_MESSAGE } from './lib/http-utils';
 
 function handleError(error: unknown): Response {
   if (error instanceof DomainException) {

@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  ERROR_KEYS,
-  getErrorKey,
-  toastError,
-} from '~/lib/utils/error-key';
+import { ERROR_KEYS, getErrorKey, toastError } from '~/lib/utils/error-key';
 
 describe('getErrorKey', () => {
   describe('errorKey from API (preferred)', () => {
@@ -109,9 +105,7 @@ describe('getErrorKey', () => {
 
   describe('not found', () => {
     it('returns notFound for 404', () => {
-      expect(getErrorKey(new Error('404 Not Found'))).toBe(
-        ERROR_KEYS.notFound,
-      );
+      expect(getErrorKey(new Error('404 Not Found'))).toBe(ERROR_KEYS.notFound);
     });
 
     it('returns notFound for not found', () => {
@@ -127,9 +121,7 @@ describe('getErrorKey', () => {
 
   describe('generic fallback', () => {
     it('returns generic for unknown error message', () => {
-      expect(getErrorKey(new Error('Something else'))).toBe(
-        ERROR_KEYS.generic,
-      );
+      expect(getErrorKey(new Error('Something else'))).toBe(ERROR_KEYS.generic);
     });
 
     it('returns generic for empty Error', () => {
@@ -146,9 +138,7 @@ describe('getErrorKey', () => {
     });
 
     it('handles non-Error object (stringified)', () => {
-      expect(getErrorKey({ message: 'forbidden' })).toBe(
-        ERROR_KEYS.generic,
-      );
+      expect(getErrorKey({ message: 'forbidden' })).toBe(ERROR_KEYS.generic);
     });
   });
 
