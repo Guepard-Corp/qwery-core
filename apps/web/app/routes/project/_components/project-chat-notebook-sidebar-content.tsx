@@ -156,8 +156,7 @@ export function ProjectChatNotebookSidebarContent() {
       },
       {
         onSuccess: () => toast.success('Conversation title updated'),
-        onError: (error) =>
-          toast.error(t(getErrorKey(error))),
+        onError: (error) => toast.error(t(getErrorKey(error))),
       },
     );
   };
@@ -170,8 +169,7 @@ export function ProjectChatNotebookSidebarContent() {
           navigate(createPath(pathsConfig.app.project, projectSlug || ''));
         }
       },
-      onError: (error) =>
-        toast.error(t(getErrorKey(error))),
+      onError: (error) => toast.error(t(getErrorKey(error))),
     });
   };
 

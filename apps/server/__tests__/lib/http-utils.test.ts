@@ -148,7 +148,9 @@ describe('handleDomainException', () => {
 
   it('returns errorKey permissionDenied and safe message for RLS error (no raw SQL)', async () => {
     const res = handleDomainException(
-      new Error('new row violates row-level security policy for table "conversations"'),
+      new Error(
+        'new row violates row-level security policy for table "conversations"',
+      ),
     );
     expect(res.status).toBe(500);
     const body = (await res.json()) as { errorKey: string; error: string };

@@ -62,9 +62,7 @@ function matchMessageRules(msg: string): UserFacingErrorKey | null {
   const lower = msg.toLowerCase();
   for (const rule of MESSAGE_RULES) {
     if (rule.any?.some((s) => lower.includes(s))) return rule.key;
-    if (
-      rule.all?.some((group) => group.every((s) => lower.includes(s)))
-    ) {
+    if (rule.all?.some((group) => group.every((s) => lower.includes(s)))) {
       return rule.key;
     }
   }
