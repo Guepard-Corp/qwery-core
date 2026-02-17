@@ -9,6 +9,7 @@ import {
   useDeleteConversation,
 } from '~/lib/mutations/use-conversation';
 import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
 import { Conversation as DomainConversation } from '@qwery/domain/entities';
@@ -43,12 +44,7 @@ export default function ConversationIndexPage() {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(
-        t('chat:create_error', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          defaultValue: 'Failed to create conversation: {{error}}',
-        }),
-      );
+      toast.error(getErrorKey(error, t));
     },
     projectId,
   );
@@ -135,12 +131,7 @@ export default function ConversationIndexPage() {
           toast.success(t('chat:update_success'));
         },
         onError: (error) => {
-          toast.error(
-            t('chat:update_error', {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              defaultValue: 'Failed to update conversation: {{error}}',
-            }),
-          );
+          toast.error(getErrorKey(error, t));
         },
       },
     );
@@ -155,12 +146,7 @@ export default function ConversationIndexPage() {
         }
       },
       onError: (error) => {
-        toast.error(
-          t('chat:delete_error', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            defaultValue: 'Failed to delete conversation: {{error}}',
-          }),
-        );
+        toast.error(getErrorKey(error, t));
       },
     });
   };

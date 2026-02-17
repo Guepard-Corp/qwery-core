@@ -76,7 +76,7 @@ export function ListNotebooks({
     repositories.notebook,
     (notebook) =>
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
-    (error) => toast.error(t(getErrorKey(error))),
+    (error) => toast.error(getErrorKey(error, t)),
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');

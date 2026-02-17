@@ -67,7 +67,7 @@ export function ListPlaygrounds({
       });
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   );
 

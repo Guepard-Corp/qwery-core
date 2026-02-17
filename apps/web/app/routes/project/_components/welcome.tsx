@@ -27,7 +27,6 @@ import { createPath } from '~/config/qwery.navigation.config';
 import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useConversation } from '~/lib/mutations/use-conversation';
-import { useTranslation } from 'react-i18next';
 import { getErrorKey } from '~/lib/utils/error-key';
 import { usePlayground } from '~/lib/mutations/use-playground';
 
@@ -54,7 +53,7 @@ export default function WelcomePage() {
     repositories.datasource,
     () => {},
     (error) => {
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-playground',
       });
     },
@@ -74,7 +73,7 @@ export default function WelcomePage() {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-conversation',
       });
     },
@@ -210,30 +209,16 @@ export default function WelcomePage() {
             );
           },
           onError: (error) => {
-<<<<<<< HEAD
-            toast.error(
-              error instanceof Error ? error.message : t('failedConversation'),
-              { id: 'creating-conversation' },
-            );
-=======
-            toast.error(t(getErrorKey(error)), {
+            toast.error(getErrorKey(error, t), {
               id: 'creating-conversation',
             });
->>>>>>> 8c0c22b7 (feat: add error handling utilities for improved user feedback)
           },
         },
       );
     } catch (error) {
-<<<<<<< HEAD
-      toast.error(
-        error instanceof Error ? error.message : t('failedPlayground'),
-        { id: 'creating-playground' },
-      );
-=======
-      toast.error(t(getErrorKey(error)), {
+      toast.error(getErrorKey(error, t), {
         id: 'creating-playground',
       });
->>>>>>> 8c0c22b7 (feat: add error handling utilities for improved user feedback)
     }
   };
 

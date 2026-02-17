@@ -79,7 +79,7 @@ export function ProjectDialog({
       }
     },
     onError: (error: unknown) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 
@@ -90,7 +90,7 @@ export function ProjectDialog({
       onSuccess?.();
     },
     onError: (error: unknown) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   });
 

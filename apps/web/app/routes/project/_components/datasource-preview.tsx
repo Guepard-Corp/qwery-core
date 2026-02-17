@@ -195,7 +195,7 @@ export const DatasourcePreview = forwardRef<
     fetcher
       .then((result) => {
         if (result.error) {
-          setJsonError(t(getErrorKey(new Error(result.error))));
+          setJsonError(getErrorKey(new Error(result.error), t));
           setJsonData(null);
         } else {
           setJsonData(result.data);
@@ -235,7 +235,7 @@ export const DatasourcePreview = forwardRef<
           setJsonData(result.data);
           setExpandedPaths(new Set(['root']));
         } else if (result.error) {
-          setJsonError(t(getErrorKey(new Error(result.error))));
+          setJsonError(getErrorKey(new Error(result.error), t));
         }
       })
       .finally(() => {

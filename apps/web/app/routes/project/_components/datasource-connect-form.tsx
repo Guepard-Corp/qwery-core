@@ -41,7 +41,7 @@ import {
   validateDatasourceUrl,
 } from '~/lib/utils/datasource-utils';
 import { DatasourceDocsLink } from './datasource-docs-link';
-import { getErrorKey } from '~/lib/utils/error-key';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
@@ -154,14 +154,14 @@ export function DatasourceConnectForm({
       } else {
         toast.error(
           result.error
-            ? t(getErrorKey(new Error(result.error)))
+            ? getErrorKey(new Error(result.error), t)
             : i18n.t('datasources:connectionTestFailed'),
         );
       }
     },
     (error) => {
       onTestConnectionLoadingChange?.(false);
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -208,7 +208,7 @@ export function DatasourceConnectForm({
       onSuccess();
     },
     (error) => {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
       console.error(error);
       setIsConnecting(false);
     },
@@ -305,14 +305,14 @@ export function DatasourceConnectForm({
         const project = await getProjectBySlugService.execute(projectSlug);
         projectId = project.id;
       } catch (error) {
-        toast.error(t(getErrorKey(error)));
+        toast.error(getErrorKey(error, t));
         setIsConnecting(false);
         return;
       }
     }
 
     if (!projectId) {
-      toast.error('Unable to resolve project context for datasource');
+      toast.error(t(ERROR_KEYS.generic));
       setIsConnecting(false);
       return;
     }

@@ -62,13 +62,13 @@ export function ProjectSidebar() {
     notebookRepository,
     (notebook) =>
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
-    (error) => toast.error(t(getErrorKey(error))),
+    (error) => toast.error(getErrorKey(error, t)),
   );
 
   const deleteNotebookMutation = useDeleteNotebook(
     notebookRepository,
     undefined,
-    (error) => toast.error(t(getErrorKey(error))),
+    (error) => toast.error(getErrorKey(error, t)),
   );
 
   const _handleDeleteNotebook = useCallback(
@@ -109,7 +109,7 @@ export function ProjectSidebar() {
       }
       toast.success('All notebooks deleted');
     } catch (error) {
-      toast.error(t(getErrorKey(error)));
+      toast.error(getErrorKey(error, t));
     } finally {
       setIsBulkDeleting(false);
       setShowDeleteAllDialog(false);
