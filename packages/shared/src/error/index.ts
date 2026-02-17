@@ -17,6 +17,8 @@ export {
 
 export { ERROR_REGISTRY_OVERRIDES } from './overrides';
 
+export { DEFAULT_ERROR_MESSAGES } from './default-messages';
+
 export {
   initializeTranslationValidation,
   clearErrorResolutionCache,

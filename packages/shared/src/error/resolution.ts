@@ -329,6 +329,8 @@ export function getI18nKeyForErrorCode(
 export interface ResolveErrorOptions extends ErrorResolutionOptions {
   translate?: (key: string, params?: Record<string, unknown>) => string;
   defaultMessages?: Record<UserFacingErrorKey, string>;
+  onUnmappedCode?: (code: number) => void;
+  onFallbackToCategory?: (code: number, category: UserFacingErrorKey) => void;
 }
 
 export function resolveError(
@@ -341,7 +343,13 @@ export function resolveError(
   details?: string;
   code?: number;
 } {
-  const { translate, defaultMessages, ...resolutionOptions } = options;
+  const {
+    translate,
+    defaultMessages,
+    onUnmappedCode,
+    onFallbackToCategory,
+    ...resolutionOptions
+  } = options;
 
   function getErrorCode(err: unknown): number | undefined {
     if (
@@ -400,6 +408,9 @@ export function resolveError(
       ...resolutionOptions,
       translations: options.translations,
     });
+    if (!i18nKey) {
+      onUnmappedCode?.(code);
+    }
     if (i18nKey && translate) {
       try {
         const translated = translate(i18nKey, params);
@@ -419,6 +430,7 @@ export function resolveError(
     }
 
     const category = getErrorCategory(code);
+    onFallbackToCategory?.(code, category);
     const categoryI18nKey = `common:errors.${category}`;
     let message: string;
     if (translate) {
