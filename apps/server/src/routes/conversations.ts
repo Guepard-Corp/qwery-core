@@ -10,8 +10,14 @@ import {
   UpdateConversationService,
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
+import { Code } from '@qwery/domain/common';
 import { createRepositories } from '../lib/repositories';
-import { handleDomainException, isUUID } from '../lib/http-utils';
+import {
+  handleDomainException,
+  isUUID,
+  createValidationErrorResponse,
+  createNotFoundErrorResponse,
+} from '../lib/http-utils';
 
 const TUI_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const TUI_TASK_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -72,7 +78,7 @@ export function createConversationsRoutes() {
     try {
       const projectId = c.req.param('projectId');
       if (!projectId) {
-        return c.json({ error: 'Project ID is required' }, 400);
+        return createValidationErrorResponse('Project ID is required');
       }
 
       const repos = await getRepositories();
@@ -89,7 +95,11 @@ export function createConversationsRoutes() {
   app.get('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Not found' }, 404);
+      if (!id)
+        return createNotFoundErrorResponse(
+          'Not found',
+          Code.CONVERSATION_NOT_FOUND_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = isUUID(id)
@@ -105,7 +115,11 @@ export function createConversationsRoutes() {
   app.put('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const body = await c.req.json();
@@ -124,7 +138,11 @@ export function createConversationsRoutes() {
   app.delete('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = new DeleteConversationService(repos.conversation);
