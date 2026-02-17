@@ -15,6 +15,8 @@ import {
 } from '../../../shadcn/collapsible';
 import { cn } from '../../../lib/utils';
 import { useState } from 'react';
+import { toUserFacingError } from '../user-facing-error';
+import { useTranslation } from 'react-i18next';
 
 export interface ViewSheetErrorProps {
   errorText: string;
@@ -55,6 +57,7 @@ export function ViewSheetError({
   onRetry,
   availableSheets = [],
 }: ViewSheetErrorProps) {
+  const { t } = useTranslation('common');
   const [showDetails, setShowDetails] = useState(false);
   const { isTableNotFound, suggestedSheetName, originalSheetName } =
     parseSheetError(errorText);
@@ -127,36 +130,38 @@ export function ViewSheetError({
     );
   }
 
-  // For other error types, show simplified error with collapsible details
+  const { message, details } = toUserFacingError(errorText, (key: string) =>
+    t(key, { defaultValue: key }),
+  );
   return (
     <div className="min-w-0 space-y-3 p-4">
       <div className="flex items-center gap-3">
         <XCircleIcon className="text-destructive size-5 shrink-0" />
-        <span className="text-destructive text-sm font-medium">
-          Error viewing sheet
-        </span>
+        <span className="text-destructive text-sm font-medium">{message}</span>
       </div>
-      <Collapsible open={showDetails} onOpenChange={setShowDetails}>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 text-xs">
-            <InfoIcon className="mr-1.5 size-3.5" />
-            View details
-            <ChevronDownIcon
-              className={cn(
-                'ml-1.5 size-3.5 transition-transform duration-200',
-                showDetails && 'rotate-180',
-              )}
-            />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="border-destructive/20 bg-destructive/5 mt-3 rounded-lg border p-4">
-            <pre className="text-destructive font-mono text-xs break-words whitespace-pre-wrap">
-              {errorText}
-            </pre>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {details && (
+        <Collapsible open={showDetails} onOpenChange={setShowDetails}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              <InfoIcon className="mr-1.5 size-3.5" />
+              View details
+              <ChevronDownIcon
+                className={cn(
+                  'ml-1.5 size-3.5 transition-transform duration-200',
+                  showDetails && 'rotate-180',
+                )}
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-destructive/20 bg-destructive/5 mt-3 rounded-lg border p-4">
+              <pre className="text-destructive font-mono text-xs break-words whitespace-pre-wrap">
+                {details}
+              </pre>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

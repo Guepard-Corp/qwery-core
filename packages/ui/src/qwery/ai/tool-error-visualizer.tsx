@@ -6,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from '../../shadcn/card';
+import { toUserFacingError } from './user-facing-error';
+import { useTranslation } from 'react-i18next';
 
 export interface ToolErrorVisualizerProps {
   errorText: string;
@@ -24,6 +26,10 @@ export function ToolErrorVisualizer({
   description = 'An error occurred while executing this operation.',
   children,
 }: ToolErrorVisualizerProps) {
+  const { t } = useTranslation('common');
+  const { message, details } = toUserFacingError(errorText, (key: string) =>
+    t(key, { defaultValue: key }),
+  );
   return (
     <Card className="border-destructive/20 bg-destructive/5">
       <CardHeader className="pb-3">
@@ -42,9 +48,17 @@ export function ToolErrorVisualizer({
       <CardContent className="space-y-4">
         {children}
         <div className="border-destructive/20 bg-background rounded-lg border p-4">
-          <pre className="text-destructive text-sm break-words whitespace-pre-wrap">
-            {errorText}
-          </pre>
+          <p className="text-destructive text-sm">{message}</p>
+          {details && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs underline">
+                View details
+              </summary>
+              <pre className="text-destructive/80 mt-2 text-xs break-words whitespace-pre-wrap">
+                {details}
+              </pre>
+            </details>
+          )}
         </div>
       </CardContent>
     </Card>
