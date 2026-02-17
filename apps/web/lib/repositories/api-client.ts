@@ -20,6 +20,52 @@ export class ApiError extends Error {
   }
 }
 
+function isNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  if (error.name === 'AbortError') {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('fetch failed') ||
+    message.includes('network') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('enotfound') ||
+    message.includes('econnrefused') ||
+    error.name === 'TypeError' ||
+    error.name === 'NetworkError'
+  );
+}
+
+function convertToApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (error instanceof Error && error.name === 'AbortError') {
+    return new ApiError(408, 408, undefined, 'Request timeout');
+  }
+
+  if (isNetworkError(error)) {
+    return new ApiError(
+      0,
+      0,
+      undefined,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
+  return new ApiError(
+    500,
+    500,
+    undefined,
+    error instanceof Error ? error.message : String(error),
+  );
+}
+
 async function handleResponse<T>(
   response: Response,
   allowNotFound = false,
@@ -95,7 +141,7 @@ export async function apiGet<T>(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -135,7 +181,7 @@ export async function apiPost<T>(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -175,7 +221,7 @@ export async function apiPut<T>(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -252,6 +298,6 @@ export async function apiDelete(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
