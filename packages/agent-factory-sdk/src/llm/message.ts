@@ -249,7 +249,7 @@ export async function toModelMessages(
               type: part.type as `tool-${string}`,
               state: 'output-error',
               toolCallId: String(tp.toolCallId ?? ''),
-              input: tp.input,
+              input: tp.input ?? {},
               errorText: String(tp.errorText ?? ''),
               ...(tp.title !== undefined && { title: String(tp.title) }),
               ...(tp.isError !== undefined && { isError: Boolean(tp.isError) }),
@@ -259,7 +259,7 @@ export async function toModelMessages(
               type: part.type as `tool-${string}`,
               state: (state as 'output-available') ?? 'output-available',
               toolCallId: String(tp.toolCallId ?? ''),
-              input: tp.input,
+              input: tp.input ?? {},
               output,
               ...(tp.title !== undefined && { title: String(tp.title) }),
               ...(tp.isError !== undefined && { isError: Boolean(tp.isError) }),
@@ -298,7 +298,7 @@ export async function toModelMessages(
               type: `tool-${tool}` as `tool-${string}`,
               state: 'output-available',
               toolCallId: String(tp.callID ?? ''),
-              input: state.input,
+              input: state.input ?? {},
               output,
               ...metaSpread,
             } as UIMessage['parts'][number]);
@@ -308,7 +308,7 @@ export async function toModelMessages(
               type: `tool-${tool}` as `tool-${string}`,
               state: 'output-error',
               toolCallId: String(tp.callID ?? ''),
-              input: state.input,
+              input: state.input ?? {},
               errorText: state.error ?? '',
               ...metaSpread,
             } as UIMessage['parts'][number]);
@@ -318,7 +318,7 @@ export async function toModelMessages(
               type: `tool-${tool}` as `tool-${string}`,
               state: 'output-error',
               toolCallId: String(tp.callID ?? ''),
-              input: state.input,
+              input: state.input ?? {},
               errorText: '[Tool execution was interrupted]',
               ...metaSpread,
             } as UIMessage['parts'][number]);
@@ -357,7 +357,6 @@ export async function filterCompacted(
   const result: Message[] = [];
   const completed = new Set<string>();
   for await (const message of stream) {
-    result.push(message);
     const metadata = message.metadata as
       | {
           parentId?: string;
@@ -373,6 +372,7 @@ export async function filterCompacted(
     ) {
       break;
     }
+    result.push(message);
     if (
       message.role === 'assistant' &&
       metadata?.summary &&
