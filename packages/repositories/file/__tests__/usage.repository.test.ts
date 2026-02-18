@@ -68,10 +68,21 @@ describe('UsageRepository', () => {
       expect(parsed.model).toBe(usage.model);
     });
 
-    it('uses generateTimestampId when id not provided or zero', async () => {
+    it('generates UUID when id not provided or zero', async () => {
       const usage = createTestUsage({ id: 0 });
       const result = await repository.create(usage);
-      expect(result.id).toBeGreaterThan(0);
+      expect(typeof result.id).toBe('string');
+      expect(result.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
+      await assertFileExists(String(result.id));
+    });
+
+    it('handles UUID string as id', async () => {
+      const uuidId = '550e8400-e29b-41d4-a716-446655440000';
+      const usage = createTestUsage({ id: uuidId });
+      const result = await repository.create(usage);
+      expect(result.id).toBe(uuidId);
       await assertFileExists(String(result.id));
     });
   });
