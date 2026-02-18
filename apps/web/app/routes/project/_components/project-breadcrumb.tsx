@@ -71,10 +71,10 @@ export function ProjectBreadcrumb() {
 
     updateUnsavedIds();
     window.addEventListener('storage', updateUnsavedIds);
-    const interval = setInterval(updateUnsavedIds, 500);
+    window.addEventListener('notebook:unsaved-changed', updateUnsavedIds);
     return () => {
       window.removeEventListener('storage', updateUnsavedIds);
-      clearInterval(interval);
+      window.removeEventListener('notebook:unsaved-changed', updateUnsavedIds);
     };
   }, []);
 

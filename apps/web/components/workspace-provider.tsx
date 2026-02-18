@@ -33,15 +33,11 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
     };
 
     window.addEventListener('storage', handleStorageChange);
-
     window.addEventListener('workspace-updated', handleStorageChange);
-
-    const interval = setInterval(handleStorageChange, 500);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('workspace-updated', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
 

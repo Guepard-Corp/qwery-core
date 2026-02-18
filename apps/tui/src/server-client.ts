@@ -834,7 +834,7 @@ export async function sendChatMessage(
     datasources?: string[];
   } = {
     messages: [payload],
-    model: model ?? 'azure/gpt-5-mini',
+    model: model ?? 'azure/gpt-5.2-chat',
   };
   if (datasources?.length) body.datasources = datasources;
 

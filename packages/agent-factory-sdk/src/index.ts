@@ -34,8 +34,8 @@ export { createAnthropic } from '@ai-sdk/anthropic';
 
 const baseModels = [
   {
-    name: 'GPT-5 Mini',
-    value: 'azure/gpt-5-mini',
+    name: 'GPT-5.2',
+    value: 'azure/gpt-5.2-chat',
   },
   {
     name: 'Anthropic Claude (4.5 Sonnet)',

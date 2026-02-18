@@ -150,7 +150,7 @@ export function getDefaultModel(): string {
       modelName =
         getEnv('AZURE_OPENAI_DEPLOYMENT') ||
         getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
-        'gpt-5-mini';
+        'gpt-5.2-chat';
       break;
     case 'ollama':
       modelName =
@@ -184,7 +184,7 @@ export function getDefaultModel(): string {
       modelName =
         getEnv('AZURE_OPENAI_DEPLOYMENT') ||
         getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
-        'gpt-5-mini';
+        'gpt-5.2-chat';
       return `azure/${modelName}`;
   }
 
