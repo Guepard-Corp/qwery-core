@@ -20,7 +20,10 @@ vi.mock('~/lib/utils/google-sheets-preview', () => ({
   parseGoogleSheetsUrl: vi.fn((url: string) => {
     try {
       const u = new URL(url.startsWith('http') ? url : `https://${url}`);
-      if (!gsheetHostRegex.test(u.hostname) || !gsheetPathRegex.test(u.pathname))
+      if (
+        !gsheetHostRegex.test(u.hostname) ||
+        !gsheetPathRegex.test(u.pathname)
+      )
         return null;
       return u.pathname.startsWith('/spreadsheets/d/e/')
         ? { sheetId: 'pub123', gid: '0', isPublishedUrl: true }
