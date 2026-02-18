@@ -46,9 +46,9 @@ describe('isGsheetLikeUrl', () => {
   });
 
   it('returns true for bare sheet ID (20+ alphanumeric)', () => {
-    expect(isGsheetLikeUrl('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')).toBe(
-      true,
-    );
+    expect(
+      isGsheetLikeUrl('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'),
+    ).toBe(true);
   });
 
   it('returns false for non-Google hosts', () => {
@@ -67,9 +67,9 @@ describe('isGsheetLikeUrl', () => {
   });
 
   it('returns false for path without /spreadsheets/d/', () => {
-    expect(
-      isGsheetLikeUrl('https://docs.google.com/document/d/123'),
-    ).toBe(false);
+    expect(isGsheetLikeUrl('https://docs.google.com/document/d/123')).toBe(
+      false,
+    );
   });
 });
 
@@ -154,9 +154,7 @@ describe('requiresDataFetching', () => {
 
   it('returns false for embeddable URLs', () => {
     expect(
-      requiresDataFetching(
-        'https://docs.google.com/spreadsheets/d/1abc/edit',
-      ),
+      requiresDataFetching('https://docs.google.com/spreadsheets/d/1abc/edit'),
     ).toBe(false);
   });
 });
@@ -186,7 +184,11 @@ describe('validateDatasourceUrl', () => {
   it('returns valid for empty url (no error message)', () => {
     expect(
       validateDatasourceUrl(
-        { id: 'gsheet-csv', supportsPreview: true, previewUrlKind: 'embeddable' },
+        {
+          id: 'gsheet-csv',
+          supportsPreview: true,
+          previewUrlKind: 'embeddable',
+        },
         '',
       ),
     ).toEqual({ isValid: false, error: null });
@@ -212,21 +214,20 @@ describe('validateDatasourceUrl', () => {
       supportsPreview: true,
       previewUrlKind: 'data-file' as const,
     };
-    expect(
-      validateDatasourceUrl(meta, 'https://example.com/file.csv'),
-    ).toEqual({ isValid: true, error: null });
-    expect(
-      validateDatasourceUrl(meta, 'ftp://example.com/file.csv'),
-    ).toEqual({
+    expect(validateDatasourceUrl(meta, 'https://example.com/file.csv')).toEqual(
+      { isValid: true, error: null },
+    );
+    expect(validateDatasourceUrl(meta, 'ftp://example.com/file.csv')).toEqual({
       isValid: false,
       error: 'Please enter a valid URL (must start with http:// or https://)',
     });
   });
 
   it('returns valid when meta is null or no preview kind', () => {
-    expect(
-      validateDatasourceUrl(null, 'https://example.com/any'),
-    ).toEqual({ isValid: true, error: null });
+    expect(validateDatasourceUrl(null, 'https://example.com/any')).toEqual({
+      isValid: true,
+      error: null,
+    });
   });
 });
 
@@ -271,12 +272,12 @@ describe('getUrlForValidation', () => {
 
 describe('getDatasourcePreviewUrl', () => {
   it('returns null when no formValues or supportsPreview false', () => {
-    expect(
-      getDatasourcePreviewUrl({ sharedLink: 'x' }, { id: 'x' }),
-    ).toBe(null);
-    expect(getDatasourcePreviewUrl(null, { id: 'x', supportsPreview: true })).toBe(
+    expect(getDatasourcePreviewUrl({ sharedLink: 'x' }, { id: 'x' })).toBe(
       null,
     );
+    expect(
+      getDatasourcePreviewUrl(null, { id: 'x', supportsPreview: true }),
+    ).toBe(null);
   });
 
   it('returns embed URL for embeddable + valid Google Sheets link', () => {
@@ -287,8 +288,7 @@ describe('getDatasourcePreviewUrl', () => {
     };
     const url = getDatasourcePreviewUrl(
       {
-        sharedLink:
-          'https://docs.google.com/spreadsheets/d/1abc/edit#gid=0',
+        sharedLink: 'https://docs.google.com/spreadsheets/d/1abc/edit#gid=0',
       },
       meta,
     );
@@ -303,10 +303,7 @@ describe('getDatasourcePreviewUrl', () => {
       previewUrlKind: 'data-file' as const,
     };
     expect(
-      getDatasourcePreviewUrl(
-        { url: 'https://example.com/file.csv' },
-        meta,
-      ),
+      getDatasourcePreviewUrl({ url: 'https://example.com/file.csv' }, meta),
     ).toBe('https://example.com/file.csv');
   });
 });
