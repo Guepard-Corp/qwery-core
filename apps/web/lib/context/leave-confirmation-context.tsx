@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBlocker } from 'react-router';
 import {
   Dialog,
@@ -53,6 +54,7 @@ export function LeaveConfirmationProvider({
 }: {
   children: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const { isProcessing } = useAgentStatus();
   const [unsavedNotebook, setUnsavedNotebook] =
     useState<UnsavedCallbacks | null>(null);
@@ -139,40 +141,44 @@ export function LeaveConfirmationProvider({
           <DialogHeader>
             <DialogTitle>
               {both
-                ? 'Unsaved changes and agent processing'
+                ? t('leaveConfirmation.titleBoth')
                 : unsavedOnly
-                  ? 'Unsaved changes'
-                  : 'Agent still processing'}
+                  ? t('leaveConfirmation.titleUnsaved')
+                  : t('leaveConfirmation.titleProcessing')}
             </DialogTitle>
             <DialogDescription>
               {both
-                ? 'You have unsaved changes and the agent is still processing. Save and leave, discard and leave, or stay.'
+                ? t('leaveConfirmation.descriptionBoth')
                 : unsavedOnly
-                  ? 'You have unsaved changes. Save and continue, discard, or cancel.'
-                  : 'The agent is still processing. You can leave anyway or stay.'}
+                  ? t('leaveConfirmation.descriptionUnsaved')
+                  : t('leaveConfirmation.descriptionProcessing')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleStay}>
-              {both || unsavedOnly ? 'Cancel' : 'Stay'}
+              {both || unsavedOnly
+                ? t('leaveConfirmation.cancel')
+                : t('leaveConfirmation.stay')}
             </Button>
             {processingOnly && (
               <Button variant="destructive" onClick={handleLeaveAnyway}>
-                Leave anyway
+                {t('leaveConfirmation.leaveAnyway')}
               </Button>
             )}
             {hasUnsaved && (
               <Button variant="outline" onClick={handleDiscardAndLeave}>
-                {both ? 'Discard & leave' : 'Discard'}
+                {both
+                  ? t('leaveConfirmation.discardAndLeave')
+                  : t('leaveConfirmation.discard')}
               </Button>
             )}
             {hasUnsaved && (
               <Button onClick={handleSaveAndLeave} disabled={isSaving}>
                 {isSaving
-                  ? 'Saving...'
+                  ? t('leaveConfirmation.saving')
                   : both
-                    ? 'Save & leave'
-                    : 'Save & continue'}
+                    ? t('leaveConfirmation.saveAndLeave')
+                    : t('leaveConfirmation.saveAndContinue')}
               </Button>
             )}
           </DialogFooter>

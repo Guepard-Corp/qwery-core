@@ -184,5 +184,21 @@
     },
     "success": "Thank you for your feedback!",
     "error": "Failed to submit feedback. Please try again."
+  },
+  "leaveConfirmation": {
+    "titleBoth": "Unsaved changes and agent processing",
+    "titleUnsaved": "Unsaved changes",
+    "titleProcessing": "Agent still processing",
+    "descriptionBoth": "You have unsaved changes and the agent is still processing. Save and leave, discard and leave, or stay.",
+    "descriptionUnsaved": "You have unsaved changes. Save and continue, discard, or cancel.",
+    "descriptionProcessing": "The agent is still processing. You can leave anyway or stay.",
+    "cancel": "Cancel",
+    "stay": "Stay",
+    "leaveAnyway": "Leave anyway",
+    "discard": "Discard",
+    "discardAndLeave": "Discard & leave",
+    "saveAndLeave": "Save & leave",
+    "saveAndContinue": "Save & continue",
+    "saving": "Saving..."
   }
 }

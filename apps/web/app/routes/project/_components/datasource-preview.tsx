@@ -23,7 +23,8 @@ import { Button } from '@qwery/ui/button';
 import {
   getDatasourcePreviewUrl,
   validateDatasourceUrl,
-  getDatasourceType,
+  isGsheetLikeUrl,
+  type DatasourceExtensionMeta,
 } from '~/lib/utils/datasource-utils';
 import {
   detectPublishedState,
@@ -43,31 +44,25 @@ export const DatasourcePreview = forwardRef<
   DatasourcePreviewRef,
   {
     formValues: Record<string, unknown> | null;
-    extensionId: string;
-    supportsPreview?: boolean;
+    extensionMeta: DatasourceExtensionMeta | undefined | null;
     className?: string;
     isTestConnectionLoading?: boolean;
   }
 >(function DatasourcePreview(
   {
     formValues,
-    extensionId,
-    supportsPreview: supportsPreviewProp,
+    extensionMeta,
     className,
     isTestConnectionLoading: _isTestConnectionLoading = false,
   },
   _ref,
 ) {
   const { theme, resolvedTheme } = useTheme();
-  const previewMeta = useMemo(
-    () => (supportsPreviewProp === true ? { supportsPreview: true } : null),
-    [supportsPreviewProp],
-  );
+  const supportsPreviewProp = extensionMeta?.supportsPreview === true;
   const previewUrl = useMemo(
-    () => getDatasourcePreviewUrl(formValues, extensionId, previewMeta),
-    [formValues, extensionId, previewMeta],
+    () => getDatasourcePreviewUrl(formValues, extensionMeta),
+    [formValues, extensionMeta],
   );
-  const dsType = getDatasourceType(extensionId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [debouncedPreviewUrl, setDebouncedPreviewUrl] = useState<string | null>(
@@ -86,15 +81,9 @@ export const DatasourcePreview = forwardRef<
   const [isWasmFallbackRequested, setIsWasmFallbackRequested] = useState(false);
   const [showPublishingGuide, setShowPublishingGuide] = useState(false);
 
-  // Set initial view mode based on type
   useEffect(() => {
-    if (dsType === 'json') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setViewMode('tree');
-    } else {
-      setViewMode('table');
-    }
-  }, [dsType]);
+    setViewMode(extensionMeta?.previewDataFormat === 'json' ? 'tree' : 'table');
+  }, [extensionMeta?.previewDataFormat]);
 
   // Debounce preview URL updates by 1 second
   useEffect(() => {
@@ -118,21 +107,20 @@ export const DatasourcePreview = forwardRef<
     return () => clearTimeout(timeoutId);
   }, [previewUrl]);
 
-  // Delay publishing guide appearance
+  const needsPublicationCheck =
+    extensionMeta?.previewUrlKind === 'embeddable' &&
+    isGsheetLikeUrl(debouncedPreviewUrl ?? previewUrl);
+
   useEffect(() => {
-    if (extensionId === 'gsheet-csv' && publicationStatus === 'not-published') {
+    if (needsPublicationCheck && publicationStatus === 'not-published') {
       const timer = setTimeout(() => setShowPublishingGuide(true), 2500);
       return () => clearTimeout(timer);
-    } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowPublishingGuide(false);
     }
-  }, [extensionId, publicationStatus]);
+    setShowPublishingGuide(false);
+  }, [needsPublicationCheck, publicationStatus]);
 
-  // Detect publication status for Google Sheets
   useEffect(() => {
-    if (extensionId !== 'gsheet-csv' || !previewUrl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!needsPublicationCheck || !previewUrl) {
       setPublicationStatus('unknown');
       return;
     }
@@ -153,35 +141,26 @@ export const DatasourcePreview = forwardRef<
       .catch(() => {
         setPublicationStatus('unknown');
       });
-  }, [extensionId, previewUrl, formValues]);
+  }, [needsPublicationCheck, previewUrl, formValues]);
 
   // Use unified validation logic
   useEffect(() => {
     const sharedLink = (formValues?.sharedLink || formValues?.url) as
       | string
       | undefined;
-    const { error } = validateDatasourceUrl(extensionId, sharedLink);
+    const { error } = validateDatasourceUrl(extensionMeta, sharedLink);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setValidationError(error);
-  }, [extensionId, formValues]);
+  }, [extensionMeta, formValues]);
 
-  // Fetch data for JSON, Parquet, or CSV preview
+  const needsDataFetching = extensionMeta?.previewUrlKind === 'data-file';
+  const dataFormat = extensionMeta?.previewDataFormat;
+  const isGSheetUrl = (url: string | null) =>
+    !!url?.includes('docs.google.com/spreadsheets');
+
   useEffect(() => {
-    const isJson = extensionId === 'json-online';
-    const isParquet = extensionId === 'parquet-online';
-    const isGsheetCsv = extensionId === 'gsheet-csv';
-
-    // For GSheet - we only try WASM/CSV if it's NOT a Google Sheet link (i.e. direct CSV)
-    // OR if we specifically want to try the fallback (user's request)
-    const isGSheetLink =
-      isGsheetCsv &&
-      debouncedPreviewUrl?.includes('docs.google.com/spreadsheets');
-    const isDirectCsv = isGsheetCsv && !isGSheetLink;
-
-    if ((!isJson && !isParquet && !isDirectCsv) || !debouncedPreviewUrl) {
-      if (!isGSheetLink) {
-        // Don't clear if we might need gsheet data later
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!needsDataFetching || !debouncedPreviewUrl) {
+      if (!isGSheetUrl(debouncedPreviewUrl)) {
         setJsonData(null);
         setJsonError(null);
         setIsLoadingJson(false);
@@ -189,13 +168,21 @@ export const DatasourcePreview = forwardRef<
       return;
     }
 
+    const gsheet = isGSheetUrl(debouncedPreviewUrl);
+    const isDirectCsv = dataFormat === 'csv' && !gsheet;
+    if (!isDirectCsv && dataFormat !== 'json' && dataFormat !== 'parquet') {
+      return;
+    }
+
     setIsLoadingJson(true);
     setJsonError(null);
 
-    let fetcher;
-    if (isJson) fetcher = fetchJsonData(debouncedPreviewUrl);
-    else if (isParquet) fetcher = fetchParquetData(debouncedPreviewUrl);
-    else fetcher = fetchCsvData(debouncedPreviewUrl);
+    const fetcher =
+      dataFormat === 'json'
+        ? fetchJsonData(debouncedPreviewUrl)
+        : dataFormat === 'parquet'
+          ? fetchParquetData(debouncedPreviewUrl)
+          : fetchCsvData(debouncedPreviewUrl);
 
     fetcher
       .then((result) => {
@@ -210,12 +197,11 @@ export const DatasourcePreview = forwardRef<
       .finally(() => {
         setIsLoadingJson(false);
       });
-  }, [extensionId, debouncedPreviewUrl, refreshKey]);
+  }, [debouncedPreviewUrl, refreshKey, needsDataFetching, dataFormat]);
 
-  // Special effect for Google Sheet WASM fallback
   useEffect(() => {
     if (
-      extensionId !== 'gsheet-csv' ||
+      !needsPublicationCheck ||
       publicationStatus !== 'not-published' ||
       !debouncedPreviewUrl ||
       !isWasmFallbackRequested
@@ -248,7 +234,7 @@ export const DatasourcePreview = forwardRef<
         setIsLoadingJson(false);
       });
   }, [
-    extensionId,
+    needsPublicationCheck,
     publicationStatus,
     debouncedPreviewUrl,
     isWasmFallbackRequested,
@@ -303,11 +289,10 @@ export const DatasourcePreview = forwardRef<
         : '?' + themeParam.substring(1))
     : undefined;
 
-  const isGoogleSheets = dsType === 'gsheet';
-  const isJsonOnline = dsType === 'json';
-  const isParquetOnline = dsType === 'parquet';
-
   const supportsPreview = supportsPreviewProp === true;
+  const usesJsonFormat = dataFormat === 'json';
+  const usesParquetFormat = dataFormat === 'parquet';
+  const usesCsvFormat = dataFormat === 'csv';
   const hasValidUrl = Boolean(previewUrl) && !validationError;
   const hasPreview = Boolean(debouncedPreviewUrl) && !validationError;
 
@@ -354,36 +339,36 @@ export const DatasourcePreview = forwardRef<
       {hasPreview && (
         <div className="group border-border bg-muted/30 dark:bg-muted/25 relative flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-lg border transition-colors duration-300">
           <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
-            {isJsonOnline ||
-            isParquetOnline ||
-            (dsType === 'gsheet' && !!jsonData) ? (
+            {usesJsonFormat ||
+            usesParquetFormat ||
+            (usesCsvFormat && !!jsonData) ? (
               <div className="relative flex min-h-0 flex-1 flex-col items-stretch overflow-hidden">
                 {isLoadingJson ? (
                   <div className="bg-muted/30 dark:bg-muted/20 flex h-full w-full items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="border-muted-foreground/20 border-t-muted-foreground size-8 animate-spin rounded-full border-2" />
                       <div className="text-foreground text-center text-sm font-medium">
-                        {isParquetOnline
+                        {usesParquetFormat
                           ? 'Preparing Parquet Preview...'
-                          : dsType === 'gsheet'
+                          : usesCsvFormat
                             ? 'Preparing Data Preview...'
                             : 'Loading JSON Preview...'}
                       </div>
                       <div className="text-muted-foreground px-4 text-center text-xs">
-                        {isParquetOnline || dsType === 'gsheet'
+                        {usesParquetFormat || usesCsvFormat
                           ? 'Preparing data view'
                           : 'Fetching data from URL'}
                       </div>
                     </div>
                   </div>
-                ) : jsonError && !isGoogleSheets ? (
+                ) : jsonError && !needsPublicationCheck ? (
                   <div className="bg-background flex h-full w-full items-center justify-center p-6">
                     <div className="flex max-w-sm flex-col items-center text-center">
                       <div className="bg-destructive/10 mb-4 flex h-16 w-16 items-center justify-center rounded-2xl">
                         <FileJson className="text-destructive size-8" />
                       </div>
                       <h4 className="text-foreground text-lg font-semibold">
-                        {isParquetOnline
+                        {usesParquetFormat
                           ? 'Failed to load Parquet'
                           : 'Failed to load JSON'}
                       </h4>
@@ -410,13 +395,13 @@ export const DatasourcePreview = forwardRef<
                       viewMode={viewMode}
                       onViewModeChange={setViewMode}
                       itemsPerPage={
-                        isParquetOnline || dsType === 'gsheet' ? 20 : undefined
+                        usesParquetFormat || usesCsvFormat ? 20 : undefined
                       }
                     />
                   </div>
                 ) : null}
               </div>
-            ) : isGoogleSheets &&
+            ) : needsPublicationCheck &&
               publicationStatus === 'not-published' &&
               !jsonData ? (
               <div className="bg-muted/30 flex h-full items-center justify-center">
@@ -464,7 +449,7 @@ export const DatasourcePreview = forwardRef<
                   src={displayUrl}
                   className={cn(
                     'size-full border-0',
-                    isGoogleSheets &&
+                    needsPublicationCheck &&
                       currentTheme === 'dark' &&
                       'brightness-[0.9] contrast-[1.1] hue-rotate-180 invert-[0.85]',
                   )}
@@ -488,7 +473,7 @@ export const DatasourcePreview = forwardRef<
 
             {/* Bottom-Left Utility Controls (Hover only) */}
             {(!!jsonData ||
-              (isGoogleSheets &&
+              (needsPublicationCheck &&
                 publicationStatus === 'published' &&
                 !validationError)) && (
               <div className="pointer-events-auto absolute bottom-3 left-3 z-30 flex items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -503,7 +488,8 @@ export const DatasourcePreview = forwardRef<
                 </Button>
                 {displayUrl &&
                   !(
-                    isGoogleSheets && publicationStatus === 'not-published'
+                    needsPublicationCheck &&
+                    publicationStatus === 'not-published'
                   ) && (
                     <a
                       href={displayUrl}
@@ -515,9 +501,9 @@ export const DatasourcePreview = forwardRef<
                       <ExternalLink className="size-3.5" />
                     </a>
                   )}
-                {(isJsonOnline ||
-                  isParquetOnline ||
-                  (dsType === 'gsheet' && !!jsonData)) &&
+                {(usesJsonFormat ||
+                  usesParquetFormat ||
+                  (usesCsvFormat && !!jsonData)) &&
                   jsonData !== null &&
                   !isLoadingJson &&
                   !jsonError && (
@@ -527,7 +513,7 @@ export const DatasourcePreview = forwardRef<
                       className="text-muted-foreground/70 hover:text-foreground bg-background/90 border-border/40 h-7 w-7 border backdrop-blur-sm"
                       onClick={handleCopyJson}
                       title={
-                        isParquetOnline ? 'Copy rows as JSON' : 'Copy JSON'
+                        usesParquetFormat ? 'Copy rows as JSON' : 'Copy JSON'
                       }
                     >
                       {copied ? (
@@ -541,16 +527,15 @@ export const DatasourcePreview = forwardRef<
             )}
 
             {/* Bottom-Right Controls: View Mode Toggles (Tree/Raw) */}
-            {(isJsonOnline ||
-              isParquetOnline ||
-              (dsType === 'gsheet' && !!jsonData)) &&
+            {(usesJsonFormat ||
+              usesParquetFormat ||
+              (usesCsvFormat && !!jsonData)) &&
               jsonData !== null &&
               !isLoadingJson &&
               !jsonError && (
                 <div className="pointer-events-auto absolute right-3 bottom-3 z-30 flex items-center">
                   <div className="border-border/40 bg-background/60 mr-2 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm backdrop-blur-md">
-                    {(isParquetOnline ||
-                      (dsType === 'gsheet' && !!jsonData)) && (
+                    {(usesParquetFormat || (usesCsvFormat && !!jsonData)) && (
                       <Button
                         variant={viewMode === 'table' ? 'default' : 'ghost'}
                         size="sm"
@@ -565,7 +550,7 @@ export const DatasourcePreview = forwardRef<
                         Table
                       </Button>
                     )}
-                    {dsType === 'json' && (
+                    {usesJsonFormat && (
                       <Button
                         variant={viewMode === 'tree' ? 'default' : 'ghost'}
                         size="sm"
@@ -601,7 +586,7 @@ export const DatasourcePreview = forwardRef<
       )}
 
       {/* Publishing instructions card below */}
-      {isGoogleSheets && showPublishingGuide && !jsonData && (
+      {needsPublicationCheck && showPublishingGuide && !jsonData && (
         <div
           className={cn(
             'shrink-0 transition-all duration-500 ease-out',

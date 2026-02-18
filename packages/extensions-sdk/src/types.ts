@@ -11,6 +11,17 @@ export enum ExtensionScope {
   SKILL = 'skill',
 }
 
+/** How the extension's preview URL is built and validated (declared by each extension). */
+export const PreviewUrlKindSchema = z.enum([
+  'embeddable',
+  'data-file',
+  'connection',
+]);
+export type PreviewUrlKind = z.infer<typeof PreviewUrlKindSchema>;
+
+export const PreviewDataFormatSchema = z.enum(['json', 'parquet', 'csv']);
+export type PreviewDataFormat = z.infer<typeof PreviewDataFormatSchema>;
+
 export const ExtensionDefinitionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -21,6 +32,8 @@ export const ExtensionDefinitionSchema = z.object({
   schema: z.any().optional().nullable(),
   docsUrl: z.string().nullable().optional(),
   supportsPreview: z.boolean().optional(),
+  previewUrlKind: PreviewUrlKindSchema.optional(),
+  previewDataFormat: PreviewDataFormatSchema.optional(),
 });
 
 /**

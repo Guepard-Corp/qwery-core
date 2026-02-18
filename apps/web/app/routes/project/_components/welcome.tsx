@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Link2Icon } from '@radix-ui/react-icons';
 import { ArrowRight, NotebookPen, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ import { usePlayground } from '~/lib/mutations/use-playground';
 import { PlaygroundConfirmDialog } from './playground-confirm-dialog';
 
 export default function WelcomePage() {
+  const { t } = useTranslation('welcome');
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
@@ -51,7 +53,7 @@ export default function WelcomePage() {
     () => {},
     (error) => {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
+        error instanceof Error ? error.message : t('failedPlayground'),
         { id: 'creating-playground' },
       );
     },
@@ -72,9 +74,7 @@ export default function WelcomePage() {
     },
     (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create conversation',
+        error instanceof Error ? error.message : t('failedConversation'),
         { id: 'creating-conversation' },
       );
     },
@@ -138,14 +138,14 @@ export default function WelcomePage() {
 
     const messageText = message.text.trim();
 
-    toast.loading('Creating conversation and redirecting...', {
+    toast.loading(t('creatingConversationRedirect'), {
       id: 'creating-conversation',
     });
 
     createConversationMutation.mutate({
       projectId,
       taskId: uuidv4(),
-      title: messageText.substring(0, 50) || 'New Conversation',
+      title: messageText.substring(0, 50) || t('newConversation'),
       seedMessage: messageText,
       datasources: [],
       createdBy: workspace.userId,
@@ -168,7 +168,7 @@ export default function WelcomePage() {
     if (!selectedSuggestion || !projectId || !workspace.userId) return;
 
     setShowConfirmDialog(false);
-    toast.loading('Creating playground...', { id: 'creating-playground' });
+    toast.loading(t('creatingPlayground'), { id: 'creating-playground' });
 
     try {
       const playgroundDatasource = await createPlaygroundMutation.mutateAsync({
@@ -188,7 +188,7 @@ export default function WelcomePage() {
           projectId,
           taskId: uuidv4(),
           title:
-            selectedSuggestion.query.substring(0, 50) || 'New Conversation',
+            selectedSuggestion.query.substring(0, 50) || t('newConversation'),
           seedMessage: selectedSuggestion.query,
           datasources: [playgroundDatasource.id],
           createdBy: workspace.userId,
@@ -211,9 +211,7 @@ export default function WelcomePage() {
           },
           onError: (error) => {
             toast.error(
-              error instanceof Error
-                ? error.message
-                : 'Failed to create conversation',
+              error instanceof Error ? error.message : t('failedConversation'),
               { id: 'creating-conversation' },
             );
           },
@@ -221,7 +219,7 @@ export default function WelcomePage() {
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
+        error instanceof Error ? error.message : t('failedPlayground'),
         { id: 'creating-playground' },
       );
     }
@@ -244,10 +242,10 @@ export default function WelcomePage() {
           </div>
 
           <h1 className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">
-            What would you like to explore?
+            {t('heroTitle')}
           </h1>
           <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
-            Ask questions about your data in natural language
+            {t('heroSubtitle')}
           </p>
         </section>
 
@@ -263,7 +261,7 @@ export default function WelcomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 value={input}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about your data..."
+                placeholder={t('placeholder')}
                 className="min-h-[120px] resize-none border-none px-4 py-4 text-[15px] focus-visible:ring-0"
               />
             </PromptInputBody>
@@ -274,7 +272,7 @@ export default function WelcomePage() {
                 className="bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
               >
                 <ArrowUp className="size-4" />
-                <span className="hidden sm:inline">Ask AI</span>
+                <span className="hidden sm:inline">{t('askAi')}</span>
               </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>
@@ -300,7 +298,7 @@ export default function WelcomePage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background text-muted-foreground/70 px-3">
-              Quick Actions
+              {t('quickActions')}
             </span>
           </div>
         </div>
@@ -317,16 +315,15 @@ export default function WelcomePage() {
                   <Link2Icon className="size-5" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">
-                  Connect Datasources
+                  {t('connectDatasources')}
                 </h3>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Link PostgreSQL, MySQL, ClickHouse, Google Sheets, CSV files,
-                and more. Automatic schema mapping and federated queries.
+                {t('connectDatasourcesDescription')}
               </p>
             </div>
             <div className="text-primary mt-6 flex items-center gap-2 text-sm font-bold tracking-tight uppercase">
-              Connect Data{' '}
+              {t('connectData')}{' '}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
@@ -341,16 +338,15 @@ export default function WelcomePage() {
                   <NotebookPen className="size-5" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">
-                  Create Notebooks
+                  {t('createNotebooks')}
                 </h3>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Build SQL notebooks to query, analyze, and visualize data.
-                Organize queries into cells and run federated queries.
+                {t('createNotebooksDescription')}
               </p>
             </div>
             <div className="text-primary mt-6 flex items-center gap-2 text-sm font-bold tracking-tight uppercase">
-              Start Notebook{' '}
+              {t('startNotebook')}{' '}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
@@ -363,7 +359,7 @@ export default function WelcomePage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background text-muted-foreground/70 px-3">
-              Sample Data
+              {t('sampleData')}
             </span>
           </div>
         </div>

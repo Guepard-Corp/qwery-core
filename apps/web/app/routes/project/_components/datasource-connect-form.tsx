@@ -426,7 +426,9 @@ export function DatasourceConnectForm({
   const isActionDisabled = isConnecting || isPending;
   const isTestConnectionDisabled = isActionDisabled || !isFormValid;
   const isSubmitDisabled =
-    isActionDisabled || !isFormValid || (existingDatasource ? false : isTestConnectionLoading);
+    isActionDisabled ||
+    !isFormValid ||
+    (existingDatasource ? false : isTestConnectionLoading);
   const actionsEl = (
     <div className="flex flex-col-reverse gap-3 pt-8 sm:flex-row sm:items-center sm:justify-between">
       <Button

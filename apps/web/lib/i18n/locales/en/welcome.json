@@ -6,6 +6,33 @@
   "startDatabaseTitle": "Start a database",
   "startDatabaseDescription": "Create and deploy a new database instance to get started with your project.",
   "startDatabaseButton": "Start a database",
-  "playgroundTryMessage": "Try our playground databases and Qwery 🚀"
+  "playgroundTryMessage": "Try our playground databases and Qwery 🚀",
+  "heroTitle": "What would you like to explore?",
+  "heroSubtitle": "Ask questions about your data in natural language",
+  "askAi": "Ask AI",
+  "placeholder": "Ask anything about your data...",
+  "quickActions": "Quick Actions",
+  "connectDatasources": "Connect Datasources",
+  "connectDatasourcesDescription": "Link PostgreSQL, MySQL, ClickHouse, Google Sheets, CSV files, and more. Automatic schema mapping and federated queries.",
+  "connectData": "Connect Data",
+  "createNotebooks": "Create Notebooks",
+  "createNotebooksDescription": "Build SQL notebooks to query, analyze, and visualize data. Organize queries into cells and run federated queries.",
+  "startNotebook": "Start Notebook",
+  "sampleData": "Sample Data",
+  "newConversation": "New Conversation",
+  "creatingConversationRedirect": "Creating conversation and redirecting...",
+  "creatingPlayground": "Creating playground...",
+  "creatingConversation": "Creating conversation...",
+  "failedPlayground": "Failed to create playground",
+  "failedConversation": "Failed to create conversation",
+  "playgroundConfirm": {
+    "title": "Start with Playground",
+    "description": "A new playground database will be created with sample data",
+    "availableTables": "Available tables:",
+    "yourRequest": "Your Request",
+    "sampleDataLabel": "Sample data:",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "continue": "Continue"
+  }
 }
-

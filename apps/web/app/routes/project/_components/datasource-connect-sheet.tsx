@@ -313,12 +313,11 @@ export function DatasourceConnectSheet({
                   existingDatasource={existingDatasource}
                 />
               </div>
-              {formValues && extension.data?.supportsPreview && (
+              {formValues && extension.data?.supportsPreview === true && (
                 <DatasourcePreview
                   ref={previewRef}
                   formValues={formValues}
-                  extensionId={extensionId}
-                  supportsPreview={extension.data?.supportsPreview}
+                  extensionMeta={extension.data}
                   isTestConnectionLoading={isTestConnectionLoading}
                   className="min-h-0 flex-1"
                 />

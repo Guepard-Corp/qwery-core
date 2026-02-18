@@ -64,7 +64,9 @@
         }
       ],
       "docsUrl": null,
-      "supportsPreview": true
+      "supportsPreview": true,
+      "previewUrlKind": "data-file",
+      "previewDataFormat": "csv"
     },
     {
       "id": "duckdb",
@@ -132,7 +134,8 @@
         }
       ],
       "docsUrl": "https://support.google.com/docs/answer/2494822",
-      "supportsPreview": true
+      "supportsPreview": true,
+      "previewUrlKind": "embeddable"
     },
     {
       "id": "json-online",
@@ -154,7 +157,9 @@
         }
       ],
       "docsUrl": null,
-      "supportsPreview": true
+      "supportsPreview": true,
+      "previewUrlKind": "data-file",
+      "previewDataFormat": "json"
     },
     {
       "id": "mysql",
@@ -198,7 +203,9 @@
         }
       ],
       "docsUrl": null,
-      "supportsPreview": true
+      "supportsPreview": true,
+      "previewUrlKind": "data-file",
+      "previewDataFormat": "parquet"
     },
     {
       "id": "pglite",

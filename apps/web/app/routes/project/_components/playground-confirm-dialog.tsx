@@ -1,5 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { Database, Play } from 'lucide-react';
-
+import { Trans } from '@qwery/ui/trans';
 import type { PlaygroundSuggestion } from '@qwery/playground/playground-suggestions';
 import { PLAYGROUND_TABLES } from '@qwery/playground/utils/playground-sql';
 import {
@@ -34,6 +35,7 @@ export function PlaygroundConfirmDialog({
   isPending,
   showRequestSection = true,
 }: PlaygroundConfirmDialogProps) {
+  const { t } = useTranslation('welcome');
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-lg">
@@ -44,10 +46,10 @@ export function PlaygroundConfirmDialog({
             </div>
             <div className="flex-1 space-y-1 pt-1">
               <AlertDialogTitle className="text-xl leading-tight font-semibold">
-                Start with Playground
+                <Trans i18nKey="welcome:playgroundConfirm.title" />
               </AlertDialogTitle>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                A new playground database will be created with sample data
+                <Trans i18nKey="welcome:playgroundConfirm.description" />
               </p>
             </div>
           </div>
@@ -56,7 +58,7 @@ export function PlaygroundConfirmDialog({
         <div className="space-y-4 py-2">
           <div className="pb-4">
             <p className="text-foreground mb-3 text-center text-xs font-medium">
-              Available tables:
+              {t('playgroundConfirm.availableTables')}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
               {PLAYGROUND_TABLES.map((table) => (
@@ -91,7 +93,7 @@ export function PlaygroundConfirmDialog({
                       {table.sampleData && table.sampleData.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-foreground text-xs font-medium">
-                            Sample data:
+                            {t('playgroundConfirm.sampleDataLabel')}
                           </p>
                           <div className="bg-muted/30 overflow-hidden rounded-md border">
                             <div className="overflow-x-auto">
@@ -148,7 +150,7 @@ export function PlaygroundConfirmDialog({
           {showRequestSection && (
             <div className="bg-muted/30 relative rounded-xl border-2 border-dashed p-4">
               <span className="bg-background text-muted-foreground absolute -top-2.5 left-4 px-2 text-[10px] font-black tracking-widest uppercase">
-                Your Request
+                {t('playgroundConfirm.yourRequest')}
               </span>
               <p className="text-foreground text-sm leading-relaxed font-semibold italic">
                 &quot;{selectedSuggestion?.query}&quot;
@@ -159,14 +161,16 @@ export function PlaygroundConfirmDialog({
 
         <AlertDialogFooter className="gap-2 sm:gap-2">
           <AlertDialogCancel disabled={isPending} className="mt-0">
-            Cancel
+            <Trans i18nKey="welcome:playgroundConfirm.cancel" />
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isPending}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {isPending ? 'Creating...' : 'Continue'}
+            {isPending
+              ? t('playgroundConfirm.creating')
+              : t('playgroundConfirm.continue')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
