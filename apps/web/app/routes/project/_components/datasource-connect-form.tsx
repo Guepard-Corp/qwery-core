@@ -423,12 +423,16 @@ export function DatasourceConnectForm({
     createDatasourceMutation.isPending ||
     updateDatasourceMutation.isPending ||
     deleteDatasourceMutation.isPending;
+  const isActionDisabled = isConnecting || isPending;
+  const isTestConnectionDisabled = isActionDisabled || !isFormValid;
+  const isSubmitDisabled =
+    isActionDisabled || !isFormValid || (existingDatasource ? false : isTestConnectionLoading);
   const actionsEl = (
     <div className="flex flex-col-reverse gap-3 pt-8 sm:flex-row sm:items-center sm:justify-between">
       <Button
         variant="ghost"
         onClick={onCancel}
-        disabled={isConnecting || isPending}
+        disabled={isActionDisabled}
         className="text-muted-foreground hover:text-foreground hover:bg-transparent"
       >
         <Trans i18nKey="datasources:cancel" />
@@ -438,7 +442,7 @@ export function DatasourceConnectForm({
           <Button
             variant="destructive"
             onClick={() => setIsDeleteDialogOpen(true)}
-            disabled={isConnecting || isPending}
+            disabled={isActionDisabled}
             data-test="datasource-delete-button"
           >
             <Trans i18nKey="datasources:deleteButton" />
@@ -447,7 +451,7 @@ export function DatasourceConnectForm({
         <Button
           variant="outline"
           onClick={handleTestConnection}
-          disabled={isPending || !isFormValid || isConnecting}
+          disabled={isTestConnectionDisabled}
           className="border-border border bg-white font-semibold text-black shadow-sm transition-all hover:bg-gray-50 hover:text-black"
         >
           {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
@@ -455,12 +459,7 @@ export function DatasourceConnectForm({
         </Button>
         <Button
           onClick={existingDatasource ? handleUpdate : handleConnect}
-          disabled={
-            isConnecting ||
-            isPending ||
-            !isFormValid ||
-            (existingDatasource ? false : isTestConnectionLoading)
-          }
+          disabled={isSubmitDisabled}
           className="border-0 bg-yellow-400 font-bold text-black shadow-lg transition-all hover:bg-yellow-500"
         >
           {isConnecting ? (

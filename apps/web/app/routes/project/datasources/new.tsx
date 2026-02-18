@@ -474,6 +474,12 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     },
   );
 
+  const isMutationPending =
+    createDatasourceMutation.isPending || testConnectionMutation.isPending;
+  const isTestConnectionDisabled =
+    isMutationPending || !formValues || !isFormValidForProvider(formValues);
+  const isSubmitDisabled = isMutationPending || !canSubmit;
+
   useEffect(() => {
     startTransition(() => {
       setFormValues(null);
@@ -905,12 +911,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleTestConnection}
-                disabled={
-                  testConnectionMutation.isPending ||
-                  createDatasourceMutation.isPending ||
-                  !formValues ||
-                  !isFormValidForProvider(formValues)
-                }
+                disabled={isTestConnectionDisabled}
                 className="text-muted-foreground hover:text-foreground h-9 gap-2"
               >
                 {testConnectionMutation.isPending ? (
@@ -935,10 +936,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                       createPath(pathsConfig.app.availableSources, project_id),
                     )
                   }
-                  disabled={
-                    createDatasourceMutation.isPending ||
-                    testConnectionMutation.isPending
-                  }
+                  disabled={isMutationPending}
                   className="h-9"
                 >
                   <Trans i18nKey="datasources:cancel" />
@@ -947,11 +945,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                   type="submit"
                   form="datasource-form"
                   size="sm"
-                  disabled={
-                    createDatasourceMutation.isPending ||
-                    testConnectionMutation.isPending ||
-                    !canSubmit
-                  }
+                  disabled={isSubmitDisabled}
                   className="h-9 gap-2 bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
                 >
                   {createDatasourceMutation.isPending ? (
