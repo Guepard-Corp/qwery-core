@@ -288,7 +288,7 @@ export function DatasourceConnectForm({
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
 
-    const userId = 'system';
+    const userId = workspace.userId;
 
     createDatasourceMutation.mutate({
       projectId,
@@ -308,6 +308,7 @@ export function DatasourceConnectForm({
     datasourceName,
     projectSlug,
     workspace.projectId,
+    workspace.userId,
     projectRepository,
     createDatasourceMutation,
   ]);
