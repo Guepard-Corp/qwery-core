@@ -231,8 +231,24 @@ export async function prune(input: PruneInput): Promise<void> {
   }
 
   if (pruned <= PRUNE_MINIMUM) {
+    const logger = await getLogger();
+    logger.info(
+      `[SessionCompaction] Prune skipped (below minimum): ${pruned} <= ${PRUNE_MINIMUM}`,
+      {
+        conversationSlug,
+        pruned,
+        PRUNE_MINIMUM,
+      },
+    );
     return;
   }
+
+  const logger = await getLogger();
+  logger.info('[SessionCompaction] Pruning tool outputs', {
+    conversationSlug,
+    partsCount: toPrune.length,
+    prunedTokens: pruned,
+  });
 
   for (const { message, partIndex } of toPrune) {
     const content = { ...message.content } as { parts?: MessageContentPart[] };
