@@ -296,7 +296,9 @@ export function DatasourceSelector({
                     'text-muted-foreground hover:text-foreground flex items-center justify-center rounded p-1 transition-colors',
                     sortOrder === 'asc' && 'bg-accent text-accent-foreground',
                   )}
-                  aria-label="Sort ascending (oldest first)"
+                  aria-label={t('common:datasourceSelector.sortAscAriaLabel', {
+                    defaultValue: 'Sort ascending (oldest first)',
+                  })}
                 >
                   <ArrowUp className="h-3.5 w-3.5" />
                 </button>
@@ -311,7 +313,9 @@ export function DatasourceSelector({
                     'text-muted-foreground hover:text-foreground flex items-center justify-center rounded p-1 transition-colors',
                     sortOrder === 'desc' && 'bg-accent text-accent-foreground',
                   )}
-                  aria-label="Sort descending (newest first)"
+                  aria-label={t('common:datasourceSelector.sortDescAriaLabel', {
+                    defaultValue: 'Sort descending (newest first)',
+                  })}
                 >
                   <ArrowDown className="h-3.5 w-3.5" />
                 </button>
@@ -325,7 +329,13 @@ export function DatasourceSelector({
                     }}
                     className="text-muted-foreground hover:text-foreground flex shrink-0 items-center justify-center rounded p-1 transition-colors"
                     aria-label={
-                      search.trim() ? 'Clear search' : 'Clear selection'
+                      search.trim()
+                        ? t('common:datasourceSelector.clearSearchAriaLabel', {
+                            defaultValue: 'Clear search',
+                          })
+                        : t('common:datasourceSelector.clearSelectionAriaLabel', {
+                            defaultValue: 'Clear selection',
+                          })
                     }
                   >
                     <XIcon className="h-4 w-4" />

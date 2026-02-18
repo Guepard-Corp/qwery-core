@@ -121,7 +121,11 @@
   "datasourceSelector": {
     "selectDatasources": "Select datasources",
     "noDatasourcesFound": "No datasources found",
-    "searchDatasources": "Search datasources..."
+    "searchDatasources": "Search datasources...",
+    "sortAscAriaLabel": "Sort ascending (oldest first)",
+    "sortDescAriaLabel": "Sort descending (newest first)",
+    "clearSearchAriaLabel": "Clear search",
+    "clearSelectionAriaLabel": "Clear selection"
   },
   "schema": {
     "noSchemaDataAvailable": "No schema data available",
