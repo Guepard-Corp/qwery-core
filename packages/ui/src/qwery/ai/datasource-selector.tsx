@@ -11,10 +11,7 @@ import {
   ChevronRight,
   XIcon,
 } from 'lucide-react';
-import {
-  sortByModifiedAsc,
-  sortByModifiedDesc,
-} from '@qwery/shared/utils';
+import { sortByModifiedAsc, sortByModifiedDesc } from '@qwery/shared/utils';
 
 import {
   Command,
@@ -93,7 +90,9 @@ export function DatasourceSelector({
 
   useEffect(() => {
     if (open && !prevOpenRef.current) {
-      setDisplayOrderIds(orderIdsForOpen);
+      setTimeout(() => {
+        setDisplayOrderIds(orderIdsForOpen);
+      }, 0);
     }
     prevOpenRef.current = open;
   }, [open, orderIdsForOpen]);
@@ -101,7 +100,9 @@ export function DatasourceSelector({
   useEffect(() => {
     if (open && prevSortOrderRef.current !== sortOrder) {
       prevSortOrderRef.current = sortOrder;
-      setDisplayOrderIds(orderIdsForOpen);
+      setTimeout(() => {
+        setDisplayOrderIds(orderIdsForOpen);
+      }, 0);
     }
   }, [open, sortOrder, orderIdsForOpen]);
 
@@ -168,8 +169,7 @@ export function DatasourceSelector({
     }
   };
 
-  const showClear =
-    search.trim().length > 0 || selectedDatasources.length > 0;
+  const showClear = search.trim().length > 0 || selectedDatasources.length > 0;
 
   // Get display info based on selection
   const displayInfo = useMemo(() => {
@@ -377,7 +377,7 @@ export function DatasourceSelector({
                         >
                           <span
                             className={cn(
-                              'mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary',
+                              'border-primary mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border',
                               isSelected &&
                                 'bg-primary text-primary-foreground',
                             )}
@@ -411,7 +411,7 @@ export function DatasourceSelector({
             )}
           </CommandList>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-2 border-t border-border bg-zinc-200/90 p-2 dark:bg-zinc-800/90">
+            <div className="border-border flex items-center justify-between gap-2 border-t bg-zinc-200/90 p-2 dark:bg-zinc-800/90">
               <Button
                 variant="ghost"
                 size="sm"

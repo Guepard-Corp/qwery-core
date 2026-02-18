@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 
 import { toast } from 'sonner';
 
@@ -750,9 +755,7 @@ export default function NotebookPage() {
         const unsavedIds = JSON.parse(
           localStorage.getItem(storageKey) || '[]',
         ) as string[];
-        const updated = unsavedIds.filter(
-          (id) => id !== normalizedNotebook.id,
-        );
+        const updated = unsavedIds.filter((id) => id !== normalizedNotebook.id);
         localStorage.setItem(storageKey, JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
         setHasUnsavedChangesState(false);

@@ -2,12 +2,11 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { toast } from 'sonner';
 
 import { GetProjectsByOrganizationIdService } from '@qwery/domain/services';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
@@ -55,9 +54,7 @@ export function ProjectBreadcrumb() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const [_unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
-    [],
-  );
+  const [_unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>([]);
   const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
 

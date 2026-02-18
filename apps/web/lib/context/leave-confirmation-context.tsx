@@ -34,8 +34,9 @@ type LeaveConfirmationContextType = {
   ) => void;
 };
 
-const LeaveConfirmationContext =
-  createContext<LeaveConfirmationContextType | undefined>(undefined);
+const LeaveConfirmationContext = createContext<
+  LeaveConfirmationContextType | undefined
+>(undefined);
 
 export function useLeaveConfirmation() {
   const ctx = useContext(LeaveConfirmationContext);
@@ -47,11 +48,14 @@ export function useLeaveConfirmation() {
   return ctx;
 }
 
-export function LeaveConfirmationProvider({ children }: { children: ReactNode }) {
+export function LeaveConfirmationProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { isProcessing } = useAgentStatus();
-  const [unsavedNotebook, setUnsavedNotebook] = useState<UnsavedCallbacks | null>(
-    null,
-  );
+  const [unsavedNotebook, setUnsavedNotebook] =
+    useState<UnsavedCallbacks | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +76,9 @@ export function LeaveConfirmationProvider({ children }: { children: ReactNode })
   useEffect(() => {
     if (blocker.state === 'blocked') {
       proceedRef.current = blocker.proceed;
-      setShowDialog(true);
+      setTimeout(() => {
+        setShowDialog(true);
+      }, 0);
     }
   }, [blocker.state, blocker.proceed]);
 
@@ -161,10 +167,7 @@ export function LeaveConfirmationProvider({ children }: { children: ReactNode })
               </Button>
             )}
             {hasUnsaved && (
-              <Button
-                onClick={handleSaveAndLeave}
-                disabled={isSaving}
-              >
+              <Button onClick={handleSaveAndLeave} disabled={isSaving}>
                 {isSaving
                   ? 'Saving...'
                   : both

@@ -26,12 +26,10 @@ import {
   X,
   Play,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import type { Datasource } from '@qwery/domain/entities';
 import type { PlaygroundSuggestion } from '@qwery/playground/playground-suggestions';
-import { getAllExtensionMetadata } from '@qwery/extensions-loader';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';

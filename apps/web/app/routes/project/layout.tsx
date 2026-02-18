@@ -208,55 +208,57 @@ function SidebarLayoutInner(
     <AgentStatusProvider>
       <LeaveConfirmationProvider>
         <SidebarProvider defaultOpen={layoutState.open}>
-        <Page
-          agentSidebarOpen={undefined}
-          agentSidebarRef={isNotebookPage ? sidebarRef : undefined}
-          agentSidebarOnOpenChange={
-            isNotebookPage
-              ? (open) => {
-                  try {
-                    localStorage.setItem(
-                      NOTEBOOK_SIDEBAR_OPEN_KEY,
-                      open ? 'true' : 'false',
-                    );
-                  } catch {
-                    // ignore
+          <Page
+            agentSidebarOpen={undefined}
+            agentSidebarRef={isNotebookPage ? sidebarRef : undefined}
+            agentSidebarOnOpenChange={
+              isNotebookPage
+                ? (open) => {
+                    try {
+                      localStorage.setItem(
+                        NOTEBOOK_SIDEBAR_OPEN_KEY,
+                        open ? 'true' : 'false',
+                      );
+                    } catch {
+                      // ignore
+                    }
                   }
-                }
-              : undefined
-          }
-        >
-          <PageTopNavigation>
-            <ProjectLayoutTopBar />
-          </PageTopNavigation>
-          <PageNavigation>
-            <ProjectSidebar />
-          </PageNavigation>
-          <PageMobileNavigation className={'flex items-center justify-between'}>
-            <LayoutMobileNavigation />
-          </PageMobileNavigation>
-          <PageFooter>
-            <LayoutFooter />
-          </PageFooter>
-          {/* Always render AgentSidebar on notebook pages to keep it mounted and preserve state */}
-          {/* The ResizableContent component will handle hiding it when closed */}
-          {/* Use stable key that only changes when conversation actually changes */}
-          {/* CRITICAL: Always render when we have a conversation (from URL or persisted) */}
-          {/* This ensures content is preserved when sidebar is closed */}
-          {isNotebookPage && conversationSlug !== 'default' && (
-            <AgentSidebar>
-              <AgentUIWrapper
-                key={conversationKey}
-                ref={agentWrapperRef}
-                conversationSlug={conversationSlug}
-                initialMessages={messages.data}
-                isMessagesLoading={messages.isLoading}
-              />
-            </AgentSidebar>
-          )}
-          {props.children}
-        </Page>
-      </SidebarProvider>
+                : undefined
+            }
+          >
+            <PageTopNavigation>
+              <ProjectLayoutTopBar />
+            </PageTopNavigation>
+            <PageNavigation>
+              <ProjectSidebar />
+            </PageNavigation>
+            <PageMobileNavigation
+              className={'flex items-center justify-between'}
+            >
+              <LayoutMobileNavigation />
+            </PageMobileNavigation>
+            <PageFooter>
+              <LayoutFooter />
+            </PageFooter>
+            {/* Always render AgentSidebar on notebook pages to keep it mounted and preserve state */}
+            {/* The ResizableContent component will handle hiding it when closed */}
+            {/* Use stable key that only changes when conversation actually changes */}
+            {/* CRITICAL: Always render when we have a conversation (from URL or persisted) */}
+            {/* This ensures content is preserved when sidebar is closed */}
+            {isNotebookPage && conversationSlug !== 'default' && (
+              <AgentSidebar>
+                <AgentUIWrapper
+                  key={conversationKey}
+                  ref={agentWrapperRef}
+                  conversationSlug={conversationSlug}
+                  initialMessages={messages.data}
+                  isMessagesLoading={messages.isLoading}
+                />
+              </AgentSidebar>
+            )}
+            {props.children}
+          </Page>
+        </SidebarProvider>
       </LeaveConfirmationProvider>
     </AgentStatusProvider>
   );

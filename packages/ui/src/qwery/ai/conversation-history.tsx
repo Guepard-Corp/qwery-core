@@ -1,44 +1,10 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '../../shadcn/command';
+import { useState } from 'react';
+import { CommandDialog } from '../../shadcn/command';
 import { Button } from '../../shadcn/button';
-import { cn } from '../../lib/utils';
-import {
-  MessageSquare,
-  MessageCircle,
-  Plus,
-  Pencil,
-  Check,
-  X,
-  Edit,
-  Trash2,
-  Loader2,
-} from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../shadcn/alert-dialog';
-import { Checkbox } from '../../shadcn/checkbox';
-import {
-  formatRelativeTime,
-  groupConversationsByTime,
-  sortTimeGroups,
-  type Conversation,
-} from './utils/conversation-utils';
+import { MessageSquare } from 'lucide-react';
+import { type Conversation } from './utils/conversation-utils';
 export type { Conversation };
 
 export interface ConversationHistoryProps {

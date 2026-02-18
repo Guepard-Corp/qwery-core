@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 import { Button } from '@qwery/ui/button';
 import { useTranslation } from 'react-i18next';
 import { Trans } from '@qwery/ui/trans';
-import { cn } from '@qwery/ui/utils';
 
 export function BulkActionBar({
   selectedCount,

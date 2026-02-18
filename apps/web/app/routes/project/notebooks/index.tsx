@@ -17,9 +17,7 @@ export default function ProjectNotebooksPage() {
     { enabled: !!projectId },
   );
 
-  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
-    [],
-  );
+  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>([]);
 
   useEffect(() => {
     const updateUnsavedIds = () => {

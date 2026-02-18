@@ -105,7 +105,9 @@ export function SidebarConversationHistory({
       conversations.length > 0 ||
       (currentConversationId &&
         conversations.some((c) => c.id === currentConversationId));
-    setIsRecentsOpen(!!hasAny);
+    setTimeout(() => {
+      setIsRecentsOpen(!!hasAny);
+    }, 0);
   }, [isLoading, conversations.length, currentConversationId, conversations]);
 
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => {
@@ -961,7 +963,9 @@ export function SidebarNotebookHistory({
   useEffect(() => {
     if (isLoading || initialOpenSetRef.current) return;
     initialOpenSetRef.current = true;
-    setIsRecentsOpen(!!hasNotebooks);
+    setTimeout(() => {
+      setIsRecentsOpen(!!hasNotebooks);
+    }, 0);
   }, [isLoading, hasNotebooks]);
 
   const handleStartEdit = (notebookId: string, currentTitle: string) => {

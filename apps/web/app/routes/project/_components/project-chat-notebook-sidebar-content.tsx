@@ -47,17 +47,15 @@ export function ProjectChatNotebookSidebarContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(
-    () => {
-      try {
-        return JSON.parse(
-          localStorage.getItem('notebook:unsaved') || '[]',
-        ) as string[];
-      } catch {
-        return [];
-      }
-    },
-  );
+  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem('notebook:unsaved') || '[]',
+      ) as string[];
+    } catch {
+      return [];
+    }
+  });
   const { isProcessing, processingConversationSlug } = useAgentStatus();
 
   useEffect(() => {
@@ -73,7 +71,10 @@ export function ProjectChatNotebookSidebarContent() {
     };
     window.addEventListener('notebook:unsaved-changed', handleUnsavedChanged);
     return () =>
-      window.removeEventListener('notebook:unsaved-changed', handleUnsavedChanged);
+      window.removeEventListener(
+        'notebook:unsaved-changed',
+        handleUnsavedChanged,
+      );
   }, []);
 
   const { data: conversations = [], isLoading: isLoadingConversations } =

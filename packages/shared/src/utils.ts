@@ -103,7 +103,9 @@ export interface WithModifiedDate {
  * Sort items by modified date (latest first). Use updatedAt if present, else createdAt.
  * Safe for missing dates (treated as epoch).
  */
-export function sortByModifiedDesc<T extends WithModifiedDate>(items: T[]): T[] {
+export function sortByModifiedDesc<T extends WithModifiedDate>(
+  items: T[],
+): T[] {
   return [...items].sort((a, b) => {
     const aTime = a.updatedAt?.getTime() ?? a.createdAt?.getTime() ?? 0;
     const bTime = b.updatedAt?.getTime() ?? b.createdAt?.getTime() ?? 0;

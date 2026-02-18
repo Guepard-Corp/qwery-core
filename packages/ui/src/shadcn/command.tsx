@@ -55,7 +55,7 @@ const CommandInput = React.forwardRef<
       {...props}
     />
     {suffix != null ? (
-      <div className="absolute right-2 top-1/2 flex shrink-0 -translate-y-1/2 items-center">
+      <div className="absolute top-1/2 right-2 flex shrink-0 -translate-y-1/2 items-center">
         {suffix}
       </div>
     ) : null}

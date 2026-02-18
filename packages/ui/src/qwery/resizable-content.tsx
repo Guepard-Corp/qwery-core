@@ -31,7 +31,12 @@ export const ResizableContent = forwardRef<
   ResizableContentRef,
   ResizableContentProps
 >(function ResizableContent(props, ref) {
-  const { Content, AgentSidebar, open: initialOpen = false, onOpenChange } = props;
+  const {
+    Content,
+    AgentSidebar,
+    open: initialOpen = false,
+    onOpenChange,
+  } = props;
   const [isOpen, setIsOpen] = useState(initialOpen);
   const groupRef = useRef<ImperativePanelGroupHandle | null>(null);
 
