@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  Navigate,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 
 import { toast } from 'sonner';
 
@@ -32,17 +27,14 @@ import {
   NOTEBOOK_CELL_TYPE,
   type NotebookCellType,
 } from '@qwery/agent-factory-sdk';
-import { scrollToElementBySelector, useAgentStatus } from '@qwery/ui/ai';
+import { scrollToElementBySelector } from '@qwery/ui/ai';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 export default function NotebookPage() {
   const params = useParams();
-  const [searchParams] = useSearchParams();
   const slug = params.slug as string;
   const { repositories, workspace } = useWorkspace();
   const navigate = useNavigate();
-  const { isProcessing } = useAgentStatus();
-  const isChatSidebarOpen = Boolean(searchParams.get('conversation'));
   const notebookRepository = repositories.notebook;
   const datasourceRepository = repositories.datasource;
   const notebook = useGetNotebook(notebookRepository, slug);
@@ -1077,11 +1069,6 @@ export default function NotebookPage() {
           workspaceMode={workspace.mode}
           hasUnsavedChanges={hasUnsavedChangesState}
           isNotebookLoading={isNotebookLoading}
-          onNoDatasourceError={() =>
-            toast.error('Select a datasource first to run the prompt')
-          }
-          isChatSidebarOpen={isChatSidebarOpen}
-          chatSidebarAgentState={isProcessing ? 'processing' : 'idle'}
         />
       )}
     </div>

@@ -105,8 +105,19 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async create(entity: Usage): Promise<Usage> {
-    await Storage.write([ENTITY, entity.id], serialize(entity));
-    return entity;
+    const entityId = entity.id as string | number | undefined;
+    let id: string | number;
+    if (entityId && entityId !== 0 && entityId !== '0' && entityId !== '') {
+      id = entityId;
+    } else {
+      id = Date.now();
+    }
+    const entityWithId = {
+      ...entity,
+      id,
+    } as Usage;
+    await Storage.write([ENTITY, String(id)], serialize(entityWithId));
+    return entityWithId;
   }
 
   async update(entity: Usage): Promise<Usage> {

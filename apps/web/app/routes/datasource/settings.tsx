@@ -88,11 +88,7 @@ export default function ProjectDatasourceViewPage() {
       onOpenChange={handleOpenChange}
       extensionId={datasource.data.datasource_provider}
       projectSlug={datasource.data.projectId ?? ''}
-      extensionMeta={{
-        name: extension.data.name,
-        logo: extension.data.logo ?? '',
-        description: extension.data.description,
-      }}
+      extensionMeta={extension.data}
       existingDatasource={datasource.data}
       onSuccess={handleSuccess}
       onCancel={handleCancel}

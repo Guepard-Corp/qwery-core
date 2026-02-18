@@ -10,7 +10,10 @@ import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { DatasourceExtension } from '@qwery/extensions-sdk';
+import type {
+  DatasourceExtension,
+  ExtensionDefinition,
+} from '@qwery/extensions-sdk';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +44,7 @@ import { DatasourceDocsLink } from './datasource-docs-link';
 export interface DatasourceConnectFormProps {
   extensionId: string;
   projectSlug: string;
-  extensionMeta: DatasourceExtension;
+  extensionMeta: ExtensionDefinition;
   onSuccess: () => void;
   onCancel: () => void;
   formId?: string;
@@ -304,7 +307,8 @@ export function DatasourceConnectForm({
     }
     const driver =
       dsMeta.drivers.find(
-        (d) => d.id === (validData as { driverId?: string })?.driverId,
+        (d: { id: string }) =>
+          d.id === (validData as { driverId?: string })?.driverId,
       ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =

@@ -25,7 +25,7 @@ import {
 } from '@qwery/ui/alert-dialog';
 import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
-import { DatasourceExtension } from '@qwery/extensions-sdk';
+import type { ExtensionDefinition } from '@qwery/extensions-sdk';
 
 const SHEET_OVERLAY_Z = 'z-[100]';
 const SHEET_CONTENT_Z = 'z-[101]';
@@ -35,7 +35,7 @@ export interface DatasourceConnectSheetProps {
   onOpenChange: (open: boolean) => void;
   extensionId: string;
   projectSlug: string;
-  extensionMeta: DatasourceExtension;
+  extensionMeta: ExtensionDefinition;
   onSuccess: () => void;
   onCancel: () => void;
   existingDatasource?: Datasource;

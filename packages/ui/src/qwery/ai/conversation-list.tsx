@@ -11,13 +11,7 @@ import {
 import { Button } from '../../shadcn/button';
 import { sortByModifiedDesc } from '@qwery/shared/utils';
 import { cn } from '../../lib/utils';
-import {
-  MessageCircle,
-  Pencil,
-  Check,
-  X,
-  Trash2,
-} from 'lucide-react';
+import { MessageCircle, Pencil, Check, X, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
