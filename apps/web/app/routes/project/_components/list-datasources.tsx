@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   ChevronLeftIcon,
@@ -61,6 +61,7 @@ import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { usePlayground } from '~/lib/mutations/use-playground';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -72,6 +73,7 @@ export function ListDatasources({
 }: {
   datasources: Datasource[];
 }) {
+  const { t } = useTranslation('common');
   const params = useParams();
   const projectSlug = params.slug as string;
   const navigate = useNavigate();
@@ -96,10 +98,7 @@ export function ListDatasources({
     repositories.datasource,
     () => {},
     (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
-        { id: 'creating-playground' },
-      );
+      toast.error(getErrorKey(error, t), { id: 'creating-playground' });
     },
   );
 
@@ -126,10 +125,7 @@ export function ListDatasources({
         navigate(createDatasourceViewPath(playgroundDatasource.slug));
       }, 600);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
-        { id: 'creating-playground' },
-      );
+      toast.error(getErrorKey(error, t), { id: 'creating-playground' });
     }
   };
 

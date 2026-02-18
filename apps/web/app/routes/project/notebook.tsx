@@ -146,8 +146,7 @@ export default function NotebookPage() {
     },
     (error) => {
       console.error(error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to create conversation: ${message}`);
+      toast.error(getErrorKey(error, t));
     },
     notebookProjectId || undefined,
   );
