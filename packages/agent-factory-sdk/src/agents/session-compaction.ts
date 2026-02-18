@@ -70,9 +70,7 @@ function getPartTokenEstimate(part: {
   const outputStr =
     typeof output === 'string'
       ? output
-      : output &&
-          typeof output === 'object' &&
-          'text' in (output as Record<string, unknown>)
+      : output && typeof output === 'object' && 'text' in (output as Record<string, unknown>)
         ? String((output as { text?: string }).text ?? '')
         : JSON.stringify(output ?? '');
   return estimateTokens(outputStr);
@@ -95,21 +93,11 @@ export type IsOverflowInput = {
 };
 
 export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
-  const logger = await getLogger();
   const model =
     typeof input.model === 'string'
       ? Provider.getModelFromString(input.model)
       : input.model;
   if (!model?.limit?.context || model.limit.context === 0) {
-    logger.info(
-      '[SessionCompaction] [TEMP] No context limit, overflow check skipped',
-      {
-        model:
-          typeof input.model === 'string'
-            ? input.model
-            : `${input.model?.providerID}/${input.model?.id}`,
-      },
-    );
     return false;
   }
   const context = model.limit.context;
@@ -120,19 +108,14 @@ export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
   const count =
     input.tokens.input + input.tokens.cache.read + input.tokens.output;
   const overflow = count > usable;
-  logger.info('[SessionCompaction] [TEMP] Overflow check result', {
-    overflow,
-    count,
-    usable,
-    context,
-    outputLimit,
-    breakdown: {
-      input: input.tokens.input,
-      cacheRead: input.tokens.cache.read,
-      output: input.tokens.output,
-      reasoning: input.tokens.reasoning,
-    },
-  });
+  if (overflow) {
+    const logger = await getLogger();
+    logger.info('[SessionCompaction] Context overflow detected', {
+      count,
+      usable,
+      context,
+    });
+  }
   return overflow;
 }
 
@@ -143,22 +126,9 @@ export type PruneInput = {
 
 export async function prune(input: PruneInput): Promise<void> {
   const { conversationSlug, repositories } = input;
-  const logger = await getLogger();
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
-  if (!conversation) {
-    logger.warn(
-      '[SessionCompaction] [TEMP] Prune skipped: conversation not found',
-      {
-        conversationSlug,
-      },
-    );
-    return;
-  }
-  logger.info('[SessionCompaction] [TEMP] Prune started', {
-    conversationSlug,
-    conversationId: conversation.id,
-  });
+  if (!conversation) return;
 
   const messages = await repositories.message.findByConversationId(
     conversation.id,
@@ -189,8 +159,6 @@ export async function prune(input: PruneInput): Promise<void> {
 
     const parts = (msg.content as { parts?: unknown[] })?.parts ?? [];
     for (let partIndex = parts.length - 1; partIndex >= 0; partIndex--) {
-      if (shouldStopScanning) break;
-
       const part = parts[partIndex] as {
         type?: string;
         tool?: string;
@@ -262,18 +230,6 @@ export async function prune(input: PruneInput): Promise<void> {
     }
   }
 
-  logger.info('[SessionCompaction] [TEMP] Prune plan', {
-    conversationSlug,
-    protectedStartIndex,
-    protectedTokens,
-    lastProtectedMsgIndex,
-    lastProtectedPartIndex,
-    partsToPrune: toPrune.length,
-    prunedTokens: pruned,
-    PRUNE_MINIMUM,
-    PRUNE_PROTECT,
-  });
-
   if (pruned <= PRUNE_MINIMUM) {
     return;
   }
@@ -344,45 +300,15 @@ export async function process(
   } = input;
 
   const logger = await getLogger();
-  logger.info('[SessionCompaction] [TEMP] Process started', {
-    conversationSlug,
-    parentID,
-    auto: _auto,
-    messagesCount: messages.length,
-    lastMessages: messages.slice(-3).map((m) => ({
-      id: m.id,
-      role: m.role,
-      hasSummary: !!(m.metadata as { summary?: boolean })?.summary,
-    })),
-  });
-
   const compactionAgent = Registry.agents.get('compaction');
   if (!compactionAgent) {
-    logger.warn(
-      '[SessionCompaction] [TEMP] Compaction agent not registered, skipping',
-    );
     return 'continue';
   }
 
   const lastUser = messages.findLast((m) => m.id === parentID);
   if (!lastUser) {
-    logger.warn(
-      '[SessionCompaction] [TEMP] Last user message not found, skipping',
-      {
-        conversationSlug,
-        parentID,
-        availableUserIds: messages
-          .filter((m) => m.role === MessageRole.USER)
-          .map((m) => m.id),
-      },
-    );
     return 'continue';
   }
-  logger.info('[SessionCompaction] [TEMP] Found parent user message', {
-    conversationSlug,
-    parentID,
-    lastUserMessageId: lastUser.id,
-  });
 
   const userMeta = lastUser.metadata as
     | {
@@ -406,13 +332,6 @@ export async function process(
   ];
 
   try {
-    logger.info('[SessionCompaction] [TEMP] Generating compaction summary', {
-      conversationSlug,
-      modelId: model.id,
-      providerId: model.providerID,
-      compactionMessagesCount: compactionMessages.length,
-    });
-
     const result = await generateText({
       model: await Provider.getLanguage(model),
       messages: compactionMessages,
@@ -420,20 +339,9 @@ export async function process(
       abortSignal: abort,
     });
 
-    logger.info('[SessionCompaction] [TEMP] Compaction summary generated', {
-      conversationSlug,
-      summaryLength: result.text.length,
-      usage: result.usage,
-    });
-
     const conversation =
       await repositories.conversation.findBySlug(conversationSlug);
-    if (!conversation) {
-      logger.warn(
-        '[SessionCompaction] [TEMP] Conversation not found after summary generation',
-      );
-      return 'stop';
-    }
+    if (!conversation) return 'stop';
 
     const persistence = new MessagePersistenceService(
       repositories.message,
@@ -478,25 +386,13 @@ export async function process(
         agent: 'compaction',
       },
     });
-
-    logger.info('[SessionCompaction] [TEMP] Summary persisted', {
-      conversationSlug,
-      summaryTokens: assistantMsg.metadata.tokens,
-      summaryMessageId: assistantMsg.id,
-      summaryLength: summaryText.length,
-    });
   } catch (err) {
-    logger.warn('[SessionCompaction] [TEMP] Process failed', {
-      conversationSlug,
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-    });
+    logger.warn(
+      '[SessionCompaction] Process failed',
+      err instanceof Error ? err.message : String(err),
+    );
     return 'stop';
   }
-  logger.info('[SessionCompaction] [TEMP] Process completed successfully', {
-    conversationSlug,
-    result: 'continue',
-  });
   return 'continue';
 }
 
@@ -511,29 +407,9 @@ export type CreateInput = {
 export async function create(input: CreateInput): Promise<void> {
   const { conversationSlug, agent, model, auto, repositories } = input;
 
-  const logger = await getLogger();
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
-  if (!conversation) {
-    logger.warn(
-      '[SessionCompaction] [TEMP] Cannot create compaction task: conversation not found',
-      {
-        conversationSlug,
-      },
-    );
-    return;
-  }
-
-  logger.info('[SessionCompaction] [TEMP] Compaction task created', {
-    conversationSlug,
-    conversationId: conversation.id,
-    agent,
-    auto,
-    model:
-      typeof model === 'string'
-        ? model
-        : `${model.providerID}/${model.modelID}`,
-  });
+  if (!conversation) return;
 
   const modelObj =
     typeof model === 'string' ? Provider.getModelFromString(model) : model;

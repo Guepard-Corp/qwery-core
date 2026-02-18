@@ -128,18 +128,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
     const hasPendingCompactionTask = tasks.some((t) => t.type === 'compaction');
 
-    logger.info('[AgentSession] [TEMP] Loop iteration', {
-      conversationSlug,
-      step: step + 1,
-      messagesCount: msgs.length,
-      tasksCount: tasks.length,
-      taskTypes: tasks.map((t) => t.type),
-      hasPendingCompactionTask,
-      hasLastFinished: !!lastFinished,
-      lastFinishedSummary: !!(lastFinished?.metadata as { summary?: boolean })
-        ?.summary,
-    });
-
     step += 1;
     if (step === 1) {
       ensureTitle({
@@ -158,11 +146,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     }
 
     if (task?.type === 'compaction') {
-      logger.info('[AgentSession] [TEMP] Processing compaction task', {
-        conversationSlug,
-        taskAuto: (task as { auto: boolean }).auto,
-        parentID: compactionUser?.id ?? lastUser?.id ?? '',
-      });
       const result = await SessionCompaction.process({
         parentID: compactionUser?.id ?? lastUser?.id ?? '',
         messages: msgs,
@@ -170,10 +153,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         abort: abortController.signal,
         auto: (task as { auto: boolean }).auto,
         repositories,
-      });
-      logger.info('[AgentSession] [TEMP] Compaction task completed', {
-        conversationSlug,
-        result,
       });
       if (result === 'stop') break;
       continue;
@@ -192,14 +171,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       | undefined;
     const lastFinishedSummary = lastFinishedMeta?.summary;
     const lastFinishedTokens = lastFinishedMeta?.tokens;
-    logger.info('[AgentSession] [TEMP] Checking for overflow', {
-      conversationSlug,
-      hasLastFinished: !!lastFinished,
-      lastFinishedSummary,
-      hasTokens: !!lastFinishedTokens,
-      hasPendingCompactionTask,
-      tokens: lastFinishedTokens,
-    });
 
     if (
       lastFinished &&
@@ -214,21 +185,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         lastFinished,
         userMeta: lastUser?.metadata,
       });
-      logger.info(
-        '[AgentSession] [TEMP] Overflow detected, checking if compaction needed',
-        {
-          conversationSlug,
-          hasPendingCompactionTask,
-        },
-      );
 
       if (hasPendingCompactionTask) {
-        logger.info(
-          '[AgentSession] [TEMP] Skipping compaction creation: pending task exists',
-          {
-            conversationSlug,
-          },
-        );
         continue;
       }
 
@@ -238,12 +196,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             model?: { providerID: string; modelID: string };
           }
         | undefined;
-      logger.info('[AgentSession] [TEMP] Creating compaction task', {
-        conversationSlug,
-        agent: userMeta?.agent ?? agentId,
-        model: userMeta?.model ?? model,
-        auto: true,
-      });
       await SessionCompaction.create({
         conversationSlug,
         agent: userMeta?.agent ?? agentId,
@@ -569,13 +521,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     break;
   }
 
-  logger.info('[AgentSession] [TEMP] Starting final prune', {
-    conversationSlug,
-  });
   await SessionCompaction.prune({ conversationSlug, repositories });
-  logger.info('[AgentSession] [TEMP] Final prune completed', {
-    conversationSlug,
-  });
 
   if (responseToReturn !== null) return responseToReturn;
   return new Response(null, { status: 204 });
