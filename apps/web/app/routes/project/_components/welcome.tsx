@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Link2Icon } from '@radix-ui/react-icons';
-import { Database, ArrowRight, NotebookPen, ArrowUp, Play } from 'lucide-react';
+import { ArrowRight, NotebookPen, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,7 +13,6 @@ import {
   getRandomizedSuggestions,
   type PlaygroundSuggestion,
 } from '@qwery/playground/playground-suggestions';
-import { PLAYGROUND_TABLES } from '@qwery/playground/utils/playground-sql';
 import {
   PromptInput,
   PromptInputBody,
@@ -22,37 +22,22 @@ import {
   PromptInputFooter,
   PromptInputTools,
 } from '@qwery/ui/ai-elements';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@qwery/ui/alert-dialog';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@qwery/ui/hover-card';
-
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useConversation } from '~/lib/mutations/use-conversation';
 import { usePlayground } from '~/lib/mutations/use-playground';
-import type { ProjectOutput } from '@qwery/domain/usecases';
 
-export default function WelcomePage({
-  project: initialProject,
-}: {
-  project: ProjectOutput | null;
-}) {
+import { PlaygroundConfirmDialog } from './playground-confirm-dialog';
+
+export default function WelcomePage() {
+  const { t } = useTranslation('welcome');
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
   const { workspace, repositories } = useWorkspace();
+  const { projectId } = useProject();
   const [input, setInput] = useState('');
   const _containerRef = useRef<HTMLDivElement>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -61,8 +46,6 @@ export default function WelcomePage({
   const [brandText, setBrandText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
-  const project = { data: initialProject, isLoading: false };
-
   const suggestions = useMemo(() => getRandomizedSuggestions(3), []);
 
   const createPlaygroundMutation = usePlayground(
@@ -70,7 +53,7 @@ export default function WelcomePage({
     () => {},
     (error) => {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
+        error instanceof Error ? error.message : t('failedPlayground'),
         { id: 'creating-playground' },
       );
     },
@@ -91,18 +74,16 @@ export default function WelcomePage({
     },
     (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create conversation',
+        error instanceof Error ? error.message : t('failedConversation'),
         { id: 'creating-conversation' },
       );
     },
-    initialProject?.id ?? workspace.projectId,
+    projectId ?? undefined,
   );
 
   useEffect(() => {
-    const targetText = 'query';
-    const finalText = 'qwery';
+    const targetText = 'Query';
+    const finalText = 'Qwery';
     let currentIndex = 0;
     let timeoutId: NodeJS.Timeout;
 
@@ -153,19 +134,18 @@ export default function WelcomePage({
   }, []);
 
   const handleSubmit = (message: PromptInputMessage) => {
-    if (!message.text?.trim() || !project.data || !workspace.userId) return;
+    if (!message.text?.trim() || !projectId || !workspace.userId) return;
 
     const messageText = message.text.trim();
 
-    // Show notification about redirection
-    toast.loading('Creating conversation and redirecting...', {
+    toast.loading(t('creatingConversationRedirect'), {
       id: 'creating-conversation',
     });
 
     createConversationMutation.mutate({
-      projectId: project.data.id,
+      projectId,
       taskId: uuidv4(),
-      title: messageText.substring(0, 50) || 'New Conversation',
+      title: messageText.substring(0, 50) || t('newConversation'),
       seedMessage: messageText,
       datasources: [],
       createdBy: workspace.userId,
@@ -185,15 +165,15 @@ export default function WelcomePage({
   };
 
   const handleConfirmPlayground = async () => {
-    if (!selectedSuggestion || !project.data || !workspace.userId) return;
+    if (!selectedSuggestion || !projectId || !workspace.userId) return;
 
     setShowConfirmDialog(false);
-    toast.loading('Creating playground...', { id: 'creating-playground' });
+    toast.loading(t('creatingPlayground'), { id: 'creating-playground' });
 
     try {
       const playgroundDatasource = await createPlaygroundMutation.mutateAsync({
         playgroundId: 'pglite',
-        projectId: project.data.id,
+        projectId,
       });
 
       toast.dismiss('creating-playground');
@@ -205,10 +185,10 @@ export default function WelcomePage({
 
       createConversationMutation.mutate(
         {
-          projectId: project.data.id,
+          projectId,
           taskId: uuidv4(),
           title:
-            selectedSuggestion.query.substring(0, 50) || 'New Conversation',
+            selectedSuggestion.query.substring(0, 50) || t('newConversation'),
           seedMessage: selectedSuggestion.query,
           datasources: [playgroundDatasource.id],
           createdBy: workspace.userId,
@@ -231,9 +211,7 @@ export default function WelcomePage({
           },
           onError: (error) => {
             toast.error(
-              error instanceof Error
-                ? error.message
-                : 'Failed to create conversation',
+              error instanceof Error ? error.message : t('failedConversation'),
               { id: 'creating-conversation' },
             );
           },
@@ -241,7 +219,7 @@ export default function WelcomePage({
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
+        error instanceof Error ? error.message : t('failedPlayground'),
         { id: 'creating-playground' },
       );
     }
@@ -264,10 +242,10 @@ export default function WelcomePage({
           </div>
 
           <h1 className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">
-            What would you like to explore?
+            {t('heroTitle')}
           </h1>
           <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
-            Ask questions about your data in natural language
+            {t('heroSubtitle')}
           </p>
         </section>
 
@@ -283,7 +261,7 @@ export default function WelcomePage({
                 onChange={(e) => setInput(e.target.value)}
                 value={input}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about your data..."
+                placeholder={t('placeholder')}
                 className="min-h-[120px] resize-none border-none px-4 py-4 text-[15px] focus-visible:ring-0"
               />
             </PromptInputBody>
@@ -294,7 +272,7 @@ export default function WelcomePage({
                 className="bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
               >
                 <ArrowUp className="size-4" />
-                <span className="hidden sm:inline">qwery</span>
+                <span className="hidden sm:inline">{t('askAi')}</span>
               </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>
@@ -320,7 +298,7 @@ export default function WelcomePage({
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background text-muted-foreground/70 px-3">
-              Quick Actions
+              {t('quickActions')}
             </span>
           </div>
         </div>
@@ -337,16 +315,15 @@ export default function WelcomePage({
                   <Link2Icon className="size-5" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">
-                  Connect Datasources
+                  {t('connectDatasources')}
                 </h3>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Link PostgreSQL, MySQL, ClickHouse, Google Sheets, CSV files,
-                and more. Automatic schema mapping and federated queries.
+                {t('connectDatasourcesDescription')}
               </p>
             </div>
             <div className="text-primary mt-6 flex items-center gap-2 text-sm font-bold tracking-tight uppercase">
-              Connect Data{' '}
+              {t('connectData')}{' '}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
@@ -361,16 +338,15 @@ export default function WelcomePage({
                   <NotebookPen className="size-5" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">
-                  Create Notebooks
+                  {t('createNotebooks')}
                 </h3>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Build SQL notebooks to query, analyze, and visualize data.
-                Organize queries into cells and run federated queries.
+                {t('createNotebooksDescription')}
               </p>
             </div>
             <div className="text-primary mt-6 flex items-center gap-2 text-sm font-bold tracking-tight uppercase">
-              Start Notebook{' '}
+              {t('startNotebook')}{' '}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
@@ -383,7 +359,7 @@ export default function WelcomePage({
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background text-muted-foreground/70 px-3">
-              Sample Data
+              {t('sampleData')}
             </span>
           </div>
         </div>
@@ -402,152 +378,16 @@ export default function WelcomePage({
         </section>
       </main>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="sm:max-w-lg">
-          <AlertDialogHeader className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 ring-primary/20 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-1">
-                <Play className="text-primary h-7 w-7" />
-              </div>
-              <div className="flex-1 space-y-1 pt-1">
-                <AlertDialogTitle className="text-xl leading-tight font-semibold">
-                  Start with Playground
-                </AlertDialogTitle>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  A new playground database will be created with sample data
-                </p>
-              </div>
-            </div>
-          </AlertDialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="pb-4">
-              <p className="text-foreground mb-3 text-center text-xs font-medium">
-                Available tables:
-              </p>
-              <div className="flex flex-wrap justify-center gap-2.5">
-                {PLAYGROUND_TABLES.map((table) => (
-                  <HoverCard key={table.name} openDelay={200} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <button
-                        type="button"
-                        className="bg-muted/80 text-foreground border-border/50 hover:bg-muted hover:border-border inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-medium transition-colors"
-                      >
-                        <Database className="text-muted-foreground h-3.5 w-3.5" />
-                        {table.name}
-                      </button>
-                    </HoverCardTrigger>
-                    <HoverCardContent
-                      side="top"
-                      align="center"
-                      sideOffset={8}
-                      className="w-80 p-0"
-                    >
-                      <div className="space-y-3 p-4">
-                        <div className="flex items-center gap-2">
-                          <Database className="text-primary h-4 w-4" />
-                          <h4 className="text-sm font-semibold capitalize">
-                            {table.name}
-                          </h4>
-                        </div>
-                        {table.description && (
-                          <p className="text-muted-foreground text-xs">
-                            {table.description}
-                          </p>
-                        )}
-                        {table.sampleData && table.sampleData.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-foreground text-xs font-medium">
-                              Sample data:
-                            </p>
-                            <div className="bg-muted/30 overflow-hidden rounded-md border">
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                  <thead className="bg-muted/50 border-b">
-                                    <tr>
-                                      {table.sampleData[0] &&
-                                        Object.keys(table.sampleData[0]).map(
-                                          (key) => (
-                                            <th
-                                              key={key}
-                                              className="text-foreground px-2.5 py-1.5 text-left font-medium capitalize"
-                                            >
-                                              {key.replace(/_/g, ' ')}
-                                            </th>
-                                          ),
-                                        )}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {table.sampleData
-                                      .slice(0, 3)
-                                      .map((row, idx) => (
-                                        <tr
-                                          key={idx}
-                                          className="hover:bg-muted/50 border-b transition-colors last:border-b-0"
-                                        >
-                                          {row &&
-                                            Object.values(row).map(
-                                              (value, cellIdx) => (
-                                                <td
-                                                  key={cellIdx}
-                                                  className="text-muted-foreground px-2.5 py-1.5"
-                                                >
-                                                  {String(value)}
-                                                </td>
-                                              ),
-                                            )}
-                                        </tr>
-                                      ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-muted/30 relative rounded-xl border-2 border-dashed p-4">
-              <span className="bg-background text-muted-foreground absolute -top-2.5 left-4 px-2 text-[10px] font-black tracking-widest uppercase">
-                Your Request
-              </span>
-              <p className="text-foreground text-sm leading-relaxed font-semibold italic">
-                &quot;{selectedSuggestion?.query}&quot;
-              </p>
-            </div>
-          </div>
-
-          <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel
-              disabled={
-                createPlaygroundMutation.isPending ||
-                createConversationMutation.isPending
-              }
-              className="mt-0"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmPlayground}
-              disabled={
-                createPlaygroundMutation.isPending ||
-                createConversationMutation.isPending
-              }
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {createPlaygroundMutation.isPending ||
-              createConversationMutation.isPending
-                ? 'Creating...'
-                : 'Continue'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PlaygroundConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        selectedSuggestion={selectedSuggestion}
+        onConfirm={handleConfirmPlayground}
+        isPending={
+          createPlaygroundMutation.isPending ||
+          createConversationMutation.isPending
+        }
+      />
     </div>
   );
 }

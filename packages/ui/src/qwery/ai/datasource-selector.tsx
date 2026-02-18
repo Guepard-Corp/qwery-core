@@ -1,12 +1,17 @@
 'use client';
 
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
+  ArrowDown,
+  ArrowUp,
+  Check,
   Database,
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  XIcon,
 } from 'lucide-react';
+import { sortByModifiedAsc, sortByModifiedDesc } from '@qwery/shared/utils';
 
 import {
   Command,
@@ -18,7 +23,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '../../shadcn/popover';
 import { Button } from '../../shadcn/button';
 import { Skeleton } from '../../shadcn/skeleton';
-import { Checkbox } from '../../shadcn/checkbox';
 import { cn } from '../../lib/utils';
 import { Trans } from '../trans';
 import { useTranslation } from 'react-i18next';
@@ -58,12 +62,49 @@ export function DatasourceSelector({
   const [search, setSearch] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [displayOrderIds, setDisplayOrderIds] = useState<string[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const prevOpenRef = useRef(false);
+  const prevSortOrderRef = useRef<'asc' | 'desc'>('desc');
 
   const placeholderText =
     searchPlaceholder ||
     t('common:datasourceSelector.searchDatasources', {
       defaultValue: 'Search datasources...',
     });
+
+  const orderIdsForOpen = useMemo(() => {
+    const sortByModified =
+      sortOrder === 'desc' ? sortByModifiedDesc : sortByModifiedAsc;
+    const selected = datasources.filter((ds) =>
+      selectedDatasources.includes(ds.id),
+    );
+    const unselected = datasources.filter(
+      (ds) => !selectedDatasources.includes(ds.id),
+    );
+    return [
+      ...sortByModified(selected).map((ds) => ds.id),
+      ...sortByModified(unselected).map((ds) => ds.id),
+    ];
+  }, [datasources, selectedDatasources, sortOrder]);
+
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setTimeout(() => {
+        setDisplayOrderIds(orderIdsForOpen);
+      }, 0);
+    }
+    prevOpenRef.current = open;
+  }, [open, orderIdsForOpen]);
+
+  useEffect(() => {
+    if (open && prevSortOrderRef.current !== sortOrder) {
+      prevSortOrderRef.current = sortOrder;
+      setTimeout(() => {
+        setDisplayOrderIds(orderIdsForOpen);
+      }, 0);
+    }
+  }, [open, sortOrder, orderIdsForOpen]);
 
   const filteredAndSortedDatasources = useMemo(() => {
     let filtered = datasources;
@@ -78,16 +119,17 @@ export function DatasourceSelector({
       );
     }
 
+    const orderIds =
+      displayOrderIds.length > 0 ? displayOrderIds : orderIdsForOpen;
+    if (orderIds.length === 0) return sortByModifiedDesc(filtered);
+
+    const orderIndex = new Map(orderIds.map((id, i) => [id, i]));
     return [...filtered].sort((a, b) => {
-      const aSelected = selectedDatasources.includes(a.id);
-      const bSelected = selectedDatasources.includes(b.id);
-      if (aSelected && !bSelected) return -1;
-      if (!aSelected && bSelected) return 1;
-      const aTime = a.updatedAt?.getTime() || a.createdAt?.getTime() || 0;
-      const bTime = b.updatedAt?.getTime() || b.createdAt?.getTime() || 0;
-      return bTime - aTime;
+      const ia = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const ib = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return ia - ib;
     });
-  }, [datasources, search, selectedDatasources]);
+  }, [datasources, search, displayOrderIds, orderIdsForOpen]);
 
   const totalPages = Math.ceil(
     filteredAndSortedDatasources.length / ITEMS_PER_PAGE,
@@ -118,6 +160,16 @@ export function DatasourceSelector({
       onSelectionChange([...selectedDatasources, datasourceId]);
     }
   };
+
+  const handleClearSearchOrSelection = () => {
+    if (search.trim()) {
+      setSearch('');
+    } else if (selectedDatasources.length > 0) {
+      onSelectionChange([]);
+    }
+  };
+
+  const showClear = search.trim().length > 0 || selectedDatasources.length > 0;
 
   // Get display info based on selection
   const displayInfo = useMemo(() => {
@@ -230,6 +282,70 @@ export function DatasourceSelector({
             placeholder={placeholderText}
             value={search}
             onValueChange={setSearch}
+            className="min-w-0 flex-1 pr-24"
+            suffix={
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSortOrder('asc');
+                  }}
+                  className={cn(
+                    'text-muted-foreground hover:text-foreground flex items-center justify-center rounded p-1 transition-colors',
+                    sortOrder === 'asc' && 'bg-accent text-accent-foreground',
+                  )}
+                  aria-label={t('common:datasourceSelector.sortAscAriaLabel', {
+                    defaultValue: 'Sort ascending (oldest first)',
+                  })}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSortOrder('desc');
+                  }}
+                  className={cn(
+                    'text-muted-foreground hover:text-foreground flex items-center justify-center rounded p-1 transition-colors',
+                    sortOrder === 'desc' && 'bg-accent text-accent-foreground',
+                  )}
+                  aria-label={t('common:datasourceSelector.sortDescAriaLabel', {
+                    defaultValue: 'Sort descending (newest first)',
+                  })}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </button>
+                {showClear ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleClearSearchOrSelection();
+                    }}
+                    className="text-muted-foreground hover:text-foreground flex shrink-0 items-center justify-center rounded p-1 transition-colors"
+                    aria-label={
+                      search.trim()
+                        ? t('common:datasourceSelector.clearSearchAriaLabel', {
+                            defaultValue: 'Clear search',
+                          })
+                        : t(
+                            'common:datasourceSelector.clearSelectionAriaLabel',
+                            {
+                              defaultValue: 'Clear selection',
+                            },
+                          )
+                    }
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            }
           />
           <CommandList className="overflow-x-hidden">
             {isLoading ? (
@@ -272,10 +388,18 @@ export function DatasourceSelector({
                             isSelected && 'bg-accent text-accent-foreground',
                           )}
                         >
-                          <Checkbox
-                            checked={isSelected}
-                            className="pointer-events-none mr-2"
-                          />
+                          <span
+                            className={cn(
+                              'border-primary mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border',
+                              isSelected &&
+                                'bg-primary text-primary-foreground',
+                            )}
+                            aria-hidden
+                          >
+                            {isSelected ? (
+                              <Check className="h-3 w-3" strokeWidth={2.5} />
+                            ) : null}
+                          </span>
                           {showIcon ? (
                             <img
                               src={icon}
@@ -300,7 +424,7 @@ export function DatasourceSelector({
             )}
           </CommandList>
           {totalPages > 1 && (
-            <div className="bg-muted flex items-center justify-between gap-2 border-t p-2">
+            <div className="border-border flex items-center justify-between gap-2 border-t bg-zinc-200/90 p-2 dark:bg-zinc-800/90">
               <Button
                 variant="ghost"
                 size="sm"

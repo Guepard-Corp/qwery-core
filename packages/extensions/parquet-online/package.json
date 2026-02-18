@@ -29,6 +29,8 @@
         ],
         "icon": "media/parquet.svg",
         "supportsPreview": true,
+        "previewUrlKind": "data-file",
+        "previewDataFormat": "parquet",
         "drivers": [
           "parquet-online.duckdb"
         ]

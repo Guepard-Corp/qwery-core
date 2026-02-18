@@ -4,7 +4,10 @@ import { Datasource } from '@qwery/domain/entities';
 import { IDatasourceRepository } from '@qwery/domain/repositories';
 import { PlaygroundBuilder } from '@qwery/playground/playgrounds';
 
-import { getDatasourcesKey } from '../queries/use-get-datasources';
+import {
+  getDatasourcesByProjectIdKey,
+  getDatasourcesKey,
+} from '../queries/use-get-datasources';
 
 export function usePlayground(
   repository: IDatasourceRepository,
@@ -24,7 +27,10 @@ export function usePlayground(
       const playgroundBuilder = new PlaygroundBuilder(repository);
       return await playgroundBuilder.build(playgroundId, projectId);
     },
-    onSuccess: () => {
+    onSuccess: async (_data, { projectId }) => {
+      await queryClient.refetchQueries({
+        queryKey: getDatasourcesByProjectIdKey(projectId),
+      });
       queryClient.invalidateQueries({ queryKey: getDatasourcesKey() });
       onSuccess();
     },

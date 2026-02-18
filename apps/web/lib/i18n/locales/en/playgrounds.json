@@ -1,0 +1,11 @@
+{
+    "title": "Start with a Template",
+    "description": "Choose a pre-configured playground to jumpstart your project. Includes schema, sample data, and query examples.",
+    "search_placeholder": "Search templates...",
+    "empty_title": "No templates found",
+    "empty_subtitle": "Try adjusting your search or filters to find what you're looking for.",
+    "try_button": "Try this Playground",
+    "featured": "Featured",
+    "all_templates": "All Templates",
+    "popular": "Popular"
+}

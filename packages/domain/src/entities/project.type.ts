@@ -14,7 +14,6 @@ export const ProjectSchema = z.object({
   slug: z.string().min(1).describe('The slug of the project'),
   description: z
     .string()
-    .min(1)
     .max(1024)
     .optional()
     .describe('The description of the project'),
@@ -96,7 +95,9 @@ export class ProjectEntity extends Entity<string, typeof ProjectSchema> {
     const updatedProject: Project = {
       ...project,
       ...(projectDTO.name && { name: projectDTO.name }),
-      ...(projectDTO.description && { description: projectDTO.description }),
+      ...(projectDTO.description !== undefined && {
+        description: projectDTO.description,
+      }),
       ...(projectDTO.status && { status: projectDTO.status }),
       ...(projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy }),
       updatedAt: date,

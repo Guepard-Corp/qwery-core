@@ -17,6 +17,7 @@ type PageProps = React.PropsWithChildren<{
   sticky?: boolean;
   agentSidebarOpen?: boolean;
   agentSidebarRef?: React.Ref<ResizableContentRef>;
+  agentSidebarOnOpenChange?: (open: boolean) => void;
 }>;
 
 export function Page(props: PageProps) {
@@ -64,6 +65,7 @@ function PageWithHeaderSidebar(props: PageProps) {
               Content={Children}
               AgentSidebar={AgentSidebar}
               open={props.agentSidebarOpen}
+              onOpenChange={props.agentSidebarOnOpenChange}
             />
             {/* eslint-enable react-hooks/refs */}
           </div>

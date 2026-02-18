@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Navigate, useBlocker, useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 
 import { toast } from 'sonner';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@qwery/ui/dialog';
-import { Button } from '@qwery/ui/button';
 
 import {
   type DatasourceResultSet,
@@ -31,6 +21,7 @@ import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import { NOTEBOOK_EVENTS, telemetry } from '@qwery/telemetry';
 import { Skeleton } from '@qwery/ui/skeleton';
 import { useNotebookSidebar } from '~/lib/context/notebook-sidebar-context';
+import { useLeaveConfirmation } from '~/lib/context/leave-confirmation-context';
 import { useGetNotebookConversation } from '~/lib/queries/use-get-notebook-conversation';
 import {
   NOTEBOOK_CELL_TYPE,
@@ -38,6 +29,10 @@ import {
 } from '@qwery/agent-factory-sdk';
 import { scrollToElementBySelector } from '@qwery/ui/ai';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import {
+  useConversation,
+  useUpdateConversation,
+} from '~/lib/mutations/use-conversation';
 
 export default function NotebookPage() {
   const params = useParams();
@@ -46,10 +41,10 @@ export default function NotebookPage() {
   const navigate = useNavigate();
   const notebookRepository = repositories.notebook;
   const datasourceRepository = repositories.datasource;
-  const project = useGetProjectById(
-    repositories.project,
-    workspace.projectId || '',
-  );
+  const notebook = useGetNotebook(notebookRepository, slug);
+  const notebookProjectId =
+    notebook.data?.projectId ?? workspace.projectId ?? '';
+  const project = useGetProjectById(repositories.project, notebookProjectId);
 
   // Store query results by cell ID
   const [cellResults, setCellResults] = useState<
@@ -62,14 +57,10 @@ export default function NotebookPage() {
   // Track which cell is currently loading
   const [loadingCellId, setLoadingCellId] = useState<number | null>(null);
 
-  // Load notebook
-  const notebook = useGetNotebook(notebookRepository, slug);
-
-  // Load conversation for this notebook
   const notebookConversation = useGetNotebookConversation(
     repositories.conversation,
     notebook.data?.id,
-    workspace.projectId || undefined,
+    notebookProjectId || undefined,
   );
 
   // Switch conversation when notebook changes
@@ -97,10 +88,10 @@ export default function NotebookPage() {
     // Removing it would cause the sidebar to close unnecessarily
   }, [notebookConversation.data?.slug, navigate]);
 
-  // Load datasources
   const savedDatasources = useGetDatasourcesByProjectId(
     datasourceRepository,
-    workspace.projectId as string,
+    notebookProjectId,
+    { enabled: !!notebookProjectId },
   );
 
   const { data: extensions = [] } = useGetDatasourceExtensions();
@@ -141,6 +132,23 @@ export default function NotebookPage() {
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to delete notebook: ${message}`);
     },
+  );
+
+  const updateConversationMutation = useUpdateConversation(
+    repositories.conversation,
+  );
+
+  const createConversationMutation = useConversation(
+    repositories.conversation,
+    (_conversation) => {
+      // Conversation created successfully, slug is available in conversation.slug
+    },
+    (error) => {
+      console.error(error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to create conversation: ${message}`);
+    },
+    notebookProjectId || undefined,
   );
 
   // Run query mutation
@@ -360,36 +368,29 @@ export default function NotebookPage() {
         conversationSlug = existingConversation.slug;
         // Update datasources if needed
         if (!existingConversation.datasources?.includes(datasourceId)) {
-          await repositories.conversation.update({
-            ...existingConversation,
-            datasources: [
-              ...(existingConversation.datasources || []),
-              datasourceId,
-            ],
-            updatedBy: workspace.userId,
-            updatedAt: new Date(),
-          });
+          const updatedConversation =
+            await updateConversationMutation.mutateAsync({
+              id: existingConversation.id,
+              datasources: [
+                ...(existingConversation.datasources || []),
+                datasourceId,
+              ],
+              updatedBy: workspace.userId || 'system',
+            });
+          conversationSlug = updatedConversation.slug;
         }
       } else {
         // Create new conversation
         const { v4: uuidv4 } = await import('uuid');
-        const conversationId = uuidv4();
-        const now = new Date();
         const notebookTitle = `Notebook - ${notebook.data.id}`;
 
-        const newConversation = await repositories.conversation.create({
-          id: conversationId,
-          slug: '', // Repository will generate slug
+        const newConversation = await createConversationMutation.mutateAsync({
           title: notebookTitle,
-          projectId: workspace.projectId || '',
+          projectId: notebookProjectId || '',
           taskId: uuidv4(),
           datasources: [datasourceId],
-          createdAt: now,
-          updatedAt: now,
-          createdBy: workspace.userId,
-          updatedBy: workspace.userId,
           seedMessage: '',
-          isPublic: false,
+          createdBy: workspace.userId || 'system',
         });
         conversationSlug = newConversation.slug;
       }
@@ -456,12 +457,8 @@ export default function NotebookPage() {
   // Track previous updatedAt to detect actual saves
   const previousUpdatedAtRef = useRef<string | Date | undefined>(undefined);
 
-  // Dialog state for unsaved changes
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<
-    (() => void) | null
-  >(null);
   const [hasUnsavedChangesState, setHasUnsavedChangesState] = useState(false);
+  const { registerUnsavedNotebook } = useLeaveConfirmation();
 
   // Function to check if there are unsaved changes
   const hasUnsavedChanges = useCallback(() => {
@@ -506,38 +503,35 @@ export default function NotebookPage() {
     return false;
   }, []);
 
-  // Helper function to update unsaved notebook state in localStorage
+  // Helper function to update unsaved notebook state in localStorage (keyed by notebook id)
   const updateUnsavedState = useCallback(() => {
-    if (!normalizedNotebook?.slug) return;
+    if (!normalizedNotebook?.id) return;
 
     const storageKey = 'notebook:unsaved';
     const hasUnsaved = hasUnsavedChanges();
     setHasUnsavedChangesState(hasUnsaved);
 
     try {
-      const unsavedSlugs = JSON.parse(
+      const unsavedIds = JSON.parse(
         localStorage.getItem(storageKey) || '[]',
       ) as string[];
 
       if (hasUnsaved) {
-        // Add slug if not already present
-        if (!unsavedSlugs.includes(normalizedNotebook.slug)) {
+        if (!unsavedIds.includes(normalizedNotebook.id)) {
           localStorage.setItem(
             storageKey,
-            JSON.stringify([...unsavedSlugs, normalizedNotebook.slug]),
+            JSON.stringify([...unsavedIds, normalizedNotebook.id]),
           );
         }
       } else {
-        // Remove slug if present
-        const updated = unsavedSlugs.filter(
-          (s) => s !== normalizedNotebook.slug,
-        );
+        const updated = unsavedIds.filter((id) => id !== normalizedNotebook.id);
         localStorage.setItem(storageKey, JSON.stringify(updated));
       }
+      window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
     } catch (error) {
       console.error('Failed to update unsaved notebook state:', error);
     }
-  }, [normalizedNotebook?.slug, hasUnsavedChanges]);
+  }, [normalizedNotebook?.id, hasUnsavedChanges]);
 
   // Save notebook manually
   const persistNotebook = useCallback(
@@ -601,16 +595,15 @@ export default function NotebookPage() {
 
     // Clear unsaved state after save
     setHasUnsavedChangesState(false);
-    if (normalizedNotebook?.slug) {
+    if (normalizedNotebook?.id) {
       const storageKey = 'notebook:unsaved';
       try {
-        const unsavedSlugs = JSON.parse(
+        const unsavedIds = JSON.parse(
           localStorage.getItem(storageKey) || '[]',
         ) as string[];
-        const updated = unsavedSlugs.filter(
-          (s) => s !== normalizedNotebook.slug,
-        );
+        const updated = unsavedIds.filter((id) => id !== normalizedNotebook.id);
         localStorage.setItem(storageKey, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
       } catch (error) {
         console.error('Failed to clear unsaved notebook state:', error);
       }
@@ -658,10 +651,12 @@ export default function NotebookPage() {
           title: changes.title ?? normalizedNotebook.title,
         };
       }
-      // Update unsaved state immediately
       updateUnsavedState();
+      if (changes.title !== undefined) {
+        handleSave();
+      }
     },
-    [normalizedNotebook, updateUnsavedState],
+    [normalizedNotebook, updateUnsavedState, handleSave],
   );
 
   // Ctrl+S keyboard shortcut to save notebook
@@ -683,30 +678,7 @@ export default function NotebookPage() {
     };
   }, [handleSave]);
 
-  // Block navigation when there are unsaved changes
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    // Only block if navigating to a different notebook or leaving notebook page
-    const isDifferentNotebook =
-      currentLocation.pathname.startsWith('/notebook/') &&
-      nextLocation.pathname.startsWith('/notebook/') &&
-      currentLocation.pathname !== nextLocation.pathname;
-
-    const isLeavingNotebook =
-      currentLocation.pathname.startsWith('/notebook/') &&
-      !nextLocation.pathname.startsWith('/notebook/');
-
-    return hasUnsavedChanges() && (isDifferentNotebook || isLeavingNotebook);
-  });
-
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setPendingNavigation(() => blocker.proceed);
-      setShowUnsavedDialog(true);
-    }
-  }, [blocker.state, blocker.proceed]);
-
-  // Handle dialog actions
-  const handleSaveAndContinue = useCallback(async () => {
+  const handleSaveOnly = useCallback(async () => {
     if (!normalizedNotebook || !currentNotebookStateRef.current) {
       return;
     }
@@ -759,69 +731,78 @@ export default function NotebookPage() {
       }
 
       setHasUnsavedChangesState(false);
-      if (normalizedNotebook?.slug) {
+      if (normalizedNotebook?.id) {
         const storageKey = 'notebook:unsaved';
         try {
-          const unsavedSlugs = JSON.parse(
+          const unsavedIds = JSON.parse(
             localStorage.getItem(storageKey) || '[]',
           ) as string[];
-          const updated = unsavedSlugs.filter(
-            (s) => s !== normalizedNotebook.slug,
+          const updated = unsavedIds.filter(
+            (id) => id !== normalizedNotebook.id,
           );
           localStorage.setItem(storageKey, JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
         } catch (error) {
           console.error('Failed to clear unsaved notebook state:', error);
         }
       }
-
-      setShowUnsavedDialog(false);
-      if (pendingNavigation) {
-        pendingNavigation();
-        setPendingNavigation(null);
-      }
-      toast.success('Notebook saved');
+      const title = normalizedNotebook.title?.trim() || 'Notebook';
+      toast.success(`Saved "${title}" Notebook`);
     } catch (error) {
       console.error('Failed to save notebook:', error);
       toast.error('Failed to save notebook. Please try again.');
     }
-  }, [
-    normalizedNotebook,
-    savedDatasources.data,
-    saveNotebookMutation,
-    pendingNavigation,
-  ]);
+  }, [normalizedNotebook, savedDatasources.data, saveNotebookMutation]);
 
-  const handleDiscardAndContinue = useCallback(() => {
-    if (normalizedNotebook?.slug) {
+  const handleDiscardOnly = useCallback(() => {
+    if (normalizedNotebook?.id) {
       const storageKey = 'notebook:unsaved';
       try {
-        const unsavedSlugs = JSON.parse(
+        const unsavedIds = JSON.parse(
           localStorage.getItem(storageKey) || '[]',
         ) as string[];
-        const updated = unsavedSlugs.filter(
-          (s) => s !== normalizedNotebook.slug,
-        );
+        const updated = unsavedIds.filter((id) => id !== normalizedNotebook.id);
         localStorage.setItem(storageKey, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
         setHasUnsavedChangesState(false);
       } catch (error) {
         console.error('Failed to clear unsaved state:', error);
       }
     }
+  }, [normalizedNotebook?.id]);
 
-    setShowUnsavedDialog(false);
-    if (pendingNavigation) {
-      pendingNavigation();
-      setPendingNavigation(null);
-    }
-  }, [pendingNavigation, normalizedNotebook?.slug]);
+  useEffect(() => {
+    registerUnsavedNotebook(hasUnsavedChangesState, {
+      onSave: handleSaveOnly,
+      onDiscard: handleDiscardOnly,
+    });
+    return () => registerUnsavedNotebook(false);
+  }, [
+    hasUnsavedChangesState,
+    registerUnsavedNotebook,
+    handleSaveOnly,
+    handleDiscardOnly,
+  ]);
 
-  const handleCancelNavigation = useCallback(() => {
-    setShowUnsavedDialog(false);
-    if (blocker.state === 'blocked') {
-      blocker.reset();
-    }
-    setPendingNavigation(null);
-  }, [blocker]);
+  useEffect(() => {
+    const notebookId = normalizedNotebook?.id;
+    return () => {
+      if (!notebookId) return;
+      try {
+        const storageKey = 'notebook:unsaved';
+        const unsavedIds = JSON.parse(
+          localStorage.getItem(storageKey) || '[]',
+        ) as string[];
+        const updated = unsavedIds.filter((id) => id !== notebookId);
+        if (updated.length !== unsavedIds.length) {
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('notebook:unsaved-changed'));
+        }
+      } catch {
+        // ignore
+      }
+    };
+  }, [normalizedNotebook?.id]);
 
   const handleDeleteNotebook = useCallback(() => {
     if (!normalizedNotebook) {
@@ -829,7 +810,7 @@ export default function NotebookPage() {
       return;
     }
 
-    const projectId = normalizedNotebook.projectId || workspace.projectId;
+    const projectId = normalizedNotebook.projectId || notebookProjectId;
 
     if (!projectId) {
       toast.error('Unable to resolve project context for deletion');
@@ -841,7 +822,7 @@ export default function NotebookPage() {
       slug: normalizedNotebook.slug,
       projectId,
     });
-  }, [deleteNotebookMutation, normalizedNotebook, workspace.projectId]);
+  }, [deleteNotebookMutation, normalizedNotebook, notebookProjectId]);
 
   useEffect(() => {
     if (!normalizedNotebook?.updatedAt) {
@@ -895,10 +876,10 @@ export default function NotebookPage() {
         };
         const storageKey = 'notebook:unsaved';
         try {
-          const unsavedSlugs = JSON.parse(
+          const unsavedIds = JSON.parse(
             localStorage.getItem(storageKey) || '[]',
           ) as string[];
-          const hasUnsaved = unsavedSlugs.includes(normalizedNotebook.slug);
+          const hasUnsaved = unsavedIds.includes(normalizedNotebook.id);
           setHasUnsavedChangesState(hasUnsaved);
         } catch {
           setHasUnsavedChangesState(false);
@@ -911,7 +892,7 @@ export default function NotebookPage() {
     normalizedNotebook?.updatedAt,
     normalizedNotebook?.cells,
     normalizedNotebook?.title,
-    normalizedNotebook?.slug,
+    normalizedNotebook?.id,
   ]);
 
   useEffect(() => {
@@ -1104,33 +1085,6 @@ export default function NotebookPage() {
           isNotebookLoading={isNotebookLoading}
         />
       )}
-
-      {/* Unsaved changes dialog */}
-      <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unsaved Changes</DialogTitle>
-            <DialogDescription>
-              You have unsaved changes in this notebook. What would you like to
-              do?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handleCancelNavigation}>
-              Cancel
-            </Button>
-            <Button variant="outline" onClick={handleDiscardAndContinue}>
-              Discard Changes
-            </Button>
-            <Button
-              onClick={handleSaveAndContinue}
-              disabled={saveNotebookMutation.isPending}
-            >
-              {saveNotebookMutation.isPending ? 'Saving...' : 'Save & Continue'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

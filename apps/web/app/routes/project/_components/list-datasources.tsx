@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Link, useNavigate, useParams } from 'react-router';
-
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -27,9 +26,10 @@ import {
   X,
   Play,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import type { Datasource } from '@qwery/domain/entities';
-import { PlaygroundTry } from '@qwery/playground/playground-try';
+import type { PlaygroundSuggestion } from '@qwery/playground/playground-suggestions';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -56,6 +56,10 @@ import {
 } from '@qwery/ui/table';
 import { createDatasourceViewPath } from '~/config/project.navigation.config';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { PlaygroundConfirmDialog } from './playground-confirm-dialog';
+import { useProject } from '~/lib/context/project-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { usePlayground } from '~/lib/mutations/use-playground';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 const ITEMS_PER_PAGE = 10;
@@ -71,6 +75,8 @@ export function ListDatasources({
   const params = useParams();
   const projectSlug = params.slug as string;
   const navigate = useNavigate();
+  const { projectId } = useProject();
+  const { repositories } = useWorkspace();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,7 +88,50 @@ export function ListDatasources({
   const [sortCriterion, setSortCriterion] = useState<SortCriterion>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const [showPlayground, setShowPlayground] = useState(true);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] =
+    useState<PlaygroundSuggestion | null>(null);
+
+  const createPlaygroundMutation = usePlayground(
+    repositories.datasource,
+    () => {},
+    (error) => {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create playground',
+        { id: 'creating-playground' },
+      );
+    },
+  );
+
+  const handleOpenPlaygroundConfirm = () => {
+    setSelectedSuggestion(null);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmPlayground = async () => {
+    if (!projectId) return;
+
+    setShowConfirmDialog(false);
+    toast.loading('Creating playground...', { id: 'creating-playground' });
+
+    try {
+      const playgroundDatasource = await createPlaygroundMutation.mutateAsync({
+        playgroundId: 'pglite',
+        projectId,
+      });
+
+      toast.dismiss('creating-playground');
+      toast.success('Playground created');
+      setTimeout(() => {
+        navigate(createDatasourceViewPath(playgroundDatasource.slug));
+      }, 600);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create playground',
+        { id: 'creating-playground' },
+      );
+    }
+  };
 
   // Fetch all extensions metadata to get logos
   const { data: extensions = [] } = useGetDatasourceExtensions();
@@ -212,7 +261,7 @@ export function ListDatasources({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-col gap-6 p-6 pb-4 lg:p-10">
+      <div className="flex shrink-0 flex-col gap-6 px-8 py-6 lg:px-16 lg:py-10">
         <h1 className="text-3xl font-bold">
           <Trans
             i18nKey="datasources:list_title"
@@ -244,19 +293,6 @@ export function ListDatasources({
                 <X className="h-4 w-4" />
               </button>
             )}
-            <div className="bg-border/50 mx-1 h-6 w-px" />
-            <button
-              onClick={() => setShowPlayground(!showPlayground)}
-              className={cn(
-                'flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md p-1 text-xs font-medium transition-all',
-                showPlayground
-                  ? 'bg-[#ffcb51] text-black'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-            >
-              <Play className="h-3.5 w-3.5" />
-            </button>
-            <div className="bg-border/50 mx-1 h-6 w-px" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -459,6 +495,15 @@ export function ListDatasources({
           </div>
 
           <Button
+            variant="outline"
+            className="text-foreground h-11 border-[#ffcb51]/50 px-5 font-medium hover:border-[#ffcb51] hover:bg-[#ffcb51]/10"
+            disabled={!projectId}
+            onClick={handleOpenPlaygroundConfirm}
+          >
+            <Play className="mr-2 h-4 w-4" />
+            Try Playground
+          </Button>
+          <Button
             asChild
             className="h-11 bg-[#ffcb51] px-5 font-bold text-black hover:bg-[#ffcb51]/90"
           >
@@ -472,36 +517,7 @@ export function ListDatasources({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-10 py-0">
-        <div
-          className={cn(
-            'grid transition-all duration-300 ease-in-out',
-            showPlayground
-              ? 'mb-6 grid-rows-[1fr] opacity-100'
-              : 'grid-rows-[0fr] opacity-0',
-          )}
-        >
-          <div className="overflow-hidden pt-3 pr-3">
-            <div className="relative">
-              <PlaygroundTry
-                onClick={() => {
-                  navigate(
-                    createPath(pathsConfig.app.projectPlayground, projectSlug),
-                  );
-                }}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPlayground(false);
-                }}
-                className="bg-background border-border hover:bg-muted absolute -top-2 -right-2 z-10 cursor-pointer rounded-full border p-1.5 shadow-md transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-0 lg:px-16">
         {filteredDatasources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-foreground mb-2 text-base font-medium">
@@ -904,6 +920,15 @@ export function ListDatasources({
           </div>
         </div>
       )}
+
+      <PlaygroundConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        selectedSuggestion={selectedSuggestion}
+        onConfirm={handleConfirmPlayground}
+        isPending={createPlaygroundMutation.isPending}
+        showRequestSection={false}
+      />
     </div>
   );
 }

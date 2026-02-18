@@ -175,7 +175,7 @@ export function NewDatasource({
   return (
     <div className="flex h-full flex-col">
       <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
-        <div className="px-8 py-6">
+        <div className="px-8 py-6 lg:px-16 lg:py-10">
           <div className="flex flex-col gap-5">
             <div>
               <h1 className="text-foreground text-2xl font-semibold tracking-tight">
@@ -242,7 +242,7 @@ export function NewDatasource({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="flex-1 overflow-y-auto px-8 py-6 lg:px-16 lg:py-10">
         {filteredDatasources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="bg-muted/30 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">

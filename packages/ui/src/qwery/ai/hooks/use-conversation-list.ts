@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { sortByModifiedDesc } from '@qwery/shared/utils';
 import type { Conversation } from '../utils/conversation-utils';
 import {
   groupConversationsByTime,
@@ -47,9 +48,10 @@ export function useConversationList({
   }, [filteredConversations, currentConversationId]);
 
   const allConversations = useMemo(() => {
-    return filteredConversations
-      .filter((c) => c.id !== currentConversationId)
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    const list = filteredConversations.filter(
+      (c) => c.id !== currentConversationId,
+    );
+    return sortByModifiedDesc(list);
   }, [filteredConversations, currentConversationId]);
 
   const visibleConversations = useMemo(() => {

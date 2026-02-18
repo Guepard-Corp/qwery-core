@@ -42,8 +42,9 @@ describe('UsageRepository', () => {
     resetStorageDir();
   });
 
+  const defaultUsageId = 'a1000001-0000-4000-8000-000000000001';
   const createTestUsage = (overrides?: Partial<Usage>): Usage => ({
-    id: overrides?.id ?? 1,
+    id: (overrides?.id as string) ?? defaultUsageId,
     conversationId,
     projectId,
     organizationId,
@@ -62,27 +63,29 @@ describe('UsageRepository', () => {
 
       expect(result.id).toBeDefined();
       expect(result.model).toBe(usage.model);
-      await assertFileExists(String(result.id));
-      const raw = await fs.readFile(entityFilePath(String(result.id)), 'utf-8');
+      await assertFileExists(result.id);
+      const raw = await fs.readFile(entityFilePath(result.id), 'utf-8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       expect(parsed.model).toBe(usage.model);
     });
 
-    it('uses generateTimestampId when id not provided or zero', async () => {
-      const usage = createTestUsage({ id: 0 });
+    it('persists usage with provided uuid', async () => {
+      const id = 'b2000002-0000-4000-8000-000000000002';
+      const usage = createTestUsage({ id });
       const result = await repository.create(usage);
-      expect(result.id).toBeGreaterThan(0);
-      await assertFileExists(String(result.id));
+      expect(result.id).toBe(id);
+      await assertFileExists(result.id);
     });
   });
 
   describe('findById', () => {
     it('finds by id', async () => {
-      const usage = createTestUsage({ id: 12345 });
+      const id = 'c3000003-0000-4000-8000-000000000003';
+      const usage = createTestUsage({ id });
       await repository.create(usage);
-      await assertFileExists(String(usage.id));
+      await assertFileExists(usage.id);
 
-      const result = await repository.findById(String(usage.id));
+      const result = await repository.findById(usage.id);
       expect(result).not.toBeNull();
       expect(result?.id).toBe(usage.id);
     });
@@ -102,7 +105,9 @@ describe('UsageRepository', () => {
 
   describe('findAll', () => {
     it('supports offset and limit', async () => {
-      const usage = createTestUsage({ id: 33333 });
+      const usage = createTestUsage({
+        id: 'd4000004-0000-4000-8000-000000000004',
+      });
       await repository.create(usage);
       const all = await repository.findAll();
       expect(all.length).toBeGreaterThanOrEqual(1);
@@ -155,35 +160,43 @@ describe('UsageRepository', () => {
 
   describe('update', () => {
     it('updates and persists to disk', async () => {
-      const usage = createTestUsage({ id: 11111 });
+      const id = 'e5000005-0000-4000-8000-000000000005';
+      const usage = createTestUsage({ id });
       await repository.create(usage);
       const updated = await repository.update({
         ...usage,
         outputTokens: 100,
       });
       expect(updated.outputTokens).toBe(100);
-      const raw = await fs.readFile(entityFilePath(String(usage.id)), 'utf-8');
+      const raw = await fs.readFile(entityFilePath(usage.id), 'utf-8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       expect(parsed.outputTokens).toBe(100);
     });
 
     it('throws when usage not found', async () => {
-      const usage = createTestUsage({ id: 99999 });
-      await expect(repository.update({ ...usage, id: 88888 })).rejects.toThrow(
-        'not found',
-      );
+      const usage = createTestUsage({
+        id: 'f6000006-0000-4000-8000-000000000006',
+      });
+      await repository.create(usage);
+      await expect(
+        repository.update({
+          ...usage,
+          id: 'f7000007-0000-4000-8000-000000000007',
+        }),
+      ).rejects.toThrow('not found');
     });
   });
 
   describe('delete', () => {
     it('deletes and removes file from disk', async () => {
-      const usage = createTestUsage({ id: 22222 });
+      const id = 'a8000008-0000-4000-8000-000000000008';
+      const usage = createTestUsage({ id });
       await repository.create(usage);
-      await assertFileExists(String(usage.id));
+      await assertFileExists(usage.id);
 
-      const result = await repository.delete(String(usage.id));
+      const result = await repository.delete(usage.id);
       expect(result).toBe(true);
-      await expect(fs.stat(entityFilePath(String(usage.id)))).rejects.toThrow();
+      await expect(fs.stat(entityFilePath(usage.id))).rejects.toThrow();
     });
 
     it('returns false when not found', async () => {

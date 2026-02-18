@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import { useNavigate, useParams, Link } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   Pencil,
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
-import { GetProjectBySlugService } from '@qwery/domain/services';
 import { DatasourceExtension } from '@qwery/extensions-sdk';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
@@ -56,6 +56,10 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import {
+  getProjectBySlugKey,
+  getProjectBySlugQueryFn,
+} from '~/lib/queries/use-get-projects';
 import { DATASOURCES } from '~/lib/loaders/datasource-loader';
 
 import type { Route } from './+types/new';
@@ -421,8 +425,8 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const [isHoveringName, setIsHoveringName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { repositories, workspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const datasourceRepository = repositories.datasource;
-  const projectRepository = repositories.project;
 
   const extension = useGetExtension(extensionId);
   const extensionSchema = useExtensionSchema(extensionId);
@@ -468,6 +472,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       console.error(error);
     },
   );
+
+  const isMutationPending =
+    createDatasourceMutation.isPending || testConnectionMutation.isPending;
 
   useEffect(() => {
     startTransition(() => {
@@ -682,11 +689,11 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
     let projectId = workspace.projectId;
     if (!projectId) {
-      const getProjectBySlugService = new GetProjectBySlugService(
-        projectRepository,
-      );
       try {
-        const project = await getProjectBySlugService.execute(project_id);
+        const project = await queryClient.fetchQuery({
+          queryKey: getProjectBySlugKey(project_id),
+          queryFn: getProjectBySlugQueryFn(repositories.project, project_id),
+        });
         projectId = project.id;
       } catch (error) {
         toast.error(
@@ -770,6 +777,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     provider === 'duckdb' || provider === 'duckdb-wasm' || provider === 'pglite'
       ? true
       : isFormValid && formValues && isFormValidForProvider(formValues);
+  const isTestConnectionDisabled =
+    isMutationPending || !formValues || !isFormValidForProvider(formValues);
+  const isSubmitDisabled = isMutationPending || !canSubmit;
 
   return (
     <div className="bg-background flex h-full flex-col">
@@ -900,12 +910,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleTestConnection}
-                disabled={
-                  testConnectionMutation.isPending ||
-                  createDatasourceMutation.isPending ||
-                  !formValues ||
-                  !isFormValidForProvider(formValues)
-                }
+                disabled={isTestConnectionDisabled}
                 className="text-muted-foreground hover:text-foreground h-9 gap-2"
               >
                 {testConnectionMutation.isPending ? (
@@ -930,10 +935,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                       createPath(pathsConfig.app.availableSources, project_id),
                     )
                   }
-                  disabled={
-                    createDatasourceMutation.isPending ||
-                    testConnectionMutation.isPending
-                  }
+                  disabled={isMutationPending}
                   className="h-9"
                 >
                   <Trans i18nKey="datasources:cancel" />
@@ -942,11 +944,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
                   type="submit"
                   form="datasource-form"
                   size="sm"
-                  disabled={
-                    createDatasourceMutation.isPending ||
-                    testConnectionMutation.isPending ||
-                    !canSubmit
-                  }
+                  disabled={isSubmitDisabled}
                   className="h-9 gap-2 bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90"
                 >
                   {createDatasourceMutation.isPending ? (

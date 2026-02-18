@@ -1,9 +1,12 @@
 import React, {
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   useImperativeHandle,
   forwardRef,
 } from 'react';
+import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -15,6 +18,7 @@ interface ResizableContentProps {
   Content: React.ReactElement | null;
   AgentSidebar: React.ReactElement | null;
   open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export interface ResizableContentRef {
@@ -27,15 +31,30 @@ export const ResizableContent = forwardRef<
   ResizableContentRef,
   ResizableContentProps
 >(function ResizableContent(props, ref) {
-  const { Content, AgentSidebar, open: initialOpen = false } = props;
+  const {
+    Content,
+    AgentSidebar,
+    open: initialOpen = false,
+    onOpenChange,
+  } = props;
   const [isOpen, setIsOpen] = useState(initialOpen);
+  const groupRef = useRef<ImperativePanelGroupHandle | null>(null);
 
-  // Expose imperative handle for external control
   useImperativeHandle(ref, () => ({
     open: () => setIsOpen(true),
     close: () => setIsOpen(false),
     toggle: () => setIsOpen((prev) => !prev),
   }));
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
+
+  useLayoutEffect(() => {
+    if (isOpen && groupRef.current) {
+      groupRef.current.setLayout([50, 50]);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -82,12 +101,13 @@ export const ResizableContent = forwardRef<
 
   return (
     <ResizablePanelGroup
+      ref={groupRef}
       direction="horizontal"
       className="h-full w-full overflow-hidden overflow-x-hidden"
     >
       <ResizablePanel
         defaultSize={contentSize}
-        minSize={isOpen ? 50 : 100}
+        minSize={isOpen ? 25 : 100}
         className={cn(
           'flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden',
           AgentSidebar && 'border-border border-r',
@@ -97,20 +117,18 @@ export const ResizableContent = forwardRef<
           {Content}
         </div>
       </ResizablePanel>
-      {/* Always render sidebar to keep it mounted, but hide when closed */}
       {AgentSidebar && (
         <>
           <ResizableHandle withHandle />
           <ResizablePanel
-            key={isOpen ? 'sidebar-open' : 'sidebar-closed'}
             defaultSize={sidebarSize}
             minSize={isOpen ? 25 : 0}
-            maxSize={isOpen ? 80 : 0}
-            className={
-              isOpen
-                ? 'flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden'
-                : 'hidden'
-            }
+            maxSize={isOpen ? 60 : 0}
+            className={cn(
+              isOpen &&
+                'flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden',
+              !isOpen && 'hidden',
+            )}
           >
             <div className="h-full min-h-0 w-full max-w-full min-w-0 overflow-hidden overflow-x-hidden">
               {AgentSidebar}

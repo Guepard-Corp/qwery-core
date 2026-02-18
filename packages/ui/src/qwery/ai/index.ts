@@ -1,5 +1,6 @@
 export { default as QweryPromptInput } from './prompt-input';
 export { ConversationHistory } from './conversation-history';
+export { ConversationList } from './conversation-list';
 export { QweryConversationContent } from './conversation-content';
 export { MessageRenderer } from './message-renderer';
 export {

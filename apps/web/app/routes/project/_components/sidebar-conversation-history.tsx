@@ -41,8 +41,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@qwery/ui/dropdown-menu';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Input } from '@qwery/ui/input';
+import { sortByModifiedDesc } from '@qwery/shared/utils';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
 import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
@@ -90,6 +91,25 @@ export function SidebarConversationHistory({
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [isRecentsOpen, setIsRecentsOpen] = useState(true);
+  const initialOpenSetRef = useRef(false);
+
+  useEffect(() => {
+    if (!projectSlug) return;
+    initialOpenSetRef.current = false;
+  }, [projectSlug]);
+
+  useEffect(() => {
+    if (isLoading || initialOpenSetRef.current) return;
+    initialOpenSetRef.current = true;
+    const hasAny =
+      conversations.length > 0 ||
+      (currentConversationId &&
+        conversations.some((c) => c.id === currentConversationId));
+    setTimeout(() => {
+      setIsRecentsOpen(!!hasAny);
+    }, 0);
+  }, [isLoading, conversations.length, currentConversationId, conversations]);
+
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('bookmarked-conversations');
@@ -483,7 +503,7 @@ export function SidebarConversationHistory({
                                       <div className="relative shrink-0">
                                         {processingConversationSlug ===
                                         currentConversation.slug ? (
-                                          <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 transition-opacity group-hover:opacity-0" />
+                                          <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover:opacity-0" />
                                         ) : (
                                           <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
                                         )}
@@ -702,7 +722,7 @@ export function SidebarConversationHistory({
                                         <div className="relative shrink-0">
                                           {processingConversationSlug ===
                                           conversation.slug ? (
-                                            <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/50 transition-opacity group-hover:opacity-0" />
+                                            <div className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover:opacity-0" />
                                           ) : null}
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -834,22 +854,6 @@ export function SidebarConversationHistory({
                       );
                     })}
                   </SidebarMenu>
-
-                  {/* View all chats button */}
-                  {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
-                      <Link
-                        to={createPath(
-                          pathsConfig.app.projectConversation,
-                          projectSlug,
-                        )}
-                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
-                      >
-                        <Trans i18nKey="common:sidebar.viewAllChats" />
-                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )}
             </SidebarGroupContent>
@@ -885,6 +889,8 @@ export interface SidebarNotebookHistoryProps {
   searchQuery?: string;
   onNotebookSelect?: (notebookSlug: string) => void;
   onNotebookDelete?: (notebookId: string) => void;
+  unsavedNotebookIds?: string[];
+  isProcessing?: boolean;
 }
 
 export function SidebarNotebookHistory({
@@ -894,18 +900,27 @@ export function SidebarNotebookHistory({
   searchQuery = '',
   onNotebookSelect: _onNotebookSelect,
   onNotebookDelete,
+  unsavedNotebookIds = [],
+  isProcessing = false,
 }: SidebarNotebookHistoryProps) {
   const { t } = useTranslation('common');
   const location = useLocation();
   const { projectSlug } = useProject();
 
-  const notebookSlugMatch = location.pathname.match(/\/notebooks\/([^/]+)$/);
+  const notebookSlugMatch = location.pathname.match(/\/notebook\/([^/]+)$/);
   const currentSlugFromUrl = notebookSlugMatch?.[1];
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [isRecentsOpen, setIsRecentsOpen] = useState(true);
+  const initialOpenSetRef = useRef(false);
+
+  useEffect(() => {
+    if (!projectSlug) return;
+    initialOpenSetRef.current = false;
+  }, [projectSlug]);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -919,9 +934,7 @@ export function SidebarNotebookHistory({
         notebook.title.toLowerCase().includes(query),
       );
     }
-    return [...filtered].sort(
-      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
-    );
+    return sortByModifiedDesc([...filtered]);
   }, [notebooks, searchQuery]);
 
   const activeNotebookSlug = currentSlugFromUrl || currentNotebookSlug;
@@ -946,6 +959,14 @@ export function SidebarNotebookHistory({
   );
 
   const hasNotebooks = filteredNotebooks.length > 0 || currentNotebook !== null;
+
+  useEffect(() => {
+    if (isLoading || initialOpenSetRef.current) return;
+    initialOpenSetRef.current = true;
+    setTimeout(() => {
+      setIsRecentsOpen(!!hasNotebooks);
+    }, 0);
+  }, [isLoading, hasNotebooks]);
 
   const handleStartEdit = (notebookId: string, currentTitle: string) => {
     setEditingId(notebookId);
@@ -1163,8 +1184,25 @@ export function SidebarNotebookHistory({
                                           currentNotebook.title,
                                         )}
                                       </span>
+                                      {isProcessing && (
+                                        <span
+                                          className="size-2 shrink-0 animate-pulse rounded-full border border-blue-500/50 bg-blue-500 shadow-sm shadow-blue-500/50"
+                                          aria-label="Agent processing"
+                                          title="Agent processing"
+                                        />
+                                      )}
                                       <div className="relative shrink-0">
-                                        <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
+                                        {unsavedNotebookIds.includes(
+                                          currentNotebook.id,
+                                        ) ? (
+                                          <div
+                                            className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-500/50 bg-yellow-500 shadow-sm shadow-yellow-500/50 transition-opacity group-hover:opacity-0"
+                                            aria-label="Unsaved changes"
+                                            title="Unsaved changes"
+                                          />
+                                        ) : (
+                                          <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
+                                        )}
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                             <button
@@ -1313,6 +1351,15 @@ export function SidebarNotebookHistory({
                                         >
                                           {truncateChatTitle(notebook.title)}
                                         </span>
+                                        {unsavedNotebookIds.includes(
+                                          notebook.id,
+                                        ) && (
+                                          <span
+                                            className="size-2 shrink-0 rounded-full border border-yellow-500/50 bg-yellow-500 shadow-sm shadow-yellow-500/50"
+                                            aria-label="Unsaved changes"
+                                            title="Unsaved changes"
+                                          />
+                                        )}
                                         <div className="relative shrink-0">
                                           {isActive && (
                                             <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover:opacity-0" />
@@ -1386,22 +1433,6 @@ export function SidebarNotebookHistory({
                       );
                     })}
                   </SidebarMenu>
-
-                  {/* View all notebooks button */}
-                  {projectSlug && (
-                    <div className="absolute right-0 bottom-0 left-0 z-20 mt-6 px-2 pt-6 pb-2">
-                      <Link
-                        to={createPath(
-                          pathsConfig.app.projectNotebooks,
-                          projectSlug,
-                        )}
-                        className="group bg-sidebar-accent/50 hover:bg-sidebar-accent border-border/40 hover:border-border/60 text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200"
-                      >
-                        <Trans i18nKey="common:sidebar.viewAllNotebooks" />
-                        <ArrowRight className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               )}
             </SidebarGroupContent>

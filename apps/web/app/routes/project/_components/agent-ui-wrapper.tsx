@@ -18,10 +18,11 @@ import {
 } from '@qwery/agent-factory-sdk';
 import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
 import { convertMessages } from '~/lib/utils/messages-converter';
+import { useProjectOptional } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { getUsageKey, useGetUsage } from '~/lib/queries/use-get-usage';
+import { useGetUsage } from '~/lib/queries/use-get-usage';
 import type { QweryContextProps } from '@qwery/ui/ai';
-import { useQueryClient } from '@tanstack/react-query';
+import { useInvalidateUsage } from '~/lib/hooks/use-invalidate-usage';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import type { DatasourceItem } from '@qwery/ui/ai';
@@ -139,7 +140,7 @@ export const AgentUIWrapper = forwardRef<
   const currentModelRef = useRef<string>(
     SUPPORTED_MODELS[0]?.value ?? getDefaultModel(),
   );
-  const queryClient = useQueryClient();
+  const invalidateUsage = useInvalidateUsage();
   const { repositories, workspace } = useWorkspace();
   const { data: usage } = useGetUsage(
     repositories.usage,
@@ -262,11 +263,13 @@ export const AgentUIWrapper = forwardRef<
       : conversationDatasources;
   }, [cellDatasource, pendingDatasources, conversationDatasources]);
 
-  // Fetch datasources for the current project
+  const projectContext = useProjectOptional();
+  const datasourceProjectId =
+    projectContext?.projectId ?? workspace.projectId ?? '';
   const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
-    workspace.projectId || '',
-    { enabled: !!workspace.projectId },
+    datasourceProjectId,
+    { enabled: !!datasourceProjectId },
   );
 
   // Fetch extension metadata for datasource icons
@@ -542,10 +545,8 @@ export const AgentUIWrapper = forwardRef<
   );
 
   const handleEmitFinish = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: getUsageKey(conversationSlug, workspace.userId),
-    });
-  }, [queryClient, conversationSlug, workspace.userId]);
+    invalidateUsage(conversationSlug, workspace.userId);
+  }, [invalidateUsage, conversationSlug, workspace.userId]);
 
   // Handle datasource selection change and save to conversation
   const handleDatasourceSelectionChange = useCallback(

@@ -66,16 +66,12 @@ export function cleanSql(
 
   let cleaned = sql;
 
-  // Replace escape sequences with actual characters
   cleaned = cleaned.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 
-  // Remove any leading/trailing quotes that might have been included
   cleaned = cleaned.replace(/^["']|["']$/g, '');
 
-  // Remove any trailing }} or similar JSON artifacts
   cleaned = cleaned.replace(/\}\}$/, '');
 
-  // Final trim to ensure clean formatting
   cleaned = cleaned.trim();
 
   // Format using sql-formatter if enabled (default: true)
@@ -93,4 +89,48 @@ export function cleanSql(
   }
 
   return cleaned;
+}
+
+/**
+ * Items with optional updatedAt/createdAt for sort-by-modified
+ */
+export interface WithModifiedDate {
+  updatedAt?: Date;
+  createdAt?: Date;
+}
+
+/**
+ * Sort items by modified date (latest first). Use updatedAt if present, else createdAt.
+ * Safe for missing dates (treated as epoch).
+ */
+export function sortByModifiedDesc<T extends WithModifiedDate>(
+  items: T[],
+): T[] {
+  return [...items].sort((a, b) => {
+    const aTime = a.updatedAt?.getTime() ?? a.createdAt?.getTime() ?? 0;
+    const bTime = b.updatedAt?.getTime() ?? b.createdAt?.getTime() ?? 0;
+    return bTime - aTime;
+  });
+}
+
+export function sortByModifiedAsc<T extends WithModifiedDate>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const aTime = a.updatedAt?.getTime() ?? a.createdAt?.getTime() ?? 0;
+    const bTime = b.updatedAt?.getTime() ?? b.createdAt?.getTime() ?? 0;
+    return aTime - bTime;
+  });
+}
+
+/**
+ * Sort items by a custom date getter (latest first).
+ */
+export function sortByDateDesc<T>(
+  items: T[],
+  getDate: (item: T) => Date | undefined,
+): T[] {
+  return [...items].sort((a, b) => {
+    const aTime = getDate(a)?.getTime() ?? 0;
+    const bTime = getDate(b)?.getTime() ?? 0;
+    return bTime - aTime;
+  });
 }

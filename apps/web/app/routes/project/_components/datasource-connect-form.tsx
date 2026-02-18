@@ -9,24 +9,43 @@ import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { DatasourceExtension } from '@qwery/extensions-sdk';
+import type {
+  DatasourceExtension,
+  ExtensionDefinition,
+} from '@qwery/extensions-sdk';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@qwery/ui/alert-dialog';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateDatasource } from '~/lib/mutations/use-create-datasource';
+import { useDeleteDatasource } from '~/lib/mutations/use-delete-datasource';
+import { useUpdateDatasource } from '~/lib/mutations/use-update-datasource';
 import { generateRandomName } from '~/lib/names';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { FormRenderer } from '@qwery/ui/form-renderer';
+import {
+  getUrlForValidation,
+  validateDatasourceUrl,
+} from '~/lib/utils/datasource-utils';
 import { DatasourceDocsLink } from './datasource-docs-link';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
   projectSlug: string;
-  extensionMeta: DatasourceExtension;
+  extensionMeta: ExtensionDefinition;
   onSuccess: () => void;
   onCancel: () => void;
   formId?: string;
@@ -38,7 +57,9 @@ export interface DatasourceConnectFormProps {
   datasourceName?: string;
   onDatasourceNameChange?: (name: string) => void;
   onFormValuesChange?: (values: Record<string, unknown> | null) => void;
+  onFormValidityChange?: (valid: boolean) => void;
   onTestConnectionLoadingChange?: (isLoading: boolean) => void;
+  existingDatasource?: Datasource;
 }
 
 export function DatasourceConnectForm({
@@ -56,17 +77,41 @@ export function DatasourceConnectForm({
   datasourceName: controlledName,
   onDatasourceNameChange,
   onFormValuesChange,
+  onFormValidityChange,
   onTestConnectionLoadingChange,
+  existingDatasource,
 }: DatasourceConnectFormProps) {
-  const [internalName, setInternalName] = useState(() => generateRandomName());
+  const [internalName, setInternalName] = useState(
+    () => existingDatasource?.name ?? generateRandomName(),
+  );
   const [isEditingName, setIsEditingName] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
   );
-  const [isFormValid, setIsFormValid] = useState(false);
+  const [schemaValid, setSchemaValid] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
+
+  const urlValidation = useMemo(() => {
+    if (
+      !extensionMeta?.supportsPreview ||
+      (extensionMeta?.previewUrlKind !== 'embeddable' &&
+        extensionMeta?.previewUrlKind !== 'data-file')
+    ) {
+      return { valid: true, error: null as string | null };
+    }
+    const url = getUrlForValidation(formValues, extensionMeta);
+    const result = validateDatasourceUrl(extensionMeta, url);
+    return { valid: result.isValid, error: result.error };
+  }, [formValues, extensionMeta]);
+
+  const isFormValid = schemaValid && urlValidation.valid;
+
+  useEffect(() => {
+    onFormValidityChange?.(isFormValid);
+  }, [isFormValid, onFormValidityChange]);
 
   useEffect(() => {
     if (
@@ -197,6 +242,45 @@ export function DatasourceConnectForm({
     },
   );
 
+  const updateDatasourceMutation = useUpdateDatasource(
+    datasourceRepository,
+    (_datasource) => {
+      toast.success(<Trans i18nKey="datasources:updateSuccess" />);
+      setIsConnecting(false);
+      onSuccess();
+    },
+    (error) => {
+      const errorMessage =
+        error instanceof Error ? (
+          error.message
+        ) : (
+          <Trans i18nKey="datasources:updateFailed" />
+        );
+      toast.error(errorMessage);
+      console.error(error);
+      setIsConnecting(false);
+    },
+  );
+
+  const deleteDatasourceMutation = useDeleteDatasource(
+    datasourceRepository,
+    () => {
+      toast.success(<Trans i18nKey="datasources:deleteSuccess" />);
+      setIsDeleteDialogOpen(false);
+      onSuccess();
+    },
+    (error) => {
+      const errorMessage =
+        error instanceof Error ? (
+          error.message
+        ) : (
+          <Trans i18nKey="datasources:deleteFailed" />
+        );
+      toast.error(errorMessage);
+      console.error(error);
+    },
+  );
+
   const handleTestConnection = useCallback(() => {
     if (!extension?.data) return;
     if (!formValues) {
@@ -221,7 +305,6 @@ export function DatasourceConnectForm({
     testConnectionMutation.mutate(testDatasource as Datasource);
   }, [
     extension.data,
-    extensionId,
     effectiveSchema,
     formValues,
     datasourceName,
@@ -282,7 +365,8 @@ export function DatasourceConnectForm({
     }
     const driver =
       dsMeta.drivers.find(
-        (d) => d.id === (validData as { driverId?: string })?.driverId,
+        (d: { id: string }) =>
+          d.id === (validData as { driverId?: string })?.driverId,
       ) ?? dsMeta.drivers[0];
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
@@ -302,7 +386,6 @@ export function DatasourceConnectForm({
     });
   }, [
     extension.data,
-    extensionId,
     effectiveSchema,
     formValues,
     datasourceName,
@@ -313,34 +396,97 @@ export function DatasourceConnectForm({
     createDatasourceMutation,
   ]);
 
+  const handleUpdate = useCallback(async () => {
+    const ext = extension?.data;
+    if (!existingDatasource || !ext) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
+    if (!formValues) {
+      toast.error(<Trans i18nKey="datasources:formNotReady" />);
+      return;
+    }
+    setIsConnecting(true);
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
+      setIsConnecting(false);
+      return;
+    }
+    const validData = parsed.data as Record<string, unknown>;
+    updateDatasourceMutation.mutate({
+      id: existingDatasource.id,
+      name: datasourceName.trim() || existingDatasource.name,
+      config: validData,
+      updatedBy: workspace.userId ?? 'system',
+    });
+  }, [
+    existingDatasource,
+    extension.data,
+    effectiveSchema,
+    formValues,
+    datasourceName,
+    workspace.userId,
+    updateDatasourceMutation,
+  ]);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!existingDatasource?.id) {
+      toast.error(<Trans i18nKey="datasources:deleteMissingId" />);
+      return;
+    }
+    deleteDatasourceMutation.mutate({
+      id: existingDatasource.id,
+      projectId: existingDatasource.projectId,
+    });
+  }, [existingDatasource, deleteDatasourceMutation]);
+
   const isTestConnectionLoading = testConnectionMutation.isPending;
   const isPending =
-    isTestConnectionLoading || createDatasourceMutation.isPending;
+    isTestConnectionLoading ||
+    createDatasourceMutation.isPending ||
+    updateDatasourceMutation.isPending ||
+    deleteDatasourceMutation.isPending;
+  const isActionDisabled = isConnecting || isPending;
+  const isTestConnectionDisabled = isActionDisabled || !isFormValid;
+  const isSubmitDisabled =
+    isActionDisabled ||
+    !isFormValid ||
+    (existingDatasource ? false : isTestConnectionLoading);
   const actionsEl = (
     <div className="flex flex-col-reverse gap-3 pt-8 sm:flex-row sm:items-center sm:justify-between">
       <Button
         variant="ghost"
         onClick={onCancel}
-        disabled={isConnecting || isPending}
+        disabled={isActionDisabled}
         className="text-muted-foreground hover:text-foreground hover:bg-transparent"
       >
-        Cancel
+        <Trans i18nKey="datasources:cancel" />
       </Button>
       <div className="flex flex-col gap-3 sm:flex-row">
+        {existingDatasource && (
+          <Button
+            variant="destructive"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            disabled={isActionDisabled}
+            data-test="datasource-delete-button"
+          >
+            <Trans i18nKey="datasources:deleteButton" />
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={handleTestConnection}
-          disabled={isPending || !isFormValid || isConnecting}
+          disabled={isTestConnectionDisabled}
           className="border-border border bg-white font-semibold text-black shadow-sm transition-all hover:bg-gray-50 hover:text-black"
         >
           {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-          Test Connection
+          <Trans i18nKey="datasources:testConnection" />
         </Button>
         <Button
-          onClick={handleConnect}
-          disabled={
-            isConnecting || isPending || !isFormValid || isTestConnectionLoading
-          }
+          onClick={existingDatasource ? handleUpdate : handleConnect}
+          disabled={isSubmitDisabled}
           className="border-0 bg-yellow-400 font-bold text-black shadow-lg transition-all hover:bg-yellow-500"
         >
           {isConnecting ? (
@@ -348,7 +494,15 @@ export function DatasourceConnectForm({
           ) : (
             <Check className="mr-2 size-4" />
           )}
-          Connect
+          {existingDatasource ? (
+            isConnecting ? (
+              <Trans i18nKey="datasources:updating" />
+            ) : (
+              <Trans i18nKey="datasources:update" />
+            )
+          ) : (
+            <Trans i18nKey="datasources:connect" />
+          )}
         </Button>
       </div>
     </div>
@@ -472,8 +626,22 @@ export function DatasourceConnectForm({
                 onFormReady={(values) =>
                   handleFormReady(values as Record<string, unknown>)
                 }
-                onValidityChange={setIsFormValid}
+                onValidityChange={setSchemaValid}
+                defaultValues={
+                  existingDatasource?.config as
+                    | Record<string, unknown>
+                    | undefined
+                }
               />
+              {urlValidation.error ? (
+                <p
+                  className="text-destructive text-sm"
+                  role="alert"
+                  data-test="datasource-url-validation-error"
+                >
+                  {urlValidation.error}
+                </p>
+              ) : null}
             </div>
           )}
         </section>
@@ -482,6 +650,46 @@ export function DatasourceConnectForm({
       </div>
 
       {portalTarget ? createPortal(actionsEl, portalTarget) : null}
+
+      {existingDatasource && (
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!deleteDatasourceMutation.isPending)
+              setIsDeleteDialogOpen(open);
+          }}
+        >
+          <AlertDialogContent className="z-[200]" overlayClassName="z-[200]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <Trans i18nKey="datasources:deleteConfirmTitle" />
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                <Trans
+                  i18nKey="datasources:deleteConfirmDescription"
+                  values={{ name: datasourceName }}
+                />
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteDatasourceMutation.isPending}>
+                <Trans i18nKey="datasources:cancel" />
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleConfirmDelete}
+                disabled={deleteDatasourceMutation.isPending}
+              >
+                {deleteDatasourceMutation.isPending ? (
+                  <Trans i18nKey="datasources:deleting" />
+                ) : (
+                  <Trans i18nKey="datasources:deleteButton" />
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

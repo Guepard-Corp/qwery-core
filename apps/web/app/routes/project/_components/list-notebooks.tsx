@@ -51,6 +51,7 @@ import {
 } from '@qwery/ui/table';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import type { NotebookOutput } from '@qwery/domain/usecases';
+import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 
@@ -61,14 +62,15 @@ type SortOrder = 'asc' | 'desc';
 
 export function ListNotebooks({
   notebooks,
-  unsavedNotebookSlugs = [],
+  unsavedNotebookIds = [],
 }: {
   notebooks: NotebookOutput[];
-  unsavedNotebookSlugs?: string[];
+  unsavedNotebookIds?: string[];
 }) {
   const { t } = useTranslation('notebooks');
   const navigate = useNavigate();
-  const { workspace, repositories } = useWorkspace();
+  const { projectId } = useProject();
+  const { repositories } = useWorkspace();
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) =>
@@ -167,16 +169,16 @@ export function ListNotebooks({
   };
 
   const handleCreateNotebook = () => {
-    if (!workspace.projectId) return;
+    if (!projectId) return;
     createNotebookMutation.mutate({
-      projectId: workspace.projectId,
+      projectId,
       title: 'Untitled notebook',
     });
   };
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-col gap-6 p-6 pb-4 lg:p-10">
+      <div className="flex shrink-0 flex-col gap-6 px-8 py-6 lg:px-16 lg:py-10">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">
             <Trans i18nKey="notebooks:list_title" defaults="Notebooks" />
@@ -392,7 +394,7 @@ export function ListNotebooks({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-10 py-0">
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-0 lg:px-16">
         {filteredNotebooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-foreground mb-2 text-base font-medium">
@@ -410,8 +412,8 @@ export function ListNotebooks({
         ) : isGridView ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paginatedNotebooks.map((notebook) => {
-              const hasUnsavedChanges = unsavedNotebookSlugs.includes(
-                notebook.slug,
+              const hasUnsavedChanges = unsavedNotebookIds.includes(
+                notebook.id,
               );
               return (
                 <div
@@ -495,8 +497,8 @@ export function ListNotebooks({
               </TableHeader>
               <TableBody>
                 {paginatedNotebooks.map((notebook) => {
-                  const hasUnsavedChanges = unsavedNotebookSlugs.includes(
-                    notebook.slug,
+                  const hasUnsavedChanges = unsavedNotebookIds.includes(
+                    notebook.id,
                   );
                   const date = new Date(notebook.createdAt);
 

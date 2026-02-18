@@ -1,81 +1,49 @@
 import { useEffect, useState } from 'react';
 
-import {
-  GetNotebooksByProjectIdService,
-  GetProjectBySlugService,
-} from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
-
-import type { Route } from '~/types/app/routes/project/notebooks/+types/index';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { Skeleton } from '@qwery/ui/skeleton';
+import { useProject } from '~/lib/context/project-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 
 import { ListNotebooks } from '../_components/list-notebooks';
 
-export async function loader(args: Route.LoaderArgs) {
-  const slug = args.params.slug;
-  if (!slug) {
-    return { project: null, notebooks: [] };
-  }
+export default function ProjectNotebooksPage() {
+  const { repositories } = useWorkspace();
+  const { projectId } = useProject();
 
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getProjectService = new GetProjectBySlugService(repositories.project);
-  const getNotebooksService = new GetNotebooksByProjectIdService(
+  const notebooks = useGetNotebooksByProjectId(
     repositories.notebook,
+    projectId ?? '',
+    { enabled: !!projectId },
   );
 
-  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
-    null;
-
-  try {
-    project = await getProjectService.execute(slug);
-  } catch (error) {
-    if (error instanceof DomainException) {
-      return { project: null, notebooks: [] };
-    }
-    throw error;
-  }
-
-  const notebooks = project
-    ? await getNotebooksService.execute(project.id)
-    : [];
-
-  return {
-    project,
-    notebooks,
-  };
-}
-
-export default function ProjectNotebooksPage(props: Route.ComponentProps) {
-  const { notebooks } = props.loaderData;
-  const [unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
-    [],
-  );
+  const [unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const updateUnsavedSlugs = () => {
+    const updateUnsavedIds = () => {
       try {
         const unsaved = JSON.parse(
           localStorage.getItem('notebook:unsaved') || '[]',
         ) as string[];
-        setUnsavedNotebookSlugs(unsaved);
+        setUnsavedNotebookIds(unsaved);
       } catch {
-        setUnsavedNotebookSlugs([]);
+        setUnsavedNotebookIds([]);
       }
     };
 
-    updateUnsavedSlugs();
+    updateUnsavedIds();
 
-    window.addEventListener('storage', updateUnsavedSlugs);
+    window.addEventListener('storage', updateUnsavedIds);
 
     const handleCustomStorage = () => {
-      updateUnsavedSlugs();
+      updateUnsavedIds();
     };
     window.addEventListener('notebook:unsaved-changed', handleCustomStorage);
 
-    const interval = setInterval(updateUnsavedSlugs, 500);
+    const interval = setInterval(updateUnsavedIds, 500);
 
     return () => {
-      window.removeEventListener('storage', updateUnsavedSlugs);
+      window.removeEventListener('storage', updateUnsavedIds);
       window.removeEventListener(
         'notebook:unsaved-changed',
         handleCustomStorage,
@@ -86,10 +54,18 @@ export default function ProjectNotebooksPage(props: Route.ComponentProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <ListNotebooks
-        notebooks={notebooks ?? []}
-        unsavedNotebookSlugs={unsavedNotebookSlugs}
-      />
+      {notebooks.isLoading && (
+        <div className="p-6 lg:p-10">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
+
+      {!notebooks.isLoading && (
+        <ListNotebooks
+          notebooks={notebooks.data ?? []}
+          unsavedNotebookIds={unsavedNotebookIds}
+        />
+      )}
     </div>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { toast } from 'sonner';
-
 import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
@@ -14,7 +14,11 @@ import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useProject } from '~/lib/context/project-context';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
-import { useGetProjects } from '~/lib/queries/use-get-projects';
+import {
+  getProjectsByOrganizationIdKey,
+  getProjectsByOrganizationIdQueryFn,
+  useGetProjects,
+} from '~/lib/queries/use-get-projects';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
@@ -38,6 +42,7 @@ function toBreadcrumbNodeItem<
 
 export function ProjectBreadcrumb() {
   const { repositories } = useWorkspace();
+  const queryClient = useQueryClient();
   const {
     project,
     projectId,
@@ -48,29 +53,27 @@ export function ProjectBreadcrumb() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const [_unsavedNotebookSlugs, setUnsavedNotebookSlugs] = useState<string[]>(
-    [],
-  );
+  const [_unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>([]);
   const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
 
   useEffect(() => {
-    const updateUnsavedSlugs = () => {
+    const updateUnsavedIds = () => {
       try {
         const unsaved = JSON.parse(
           localStorage.getItem('notebook:unsaved') || '[]',
         ) as string[];
-        setUnsavedNotebookSlugs(unsaved);
+        setUnsavedNotebookIds(unsaved);
       } catch {
-        setUnsavedNotebookSlugs([]);
+        setUnsavedNotebookIds([]);
       }
     };
 
-    updateUnsavedSlugs();
-    window.addEventListener('storage', updateUnsavedSlugs);
-    const interval = setInterval(updateUnsavedSlugs, 500);
+    updateUnsavedIds();
+    window.addEventListener('storage', updateUnsavedIds);
+    const interval = setInterval(updateUnsavedIds, 500);
     return () => {
-      window.removeEventListener('storage', updateUnsavedSlugs);
+      window.removeEventListener('storage', updateUnsavedIds);
       clearInterval(interval);
     };
   }, []);
@@ -167,15 +170,76 @@ export function ProjectBreadcrumb() {
       .map((proj) => toBreadcrumbNodeItem(proj));
   }, [projects.data, organizationId]);
 
-  // Handlers
-  const handleOrgSelect = (org: BreadcrumbNodeItem) => {
-    const path = createPath(pathsConfig.app.organizationView, org.slug);
-    navigate(path);
+  const organizationItemsWithCurrentFirst = useMemo(() => {
+    const items = (organizations.data || []).map((org) =>
+      toBreadcrumbNodeItem(org),
+    );
+    if (!currentOrg) return items;
+    const idx = items.findIndex((o) => o.id === currentOrg.id);
+    if (idx <= 0) return items;
+    const rest = items.filter((o) => o.id !== currentOrg.id);
+    return [currentOrg, ...rest];
+  }, [organizations.data, currentOrg]);
+
+  const projectItemsWithCurrentFirst = useMemo(() => {
+    if (!currentProject) return filteredProjects;
+    const idx = filteredProjects.findIndex((p) => p.id === currentProject.id);
+    if (idx <= 0) return filteredProjects;
+    const rest = filteredProjects.filter((p) => p.id !== currentProject.id);
+    return [currentProject, ...rest];
+  }, [filteredProjects, currentProject]);
+
+  const getSubPathToPreserve = (): string => {
+    const prjMatch = location.pathname.match(/^\/prj\/[^/]+(\/.*)?$/);
+    if (prjMatch?.[1]) return prjMatch[1];
+    if (location.pathname.startsWith('/ds/')) return '/ds';
+    if (location.pathname.startsWith('/notebook/')) return '/notebooks';
+    if (location.pathname.startsWith('/c/')) return '/c';
+    return '';
+  };
+
+  const handleOrgSelect = async (org: BreadcrumbNodeItem) => {
+    const subPath = getSubPathToPreserve();
+    if (subPath) {
+      try {
+        const projectsInNewOrg = await queryClient.fetchQuery({
+          queryKey: getProjectsByOrganizationIdKey(org.id),
+          queryFn: getProjectsByOrganizationIdQueryFn(
+            repositories.project,
+            org.id,
+          ),
+        });
+        const first = projectsInNewOrg?.[0];
+        if (first) {
+          navigate(`/prj/${first.slug}${subPath}`);
+          return;
+        }
+      } catch {
+        // fallback to org view
+      }
+    }
+    navigate(createPath(pathsConfig.app.organizationView, org.slug));
   };
 
   const handleProjectSelect = (project: BreadcrumbNodeItem) => {
-    const path = createPath(pathsConfig.app.project, project.slug);
-    navigate(path);
+    const subPath = getSubPathToPreserve();
+    if (subPath) {
+      navigate(`/prj/${project.slug}${subPath}`);
+      return;
+    }
+    if (location.pathname.startsWith('/ds/')) {
+      navigate(createPath(pathsConfig.app.projectDatasources, project.slug));
+      return;
+    }
+    if (location.pathname.startsWith('/notebook/')) {
+      navigate(createPath(pathsConfig.app.projectNotebooks, project.slug));
+      return;
+    }
+    if (location.pathname.startsWith('/c/')) {
+      navigate(createPath(pathsConfig.app.projectConversation, project.slug));
+      return;
+    }
+    navigate(createPath(pathsConfig.app.project, project.slug));
   };
 
   const handleDatasourceSelect = (datasource: BreadcrumbNodeItem) => {
@@ -257,14 +321,12 @@ export function ProjectBreadcrumb() {
     <>
       <QweryBreadcrumb
         organization={{
-          items: (organizations.data || []).map((org) =>
-            toBreadcrumbNodeItem(org),
-          ),
+          items: organizationItemsWithCurrentFirst,
           isLoading: organizations.isLoading,
           current: currentOrg,
         }}
         project={{
-          items: filteredProjects,
+          items: projectItemsWithCurrentFirst,
           isLoading: projects.isLoading,
           current: currentProject,
         }}
@@ -341,7 +403,7 @@ export function ProjectBreadcrumb() {
         onNewProject={handleNewProject}
         onNewDatasource={handleNewDatasource}
         onNewNotebook={handleNewNotebook}
-        unsavedNotebookSlugs={_unsavedNotebookSlugs}
+        unsavedNotebookIds={_unsavedNotebookIds}
       />
       <OrganizationDialog
         open={showCreateOrgDialog}

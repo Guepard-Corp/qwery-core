@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { IDatasourceRepository } from '@qwery/domain/repositories';
 import {
   GetDatasourceBySlugService,
+  GetDatasourceService,
   GetDatasourcesByProjectIdService,
 } from '@qwery/domain/services';
 
@@ -16,6 +17,14 @@ export function getDatasourcesByProjectIdKey(projectId: string) {
 
 export function getDatasourceKey(id: string) {
   return ['datasource', id];
+}
+
+export function getDatasourceByIdQueryFn(
+  repository: IDatasourceRepository,
+  id: string,
+) {
+  const useCase = new GetDatasourceService(repository);
+  return () => useCase.execute(id);
 }
 
 export function useGetDatasourcesByProjectId(

@@ -26,7 +26,6 @@ export async function loader(args: Route.LoaderArgs) {
   }
 }
 
-export default function ProjectIndexPage(props: Route.ComponentProps) {
-  const { project } = props.loaderData;
-  return <WelcomePage project={project} />;
+export default function ProjectIndexPage() {
+  return <WelcomePage />;
 }

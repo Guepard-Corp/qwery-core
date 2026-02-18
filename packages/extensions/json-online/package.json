@@ -29,6 +29,8 @@
         ],
         "icon": "media/json.svg",
         "supportsPreview": true,
+        "previewUrlKind": "data-file",
+        "previewDataFormat": "json",
         "drivers": [
           "json-online.duckdb"
         ]

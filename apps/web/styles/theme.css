@@ -122,9 +122,9 @@
   }
 }
 
-/* Override syntax highlighting background colors for SQL code blocks */
+/* Override syntax highlighting background for code blocks */
 div[data-code-block-container="true"] pre[style*="background-color"] {
-  background-color: hsl(0, 0%, 2%) !important;
+  background-color: #2f2f2f !important;
 }
 
 div[data-code-block-container="true"] pre code,
@@ -133,11 +133,10 @@ div[data-code-block-container="true"] pre span {
   background-color: transparent !important;
 }
 
-/* Force code block header to be pitch black */
 div[data-code-block-container="true"] > div[data-code-block-header="true"],
 div[data-code-block-container="true"] > div.code-block-header,
 div[data-code-block-container="true"] > div[class*="rounded-t-md"] {
-  background-color: hsl(0, 0%, 2%) !important;
+  background-color: #2f2f2f !important;
 }
 
 @property --border-angle {

@@ -1,62 +1,45 @@
-import { redirect } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 
-import {
-  GetDatasourcesByProjectIdService,
-  GetProjectBySlugService,
-} from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
-
-import type { Route } from '~/types/app/routes/project/datasources/+types/index';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { useProject } from '~/lib/context/project-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import pathsConfig, { createPath } from '~/config/paths.config';
 
+import { Skeleton } from '@qwery/ui/skeleton';
 import { ListDatasources } from '../_components/list-datasources';
 
-export async function loader(args: Route.LoaderArgs) {
-  const slug = args.params.slug as string;
-  if (!slug) {
-    return { project: null, datasources: [] };
-  }
-
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getProjectService = new GetProjectBySlugService(repositories.project);
-  const getDatasourcesService = new GetDatasourcesByProjectIdService(
+export default function ProjectDatasourcesPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const { projectId, isLoading: isProjectLoading } = useProject();
+  const { repositories } = useWorkspace();
+  const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
+    projectId ?? '',
+    { enabled: !!projectId },
   );
 
-  let project: Awaited<ReturnType<GetProjectBySlugService['execute']>> | null =
-    null;
+  const hasDatasources = (datasources.data?.length ?? 0) > 0;
 
-  try {
-    project = await getProjectService.execute(slug);
-  } catch (error) {
-    if (error instanceof DomainException) {
-      return { project: null, datasources: [] };
-    }
-    throw error;
+  if (isProjectLoading || (projectId && datasources.isLoading)) {
+    return (
+      <div className="p-6 lg:p-10">
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
   }
 
-  const datasources = project
-    ? await getDatasourcesService.execute(project.id)
-    : [];
-
-  const hasDatasources = (datasources?.length ?? 0) > 0;
-  if (!hasDatasources) {
-    throw redirect(createPath(pathsConfig.app.availableSources, slug));
+  if (!projectId || !hasDatasources) {
+    return (
+      <Navigate
+        to={createPath(pathsConfig.app.availableSources, slug ?? '')}
+        replace
+      />
+    );
   }
-
-  return {
-    project,
-    datasources,
-  };
-}
-
-export default function ProjectDatasourcesPage(props: Route.ComponentProps) {
-  const { datasources } = props.loaderData;
 
   return (
     <div className="flex h-full flex-col">
-      <ListDatasources datasources={datasources ?? []} />
+      <ListDatasources datasources={datasources.data ?? []} />
     </div>
   );
 }

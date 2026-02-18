@@ -1,8 +1,9 @@
 'use client';
 
 import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
-import { FileText } from 'lucide-react';
+import { FileText, MessageSquare } from 'lucide-react';
 
 import { Button } from '@qwery/ui/button';
 import { PageTopBar } from '@qwery/ui/page';
@@ -13,11 +14,14 @@ import { WorkspaceModeSwitch } from '@qwery/ui/workspace-mode-switch';
 import { useSwitchWorkspaceMode } from '~/lib/hooks/use-workspace-mode';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { ProjectConversationHistory } from './project-conversation-history';
 import { ProjectBreadcrumb } from './project-breadcrumb';
+import { useProject } from '~/lib/context/project-context';
+import pathsConfig, { createPath } from '~/config/paths.config';
 
 export function ProjectLayoutTopBar() {
+  const { t } = useTranslation(['chat']);
   const { workspace } = useWorkspace();
+  const { projectSlug } = useProject();
   const { mutate: switchWorkspaceMode } = useSwitchWorkspaceMode();
 
   const handleSwitchWorkspaceMode = (mode: string) => {
@@ -37,7 +41,14 @@ export function ProjectLayoutTopBar() {
         <ProjectBreadcrumb />
       </div>
       <div className="flex items-center space-x-4">
-        <ProjectConversationHistory />
+        <Button asChild size="icon" variant="ghost">
+          <Link
+            to={createPath(pathsConfig.app.projectConversation, projectSlug)}
+            title={t('chat:title')}
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Link>
+        </Button>
         <WorkspaceModeSwitch
           onChange={handleSwitchWorkspaceMode}
           defaultMode={

@@ -55,6 +55,8 @@ interface ContributesDatasource {
   schema: unknown;
   docsUrl?: string | null;
   supportsPreview?: boolean;
+  previewUrlKind?: 'embeddable' | 'data-file' | 'connection';
+  previewDataFormat?: 'json' | 'parquet' | 'csv';
   drivers?: string[];
 }
 
@@ -104,6 +106,8 @@ function initDriverImportsFromPackageJson(): void {
           schema: null,
           docsUrl: ds.docsUrl ?? null,
           supportsPreview: ds.supportsPreview === true,
+          previewUrlKind: ds.previewUrlKind,
+          previewDataFormat: ds.previewDataFormat,
           drivers: driverDescriptors.map((d) => ({
             id: d.id,
             name: d.name,

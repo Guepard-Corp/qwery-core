@@ -231,13 +231,13 @@ export function ListOrganizations({
           !isGridView && selectedIds.size > 0 ? 'pb-0' : 'pb-4',
         )}
       >
-        <div className="mx-auto my-4 w-full max-w-7xl px-48 lg:px-32">
-          <h1 className="text-5xl font-bold">
+        <div className="w-full px-8 lg:px-16">
+          <h1 className="text-3xl font-bold">
             <Trans i18nKey="organizations:title" />
           </h1>
         </div>
 
-        <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+        <div className="w-full px-8 lg:px-16">
           <div className="flex items-center gap-3">
             <div
               className={cn(
@@ -462,7 +462,7 @@ export function ListOrganizations({
             </p>
           </div>
         ) : isGridView ? (
-          <div className="mx-auto w-full max-w-7xl px-24 pb-8 lg:px-32">
+          <div className="w-full px-8 pb-8 lg:px-16">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {paginatedOrganizations.map((org) => (
                 <OrganizationCard
@@ -484,7 +484,7 @@ export function ListOrganizations({
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-7xl px-24 lg:px-32">
+          <div className="w-full px-8 lg:px-16">
             <BulkActionBar
               selectedCount={selectedIds.size}
               entityType="Organization"

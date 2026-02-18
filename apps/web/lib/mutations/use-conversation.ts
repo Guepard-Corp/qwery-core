@@ -77,13 +77,16 @@ export function useUpdateConversation(
       return await updateConversationService.execute(conversationDTO);
     },
     onSuccess: (conversation: ConversationOutput) => {
+      queryClient.setQueryData(
+        getConversationKey(conversation.slug),
+        conversation,
+      );
       queryClient.invalidateQueries({
         queryKey: getConversationKey(conversation.slug),
       });
       queryClient.invalidateQueries({
         queryKey: getConversationsKey(),
       });
-      // Invalidate all project-specific conversation queries
       queryClient.invalidateQueries({
         predicate: (query) => {
           return (
