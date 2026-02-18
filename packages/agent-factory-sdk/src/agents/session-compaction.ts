@@ -70,7 +70,9 @@ function getPartTokenEstimate(part: {
   const outputStr =
     typeof output === 'string'
       ? output
-      : output && typeof output === 'object' && 'text' in (output as Record<string, unknown>)
+      : output &&
+          typeof output === 'object' &&
+          'text' in (output as Record<string, unknown>)
         ? String((output as { text?: string }).text ?? '')
         : JSON.stringify(output ?? '');
   return estimateTokens(outputStr);
