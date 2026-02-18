@@ -116,9 +116,18 @@ describe('utils', () => {
   describe('sortByModifiedDesc', () => {
     it('sorts by updatedAt descending', () => {
       const items: WithModifiedDate[] = [
-        { updatedAt: new Date('2024-01-01'), createdAt: new Date('2023-01-01') },
-        { updatedAt: new Date('2024-03-01'), createdAt: new Date('2023-01-01') },
-        { updatedAt: new Date('2024-02-01'), createdAt: new Date('2023-01-01') },
+        {
+          updatedAt: new Date('2024-01-01'),
+          createdAt: new Date('2023-01-01'),
+        },
+        {
+          updatedAt: new Date('2024-03-01'),
+          createdAt: new Date('2023-01-01'),
+        },
+        {
+          updatedAt: new Date('2024-02-01'),
+          createdAt: new Date('2023-01-01'),
+        },
       ];
       const sorted = sortByModifiedDesc(items);
       expect(sorted[0].updatedAt).toEqual(new Date('2024-03-01'));
@@ -198,7 +207,10 @@ describe('utils', () => {
     });
 
     it('does not mutate original array', () => {
-      const items = [{ date: new Date('2024-02-01') }, { date: new Date('2024-01-01') }];
+      const items = [
+        { date: new Date('2024-02-01') },
+        { date: new Date('2024-01-01') },
+      ];
       const copy = items.map((x) => ({ ...x }));
       sortByDateDesc(items, (x) => x.date);
       expect(items).toEqual(copy);

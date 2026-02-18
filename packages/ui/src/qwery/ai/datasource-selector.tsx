@@ -333,9 +333,12 @@ export function DatasourceSelector({
                         ? t('common:datasourceSelector.clearSearchAriaLabel', {
                             defaultValue: 'Clear search',
                           })
-                        : t('common:datasourceSelector.clearSelectionAriaLabel', {
-                            defaultValue: 'Clear selection',
-                          })
+                        : t(
+                            'common:datasourceSelector.clearSelectionAriaLabel',
+                            {
+                              defaultValue: 'Clear selection',
+                            },
+                          )
                     }
                   >
                     <XIcon className="h-4 w-4" />

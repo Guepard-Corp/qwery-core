@@ -17,7 +17,7 @@ export function useDeleteDatasource(
   return useMutation({
     mutationFn: async ({
       id,
-      projectId,
+      projectId: _projectId,
     }: {
       id: string;
       projectId?: string;

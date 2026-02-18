@@ -427,7 +427,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const { repositories, workspace } = useWorkspace();
   const queryClient = useQueryClient();
   const datasourceRepository = repositories.datasource;
-  const projectRepository = repositories.project;
 
   const extension = useGetExtension(extensionId);
   const extensionSchema = useExtensionSchema(extensionId);
@@ -476,9 +475,6 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
   const isMutationPending =
     createDatasourceMutation.isPending || testConnectionMutation.isPending;
-  const isTestConnectionDisabled =
-    isMutationPending || !formValues || !isFormValidForProvider(formValues);
-  const isSubmitDisabled = isMutationPending || !canSubmit;
 
   useEffect(() => {
     startTransition(() => {
@@ -781,6 +777,9 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
     provider === 'duckdb' || provider === 'duckdb-wasm' || provider === 'pglite'
       ? true
       : isFormValid && formValues && isFormValidForProvider(formValues);
+  const isTestConnectionDisabled =
+    isMutationPending || !formValues || !isFormValidForProvider(formValues);
+  const isSubmitDisabled = isMutationPending || !canSubmit;
 
   return (
     <div className="bg-background flex h-full flex-col">

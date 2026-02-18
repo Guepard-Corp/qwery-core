@@ -140,7 +140,7 @@ export default function NotebookPage() {
 
   const createConversationMutation = useConversation(
     repositories.conversation,
-    (conversation) => {
+    (_conversation) => {
       // Conversation created successfully, slug is available in conversation.slug
     },
     (error) => {

@@ -231,6 +231,29 @@ export function validateDatasourceUrl(
 }
 
 /**
+ * Returns the URL value from form values used for validation (same fields as preview).
+ */
+export function getUrlForValidation(
+  formValues: Record<string, unknown> | null,
+  extensionMeta: DatasourceExtensionMeta | undefined | null,
+): string | undefined {
+  if (!formValues || extensionMeta?.supportsPreview !== true) return undefined;
+  const kind = extensionMeta.previewUrlKind;
+  if (kind === 'embeddable') {
+    const v = (formValues.sharedLink ?? formValues.url) as string | undefined;
+    return typeof v === 'string' ? v : undefined;
+  }
+  if (kind === 'data-file') {
+    const v = (formValues.url ??
+      formValues.jsonUrl ??
+      formValues.connectionUrl) as string | undefined;
+    return typeof v === 'string' ? v : undefined;
+  }
+  const v = (formValues.connectionUrl ?? formValues.url) as string | undefined;
+  return typeof v === 'string' ? v : undefined;
+}
+
+/**
  * Gets the preview URL using extension metadata (supportsPreview, previewUrlKind from extension definition).
  */
 export function getDatasourcePreviewUrl(

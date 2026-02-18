@@ -64,12 +64,14 @@ export function DatasourceConnectSheet({
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
   );
+  const [isFormValid, setIsFormValid] = useState(false);
   const [isTestConnectionLoading, setIsTestConnectionLoading] = useState(false);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const previewRef = useRef<DatasourcePreviewRef | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editingNameRef = useRef<string>('');
   const extension = useGetExtension(extensionId);
+  const extensionMetaForPreview = extension?.data ?? extensionMeta;
 
   useEffect(() => {
     if (!open) return;
@@ -205,7 +207,7 @@ export function DatasourceConnectSheet({
                       : `Connect to ${extensionMeta.name}`}
                   </span>
                   <DatasourceDocsLink
-                    docsUrl={extension.data?.docsUrl}
+                    docsUrl={extensionMetaForPreview?.docsUrl}
                     iconOnly
                   />
                 </div>
@@ -309,19 +311,22 @@ export function DatasourceConnectSheet({
                   datasourceName={datasourceName}
                   onDatasourceNameChange={setDatasourceName}
                   onFormValuesChange={setFormValues}
+                  onFormValidityChange={setIsFormValid}
                   onTestConnectionLoadingChange={setIsTestConnectionLoading}
                   existingDatasource={existingDatasource}
                 />
               </div>
-              {formValues && extension.data?.supportsPreview === true && (
-                <DatasourcePreview
-                  ref={previewRef}
-                  formValues={formValues}
-                  extensionMeta={extension.data}
-                  isTestConnectionLoading={isTestConnectionLoading}
-                  className="min-h-0 flex-1"
-                />
-              )}
+              {formValues &&
+                isFormValid &&
+                extensionMetaForPreview?.supportsPreview === true && (
+                  <DatasourcePreview
+                    ref={previewRef}
+                    formValues={formValues}
+                    extensionMeta={extensionMetaForPreview}
+                    isTestConnectionLoading={isTestConnectionLoading}
+                    className="min-h-0 flex-1"
+                  />
+                )}
             </div>
           </div>
           <div

@@ -36,6 +36,10 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { FormRenderer } from '@qwery/ui/form-renderer';
+import {
+  getUrlForValidation,
+  validateDatasourceUrl,
+} from '~/lib/utils/datasource-utils';
 import { DatasourceDocsLink } from './datasource-docs-link';
 
 export interface DatasourceConnectFormProps {
@@ -53,6 +57,7 @@ export interface DatasourceConnectFormProps {
   datasourceName?: string;
   onDatasourceNameChange?: (name: string) => void;
   onFormValuesChange?: (values: Record<string, unknown> | null) => void;
+  onFormValidityChange?: (valid: boolean) => void;
   onTestConnectionLoadingChange?: (isLoading: boolean) => void;
   existingDatasource?: Datasource;
 }
@@ -72,6 +77,7 @@ export function DatasourceConnectForm({
   datasourceName: controlledName,
   onDatasourceNameChange,
   onFormValuesChange,
+  onFormValidityChange,
   onTestConnectionLoadingChange,
   existingDatasource,
 }: DatasourceConnectFormProps) {
@@ -85,8 +91,27 @@ export function DatasourceConnectForm({
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
   );
-  const [isFormValid, setIsFormValid] = useState(false);
+  const [schemaValid, setSchemaValid] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
+
+  const urlValidation = useMemo(() => {
+    if (
+      !extensionMeta?.supportsPreview ||
+      (extensionMeta?.previewUrlKind !== 'embeddable' &&
+        extensionMeta?.previewUrlKind !== 'data-file')
+    ) {
+      return { valid: true, error: null as string | null };
+    }
+    const url = getUrlForValidation(formValues, extensionMeta);
+    const result = validateDatasourceUrl(extensionMeta, url);
+    return { valid: result.isValid, error: result.error };
+  }, [formValues, extensionMeta]);
+
+  const isFormValid = schemaValid && urlValidation.valid;
+
+  useEffect(() => {
+    onFormValidityChange?.(isFormValid);
+  }, [isFormValid, onFormValidityChange]);
 
   useEffect(() => {
     if (
@@ -280,7 +305,6 @@ export function DatasourceConnectForm({
     testConnectionMutation.mutate(testDatasource as Datasource);
   }, [
     extension.data,
-    extensionId,
     effectiveSchema,
     formValues,
     datasourceName,
@@ -362,7 +386,6 @@ export function DatasourceConnectForm({
     });
   }, [
     extension.data,
-    extensionId,
     effectiveSchema,
     formValues,
     datasourceName,
@@ -373,7 +396,8 @@ export function DatasourceConnectForm({
   ]);
 
   const handleUpdate = useCallback(async () => {
-    if (!existingDatasource || !extension?.data) {
+    const ext = extension?.data;
+    if (!existingDatasource || !ext) {
       toast.error(<Trans i18nKey="datasources:notFoundError" />);
       return;
     }
@@ -398,7 +422,7 @@ export function DatasourceConnectForm({
     });
   }, [
     existingDatasource,
-    extension?.data,
+    extension.data,
     effectiveSchema,
     formValues,
     datasourceName,
@@ -601,13 +625,22 @@ export function DatasourceConnectForm({
                 onFormReady={(values) =>
                   handleFormReady(values as Record<string, unknown>)
                 }
-                onValidityChange={setIsFormValid}
+                onValidityChange={setSchemaValid}
                 defaultValues={
                   existingDatasource?.config as
                     | Record<string, unknown>
                     | undefined
                 }
               />
+              {urlValidation.error ? (
+                <p
+                  className="text-destructive text-sm"
+                  role="alert"
+                  data-test="datasource-url-validation-error"
+                >
+                  {urlValidation.error}
+                </p>
+              ) : null}
             </div>
           )}
         </section>

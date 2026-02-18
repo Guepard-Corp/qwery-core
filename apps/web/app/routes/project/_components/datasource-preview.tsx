@@ -82,7 +82,8 @@ export const DatasourcePreview = forwardRef<
   const [showPublishingGuide, setShowPublishingGuide] = useState(false);
 
   useEffect(() => {
-    setViewMode(extensionMeta?.previewDataFormat === 'json' ? 'tree' : 'table');
+    const next = extensionMeta?.previewDataFormat === 'json' ? 'tree' : 'table';
+    queueMicrotask(() => setViewMode(next));
   }, [extensionMeta?.previewDataFormat]);
 
   // Debounce preview URL updates by 1 second
@@ -90,7 +91,7 @@ export const DatasourcePreview = forwardRef<
     if (!previewUrl) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedPreviewUrl(null);
-      setPublicationStatus('unknown');
+      queueMicrotask(() => setPublicationStatus('unknown'));
       return;
     }
 
@@ -116,12 +117,12 @@ export const DatasourcePreview = forwardRef<
       const timer = setTimeout(() => setShowPublishingGuide(true), 2500);
       return () => clearTimeout(timer);
     }
-    setShowPublishingGuide(false);
+    queueMicrotask(() => setShowPublishingGuide(false));
   }, [needsPublicationCheck, publicationStatus]);
 
   useEffect(() => {
     if (!needsPublicationCheck || !previewUrl) {
-      setPublicationStatus('unknown');
+      queueMicrotask(() => setPublicationStatus('unknown'));
       return;
     }
 
@@ -129,11 +130,11 @@ export const DatasourcePreview = forwardRef<
       | string
       | undefined;
     if (!sharedLink || typeof sharedLink !== 'string') {
-      setPublicationStatus('unknown');
+      queueMicrotask(() => setPublicationStatus('unknown'));
       return;
     }
 
-    setPublicationStatus('checking');
+    queueMicrotask(() => setPublicationStatus('checking'));
     detectPublishedState(sharedLink)
       .then((status) => {
         setPublicationStatus(status);
@@ -161,9 +162,11 @@ export const DatasourcePreview = forwardRef<
   useEffect(() => {
     if (!needsDataFetching || !debouncedPreviewUrl) {
       if (!isGSheetUrl(debouncedPreviewUrl)) {
-        setJsonData(null);
-        setJsonError(null);
-        setIsLoadingJson(false);
+        queueMicrotask(() => {
+          setJsonData(null);
+          setJsonError(null);
+          setIsLoadingJson(false);
+        });
       }
       return;
     }
@@ -174,8 +177,10 @@ export const DatasourcePreview = forwardRef<
       return;
     }
 
-    setIsLoadingJson(true);
-    setJsonError(null);
+    queueMicrotask(() => {
+      setIsLoadingJson(true);
+      setJsonError(null);
+    });
 
     const fetcher =
       dataFormat === 'json'
