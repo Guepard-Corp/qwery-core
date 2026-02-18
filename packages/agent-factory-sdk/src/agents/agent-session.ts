@@ -126,6 +126,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     const msgs = await filterCompacted(messagesApi.stream(conversationId));
     const { lastUser, compactionUser, lastFinished, tasks } = deriveState(msgs);
 
+    const hasPendingCompactionTask = tasks.some((t) => t.type === 'compaction');
+
     step += 1;
     if (step === 1) {
       ensureTitle({
@@ -169,6 +171,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       | undefined;
     const lastFinishedSummary = lastFinishedMeta?.summary;
     const lastFinishedTokens = lastFinishedMeta?.tokens;
+
     if (
       lastFinished &&
       !lastFinishedSummary &&
@@ -178,6 +181,15 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         model,
       }))
     ) {
+      logger.info('[AgentSession] Last finished message is overflow', {
+        lastFinished,
+        userMeta: lastUser?.metadata,
+      });
+
+      if (hasPendingCompactionTask) {
+        continue;
+      }
+
       const userMeta = lastUser?.metadata as
         | {
             agent?: string;
@@ -332,7 +344,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           conversationSlug,
         );
         usagePersistenceService
-          .persistUsage(totalUsage, model)
+          .persistUsage(totalUsage, model, conversation.createdBy)
           .catch(async (error) => {
             const log = await getLogger();
             log.error('[AgentSession] Failed to persist usage:', error);
