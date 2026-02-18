@@ -53,6 +53,7 @@ import pathsConfig, { createPath } from '~/config/paths.config';
 import type { NotebookOutput } from '@qwery/domain/usecases';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -66,17 +67,14 @@ export function ListNotebooks({
   notebooks: NotebookOutput[];
   unsavedNotebookSlugs?: string[];
 }) {
-  const { t } = useTranslation('notebooks');
+  const { t } = useTranslation(['notebooks', 'common']);
   const navigate = useNavigate();
   const { workspace, repositories } = useWorkspace();
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) =>
       navigate(createPath(pathsConfig.app.projectNotebook, notebook.slug)),
-    (error) =>
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create notebook',
-      ),
+    (error) => toast.error(getErrorKey(error, t)),
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');

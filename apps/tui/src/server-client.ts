@@ -23,6 +23,16 @@ const DEFAULT_SERVER_URL = 'http://localhost:4096';
 
 let cachedServerUrl: string | null = null;
 
+function isParseSuccess<T>(part: unknown): part is { success: true; value: T } {
+  return (
+    !!part &&
+    typeof part === 'object' &&
+    'success' in part &&
+    (part as { success?: unknown }).success === true &&
+    'value' in part
+  );
+}
+
 function getServerUrl(): string {
   return process.env.QWERY_SERVER_URL ?? DEFAULT_SERVER_URL;
 }
@@ -935,19 +945,18 @@ export async function parseStreamToChatMessage(
 
   const chunkStream = parseJsonEventStream({
     stream,
-    schema: uiMessageChunkSchema,
+    schema: uiMessageChunkSchema as unknown as Parameters<
+      typeof parseJsonEventStream
+    >[0]['schema'],
   }).pipeThrough(
-    new TransformStream({
-      transform(
-        part: { success: boolean; value?: UIMessageChunk; error?: unknown },
-        controller,
-      ) {
-        if (part.success && part.value) {
+    new TransformStream<unknown, UIMessageChunk>({
+      transform(part, controller) {
+        if (isParseSuccess<UIMessageChunk>(part)) {
           controller.enqueue(part.value);
         }
       },
     }),
-  ) as ReadableStream<UIMessageChunk>;
+  );
 
   let lastMessage: UIMessage = { id: '', role: 'assistant', parts: [] };
 
@@ -967,19 +976,18 @@ export async function parseStreamToChatMessageStreaming(
 
   const chunkStream = parseJsonEventStream({
     stream,
-    schema: uiMessageChunkSchema,
+    schema: uiMessageChunkSchema as unknown as Parameters<
+      typeof parseJsonEventStream
+    >[0]['schema'],
   }).pipeThrough(
-    new TransformStream({
-      transform(
-        part: { success: boolean; value?: UIMessageChunk; error?: unknown },
-        controller,
-      ) {
-        if (part.success && part.value) {
+    new TransformStream<unknown, UIMessageChunk>({
+      transform(part, controller) {
+        if (isParseSuccess<UIMessageChunk>(part)) {
           controller.enqueue(part.value);
         }
       },
     }),
-  ) as ReadableStream<UIMessageChunk>;
+  );
 
   let lastMessage: UIMessage = { id: '', role: 'assistant', parts: [] };
 

@@ -5,7 +5,12 @@ import {
   type DatasourceExtension,
 } from '@qwery/extensions-sdk';
 import { getDriverInstance } from '@qwery/extensions-loader';
-import { handleDomainException } from '../lib/http-utils';
+import {
+  handleDomainException,
+  createValidationErrorResponse,
+  createNotFoundErrorResponse,
+} from '../lib/http-utils';
+import { Code } from '@qwery/domain/common';
 
 export function createNotebookQueryRoutes(
   getRepositories: () => Promise<Repositories>,
@@ -22,19 +27,18 @@ export function createNotebookQueryRoutes(
       const { conversationId, query, datasourceId } = body;
 
       if (!conversationId || !query || !datasourceId) {
-        return c.json(
-          {
-            error:
-              'Missing required fields: conversationId, query, datasourceId',
-          },
-          400,
+        return createValidationErrorResponse(
+          'Missing required fields: conversationId, query, datasourceId',
         );
       }
 
       const repos = await getRepositories();
       const datasource = await repos.datasource.findById(datasourceId);
       if (!datasource) {
-        return c.json({ error: `Datasource ${datasourceId} not found` }, 404);
+        return createNotFoundErrorResponse(
+          `Datasource ${datasourceId} not found`,
+          Code.DATASOURCE_NOT_FOUND_ERROR,
+        );
       }
 
       const extension = ExtensionsRegistry.get(
@@ -42,11 +46,9 @@ export function createNotebookQueryRoutes(
       ) as DatasourceExtension | undefined;
 
       if (!extension?.drivers?.length) {
-        return c.json(
-          {
-            error: `No driver found for provider: ${datasource.datasource_provider}`,
-          },
-          404,
+        return createNotFoundErrorResponse(
+          `No driver found for provider: ${datasource.datasource_provider}`,
+          Code.DATASOURCE_NOT_FOUND_ERROR,
         );
       }
 
@@ -55,11 +57,8 @@ export function createNotebookQueryRoutes(
         extension.drivers[0];
 
       if (!nodeDriver || nodeDriver.runtime !== 'node') {
-        return c.json(
-          {
-            error: `No node driver for provider: ${datasource.datasource_provider}`,
-          },
-          400,
+        return createValidationErrorResponse(
+          `No node driver for provider: ${datasource.datasource_provider}`,
         );
       }
 
@@ -93,11 +92,8 @@ export function createNotebookQueryRoutes(
             errorMessage.includes('does not exist') ||
             errorMessage.includes('Catalog Error')
           ) {
-            return c.json(
-              {
-                error: `Query failed: ${errorMessage}. Expected database: "${expectedDbName}".`,
-              },
-              400,
+            return createValidationErrorResponse(
+              `Query failed: ${errorMessage}. Expected database: "${expectedDbName}".`,
             );
           }
           throw queryError;

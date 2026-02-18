@@ -13,8 +13,11 @@ import {
   useDeleteConversation,
 } from '~/lib/mutations/use-conversation';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 
 export function ProjectConversationHistory() {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { repositories, workspace } = useWorkspace();
   const location = useLocation();
@@ -39,9 +42,7 @@ export function ProjectConversationHistory() {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(
-        `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      toast.error(getErrorKey(error, t));
     },
     workspace.projectId as string | undefined,
   );
@@ -95,7 +96,7 @@ export function ProjectConversationHistory() {
 
   const onNewConversation = () => {
     if (!projectId) {
-      toast.error('Project not found');
+      toast.error(t(ERROR_KEYS.notFound));
       return;
     }
     createConversationMutation.mutate({
@@ -120,9 +121,7 @@ export function ProjectConversationHistory() {
           toast.success('Conversation title updated');
         },
         onError: (error) => {
-          toast.error(
-            `Failed to update conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          );
+          toast.error(getErrorKey(error, t));
         },
       },
     );
@@ -137,9 +136,7 @@ export function ProjectConversationHistory() {
         }
       },
       onError: (error) => {
-        toast.error(
-          `Failed to delete conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
+        toast.error(getErrorKey(error, t));
       },
     });
   };
@@ -161,13 +158,10 @@ export function ProjectConversationHistory() {
     }
 
     if (failed > 0) {
-      const errors = results
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map((r) => r.reason?.message || 'Unknown error')
-        .join(', ');
-      toast.error(
-        `Failed to delete ${failed} conversation${failed !== 1 ? 's' : ''}: ${errors}`,
-      );
+      const firstError = results.find(
+        (r): r is PromiseRejectedResult => r.status === 'rejected',
+      )?.reason;
+      toast.error(getErrorKey(firstError ?? new Error(), t));
     }
 
     if (

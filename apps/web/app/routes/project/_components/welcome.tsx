@@ -41,6 +41,8 @@ import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useConversation } from '~/lib/mutations/use-conversation';
+import { useTranslation } from 'react-i18next';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { usePlayground } from '~/lib/mutations/use-playground';
 import type { ProjectOutput } from '@qwery/domain/usecases';
 
@@ -49,6 +51,7 @@ export default function WelcomePage({
 }: {
   project: ProjectOutput | null;
 }) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const params = useParams();
   const project_id = params.slug as string;
@@ -69,10 +72,9 @@ export default function WelcomePage({
     repositories.datasource,
     () => {},
     (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
-        { id: 'creating-playground' },
-      );
+      toast.error(getErrorKey(error, t), {
+        id: 'creating-playground',
+      });
     },
   );
 
@@ -90,12 +92,9 @@ export default function WelcomePage({
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create conversation',
-        { id: 'creating-conversation' },
-      );
+      toast.error(getErrorKey(error, t), {
+        id: 'creating-conversation',
+      });
     },
     initialProject?.id ?? workspace.projectId,
   );
@@ -230,20 +229,16 @@ export default function WelcomePage({
             );
           },
           onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : 'Failed to create conversation',
-              { id: 'creating-conversation' },
-            );
+            toast.error(getErrorKey(error, t), {
+              id: 'creating-conversation',
+            });
           },
         },
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create playground',
-        { id: 'creating-playground' },
-      );
+      toast.error(getErrorKey(error, t), {
+        id: 'creating-playground',
+      });
     }
   };
 

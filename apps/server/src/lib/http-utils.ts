@@ -1,6 +1,28 @@
 import { DomainException } from '@qwery/domain/exceptions';
+import { Code, type CodeDescription } from '@qwery/domain/common';
+import { SAFE_ERROR_MESSAGE } from '@qwery/shared/error';
+
+function getTechnicalDetails(error: unknown): string | undefined {
+  if (error instanceof DomainException) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message !== SAFE_ERROR_MESSAGE ? error.message : undefined;
+  }
+  if (typeof error === 'string') {
+    return error !== SAFE_ERROR_MESSAGE ? error : undefined;
+  }
+  return undefined;
+}
+
+const isProduction = () =>
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
 
 export function handleDomainException(error: unknown): Response {
+  const rawDetails = getTechnicalDetails(error);
+  const details =
+    !isProduction() && rawDetails !== undefined ? rawDetails : undefined;
+
   if (error instanceof DomainException) {
     const status =
       error.code >= 2000 && error.code < 3000
@@ -8,18 +30,45 @@ export function handleDomainException(error: unknown): Response {
         : error.code >= 400 && error.code < 500
           ? error.code
           : 500;
+
     return Response.json(
       {
-        error: error.message,
         code: error.code,
-        data: error.data,
+        params: error.data,
+        ...(details !== undefined && { details }),
       },
       { status },
     );
   }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
+  return Response.json(
+    {
+      code: 500,
+      ...(details !== undefined && { details }),
+    },
+    { status: 500 },
+  );
+}
+
+export function createValidationErrorResponse(
+  message: string,
+  code: CodeDescription = Code.BAD_REQUEST_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
+}
+
+export function createNotFoundErrorResponse(
+  message: string,
+  code: CodeDescription = Code.ENTITY_NOT_FOUND_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
 }
 
 export function parsePositiveInt(

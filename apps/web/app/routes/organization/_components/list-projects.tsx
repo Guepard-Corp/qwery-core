@@ -24,9 +24,11 @@ import {
   Pause,
   Play,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import type { Project } from '@qwery/domain/entities';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
@@ -86,6 +88,7 @@ export function ListProjects({
   newProjectButton?: React.ReactNode;
   organizationId: string;
 }) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { repositories } = useWorkspace();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +136,7 @@ export function ListProjects({
       );
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete projects');
+      toast.error(getErrorKey(error, t));
     },
   });
 
@@ -148,7 +151,7 @@ export function ListProjects({
       );
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to update project');
+      toast.error(getErrorKey(error, t));
     },
   });
 

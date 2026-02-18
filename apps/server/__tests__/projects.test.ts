@@ -21,8 +21,9 @@ describe('Server API – Projects', () => {
     it('GET /api/projects requires orgId', async () => {
       const res = await app.request('http://localhost/api/projects');
       expect(res.status).toBe(400);
-      const body = (await res.json()) as { error: string };
-      expect(body.error).toContain('Organization ID');
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBe(400);
+      expect(body.details).toContain('Organization ID');
     });
 
     it('POST /api/projects creates and GET by orgId returns list', async () => {

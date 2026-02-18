@@ -21,6 +21,8 @@ import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { useTranslation } from 'react-i18next';
+import { getErrorKey } from '~/lib/utils/error-key';
 import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
 import { ProjectDialog } from '../../organization/_components/project-dialog';
 
@@ -37,6 +39,7 @@ function toBreadcrumbNodeItem<
 }
 
 export function ProjectBreadcrumb() {
+  const { t } = useTranslation('common');
   const { repositories } = useWorkspace();
   const {
     project,
@@ -197,10 +200,7 @@ export function ProjectBreadcrumb() {
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) => handleNotebookSelect(toBreadcrumbNodeItem(notebook)),
-    (error) =>
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create notebook',
-      ),
+    (error) => toast.error(getErrorKey(error, t)),
   );
 
   const handleNewOrg = () => {

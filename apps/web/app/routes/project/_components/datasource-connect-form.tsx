@@ -22,6 +22,11 @@ import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { FormRenderer } from '@qwery/ui/form-renderer';
 import { DatasourceDocsLink } from './datasource-docs-link';
+import {
+  ERROR_KEYS,
+  getErrorKey,
+  getFirstZodValidationMessage,
+} from '~/lib/utils/error-key';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
@@ -80,7 +85,7 @@ export function DatasourceConnectForm({
     }
   }, [variant, actionsContainerReady, actionsContainerRef]);
 
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
   const projectRepository = repositories.project;
@@ -100,31 +105,6 @@ export function DatasourceConnectForm({
   );
   const effectiveSchema = extensionSchema.data ?? fallbackSchema;
 
-  const formatTestConnectionError = (error: unknown) => {
-    if (error instanceof Error) {
-      const raw = error.message ?? '';
-      try {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const first = parsed[0] as {
-            message?: string;
-            path?: (string | number)[];
-          };
-          if (first && typeof first.message === 'string') {
-            if (Array.isArray(first.path) && first.path.length > 0) {
-              return `${first.path.join('.')}: ${first.message}`;
-            }
-            return first.message;
-          }
-        }
-      } catch {
-        // fall through to raw message
-      }
-      return raw || <Trans i18nKey="datasources:connectionTestError" />;
-    }
-    return <Trans i18nKey="datasources:connectionTestError" />;
-  };
-
   const testConnectionMutation = useTestConnection(
     (result) => {
       onTestConnectionLoadingChange?.(false);
@@ -132,13 +112,15 @@ export function DatasourceConnectForm({
         toast.success(<Trans i18nKey="datasources:connectionTestSuccess" />);
       } else {
         toast.error(
-          result.error || <Trans i18nKey="datasources:connectionTestFailed" />,
+          result.error
+            ? getErrorKey(new Error(result.error), t)
+            : i18n.t('datasources:connectionTestFailed'),
         );
       }
     },
     (error) => {
       onTestConnectionLoadingChange?.(false);
-      toast.error(formatTestConnectionError(error));
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -185,13 +167,7 @@ export function DatasourceConnectForm({
       onSuccess();
     },
     (error) => {
-      const errorMessage =
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:saveFailed" />
-        );
-      toast.error(errorMessage);
+      toast.error(getErrorKey(error, t));
       console.error(error);
       setIsConnecting(false);
     },
@@ -205,7 +181,8 @@ export function DatasourceConnectForm({
     }
     const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
     if (!parsed.success) {
-      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      const msg =
+        getFirstZodValidationMessage(parsed.error) || 'Invalid configuration';
       toast.error(msg);
       return;
     }
@@ -250,25 +227,22 @@ export function DatasourceConnectForm({
         const project = await getProjectBySlugService.execute(projectSlug);
         projectId = project.id;
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Unable to resolve project context for datasource',
-        );
+        toast.error(getErrorKey(error, t));
         setIsConnecting(false);
         return;
       }
     }
 
     if (!projectId) {
-      toast.error('Unable to resolve project context for datasource');
+      toast.error(t(ERROR_KEYS.generic));
       setIsConnecting(false);
       return;
     }
 
     const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
     if (!parsed.success) {
-      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      const msg =
+        getFirstZodValidationMessage(parsed.error) || 'Invalid configuration';
       toast.error(msg);
       setIsConnecting(false);
       return;
@@ -301,6 +275,7 @@ export function DatasourceConnectForm({
       createdBy: userId,
     });
   }, [
+    t,
     extension.data,
     extensionId,
     effectiveSchema,

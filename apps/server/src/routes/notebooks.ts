@@ -8,7 +8,13 @@ import {
   UpdateNotebookService,
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
-import { handleDomainException, isUUID } from '../lib/http-utils';
+import {
+  handleDomainException,
+  isUUID,
+  createNotFoundErrorResponse,
+  createValidationErrorResponse,
+} from '../lib/http-utils';
+import { Code } from '@qwery/domain/common';
 
 export function createNotebooksRoutes(
   getRepositories: () => Promise<Repositories>,
@@ -85,7 +91,11 @@ export function createNotebooksRoutes(
   app.get('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Not found' }, 404);
+      if (!id)
+        return createNotFoundErrorResponse(
+          'Not found',
+          Code.NOTEBOOK_NOT_FOUND_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = isUUID(id)
@@ -101,7 +111,11 @@ export function createNotebooksRoutes(
   app.put('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const body = await c.req.json();
@@ -116,7 +130,11 @@ export function createNotebooksRoutes(
   app.delete('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      if (!id) return c.json({ error: 'Method not allowed' }, 405);
+      if (!id)
+        return createValidationErrorResponse(
+          'Method not allowed',
+          Code.BAD_REQUEST_ERROR,
+        );
 
       const repos = await getRepositories();
       const useCase = new DeleteNotebookService(repos.notebook);

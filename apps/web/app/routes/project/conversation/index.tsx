@@ -2,6 +2,7 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useConversation } from '~/lib/mutations/use-conversation';
 import { createPath } from '~/config/paths.config';
 import pathsConfig from '~/config/paths.config';
@@ -25,6 +26,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from '~/types/app/routes/project/conversation/+types/index';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 
 function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -84,6 +86,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 export default function ConversationIndexPage(props: Route.ComponentProps) {
+  const { t } = useTranslation();
   const { workspace, repositories } = useWorkspace();
   const navigate = useNavigate();
   const { project, conversations } = props.loaderData;
@@ -118,9 +121,7 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
     },
     (error) => {
-      toast.error(
-        `Failed to create conversation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      toast.error(getErrorKey(error, t));
     },
     project?.id ?? workspace.projectId,
   );
@@ -131,17 +132,17 @@ export default function ConversationIndexPage(props: Route.ComponentProps) {
 
   const handleNewChat = () => {
     if (!project) {
-      toast.error('Project not found');
+      toast.error(t(ERROR_KEYS.notFound));
       return;
     }
 
     if (!repositories.conversation) {
-      toast.error('Conversation repository not available');
+      toast.error(t(ERROR_KEYS.generic));
       return;
     }
 
     if (!workspace.userId) {
-      toast.error('User not authenticated');
+      toast.error(t(ERROR_KEYS.permissionDenied));
       return;
     }
 
