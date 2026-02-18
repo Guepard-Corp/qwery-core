@@ -16,12 +16,22 @@ export type DatasourceExtensionMeta = Pick<
   'id' | 'supportsPreview' | 'previewUrlKind' | 'previewDataFormat'
 >;
 
+const GSHEET_HOST_REGEX = /^(?:[a-z0-9-]+\.)?docs\.google\.com$/i;
+const GSHEET_PATH_REGEX = /^\/spreadsheets\/d\//;
+
 export function isGsheetLikeUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   const t = url.trim();
-  return (
-    t.includes('docs.google.com/spreadsheets') || /^[a-zA-Z0-9-_]{20,}$/.test(t)
-  );
+  if (/^[a-zA-Z0-9-_]{20,}$/.test(t)) return true;
+  try {
+    const parsed = new URL(t.startsWith('http') ? t : `https://${t}`);
+    return (
+      GSHEET_HOST_REGEX.test(parsed.hostname) &&
+      GSHEET_PATH_REGEX.test(parsed.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -79,19 +89,18 @@ export function inferPreviewMode(
     }
 
     const hostname = parsed.hostname.toLowerCase();
+    const isGoogleDocsHost = GSHEET_HOST_REGEX.test(hostname);
     const isEmbeddableService =
-      hostname.includes('docs.google.com') ||
-      hostname.includes('spreadsheets') ||
+      isGoogleDocsHost ||
       parsed.searchParams.has('embed') ||
       parsed.searchParams.has('widget');
 
     if (isEmbeddableService) {
+      const isSheetsPath = GSHEET_PATH_REGEX.test(parsed.pathname);
       return {
         mode: 'iframe',
         isEmbeddable: true,
-        requiresPublicationCheck:
-          hostname.includes('docs.google.com') &&
-          hostname.includes('spreadsheets'),
+        requiresPublicationCheck: isGoogleDocsHost && isSheetsPath,
         dataFormat: undefined,
       };
     }
@@ -182,10 +191,18 @@ const HttpUrlSchema = z.string().refine(
 const GoogleSheetsUrlSchema = z.string().refine(
   (url) => {
     const trimmed = url.trim();
-    return (
-      trimmed.includes('docs.google.com/spreadsheets') ||
-      /^[a-zA-Z0-9-_]{20,}$/.test(trimmed)
-    );
+    if (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed)) return true;
+    try {
+      const parsed = new URL(
+        trimmed.startsWith('http') ? trimmed : `https://${trimmed}`,
+      );
+      return (
+        GSHEET_HOST_REGEX.test(parsed.hostname) &&
+        GSHEET_PATH_REGEX.test(parsed.pathname)
+      );
+    } catch {
+      return false;
+    }
   },
   {
     message: 'Invalid Google Sheets URL',
