@@ -100,9 +100,9 @@ describe('SessionCompaction prune', () => {
   it('processes only messages older than last user and prunes when over threshold', async () => {
     await repositories.conversation.create(makeConversation());
     const base = new Date(1000);
-    // User0 (0), Asst0 with large tool output (1), User1 (2), Asst1 (3), User2 (4)
-    // Last user index = 4 (User2). We process indices < 4 => 0, 1, 2, 3 (User0, Asst0, User1, Asst1).
-    // estimateTokens = ceil(len/4). 200_000 chars => 50_000 tokens > PRUNE_PROTECT (40k) and pruned > PRUNE_MINIMUM (20k)
+    // User0 (0), Asst0 with large tool output (1), User1 (2), Asst1 with large tool output (3), User2 (4)
+    // Last user index = 4 (User2). Protection will stop at Asst1 (newest large part),
+    // then pruning should apply to older tool output in Asst0.
     const largeOutput = 'x'.repeat(200_000);
     await repositories.message.create(
       makeMessage(
@@ -141,7 +141,16 @@ describe('SessionCompaction prune', () => {
       makeMessage(
         'msg-asst-1',
         MessageRole.ASSISTANT,
-        { parts: [{ type: 'text', text: 'ok' }] },
+        {
+          parts: [
+            { type: 'step-start' },
+            {
+              type: 'tool-runQuery',
+              state: 'output-available',
+              output: { result: largeOutput },
+            },
+          ],
+        },
         new Date(base.getTime() + 3),
       ),
     );
@@ -172,23 +181,24 @@ describe('SessionCompaction prune', () => {
     expect(typeof toolPart?.compactedAt).toBe('number');
   });
 
-  it('prunes previous assistant when current user just sent (simulates prune before stream persist)', async () => {
+  it('prunes older assistant outputs even when last message is user', async () => {
     await repositories.conversation.create(makeConversation());
     const base = new Date(1000);
-    // Production scenario: User1 (0), Asst1 with large tool output (1), User2 (2) – no Asst2 yet
-    // Last user index = 2. We process indices < 2 => User1, Asst1. Asst1 is pruned.
+    // User0 (0), Asst0 with large tool output (1), User1 (2), Asst1 with large tool output (3), User2 (4)
+    // Last user is User2. Protection will stop at Asst1 (newest large part),
+    // and pruning should apply to older tool output in Asst0.
     const largeOutput = 'x'.repeat(200_000);
     await repositories.message.create(
       makeMessage(
-        'msg-user-1',
+        'msg-user-0',
         MessageRole.USER,
-        { parts: [{ type: 'text', text: 'first' }] },
+        { parts: [{ type: 'text', text: 'zeroth' }] },
         new Date(base.getTime()),
       ),
     );
     await repositories.message.create(
       makeMessage(
-        'msg-asst-1',
+        'msg-asst-0',
         MessageRole.ASSISTANT,
         {
           parts: [
@@ -205,10 +215,35 @@ describe('SessionCompaction prune', () => {
     );
     await repositories.message.create(
       makeMessage(
+        'msg-user-1',
+        MessageRole.USER,
+        { parts: [{ type: 'text', text: 'first' }] },
+        new Date(base.getTime() + 2),
+      ),
+    );
+    await repositories.message.create(
+      makeMessage(
+        'msg-asst-1',
+        MessageRole.ASSISTANT,
+        {
+          parts: [
+            { type: 'step-start' },
+            {
+              type: 'tool-runQuery',
+              state: 'output-available',
+              output: { result: largeOutput },
+            },
+          ],
+        },
+        new Date(base.getTime() + 3),
+      ),
+    );
+    await repositories.message.create(
+      makeMessage(
         'msg-user-2',
         MessageRole.USER,
         { parts: [{ type: 'text', text: 'second' }] },
-        new Date(base.getTime() + 2),
+        new Date(base.getTime() + 4),
       ),
     );
 
@@ -217,7 +252,7 @@ describe('SessionCompaction prune', () => {
 
     expect(updateSpy).toHaveBeenCalledTimes(1);
     const [updatedMessage] = updateSpy.mock.calls[0] as [Message];
-    expect(updatedMessage.id).toBe('msg-asst-1');
+    expect(updatedMessage.id).toBe('msg-asst-0');
     const parts = (updatedMessage.content as { parts?: unknown[] }).parts ?? [];
     const toolPart = parts.find(
       (p): p is { type?: string; compactedAt?: number } =>

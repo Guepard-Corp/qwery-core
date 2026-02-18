@@ -2,7 +2,7 @@ import { generateText } from 'ai';
 import type { Repositories } from '@qwery/domain/repositories';
 import { MessageRole } from '@qwery/domain/entities';
 import { getLogger } from '@qwery/shared/logger';
-import type { Message } from '../llm/message';
+import type { Message, MessageContentPart } from '../llm/message';
 import { Provider } from '../llm/provider';
 import { Messages } from '../llm/message';
 import { MessagePersistenceService } from '../services/message-persistence.service';
@@ -28,7 +28,8 @@ const checkPrune = (part: unknown): boolean => {
   const status = typeof stateVal === 'string' ? stateVal : stateVal?.status;
   const isToolPart =
     PRUNE_PROTECTED_TOOL_PREFIXES.some((prefix) => type.startsWith(prefix)) ||
-    type === 'dynamic-tool';
+    type === 'dynamic-tool' ||
+    type === 'tool';
   const isPrunableState =
     status !== undefined && PRUNE_PROTECTED_TOOL_STATES.includes(status);
   const compacted =
@@ -50,7 +51,31 @@ const checkPrune = (part: unknown): boolean => {
 };
 
 function estimateTokens(text: string): number {
-  return Math.ceil((text?.length ?? 0) / 4);
+  const MAX_TOKENS_PER_PART = 50_000;
+  return Math.min(Math.ceil((text?.length ?? 0) / 4), MAX_TOKENS_PER_PART);
+}
+
+function getPartTokenEstimate(part: {
+  type?: string;
+  state?: unknown;
+  output?: unknown;
+}): number {
+  const output =
+    part.type === 'tool' &&
+    typeof part.state === 'object' &&
+    part.state !== null &&
+    'output' in part.state
+      ? (part.state as { output?: unknown }).output
+      : (part as { output?: unknown }).output;
+  const outputStr =
+    typeof output === 'string'
+      ? output
+      : output &&
+          typeof output === 'object' &&
+          'text' in (output as Record<string, unknown>)
+        ? String((output as { text?: string }).text ?? '')
+        : JSON.stringify(output ?? '');
+  return estimateTokens(outputStr);
 }
 
 export type IsOverflowInput = {
@@ -70,11 +95,23 @@ export type IsOverflowInput = {
 };
 
 export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
+  const logger = await getLogger();
   const model =
     typeof input.model === 'string'
       ? Provider.getModelFromString(input.model)
       : input.model;
-  if (!model?.limit?.context || model.limit.context === 0) return false;
+  if (!model?.limit?.context || model.limit.context === 0) {
+    logger.info(
+      '[SessionCompaction] [TEMP] No context limit, overflow check skipped',
+      {
+        model:
+          typeof input.model === 'string'
+            ? input.model
+            : `${input.model?.providerID}/${input.model?.id}`,
+      },
+    );
+    return false;
+  }
   const context = model.limit.context;
   const outputLimit =
     Math.min(model.limit.output ?? Infinity, OUTPUT_TOKEN_MAX) ||
@@ -83,14 +120,19 @@ export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
   const count =
     input.tokens.input + input.tokens.cache.read + input.tokens.output;
   const overflow = count > usable;
-  if (overflow) {
-    const logger = await getLogger();
-    logger.info('[SessionCompaction] Context overflow detected', {
-      count,
-      usable,
-      context,
-    });
-  }
+  logger.info('[SessionCompaction] [TEMP] Overflow check result', {
+    overflow,
+    count,
+    usable,
+    context,
+    outputLimit,
+    breakdown: {
+      input: input.tokens.input,
+      cacheRead: input.tokens.cache.read,
+      output: input.tokens.output,
+      reasoning: input.tokens.reasoning,
+    },
+  });
   return overflow;
 }
 
@@ -104,95 +146,176 @@ export async function prune(input: PruneInput): Promise<void> {
   const logger = await getLogger();
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
-  if (!conversation) return;
-  logger.info('[SessionCompaction] Prune started', { conversationSlug });
+  if (!conversation) {
+    logger.warn(
+      '[SessionCompaction] [TEMP] Prune skipped: conversation not found',
+      {
+        conversationSlug,
+      },
+    );
+    return;
+  }
+  logger.info('[SessionCompaction] [TEMP] Prune started', {
+    conversationSlug,
+    conversationId: conversation.id,
+  });
 
   const messages = await repositories.message.findByConversationId(
     conversation.id,
   );
-  let total = 0;
-  let pruned = 0;
-  const toPrune: { message: (typeof messages)[number]; partIndex: number }[] =
-    [];
 
   const userIndices = messages
     .map((m, i) => (m.role === MessageRole.USER ? i : -1))
     .filter((i) => i >= 0);
-  // Protect only the last user turn (prune runs before current assistant is persisted)
   const protectedStartIndex =
     userIndices.length >= 1
       ? userIndices[userIndices.length - 1]!
       : messages.length;
 
-  for (let msgIndex = 0; msgIndex < protectedStartIndex; msgIndex++) {
+  let protectedTokens = 0;
+  let shouldStopScanning = false;
+  let lastProtectedMsgIndex = -1;
+  let lastProtectedPartIndex = -1;
+
+  // Protect the most recent tool outputs (up to PRUNE_PROTECT)
+  for (let msgIndex = protectedStartIndex - 1; msgIndex >= 0; msgIndex--) {
+    if (shouldStopScanning) break;
+
     const msg = messages[msgIndex]!;
     const meta = msg.metadata as { summary?: boolean } | undefined;
-    if (msg.role === MessageRole.ASSISTANT && meta?.summary) break;
+    if (msg.role === MessageRole.ASSISTANT && meta?.summary) {
+      continue;
+    }
 
     const parts = (msg.content as { parts?: unknown[] })?.parts ?? [];
     for (let partIndex = parts.length - 1; partIndex >= 0; partIndex--) {
+      if (shouldStopScanning) break;
+
       const part = parts[partIndex] as {
         type?: string;
         tool?: string;
         state?:
           | string
-          | { status?: string; output?: string; time?: { compacted?: number } };
+          | {
+              status?: string;
+              output?: string;
+              time?: { compacted?: number };
+              attachments?: unknown[];
+            };
         output?: unknown;
       };
-      if (checkPrune(part)) {
-        const output = (part as { output?: unknown }).output;
-        const outputStr =
-          typeof output === 'string'
-            ? output
-            : output &&
-                typeof output === 'object' &&
-                'text' in (output as Record<string, unknown>)
-              ? String((output as { text?: string }).text ?? '')
-              : JSON.stringify(output ?? '');
-        const estimate = estimateTokens(outputStr);
-        total += estimate;
-        if (total > PRUNE_PROTECT) {
-          pruned += estimate;
-          toPrune.push({ message: msg, partIndex });
-        }
+
+      if (!checkPrune(part)) continue;
+
+      const estimate = getPartTokenEstimate(part);
+
+      if (protectedTokens >= PRUNE_PROTECT) {
+        shouldStopScanning = true;
+        break;
+      }
+
+      const wouldExceed = protectedTokens + estimate >= PRUNE_PROTECT;
+      protectedTokens += estimate;
+
+      if (wouldExceed) {
+        shouldStopScanning = true;
+        lastProtectedMsgIndex = msgIndex;
+        lastProtectedPartIndex = partIndex;
+        break;
       }
     }
   }
 
+  const toPrune: { message: (typeof messages)[number]; partIndex: number }[] =
+    [];
+  let pruned = 0;
+
+  const pruneStartIndex =
+    lastProtectedMsgIndex >= 0
+      ? lastProtectedMsgIndex - 1
+      : protectedStartIndex - 1;
+
+  // Prune older tool outputs, but never touch the last user turn
+  for (let msgIndex = pruneStartIndex; msgIndex >= 0; msgIndex--) {
+    const message = messages[msgIndex];
+    if (!message) continue;
+
+    const meta = message.metadata as { summary?: boolean } | undefined;
+    if (message.role === MessageRole.ASSISTANT && meta?.summary) {
+      continue;
+    }
+
+    const content = message.content as { parts?: MessageContentPart[] };
+    const parts = content.parts ?? [];
+    const partStartIndex =
+      msgIndex === lastProtectedMsgIndex && lastProtectedPartIndex >= 0
+        ? lastProtectedPartIndex - 1
+        : parts.length - 1;
+
+    for (let partIndex = partStartIndex; partIndex >= 0; partIndex--) {
+      const part = parts[partIndex];
+      if (!part || !checkPrune(part)) continue;
+
+      const estimate = getPartTokenEstimate(part);
+      toPrune.push({ message, partIndex });
+      pruned += estimate;
+    }
+  }
+
+  logger.info('[SessionCompaction] [TEMP] Prune plan', {
+    conversationSlug,
+    protectedStartIndex,
+    protectedTokens,
+    lastProtectedMsgIndex,
+    lastProtectedPartIndex,
+    partsToPrune: toPrune.length,
+    prunedTokens: pruned,
+    PRUNE_MINIMUM,
+    PRUNE_PROTECT,
+  });
+
   if (pruned <= PRUNE_MINIMUM) {
-    logger.info(
-      `[SessionCompaction] Prune skipped (below minimum): ${pruned} <= ${PRUNE_MINIMUM}`,
-      {
-        conversationSlug,
-        pruned,
-        PRUNE_MINIMUM,
-      },
-    );
     return;
   }
 
-  logger.info('[SessionCompaction] Pruning tool outputs', {
-    conversationSlug,
-    partsCount: toPrune.length,
-    prunedTokens: pruned,
-  });
-
   for (const { message, partIndex } of toPrune) {
-    const content = { ...message.content } as { parts?: unknown[] };
+    const content = { ...message.content } as { parts?: MessageContentPart[] };
     const parts = [...(content.parts ?? [])];
     const part = parts[partIndex] as Record<string, unknown>;
-    if (part && typeof part === 'object') {
-      parts[partIndex] = {
-        ...part,
-        compactedAt: Date.now(),
-      };
-      await repositories.message.update({
-        ...message,
-        content: { ...content, parts } as typeof message.content,
-        updatedAt: new Date(),
-        updatedBy: message.updatedBy ?? 'system',
-      });
+    if (!part || typeof part !== 'object') continue;
+
+    const now = Date.now();
+    const type = String(part.type ?? '');
+    const next: Record<string, unknown> = { ...part, compactedAt: now };
+
+    if (type === 'tool') {
+      const state = part.state;
+      if (typeof state === 'object' && state !== null) {
+        const stateObj = state as Record<string, unknown>;
+        const time = stateObj.time;
+        const nextTime =
+          typeof time === 'object' && time !== null
+            ? { ...(time as Record<string, unknown>), compacted: now }
+            : { compacted: now };
+        next.state = {
+          ...stateObj,
+          time: nextTime,
+          output: '[Old tool result content cleared]',
+          attachments: [],
+        };
+      }
+    } else if (Object.hasOwn(part, 'output')) {
+      next.output = '[Old tool result content cleared]';
     }
+
+    parts[partIndex] = next as MessageContentPart;
+
+    await repositories.message.update({
+      ...message,
+      content: { ...content, parts } as typeof message.content,
+      updatedAt: new Date(),
+      updatedBy: message.updatedBy ?? 'system',
+    });
   }
 }
 
@@ -211,29 +334,55 @@ const COMPACTION_USER_PROMPT =
 export async function process(
   input: ProcessInput,
 ): Promise<'stop' | 'continue'> {
-  const { parentID, messages, conversationSlug, abort, auto, repositories } =
-    input;
+  const {
+    parentID,
+    messages,
+    conversationSlug,
+    abort,
+    auto: _auto,
+    repositories,
+  } = input;
 
   const logger = await getLogger();
-  logger.info('[SessionCompaction] Process started', {
+  logger.info('[SessionCompaction] [TEMP] Process started', {
     conversationSlug,
     parentID,
-    auto,
+    auto: _auto,
+    messagesCount: messages.length,
+    lastMessages: messages.slice(-3).map((m) => ({
+      id: m.id,
+      role: m.role,
+      hasSummary: !!(m.metadata as { summary?: boolean })?.summary,
+    })),
   });
 
   const compactionAgent = Registry.agents.get('compaction');
   if (!compactionAgent) {
-    logger.info(
-      '[SessionCompaction] Compaction agent not registered, skipping',
+    logger.warn(
+      '[SessionCompaction] [TEMP] Compaction agent not registered, skipping',
     );
     return 'continue';
   }
 
   const lastUser = messages.findLast((m) => m.id === parentID);
   if (!lastUser) {
-    logger.info('[SessionCompaction] Last user message not found, skipping');
+    logger.warn(
+      '[SessionCompaction] [TEMP] Last user message not found, skipping',
+      {
+        conversationSlug,
+        parentID,
+        availableUserIds: messages
+          .filter((m) => m.role === MessageRole.USER)
+          .map((m) => m.id),
+      },
+    );
     return 'continue';
   }
+  logger.info('[SessionCompaction] [TEMP] Found parent user message', {
+    conversationSlug,
+    parentID,
+    lastUserMessageId: lastUser.id,
+  });
 
   const userMeta = lastUser.metadata as
     | {
@@ -257,6 +406,13 @@ export async function process(
   ];
 
   try {
+    logger.info('[SessionCompaction] [TEMP] Generating compaction summary', {
+      conversationSlug,
+      modelId: model.id,
+      providerId: model.providerID,
+      compactionMessagesCount: compactionMessages.length,
+    });
+
     const result = await generateText({
       model: await Provider.getLanguage(model),
       messages: compactionMessages,
@@ -264,9 +420,20 @@ export async function process(
       abortSignal: abort,
     });
 
+    logger.info('[SessionCompaction] [TEMP] Compaction summary generated', {
+      conversationSlug,
+      summaryLength: result.text.length,
+      usage: result.usage,
+    });
+
     const conversation =
       await repositories.conversation.findBySlug(conversationSlug);
-    if (!conversation) return 'stop';
+    if (!conversation) {
+      logger.warn(
+        '[SessionCompaction] [TEMP] Conversation not found after summary generation',
+      );
+      return 'stop';
+    }
 
     const persistence = new MessagePersistenceService(
       repositories.message,
@@ -274,10 +441,11 @@ export async function process(
       conversationSlug,
     );
 
+    const summaryText = result.text.trim();
     const assistantMsg = {
       id: uuidv4(),
       role: 'assistant' as const,
-      parts: [{ type: 'text' as const, text: result.text.trim() }],
+      parts: [{ type: 'text' as const, text: summaryText }],
       metadata: {
         summary: true,
         finish: 'stop',
@@ -311,35 +479,24 @@ export async function process(
       },
     });
 
-    logger.info('[SessionCompaction] Summary persisted', {
+    logger.info('[SessionCompaction] [TEMP] Summary persisted', {
       conversationSlug,
-      auto,
       summaryTokens: assistantMsg.metadata.tokens,
+      summaryMessageId: assistantMsg.id,
+      summaryLength: summaryText.length,
     });
-
-    if (auto) {
-      const continueUserMsg = {
-        id: uuidv4(),
-        role: 'user' as const,
-        parts: [
-          {
-            type: 'text' as const,
-            text: 'Continue if you have next steps',
-            synthetic: true,
-          },
-        ],
-      };
-      await persistence.persistMessages([continueUserMsg], undefined, {
-        defaultMetadata: { agent: 'compaction' },
-      });
-    }
   } catch (err) {
-    logger.warn(
-      '[SessionCompaction] Process failed',
-      err instanceof Error ? err.message : String(err),
-    );
+    logger.warn('[SessionCompaction] [TEMP] Process failed', {
+      conversationSlug,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return 'stop';
   }
+  logger.info('[SessionCompaction] [TEMP] Process completed successfully', {
+    conversationSlug,
+    result: 'continue',
+  });
   return 'continue';
 }
 
@@ -357,12 +514,25 @@ export async function create(input: CreateInput): Promise<void> {
   const logger = await getLogger();
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
-  if (!conversation) return;
+  if (!conversation) {
+    logger.warn(
+      '[SessionCompaction] [TEMP] Cannot create compaction task: conversation not found',
+      {
+        conversationSlug,
+      },
+    );
+    return;
+  }
 
-  logger.info('[SessionCompaction] Compaction task created', {
+  logger.info('[SessionCompaction] [TEMP] Compaction task created', {
     conversationSlug,
+    conversationId: conversation.id,
     agent,
     auto,
+    model:
+      typeof model === 'string'
+        ? model
+        : `${model.providerID}/${model.modelID}`,
   });
 
   const modelObj =
