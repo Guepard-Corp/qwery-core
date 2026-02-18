@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import type { IDatasourceRepository } from '@qwery/domain/repositories';
-import { GetDatasourceService } from '@qwery/domain/services';
 import {
   DatasourceKind,
   type DatasourceMetadata,
@@ -14,6 +14,10 @@ import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { getDefaultModel } from '@qwery/agent-factory-sdk';
 import { apiPost, driverCommand } from '~/lib/repositories/api-client';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import {
+  getDatasourceKey,
+  getDatasourceByIdQueryFn,
+} from '~/lib/queries/use-get-datasources';
 
 interface NotebookPromptResponse {
   sqlQuery: string | null;
@@ -56,6 +60,7 @@ export function AgentsProvider({
   options = {},
 }: AgentsProviderProps) {
   const { data: extensions = [] } = useGetDatasourceExtensions();
+  const queryClient = useQueryClient();
 
   const runQueryWithAgent = async (
     datasourceRepository: IDatasourceRepository,
@@ -63,8 +68,10 @@ export function AgentsProvider({
     datasourceId: string,
   ): Promise<string | null> => {
     try {
-      const datasourceService = new GetDatasourceService(datasourceRepository);
-      const datasource = await datasourceService.execute(datasourceId);
+      const datasource = await queryClient.fetchQuery({
+        queryKey: getDatasourceKey(datasourceId),
+        queryFn: getDatasourceByIdQueryFn(datasourceRepository, datasourceId),
+      });
       if (!datasource) {
         throw new Error('Datasource not found');
       }

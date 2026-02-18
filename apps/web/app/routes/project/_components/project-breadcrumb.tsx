@@ -5,8 +5,6 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { toast } from 'sonner';
-
-import { GetProjectsByOrganizationIdService } from '@qwery/domain/services';
 import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
@@ -18,6 +16,7 @@ import { useProject } from '~/lib/context/project-context';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
 import {
   getProjectsByOrganizationIdKey,
+  getProjectsByOrganizationIdQueryFn,
   useGetProjects,
 } from '~/lib/queries/use-get-projects';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
@@ -203,12 +202,12 @@ export function ProjectBreadcrumb() {
     const subPath = getSubPathToPreserve();
     if (subPath) {
       try {
-        const useCase = new GetProjectsByOrganizationIdService(
-          repositories.project,
-        );
         const projectsInNewOrg = await queryClient.fetchQuery({
           queryKey: getProjectsByOrganizationIdKey(org.id),
-          queryFn: () => useCase.execute(org.id),
+          queryFn: getProjectsByOrganizationIdQueryFn(
+            repositories.project,
+            org.id,
+          ),
         });
         const first = projectsInNewOrg?.[0];
         if (first) {

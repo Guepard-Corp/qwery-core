@@ -11,11 +11,18 @@ export function getProjectsByOrganizationIdKey(orgId: string) {
   return ['projects', orgId];
 }
 
-export function useGetProjects(repository: IProjectRepository, orgId: string) {
+export function getProjectsByOrganizationIdQueryFn(
+  repository: IProjectRepository,
+  orgId: string,
+) {
   const useCase = new GetProjectsByOrganizationIdService(repository);
+  return () => useCase.execute(orgId);
+}
+
+export function useGetProjects(repository: IProjectRepository, orgId: string) {
   return useQuery({
     queryKey: getProjectsByOrganizationIdKey(orgId),
-    queryFn: () => useCase.execute(orgId),
+    queryFn: getProjectsByOrganizationIdQueryFn(repository, orgId),
     staleTime: 30 * 1000,
     enabled: !!orgId,
   });
@@ -35,15 +42,26 @@ export function useGetProjectById(
   });
 }
 
+export function getProjectBySlugKey(slug: string) {
+  return ['project', slug];
+}
+
+export function getProjectBySlugQueryFn(
+  repository: IProjectRepository,
+  slug: string,
+) {
+  const useCase = new GetProjectBySlugService(repository);
+  return () => useCase.execute(slug);
+}
+
 export function useGetProjectBySlug(
   repository: IProjectRepository,
   slug: string,
   options?: { enabled?: boolean },
 ) {
-  const useCase = new GetProjectBySlugService(repository);
   return useQuery({
-    queryKey: ['project', slug],
-    queryFn: () => useCase.execute(slug),
+    queryKey: getProjectBySlugKey(slug),
+    queryFn: getProjectBySlugQueryFn(repository, slug),
     staleTime: 30 * 1000,
     enabled:
       options?.enabled !== undefined ? options.enabled && !!slug : !!slug,

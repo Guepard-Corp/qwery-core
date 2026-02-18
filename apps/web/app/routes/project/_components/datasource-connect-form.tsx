@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { z } from 'zod';
 import { z as zLib } from 'zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
@@ -30,12 +29,10 @@ import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useCreateDatasource } from '~/lib/mutations/use-create-datasource';
+import { useDeleteDatasource } from '~/lib/mutations/use-delete-datasource';
+import { useUpdateDatasource } from '~/lib/mutations/use-update-datasource';
 import { generateRandomName } from '~/lib/names';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
-import {
-  getDatasourcesByProjectIdKey,
-  getDatasourcesKey,
-} from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { FormRenderer } from '@qwery/ui/form-renderer';
@@ -78,14 +75,12 @@ export function DatasourceConnectForm({
   onTestConnectionLoadingChange,
   existingDatasource,
 }: DatasourceConnectFormProps) {
-  const queryClient = useQueryClient();
   const [internalName, setInternalName] = useState(
     () => existingDatasource?.name ?? generateRandomName(),
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
     null,
@@ -222,6 +217,45 @@ export function DatasourceConnectForm({
     },
   );
 
+  const updateDatasourceMutation = useUpdateDatasource(
+    datasourceRepository,
+    (_datasource) => {
+      toast.success(<Trans i18nKey="datasources:updateSuccess" />);
+      setIsConnecting(false);
+      onSuccess();
+    },
+    (error) => {
+      const errorMessage =
+        error instanceof Error ? (
+          error.message
+        ) : (
+          <Trans i18nKey="datasources:updateFailed" />
+        );
+      toast.error(errorMessage);
+      console.error(error);
+      setIsConnecting(false);
+    },
+  );
+
+  const deleteDatasourceMutation = useDeleteDatasource(
+    datasourceRepository,
+    () => {
+      toast.success(<Trans i18nKey="datasources:deleteSuccess" />);
+      setIsDeleteDialogOpen(false);
+      onSuccess();
+    },
+    (error) => {
+      const errorMessage =
+        error instanceof Error ? (
+          error.message
+        ) : (
+          <Trans i18nKey="datasources:deleteFailed" />
+        );
+      toast.error(errorMessage);
+      console.error(error);
+    },
+  );
+
   const handleTestConnection = useCallback(() => {
     if (!extension?.data) return;
     if (!formValues) {
@@ -348,47 +382,20 @@ export function DatasourceConnectForm({
       return;
     }
     setIsConnecting(true);
-    try {
-      const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
-      if (!parsed.success) {
-        const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
-        toast.error(msg);
-        setIsConnecting(false);
-        return;
-      }
-      const validData = parsed.data as Record<string, unknown>;
-      const updatedDatasource: Datasource = {
-        ...existingDatasource,
-        name: datasourceName.trim() || existingDatasource.name,
-        config: validData,
-        updatedAt: new Date(),
-        updatedBy: workspace.userId ?? 'system',
-      };
-      await datasourceRepository.update(updatedDatasource);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getDatasourcesKey() }),
-        existingDatasource.projectId
-          ? queryClient.invalidateQueries({
-              queryKey: getDatasourcesByProjectIdKey(
-                existingDatasource.projectId,
-              ),
-            })
-          : Promise.resolve(),
-      ]);
-      toast.success(<Trans i18nKey="datasources:updateSuccess" />);
-      onSuccess();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:updateFailed" />
-        ),
-      );
-      console.error(error);
-    } finally {
+    const parsed = (effectiveSchema as z.ZodTypeAny).safeParse(formValues);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid configuration';
+      toast.error(msg);
       setIsConnecting(false);
+      return;
     }
+    const validData = parsed.data as Record<string, unknown>;
+    updateDatasourceMutation.mutate({
+      id: existingDatasource.id,
+      name: datasourceName.trim() || existingDatasource.name,
+      config: validData,
+      updatedBy: workspace.userId ?? 'system',
+    });
   }, [
     existingDatasource,
     extension?.data,
@@ -396,55 +403,32 @@ export function DatasourceConnectForm({
     formValues,
     datasourceName,
     workspace.userId,
-    datasourceRepository,
-    queryClient,
-    onSuccess,
+    updateDatasourceMutation,
   ]);
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = useCallback(() => {
     if (!existingDatasource?.id) {
       toast.error(<Trans i18nKey="datasources:deleteMissingId" />);
       return;
     }
-    setIsDeleting(true);
-    try {
-      await datasourceRepository.delete(existingDatasource.id);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getDatasourcesKey() }),
-        existingDatasource.projectId
-          ? queryClient.invalidateQueries({
-              queryKey: getDatasourcesByProjectIdKey(
-                existingDatasource.projectId,
-              ),
-            })
-          : Promise.resolve(),
-      ]);
-      toast.success(<Trans i18nKey="datasources:deleteSuccess" />);
-      setIsDeleteDialogOpen(false);
-      onSuccess();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:deleteFailed" />
-        ),
-      );
-      console.error(error);
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [existingDatasource, datasourceRepository, queryClient, onSuccess]);
+    deleteDatasourceMutation.mutate({
+      id: existingDatasource.id,
+      projectId: existingDatasource.projectId,
+    });
+  }, [existingDatasource, deleteDatasourceMutation]);
 
   const isTestConnectionLoading = testConnectionMutation.isPending;
   const isPending =
-    isTestConnectionLoading || createDatasourceMutation.isPending || isDeleting;
+    isTestConnectionLoading ||
+    createDatasourceMutation.isPending ||
+    updateDatasourceMutation.isPending ||
+    deleteDatasourceMutation.isPending;
   const actionsEl = (
     <div className="flex flex-col-reverse gap-3 pt-8 sm:flex-row sm:items-center sm:justify-between">
       <Button
         variant="ghost"
         onClick={onCancel}
-        disabled={isConnecting || isPending || isDeleting}
+        disabled={isConnecting || isPending}
         className="text-muted-foreground hover:text-foreground hover:bg-transparent"
       >
         <Trans i18nKey="datasources:cancel" />
@@ -454,7 +438,7 @@ export function DatasourceConnectForm({
           <Button
             variant="destructive"
             onClick={() => setIsDeleteDialogOpen(true)}
-            disabled={isConnecting || isPending || isDeleting}
+            disabled={isConnecting || isPending}
             data-test="datasource-delete-button"
           >
             <Trans i18nKey="datasources:deleteButton" />
@@ -636,7 +620,8 @@ export function DatasourceConnectForm({
         <AlertDialog
           open={isDeleteDialogOpen}
           onOpenChange={(open) => {
-            if (!isDeleting) setIsDeleteDialogOpen(open);
+            if (!deleteDatasourceMutation.isPending)
+              setIsDeleteDialogOpen(open);
           }}
         >
           <AlertDialogContent className="z-[200]" overlayClassName="z-[200]">
@@ -652,15 +637,15 @@ export function DatasourceConnectForm({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>
+              <AlertDialogCancel disabled={deleteDatasourceMutation.isPending}>
                 <Trans i18nKey="datasources:cancel" />
               </AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleConfirmDelete}
-                disabled={isDeleting}
+                disabled={deleteDatasourceMutation.isPending}
               >
-                {isDeleting ? (
+                {deleteDatasourceMutation.isPending ? (
                   <Trans i18nKey="datasources:deleting" />
                 ) : (
                   <Trans i18nKey="datasources:deleteButton" />

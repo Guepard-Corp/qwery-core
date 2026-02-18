@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import { useNavigate, useParams, Link } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   Pencil,
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
-import { GetProjectBySlugService } from '@qwery/domain/services';
 import { DatasourceExtension } from '@qwery/extensions-sdk';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
@@ -56,6 +56,10 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import {
+  getProjectBySlugKey,
+  getProjectBySlugQueryFn,
+} from '~/lib/queries/use-get-projects';
 import { DATASOURCES } from '~/lib/loaders/datasource-loader';
 
 import type { Route } from './+types/new';
@@ -421,6 +425,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   const [isHoveringName, setIsHoveringName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { repositories, workspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const datasourceRepository = repositories.datasource;
   const projectRepository = repositories.project;
 
@@ -682,11 +687,11 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
     let projectId = workspace.projectId;
     if (!projectId) {
-      const getProjectBySlugService = new GetProjectBySlugService(
-        projectRepository,
-      );
       try {
-        const project = await getProjectBySlugService.execute(project_id);
+        const project = await queryClient.fetchQuery({
+          queryKey: getProjectBySlugKey(project_id),
+          queryFn: getProjectBySlugQueryFn(repositories.project, project_id),
+        });
         projectId = project.id;
       } catch (error) {
         toast.error(

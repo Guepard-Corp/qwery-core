@@ -29,6 +29,10 @@ import {
 } from '@qwery/agent-factory-sdk';
 import { scrollToElementBySelector } from '@qwery/ui/ai';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import {
+  useConversation,
+  useUpdateConversation,
+} from '~/lib/mutations/use-conversation';
 
 export default function NotebookPage() {
   const params = useParams();
@@ -128,6 +132,23 @@ export default function NotebookPage() {
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to delete notebook: ${message}`);
     },
+  );
+
+  const updateConversationMutation = useUpdateConversation(
+    repositories.conversation,
+  );
+
+  const createConversationMutation = useConversation(
+    repositories.conversation,
+    (conversation) => {
+      // Conversation created successfully, slug is available in conversation.slug
+    },
+    (error) => {
+      console.error(error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to create conversation: ${message}`);
+    },
+    notebookProjectId || undefined,
   );
 
   // Run query mutation
@@ -347,36 +368,29 @@ export default function NotebookPage() {
         conversationSlug = existingConversation.slug;
         // Update datasources if needed
         if (!existingConversation.datasources?.includes(datasourceId)) {
-          await repositories.conversation.update({
-            ...existingConversation,
-            datasources: [
-              ...(existingConversation.datasources || []),
-              datasourceId,
-            ],
-            updatedBy: workspace.userId,
-            updatedAt: new Date(),
-          });
+          const updatedConversation =
+            await updateConversationMutation.mutateAsync({
+              id: existingConversation.id,
+              datasources: [
+                ...(existingConversation.datasources || []),
+                datasourceId,
+              ],
+              updatedBy: workspace.userId || 'system',
+            });
+          conversationSlug = updatedConversation.slug;
         }
       } else {
         // Create new conversation
         const { v4: uuidv4 } = await import('uuid');
-        const conversationId = uuidv4();
-        const now = new Date();
         const notebookTitle = `Notebook - ${notebook.data.id}`;
 
-        const newConversation = await repositories.conversation.create({
-          id: conversationId,
-          slug: '', // Repository will generate slug
+        const newConversation = await createConversationMutation.mutateAsync({
           title: notebookTitle,
           projectId: notebookProjectId || '',
           taskId: uuidv4(),
           datasources: [datasourceId],
-          createdAt: now,
-          updatedAt: now,
-          createdBy: workspace.userId,
-          updatedBy: workspace.userId,
           seedMessage: '',
-          isPublic: false,
+          createdBy: workspace.userId || 'system',
         });
         conversationSlug = newConversation.slug;
       }
