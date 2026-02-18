@@ -13,21 +13,30 @@ import {
   validateDatasourceUrl,
 } from '~/lib/utils/datasource-utils';
 
+const gsheetHostRegex = /^(?:[a-z0-9-]+\.)?docs\.google\.com$/i;
+const gsheetPathRegex = /^\/spreadsheets\/d\//;
+
 vi.mock('~/lib/utils/google-sheets-preview', () => ({
   parseGoogleSheetsUrl: vi.fn((url: string) => {
-    if (url.includes('/d/e/')) {
-      return { sheetId: 'pub123', gid: '0', isPublishedUrl: true };
+    try {
+      const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+      if (!gsheetHostRegex.test(u.hostname) || !gsheetPathRegex.test(u.pathname))
+        return null;
+      return u.pathname.startsWith('/spreadsheets/d/e/')
+        ? { sheetId: 'pub123', gid: '0', isPublishedUrl: true }
+        : { sheetId: 'abc123', gid: '0', isPublishedUrl: false };
+    } catch {
+      return null;
     }
-    if (url.includes('docs.google.com/spreadsheets')) {
-      return { sheetId: 'abc123', gid: '0', isPublishedUrl: false };
-    }
-    return null;
   }),
   convertGoogleSheetsToEmbedUrl: vi.fn((url: string) => {
-    if (url.includes('docs.google.com')) {
+    try {
+      const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+      if (!gsheetHostRegex.test(u.hostname)) return null;
       return `https://docs.google.com/spreadsheets/d/abc123/pubhtml?widget=true&headers=false&gid=0`;
+    } catch {
+      return null;
     }
-    return null;
   }),
 }));
 
