@@ -305,6 +305,11 @@ export const AgentUIWrapper = forwardRef<
     [conversationSlug],
   );
 
+  const convertedInitialMessages = useMemo(
+    () => convertMessages(initialMessages),
+    [initialMessages],
+  );
+
   // Handle sendMessage and model from QweryAgentUI
   // eslint-disable react-hooks/preserve-manual-memoization -- React Compiler warning about dependency inference
   const handleSendMessageReady = useCallback(
@@ -649,7 +654,7 @@ export const AgentUIWrapper = forwardRef<
   return (
     <QweryAgentUI
       transport={transport}
-      initialMessages={convertMessages(initialMessages)}
+      initialMessages={convertedInitialMessages}
       models={SUPPORTED_MODELS as { name: string; value: string }[]}
       usage={convertUsage(usage)}
       emitFinish={handleEmitFinish}
