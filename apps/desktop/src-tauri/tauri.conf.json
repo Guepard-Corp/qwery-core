@@ -4,7 +4,7 @@
   "version": "0.2.3",
   "identifier": "run.qwery.desktop",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev:vite",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../build/client"

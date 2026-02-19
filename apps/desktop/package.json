@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "react-router dev",
+    "predev": "node scripts/download-bun.js && pnpm --filter server build",
+    "dev": "pnpm tauri dev",
+    "dev:vite": "react-router dev",
     "build": "node scripts/validate-extensions-bundle.js && pnpm -w run extensions:build && pnpm --filter server build && node scripts/download-bun.js && tsc && react-router build",
     "preview": "vite preview",
     "tauri": "tauri",
