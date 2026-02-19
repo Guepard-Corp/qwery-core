@@ -81,8 +81,39 @@ pub fn run() {
                 });
             }
 
-            // Wait for server to start (adjust timing as needed)
-            std::thread::sleep(std::time::Duration::from_millis(1500));
+            // Wait for server to be ready by checking if port is listening
+            tauri::async_runtime::spawn(async move {
+                use std::net::TcpStream;
+                use std::time::Duration;
+                
+                let max_attempts = 30;
+                let delay_ms = 200;
+
+                for attempt in 1..=max_attempts {
+                    match TcpStream::connect_timeout(
+                        &"127.0.0.1:4096".parse().unwrap(),
+                        Duration::from_millis(500),
+                    ) {
+                        Ok(_) => {
+                            println!("API Server is ready (attempt {})", attempt);
+                            return;
+                        }
+                        Err(_) => {
+                            // Server not ready yet, continue polling
+                        }
+                    }
+
+                    if attempt < max_attempts {
+                        std::thread::sleep(Duration::from_millis(delay_ms));
+                    }
+                }
+
+                eprintln!("Warning: API Server did not become ready after {} attempts", max_attempts);
+            });
+
+            // Give the server a moment to start before continuing
+            // The port check will ensure readiness in the background
+            std::thread::sleep(std::time::Duration::from_millis(500));
 
             Ok(())
         })
