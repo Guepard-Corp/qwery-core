@@ -394,9 +394,11 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             undefined,
             {
               defaultMetadata: {
-                modelId: providerModel.id,
-                providerId: providerModel.providerID,
                 agent: agentId,
+                model: {
+                  modelID: providerModel.id,
+                  providerID: providerModel.providerID,
+                },
               },
             },
           );

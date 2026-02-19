@@ -399,9 +399,11 @@ export async function process(
 
     await persistence.persistMessages([assistantMsg], undefined, {
       defaultMetadata: {
-        modelId: model.id,
-        providerId: model.providerID,
         agent: 'compaction',
+        model: {
+          modelID: model.id,
+          providerID: model.providerID,
+        },
       },
     });
   } catch (err) {
