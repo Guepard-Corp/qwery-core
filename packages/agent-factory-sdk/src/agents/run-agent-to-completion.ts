@@ -11,7 +11,10 @@ import {
   uiRoleToMessageRole,
 } from '@qwery/shared/message-role-utils';
 import { Provider } from '../llm/provider';
-import { MessagePersistenceService } from '../services/message-persistence.service';
+import {
+  MessagePersistenceService,
+  type PersistMessageOptions,
+} from '../services/message-persistence.service';
 import { UsagePersistenceService } from '../services/usage-persistence.service';
 import { getLogger } from '@qwery/shared/logger';
 import { getDefaultModel } from '../services/model-resolver';
@@ -252,18 +255,19 @@ export async function runAgentToCompletion(
     conversationSlug,
   );
   try {
+    const options: PersistMessageOptions = {
+      defaultMetadata: {
+        agent: agentId,
+        model: {
+          modelID: model.id,
+          providerID: model.providerID,
+        },
+      },
+    };
     const persistResult = await persistence.persistMessages(
       finishedMessages,
       undefined,
-      {
-        defaultMetadata: {
-          agent: agentId,
-          model: {
-            modelID: model.id,
-            providerID: model.providerID,
-          },
-        },
-      },
+      options,
     );
     if (persistResult.errors.length > 0) {
       logger.warn(
