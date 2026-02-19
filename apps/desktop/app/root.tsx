@@ -4,6 +4,7 @@ import type { Route } from '~/types/app/+types/root';
 import appConfig from '../../web/config/app.config';
 import styles from '../../web/styles/global.css?url';
 import { cn } from '@qwery/ui/utils';
+import { Spinner } from '@qwery/ui/spinner';
 import { RootProviders } from '../../web/components/root-providers';
 
 export const links = () => [{ rel: 'stylesheet', href: styles }];
@@ -27,18 +28,47 @@ function getClassName(theme?: string) {
 }
 
 export function HydrateFallback() {
+  const className = getClassName(appConfig.theme);
+  const isDark = appConfig.theme === 'dark';
+  // Dark theme background: hsl(0 0% 11%) = #1c1c1c
+  // Light theme background: hsl(0 0% 100%) = #ffffff
+  const bgColor = isDark ? '#1c1c1c' : '#ffffff';
+  const textColor = isDark ? '#fafafa' : '#09090b';
+  
   return (
-    <html lang="en">
+    <html lang="en" className={className}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Loading...</title>
+        <title>{appConfig.title}</title>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            html { background-color: ${bgColor}; }
+            body { 
+              background-color: ${bgColor}; 
+              color: ${textColor};
+              margin: 0;
+              padding: 0;
+            }
+          `
+        }} />
         <Meta />
         <Links />
       </head>
-      <body>
-        <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
-          <p>Loading...</p>
+      <body 
+        className={cn('bg-background min-h-screen overscroll-none antialiased')}
+        style={{
+          backgroundColor: bgColor,
+          color: textColor,
+        }}
+      >
+        <main className="flex min-h-screen flex-col items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Spinner className="size-8" />
+            <p className="text-muted-foreground text-sm font-medium">
+              Loading {appConfig.name}...
+            </p>
+          </div>
         </main>
         <Scripts />
       </body>
