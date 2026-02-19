@@ -64,10 +64,13 @@ export class UsagePersistenceService {
       : ['', model];
     const contextSize =
       providerId && modelId
-        ? ((catalog as Record<string, unknown>)[providerId] as {
-            models?: Record<string, { limit?: { context?: number } }>;
-          } | undefined)
-            ?.models?.[modelId]?.limit?.context ?? 0
+        ? ((
+            (catalog as Record<string, unknown>)[providerId] as
+              | {
+                  models?: Record<string, { limit?: { context?: number } }>;
+                }
+              | undefined
+          )?.models?.[modelId]?.limit?.context ?? 0)
         : 0;
 
     const { cost } = getUsageFromCatalog(catalog, model, {
