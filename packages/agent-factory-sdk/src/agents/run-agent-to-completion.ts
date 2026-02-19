@@ -11,7 +11,10 @@ import {
   uiRoleToMessageRole,
 } from '@qwery/shared/message-role-utils';
 import { Provider } from '../llm/provider';
-import { MessagePersistenceService } from '../services/message-persistence.service';
+import {
+  MessagePersistenceService,
+  type PersistMessageOptions,
+} from '../services/message-persistence.service';
 import { UsagePersistenceService } from '../services/usage-persistence.service';
 import { getLogger } from '@qwery/shared/logger';
 import { getDefaultModel } from '../services/model-resolver';
@@ -216,6 +219,17 @@ export async function runAgentToCompletion(
   }
 
   const modelString = modelInput ?? getDefaultModel();
+  let userId = 'system';
+  try {
+    const conversation =
+      (await repositories.conversation.findBySlug(conversationSlug)) ??
+      (await repositories.conversation.findById(conversationId));
+    if (conversation?.createdBy?.trim()) {
+      userId = conversation.createdBy;
+    }
+  } catch {
+    // keep default 'system'
+  }
   const usagePersistenceService = new UsagePersistenceService(
     repositories.usage,
     repositories.conversation,
@@ -224,7 +238,11 @@ export async function runAgentToCompletion(
   );
   if (rawUsage) {
     usagePersistenceService
-      .persistUsage(rawUsage as import('ai').LanguageModelUsage, modelString)
+      .persistUsage(
+        rawUsage as import('ai').LanguageModelUsage,
+        modelString,
+        userId,
+      )
       .catch(async (error) => {
         const log = await getLogger();
         log.error('[RunAgentToCompletion] Failed to persist usage:', error);
@@ -237,16 +255,19 @@ export async function runAgentToCompletion(
     conversationSlug,
   );
   try {
+    const options: PersistMessageOptions = {
+      defaultMetadata: {
+        agent: agentId,
+        model: {
+          modelID: model.id,
+          providerID: model.providerID,
+        },
+      },
+    };
     const persistResult = await persistence.persistMessages(
       finishedMessages,
       undefined,
-      {
-        defaultMetadata: {
-          modelId: model.id,
-          providerId: model.providerID,
-          agent: agentId,
-        },
-      },
+      options,
     );
     if (persistResult.errors.length > 0) {
       logger.warn(

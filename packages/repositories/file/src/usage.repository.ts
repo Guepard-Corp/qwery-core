@@ -55,7 +55,8 @@ function deserialize(row: Row): Usage {
     network: (row.network as number) ?? 0,
     gpu: (row.gpu as number) ?? 0,
     storage: (row.storage as number) ?? 0,
-    timestamp: (row.timestamp as Date) ?? new Date(),
+    timestamp:
+      row.timestamp != null ? new Date(row.timestamp as string) : new Date(),
   };
 }
 

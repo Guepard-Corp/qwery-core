@@ -5,6 +5,7 @@ import {
   GetUsageByConversationSlugService,
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
+import { getLogger } from '@qwery/shared/logger';
 import { handleDomainException } from '../lib/http-utils';
 
 export function createUsageRoutes(
@@ -32,6 +33,12 @@ export function createUsageRoutes(
       const usage = await useCase.execute({ conversationSlug, userId });
       return c.json(usage);
     } catch (error) {
+      const log = await getLogger();
+      log.error('[Usage GET]', {
+        conversationSlug: c.req.query('conversationSlug'),
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return handleDomainException(error);
     }
   });
