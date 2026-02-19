@@ -343,12 +343,16 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           repositories.project,
           conversationSlug,
         );
-        usagePersistenceService
-          .persistUsage(totalUsage, model, conversation.createdBy)
-          .catch(async (error) => {
-            const log = await getLogger();
-            log.error('[AgentSession] Failed to persist usage:', error);
-          });
+        try {
+          await usagePersistenceService.persistUsage(
+            totalUsage,
+            model,
+            conversation.createdBy,
+          );
+        } catch (error) {
+          const log = await getLogger();
+          log.error('[AgentSession] Failed to persist usage:', error);
+        }
 
         const lastAssistant = [...finishedMessages]
           .reverse()
