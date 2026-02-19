@@ -87,7 +87,7 @@ describe('UsageRepository', () => {
 
       const result = await repository.findById(usage.id);
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(usage.id);
+      expect(result?.id).toBe(String(usage.id));
     });
 
     it('returns null when not found', async () => {
