@@ -41,6 +41,9 @@ const datasourceLayout = layout("../../web/app/routes/datasource/layout.tsx", [
   route('ds/:slug/settings', "../../web/app/routes/datasource/settings.tsx"),
 ]);
 
+// Catch-all route for unmatched paths (must be last)
+const catchAllRoute = route('*', "../../web/app/routes/404.tsx");
+
 export default [
   ...rootRoutes,
   appRoutes,
@@ -48,4 +51,5 @@ export default [
   orgRoutes,
   projectLayout,
   datasourceLayout,
+  catchAllRoute,
 ] satisfies RouteConfig;
