@@ -8,6 +8,6 @@ qwery.db
 
 /workspace/
 
-public/*
+/public/
 /.vercel
 /.vercel/*

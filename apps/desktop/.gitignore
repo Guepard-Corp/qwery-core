@@ -27,4 +27,4 @@ dist-ssr
 # Tauri icon source (used to generate icons, not needed in repo)
 app-icon.png
 
-public/*
+/public/
