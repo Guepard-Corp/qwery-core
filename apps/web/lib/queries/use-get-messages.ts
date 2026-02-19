@@ -25,7 +25,9 @@ export function useGetMessagesByConversationSlug(
       );
       return useCase.execute({ conversationSlug: slug });
     },
-    staleTime: 30 * 1000,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     enabled:
       options?.enabled !== undefined ? options.enabled && !!slug : !!slug,
     refetchInterval: options?.refetchInterval,

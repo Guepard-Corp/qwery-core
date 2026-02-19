@@ -311,6 +311,9 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   }, [isLoading, messages.length]);
 
   const previousInitialMessagesRef = useRef<UIMessage[] | undefined>(undefined);
+  const previousConversationSlugRef = useRef<string | undefined>(
+    conversationSlug,
+  );
   const isInitialMountRef = useRef(true);
   const isStreamingRef = useRef(false);
   const lastStreamingEndTimeRef = useRef<number>(0);
@@ -326,6 +329,16 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
   useEffect(() => {
     if (isStreamingRef.current) {
+      return;
+    }
+
+    const hasConversationChanged =
+      previousConversationSlugRef.current !== conversationSlug;
+    if (hasConversationChanged) {
+      previousConversationSlugRef.current = conversationSlug;
+      previousInitialMessagesRef.current = initialMessages;
+      isInitialMountRef.current = false;
+      setMessages(initialMessages ?? []);
       return;
     }
 
@@ -356,6 +369,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
           );
 
         if (!idsMatch) {
+          const hasLocalUnsyncedMessages =
+            messages.length > initialMessages.length;
           const currentHasToolOutputs = messages.some(
             (msg) =>
               msg.role === 'assistant' &&
@@ -368,7 +383,11 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
             return (msg.parts?.length || 0) > (initialMsg.parts?.length || 0);
           });
 
-          if (currentHasToolOutputs || currentMoreComplete) {
+          if (
+            hasLocalUnsyncedMessages ||
+            currentHasToolOutputs ||
+            currentMoreComplete
+          ) {
             return;
           } else {
             setMessages(initialMessages);
@@ -389,22 +408,11 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
             setMessages(initialMessages);
           }
         }
-      } else if (
-        initialMessages &&
-        initialMessages.length === 0 &&
-        messages.length > 0
-      ) {
-        if (
-          !isStreamingRef.current &&
-          timeSinceStreamingEnd >= STREAMING_COOLDOWN_MS
-        ) {
-          setMessages([]);
-        }
       }
 
       isInitialMountRef.current = false;
     }
-  }, [initialMessages, setMessages, messages]);
+  }, [conversationSlug, initialMessages, setMessages, messages]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollToBottomRef = useRef<(() => void) | null>(null);
