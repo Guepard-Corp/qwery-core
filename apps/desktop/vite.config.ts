@@ -34,6 +34,14 @@ function extensionsMimeTypePlugin(): Plugin {
               res.setHeader('Content-Type', 'application/octet-stream');
             } else if (url.endsWith('.json')) {
               res.setHeader('Content-Type', 'application/json');
+            } else if (url.endsWith('.svg')) {
+              res.setHeader('Content-Type', 'image/svg+xml');
+            } else if (url.endsWith('.png')) {
+              res.setHeader('Content-Type', 'image/png');
+            } else if (url.endsWith('.jpg') || url.endsWith('.jpeg')) {
+              res.setHeader('Content-Type', 'image/jpeg');
+            } else if (url.endsWith('.webp')) {
+              res.setHeader('Content-Type', 'image/webp');
             }
             const fileContent = fs.readFileSync(filePath);
             res.end(fileContent);
