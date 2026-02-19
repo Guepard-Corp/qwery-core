@@ -31,13 +31,6 @@ export function PieChart({ chartConfig }: PieChartProps) {
   const { nameKey, valueKey, colors } = config;
 
   const { valid } = validateChartData(data);
-  if (!valid) {
-    return (
-      <div className="text-muted-foreground p-4 text-center text-sm">
-        No data available for chart
-      </div>
-    );
-  }
 
   const resolvedKeys = useMemo(
     () =>
@@ -68,6 +61,13 @@ export function PieChart({ chartConfig }: PieChartProps) {
     return configObj;
   }, [actualValueKey, chartColors, config.labels]);
 
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">

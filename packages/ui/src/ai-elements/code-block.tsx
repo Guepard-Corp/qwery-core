@@ -111,10 +111,12 @@ export const CodeBlock = ({
         )}
         {...props}
       >
-        <div className={cn(
-          "relative max-w-full min-w-0 overflow-x-auto",
-          !disableHover && "scrollbar-hover-visible"
-        )}>
+        <div
+          className={cn(
+            'relative max-w-full min-w-0 overflow-x-auto',
+            !disableHover && 'scrollbar-hover-visible',
+          )}
+        >
           <style>{`
             .scrollbar-hover-visible::-webkit-scrollbar {
               height: 5px;
@@ -148,10 +150,14 @@ export const CodeBlock = ({
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
-            <div className={cn(
-              "absolute top-2 right-2 flex items-center gap-2 transition-opacity",
-              disableHover ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            )}>
+            <div
+              className={cn(
+                'absolute top-2 right-2 flex items-center gap-2 transition-opacity',
+                disableHover
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100',
+              )}
+            >
               {children}
             </div>
           )}

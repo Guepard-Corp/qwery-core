@@ -39,13 +39,6 @@ export function LineChart({ chartConfig }: LineChartProps) {
   const { showAxisLabels } = useContext(ChartContext);
 
   const { valid } = validateChartData(data);
-  if (!valid) {
-    return (
-      <div className="text-muted-foreground p-4 text-center text-sm">
-        No data available for chart
-      </div>
-    );
-  }
 
   const resolvedKeys = useMemo(
     () =>
@@ -71,6 +64,13 @@ export function LineChart({ chartConfig }: LineChartProps) {
     return configObj;
   }, [actualYKey, chartColors, labels]);
 
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">

@@ -37,6 +37,7 @@ const FullWidthScroller = forwardRef<
     {...props}
   />
 ));
+FullWidthScroller.displayName = 'FullWidthScroller';
 
 const CenteredList = forwardRef<
   HTMLDivElement,
@@ -49,6 +50,7 @@ const CenteredList = forwardRef<
     {...props}
   />
 ));
+CenteredList.displayName = 'CenteredList';
 
 interface VirtuosoMessageListProps extends Omit<MessageItemProps, 'message'> {
   messages: UIMessage[];
@@ -203,33 +205,35 @@ export const VirtuosoMessageList = forwardRef<
 
   const components = useMemo(() => {
     const scrollerRefStable = scrollerRef;
-    return {
-      Scroller: forwardRef<
-        HTMLDivElement,
-        React.HTMLAttributes<HTMLDivElement>
-      >((props, ref) => {
-        return (
-          <FullWidthScroller
-            {...props}
-            ref={(node) => {
-              if (typeof ref === 'function') ref(node);
-              else if (ref) ref.current = node;
+    const Scroller = forwardRef<
+      HTMLDivElement,
+      React.HTMLAttributes<HTMLDivElement>
+    >((props, ref) => {
+      return (
+        <FullWidthScroller
+          {...props}
+          ref={(node) => {
+            if (typeof ref === 'function') ref(node);
+            else if (ref) ref.current = node;
 
-              if (scrollerRefStable) {
-                if (typeof scrollerRefStable === 'function') {
-                  (scrollerRefStable as (node: HTMLDivElement | null) => void)(
-                    node,
-                  );
-                } else {
-                  (
-                    scrollerRefStable as React.RefObject<HTMLDivElement | null>
-                  ).current = node;
-                }
+            if (scrollerRefStable) {
+              if (typeof scrollerRefStable === 'function') {
+                (scrollerRefStable as (node: HTMLDivElement | null) => void)(
+                  node,
+                );
+              } else {
+                (
+                  scrollerRefStable as React.RefObject<HTMLDivElement | null>
+                ).current = node;
               }
-            }}
-          />
-        );
-      }),
+            }
+          }}
+        />
+      );
+    });
+    Scroller.displayName = 'VirtuosoScroller';
+    return {
+      Scroller,
       List: CenteredList,
       Header: ({ context }: { context: typeof footerContext }) => {
         const state = context;

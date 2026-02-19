@@ -23,16 +23,12 @@ import {
   ToolInput,
   ToolOutput,
 } from '../../ai-elements/tool';
-import {
-  CodeBlock,
-  CodeBlockCopyButton,
-} from '../../ai-elements/code-block';
+import { CodeBlock } from '../../ai-elements/code-block';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '../../shadcn/collapsible';
-import { Button } from '../../shadcn/button';
 import { SQLQueryVisualizer } from './sql-query-visualizer';
 
 import type { DatasourceMetadata } from '@qwery/domain/entities';
@@ -51,6 +47,32 @@ import {
   SourcesTrigger,
 } from '../../ai-elements/sources';
 import { useState, createContext, useMemo, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+
+function RunQueriesOpenSync({
+  runQueriesAllOpen,
+  runQueriesInputLength,
+  resultsLength,
+  setOpenQueries,
+}: {
+  runQueriesAllOpen: boolean | null;
+  runQueriesInputLength: number | undefined;
+  resultsLength: number;
+  setOpenQueries: Dispatch<SetStateAction<Set<number>>>;
+}) {
+  useEffect(() => {
+    if (runQueriesAllOpen === null) return;
+    const totalQueries = runQueriesInputLength ?? resultsLength;
+    if (runQueriesAllOpen === true) {
+      setOpenQueries(
+        new Set(Array.from({ length: totalQueries }, (_, i) => i)),
+      );
+    } else {
+      setOpenQueries(new Set());
+    }
+  }, [runQueriesAllOpen, runQueriesInputLength, resultsLength, setOpenQueries]);
+  return null;
+}
 import {
   CopyIcon,
   RefreshCcwIcon,
@@ -156,7 +178,7 @@ function TaskStepRow({
           <span
             className={cn(
               task.status === 'completed' &&
-              'text-muted-foreground line-through',
+                'text-muted-foreground line-through',
               task.status === 'error' && 'text-destructive',
               isSubstep && 'text-xs',
             )}
@@ -444,37 +466,6 @@ const TODO_STATUS_META: Record<
   },
 };
 
-export type StartedStepIndicatorProps = {
-  stepIndex: number;
-  stepLabel?: string;
-  className?: string;
-};
-
-export function StartedStepIndicator({
-  stepIndex,
-  stepLabel,
-  className,
-}: StartedStepIndicatorProps) {
-  return (
-    <div
-      className={cn(
-        'text-muted-foreground inline-flex items-center gap-2 text-xs',
-        className,
-      )}
-      role="status"
-    >
-      <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-medium">
-        Step {stepIndex}
-      </span>
-      {stepLabel ? (
-        <span className="truncate">{stepLabel}</span>
-      ) : (
-        <span>Started</span>
-      )}
-    </div>
-  );
-}
-
 const DEFAULT_TODO_STATUS: TodoItemUI['status'] = 'pending';
 
 function getTodoStatusMeta(
@@ -630,18 +621,12 @@ export interface ToolPartProps {
     datasourceId?: string;
   };
   pluginLogoMap?: Map<string, string>;
-  selectedDatasourceItems?: Array<{ id: string; slug: string; datasource_provider: string }>;
+  selectedDatasourceItems?: Array<{
+    id: string;
+    slug: string;
+    datasource_provider: string;
+  }>;
   onToolApproval?: (approvalId: string, approved: boolean) => void;
-}
-
-export interface TodoPartProps {
-  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' };
-  messageId: string;
-  index: number;
-}
-
-export function TodoPart({ part, messageId, index }: TodoPartProps) {
-  return <ToolPart part={part} messageId={messageId} index={index} />;
 }
 
 export function ToolPart({
@@ -684,14 +669,14 @@ export function ToolPart({
       part.state === 'output-error' &&
       part.errorText
     ) {
-      const runQueriesInput = part.input as
-        | { queries?: Array<{ id?: string; query: string }> }
-        | null;
+      const runQueriesInput = part.input as {
+        queries?: Array<{ id?: string; query: string }>;
+      } | null;
       return (
         <div className="space-y-3">
           {runQueriesInput?.queries && runQueriesInput.queries.length > 0 && (
             <div className="bg-muted/50 rounded-md p-3">
-              <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
                 Batch Queries (failed)
               </p>
               <ul className="space-y-1 text-xs">
@@ -901,15 +886,15 @@ export function ToolPart({
       const input = part.input as { query?: string } | null;
       const output = part.output as
         | {
-          result?: {
-            rows?: unknown[];
-            columns?: unknown[];
-            query?: string;
-          };
-          sqlQuery?: string;
-          shouldPaste?: boolean;
-          chartExecutionOverride?: boolean;
-        }
+            result?: {
+              rows?: unknown[];
+              columns?: unknown[];
+              query?: string;
+            };
+            sqlQuery?: string;
+            shouldPaste?: boolean;
+            chartExecutionOverride?: boolean;
+          }
         | null
         | undefined;
 
@@ -987,38 +972,40 @@ export function ToolPart({
       }
 
       const executedFlag =
-        output && 'executed' in output && typeof (output as any).executed === 'boolean'
-          ? (output as any).executed
+        output &&
+        'executed' in output &&
+        typeof (output as Record<string, unknown>).executed === 'boolean'
+          ? (output as Record<string, unknown>).executed
           : undefined;
 
       // Check if we should show paste button (inline mode with shouldPaste flag)
       const shouldShowPasteButton = Boolean(
         shouldPaste === true &&
-        sqlQuery &&
-        onPasteToNotebook &&
-        notebookContext?.cellId !== undefined &&
-        notebookContext?.notebookCellType &&
-        notebookContext?.datasourceId,
+          sqlQuery &&
+          onPasteToNotebook &&
+          notebookContext?.cellId !== undefined &&
+          notebookContext?.notebookCellType &&
+          notebookContext?.datasourceId,
       );
 
       // Create paste handler callback
       const handlePasteToNotebook =
         shouldShowPasteButton && onPasteToNotebook
           ? () => {
-            if (
-              sqlQuery &&
-              notebookContext?.cellId !== undefined &&
-              notebookContext?.notebookCellType &&
-              notebookContext?.datasourceId
-            ) {
-              onPasteToNotebook(
-                sqlQuery,
-                notebookContext.notebookCellType,
-                notebookContext.datasourceId,
-                notebookContext.cellId,
-              );
+              if (
+                sqlQuery &&
+                notebookContext?.cellId !== undefined &&
+                notebookContext?.notebookCellType &&
+                notebookContext?.datasourceId
+              ) {
+                onPasteToNotebook(
+                  sqlQuery,
+                  notebookContext.notebookCellType,
+                  notebookContext.datasourceId,
+                  notebookContext.cellId,
+                );
+              }
             }
-          }
           : undefined;
 
       return (
@@ -1028,13 +1015,13 @@ export function ToolPart({
             result={
               hasResults && output?.result
                 ? {
-                  result: {
-                    columns: output.result.columns as string[],
-                    rows: output.result.rows as Array<
-                      Record<string, unknown>
-                    >,
-                  },
-                }
+                    result: {
+                      columns: output.result.columns as string[],
+                      rows: output.result.rows as Array<
+                        Record<string, unknown>
+                      >,
+                    },
+                  }
                 : undefined
             }
             onPasteToNotebook={handlePasteToNotebook}
@@ -1052,34 +1039,35 @@ export function ToolPart({
 
     // Handle runQueries tool - batch of queries with per-query status + results
     if (part.type === 'tool-runQueries') {
-      const runQueriesInput = part.input as
-        | { queries?: Array<{ id?: string; query: string; summary?: string }> }
-        | null;
+      const runQueriesInput = part.input as {
+        queries?: Array<{ id?: string; query: string; summary?: string }>;
+      } | null;
       const runQueriesOutput = part.output as
         | {
-          results?: Array<{
-            id?: string;
-            query: string;
-            summary?: string;
-            success: boolean;
-            data?: {
-              result?: {
-                columns?: unknown[];
-                rows?: unknown[];
+            results?: Array<{
+              id?: string;
+              query: string;
+              summary?: string;
+              success: boolean;
+              data?: {
+                result?: {
+                  columns?: unknown[];
+                  rows?: unknown[];
+                };
+                queryId?: string;
               };
-              queryId?: string;
-            };
-            error?: string;
-          }>;
-          meta?: { total: number; succeeded: number; failed: number };
-        }
+              error?: string;
+            }>;
+            meta?: { total: number; succeeded: number; failed: number };
+          }
         | null
         | undefined;
 
       const totalQueries = runQueriesInput?.queries?.length ?? 0;
       const results = runQueriesOutput?.results ?? [];
       const completedCount = results.length;
-      const isComplete = part.state === 'output-available' || part.state === 'output-error';
+      const isComplete =
+        part.state === 'output-available' || part.state === 'output-error';
       const isInProgress = !isComplete && totalQueries > 0;
 
       // Deduplication and meta calculation
@@ -1092,10 +1080,15 @@ export function ToolPart({
       const keyToBaseIndex = new Map<string, number>();
       const keyToCount = new Map<string, number>();
       const dedupeMeta: RunQueriesDedupeMeta[] = results.map((r, idx) => {
-        const idKey = typeof r.id === 'string' && r.id.trim().length > 0 ? r.id.trim() : '';
-        const queryKey = typeof r.query === 'string' && r.query.trim().length > 0 ? r.query.trim() : '';
+        const idKey =
+          typeof r.id === 'string' && r.id.trim().length > 0 ? r.id.trim() : '';
+        const queryKey =
+          typeof r.query === 'string' && r.query.trim().length > 0
+            ? r.query.trim()
+            : '';
         const key = idKey || queryKey;
-        if (!key) return { isDuplicate: false, baseIndex: null, attemptIndex: 1 };
+        if (!key)
+          return { isDuplicate: false, baseIndex: null, attemptIndex: 1 };
         const existingBaseIndex = keyToBaseIndex.get(key);
         if (existingBaseIndex == null) {
           keyToBaseIndex.set(key, idx);
@@ -1104,18 +1097,27 @@ export function ToolPart({
         }
         const currentCount = (keyToCount.get(key) ?? 1) + 1;
         keyToCount.set(key, currentCount);
-        return { isDuplicate: true, baseIndex: existingBaseIndex, attemptIndex: currentCount };
+        return {
+          isDuplicate: true,
+          baseIndex: existingBaseIndex,
+          attemptIndex: currentCount,
+        };
       });
 
-      const distinctCount = keyToBaseIndex.size || results.length;
+      const _distinctCount = keyToBaseIndex.size || results.length;
       const total = runQueriesOutput?.meta?.total ?? totalQueries;
-      const succeeded = runQueriesOutput?.meta?.succeeded ?? results.filter((r) => r.success).length;
-      const failed = runQueriesOutput?.meta?.failed ?? (isComplete ? total - succeeded : results.filter(r => !r.success && r.error).length);
-      const hasDuplicates = distinctCount < completedCount;
-      const durationMs = (runQueriesOutput?.meta as { durationMs?: number } | undefined)?.durationMs;
-      const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
-
-      const formatDuration = (ms: number | undefined) => {
+      const succeeded =
+        runQueriesOutput?.meta?.succeeded ??
+        results.filter((r) => r.success).length;
+      const failed =
+        runQueriesOutput?.meta?.failed ??
+        (isComplete
+          ? total - succeeded
+          : results.filter((r) => !r.success && r.error).length);
+      const _durationMs = (
+        runQueriesOutput?.meta as { durationMs?: number } | undefined
+      )?.durationMs;
+      const _formatDuration = (ms: number | undefined) => {
         if (ms == null || Number.isNaN(ms)) return null;
         if (ms < 1000) return `${Math.round(ms)} ms`;
         const seconds = ms / 1000;
@@ -1123,15 +1125,17 @@ export function ToolPart({
         if (seconds < 60) return `${seconds.toFixed(1)} s`;
         const minutes = Math.floor(seconds / 60);
         const remSeconds = seconds % 60;
-        return minutes >= 10 ? `${minutes} min` : `${minutes} min ${Math.round(remSeconds)} s`;
+        return minutes >= 10
+          ? `${minutes} min`
+          : `${minutes} min ${Math.round(remSeconds)} s`;
       };
 
-      const durationLabel = formatDuration(durationMs);
-
-      const tableFromQuery = (query: string | undefined): string | undefined => {
+      const tableFromQuery = (
+        query: string | undefined,
+      ): string | undefined => {
         if (!query || typeof query !== 'string') return undefined;
-        const m = /from\s+([a-zA-Z0-9_.\"]+)/i.exec(query.trim());
-        return m?.[1]?.replace(/\"/g, '');
+        const m = /from\s+([a-zA-Z0-9_."]+)/i.exec(query.trim());
+        return m?.[1]?.replace(/"/g, '');
       };
 
       const tableDisplayName = (fullTable: string): string => {
@@ -1139,54 +1143,23 @@ export function ToolPart({
         return lastSegment ?? fullTable;
       };
 
-      const buildRunQueriesLabel = (params: {
-        id?: string;
-        query: string | undefined;
-        index: number;
-      }): string => {
-        const fallbackId = params.id?.trim();
-        const fallback = fallbackId && fallbackId.length > 0
-          ? fallbackId
-          : `Query ${params.index + 1}`;
-
-        if (!params.query || typeof params.query !== 'string') return fallback;
-        const sql = params.query.trim();
-        if (!sql) return fallback;
-
-        const table = tableFromQuery(sql);
-        const limitMatch = /limit\s+(\d+)/i.exec(sql);
-        const limit = limitMatch ? Number(limitMatch[1]) : undefined;
-
-        let description: string | undefined;
-
-        if (/select\s+count\(\s*\*\s*\)/i.test(sql)) {
-          description = table ? `Row count for ${table}` : 'Row count query';
-        } else if (limit && /select\s+\*/i.test(sql)) {
-          description = table
-            ? `Sample ${limit} rows from ${table}`
-            : `Sample ${limit} rows`;
-        } else if (/group\s+by/i.test(sql)) {
-          description = table
-            ? `Aggregated metrics from ${table}`
-            : 'Aggregation query';
-        } else if (table) {
-          description = table;
-        }
-
-        const base = description ?? fallback;
-        return base.length > 80 ? `${base.slice(0, 77)}...` : base;
-      };
-
-      const tableFocusedLabel = (query: string | undefined, index: number, id?: string): string => {
-        const fallback = (id?.trim() && id.trim().length > 0) ? id.trim() : `Query ${index + 1}`;
+      const tableFocusedLabel = (
+        query: string | undefined,
+        index: number,
+        id?: string,
+      ): string => {
+        const fallback =
+          id?.trim() && id.trim().length > 0 ? id.trim() : `Query ${index + 1}`;
         if (!query || typeof query !== 'string') return fallback;
         const table = tableFromQuery(query);
         if (!table) return fallback;
         const name = tableDisplayName(table);
         const sql = query.trim();
-        if (/select\s+count\(\s*\*\s*\)/i.test(sql)) return `Row count · ${name}`;
+        if (/select\s+count\(\s*\*\s*\)/i.test(sql))
+          return `Row count · ${name}`;
         const limitMatch = /limit\s+(\d+)/i.exec(sql);
-        if (limitMatch && /select\s+\*/i.test(sql)) return `Sample ${limitMatch[1]} · ${name}`;
+        if (limitMatch && /select\s+\*/i.test(sql))
+          return `Sample ${limitMatch[1]} · ${name}`;
         if (/group\s+by/i.test(sql)) return `Aggregated · ${name}`;
         return name;
       };
@@ -1197,44 +1170,35 @@ export function ToolPart({
       ): string | undefined => {
         if (!fullTable || !items?.length) return undefined;
         const firstItem = items[0];
-        if (items.length === 1 && firstItem) return firstItem.datasource_provider;
+        if (items.length === 1 && firstItem)
+          return firstItem.datasource_provider;
         const firstSegment = fullTable.split('.')[0];
-        const match = items.find((ds) => firstSegment === ds.slug || fullTable.startsWith(`${ds.slug}.`));
+        const match = items.find(
+          (ds) =>
+            firstSegment === ds.slug || fullTable.startsWith(`${ds.slug}.`),
+        );
         return match?.datasource_provider;
       };
-
-      // Render Progress Bar for ToolHeader or Summary
-      const renderProgressBar = () => (
-        <div className="bg-muted/30 h-1.5 w-full overflow-hidden rounded-full border border-border/10">
-          <div
-            className={cn(
-              "h-full transition-all duration-500 ease-out",
-              isComplete ? "bg-emerald-500" : "bg-primary animate-pulse"
-            )}
-            style={{ width: `${total > 0 ? (completedCount / total) * 100 : 0}%` }}
-          />
-        </div>
-      );
 
       // Common Header Info
       const headerInfo = (
         <div className="flex items-center gap-2">
           {isInProgress && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary animate-in fade-in zoom-in duration-300">
+            <div className="bg-primary/10 text-primary animate-in fade-in zoom-in flex items-center gap-1.5 rounded-full px-2 py-0.5 duration-300">
               <CircleDashedIcon className="h-3 w-3 animate-spin" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">
+              <span className="text-[10px] font-bold tracking-wider uppercase">
                 {completedCount}/{total}
               </span>
             </div>
           )}
           {isComplete && (
             <div className="flex items-center gap-3">
-              <span className="text-emerald-500 flex items-center gap-1 font-medium text-[11px]">
+              <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-500">
                 <CheckCircle2Icon className="h-3 w-3" />
                 {succeeded}
               </span>
               {failed > 0 && (
-                <span className="text-destructive flex items-center gap-1 font-medium text-[11px]">
+                <span className="text-destructive flex items-center gap-1 text-[11px] font-medium">
                   <XCircleIcon className="h-3 w-3" />
                   {failed}
                 </span>
@@ -1244,60 +1208,80 @@ export function ToolPart({
         </div>
       );
 
-      useEffect(() => {
-        if (runQueriesAllOpen === null) return;
-        const totalQueries = runQueriesInput?.queries?.length ?? results.length;
-        if (runQueriesAllOpen === true) {
-          setOpenQueries(new Set(Array.from({ length: totalQueries }, (_, i) => i)));
-        } else {
-          setOpenQueries(new Set());
-        }
-      }, [runQueriesAllOpen, runQueriesInput?.queries?.length, results.length]);
-
       if (isMinimal) {
         return (
-          <div key={`${messageId}-${index}`} className="flex flex-col gap-2 my-1 ml-6 border-l border-border/40 pl-3">
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80">
-              <ListTodo className="h-3 w-3" />
-              <span className="font-medium">Batch Run</span>
-              {headerInfo}
-            </div>
-            <div className="flex flex-col gap-1">
-              {(!isComplete ? runQueriesInput?.queries : results)?.map((q, idx) => {
-                const queryText = ('query' in q ? q.query : (q as any).query) as string | undefined;
-                const success = 'success' in q ? q.success : undefined;
-                const isCurrent = isInProgress && idx === completedCount;
+          <>
+            <RunQueriesOpenSync
+              runQueriesAllOpen={runQueriesAllOpen}
+              runQueriesInputLength={runQueriesInput?.queries?.length}
+              resultsLength={results.length}
+              setOpenQueries={setOpenQueries}
+            />
+            <div
+              key={`${messageId}-${index}`}
+              className="border-border/40 my-1 ml-6 flex flex-col gap-2 border-l pl-3"
+            >
+              <div className="text-muted-foreground/80 flex items-center gap-2 text-[11px]">
+                <ListTodo className="h-3 w-3" />
+                <span className="font-medium">Batch Run</span>
+                {headerInfo}
+              </div>
+              <div className="flex flex-col gap-1">
+                {(!isComplete ? runQueriesInput?.queries : results)?.map(
+                  (q, idx) => {
+                    const queryText = (
+                      'query' in q
+                        ? q.query
+                        : (q as Record<string, unknown>).query
+                    ) as string | undefined;
+                    const success = 'success' in q ? q.success : undefined;
+                    const isCurrent = isInProgress && idx === completedCount;
 
-                return (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md border border-border/10 px-2 py-0.5 transition-colors",
-                      isCurrent && "bg-primary/[0.03] border-primary/20",
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <CodeBlock
-                        code={(queryText?.split('\n')[0] ?? '').trim()}
-                        language="sql"
-                        disableHover={true}
-                        className="bg-transparent border-none p-0 !bg-transparent"
-                      />
-                    </div>
-                    {success === true && <CheckCircle2Icon className="h-2.5 w-2.5 text-emerald-500/80" />}
-                    {success === false && <XCircleIcon className="h-2.5 w-2.5 text-destructive/80" />}
-                    {isCurrent && <CircleDashedIcon className="h-2.5 w-2.5 animate-spin text-primary/80" />}
-                  </div>
-                );
-              })}
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'border-border/10 flex items-center gap-2 rounded-md border px-2 py-0.5 transition-colors',
+                          isCurrent && 'bg-primary/[0.03] border-primary/20',
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <CodeBlock
+                            code={(queryText?.split('\n')[0] ?? '').trim()}
+                            language="sql"
+                            disableHover={true}
+                            className="border-none !bg-transparent bg-transparent p-0"
+                          />
+                        </div>
+                        {success === true && (
+                          <CheckCircle2Icon className="h-2.5 w-2.5 text-emerald-500/80" />
+                        )}
+                        {success === false && (
+                          <XCircleIcon className="text-destructive/80 h-2.5 w-2.5" />
+                        )}
+                        {isCurrent && (
+                          <CircleDashedIcon className="text-primary/80 h-2.5 w-2.5 animate-spin" />
+                        )}
+                      </div>
+                    );
+                  },
+                )}
+              </div>
             </div>
-          </div>
+          </>
         );
       }
 
       return (
-        <div className="flex w-full flex-col gap-4">
-          <div className="bg-card/40 border-border/40 w-full overflow-hidden rounded-xl border p-4 shadow-sm backdrop-blur-sm group/summary">
+        <>
+          <RunQueriesOpenSync
+            runQueriesAllOpen={runQueriesAllOpen}
+            runQueriesInputLength={runQueriesInput?.queries?.length}
+            resultsLength={results.length}
+            setOpenQueries={setOpenQueries}
+          />
+          <div className="flex w-full flex-col gap-4">
+            <div className="bg-card/40 border-border/40 group/summary w-full overflow-hidden rounded-xl border p-4 shadow-sm backdrop-blur-sm">
               <div className="mb-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="space-y-0.5">
@@ -1313,214 +1297,263 @@ export function ToolPart({
                     <button
                       type="button"
                       onClick={() =>
-                        setRunQueriesAllOpen(prev =>
+                        setRunQueriesAllOpen((prev) =>
                           prev === true ? false : true,
                         )
                       }
                       className={cn(
-                        'opacity-0 -translate-y-0.5 group-hover/summary:opacity-100 group-hover/summary:translate-y-0 text-muted-foreground flex items-center justify-center rounded-md border border-border/40 bg-muted/20 p-1.5 transition-all hover:scale-105 active:scale-95',
+                        'text-muted-foreground border-border/40 bg-muted/20 flex -translate-y-0.5 items-center justify-center rounded-md border p-1.5 opacity-0 transition-all group-hover/summary:translate-y-0 group-hover/summary:opacity-100 hover:scale-105 active:scale-95',
                         runQueriesAllOpen === false &&
                           'bg-primary/10 border-primary/40 text-primary shadow-sm',
                       )}
                       title={
-                        runQueriesAllOpen === true ? 'Collapse All' : 'Expand All'
+                        runQueriesAllOpen === true
+                          ? 'Collapse All'
+                          : 'Expand All'
                       }
                     >
                       <ChevronsUpDown className="size-3.5" />
                     </button>
                   )}
-                  <div className="text-xl font-black tabular-nums tracking-tighter opacity-80">
+                  <div className="text-xl font-black tracking-tighter tabular-nums opacity-80">
                     {Math.round((completedCount / (total || 1)) * 100)}%
                   </div>
                 </div>
               </div>
 
-              <div className="bg-muted/30 h-1.5 w-full overflow-hidden rounded-full border border-border/10">
+              <div className="bg-muted/30 border-border/10 h-1.5 w-full overflow-hidden rounded-full border">
                 <div
                   className={cn(
-                    "h-full transition-all duration-500 ease-out",
-                    isComplete ? "bg-emerald-500" : "bg-primary animate-pulse"
+                    'h-full transition-all duration-500 ease-out',
+                    isComplete ? 'bg-emerald-500' : 'bg-primary animate-pulse',
                   )}
-                  style={{ width: `${total > 0 ? (completedCount / total) * 100 : 0}%` }}
+                  style={{
+                    width: `${total > 0 ? (completedCount / total) * 100 : 0}%`,
+                  }}
                 />
               </div>
-          </div>
+            </div>
 
-          {/* Queries List - same width as summary */}
-          <div className="flex w-full flex-col gap-4">
-              {(!isComplete ? runQueriesInput?.queries : results)?.map((q, idx) => {
-                const queryText = ('query' in q ? q.query : (q as any).query) as string | undefined;
-                const result = 'data' in q ? (q as any).data?.result : undefined;
-                const success = 'success' in q ? q.success : undefined;
-                const error = 'error' in q ? (q as any).error : undefined;
-                const rawId = (q as { id?: string }).id;
-                const rawSummary = (q as { summary?: string }).summary;
-                const genAISummary = typeof rawSummary === 'string' && rawSummary.trim().length > 0
-                  ? rawSummary.trim()
-                  : undefined;
-                const fallbackLabel =
-                  typeof rawId === 'string' && rawId.trim().length > 0
-                    ? rawId.trim()
-                    : `Query ${idx + 1}`;
-                const displayLabel = genAISummary ?? fallbackLabel;
-                const fullTable = tableFromQuery(queryText);
-                const tableLabel = tableFocusedLabel(queryText, idx, typeof rawId === 'string' ? rawId : undefined);
-                const provider = providerForTable(fullTable, selectedDatasourceItems);
-                const datasourceIconUrl = pluginLogoMap && provider ? pluginLogoMap.get(provider) : undefined;
-                const isExecuting = isInProgress && idx === completedCount;
+            {/* Queries List - same width as summary */}
+            <div className="flex w-full flex-col gap-4">
+              {(!isComplete ? runQueriesInput?.queries : results)?.map(
+                (q, idx) => {
+                  const queryText = (
+                    'query' in q
+                      ? q.query
+                      : (q as Record<string, unknown>).query
+                  ) as string | undefined;
+                  const result =
+                    'data' in q
+                      ? (q as Record<string, unknown>).data?.result
+                      : undefined;
+                  const success = 'success' in q ? q.success : undefined;
+                  const error =
+                    'error' in q
+                      ? (q as Record<string, unknown>).error
+                      : undefined;
+                  const rawId = (q as { id?: string }).id;
+                  const rawSummary = (q as { summary?: string }).summary;
+                  const genAISummary =
+                    typeof rawSummary === 'string' &&
+                    rawSummary.trim().length > 0
+                      ? rawSummary.trim()
+                      : undefined;
+                  const fallbackLabel =
+                    typeof rawId === 'string' && rawId.trim().length > 0
+                      ? rawId.trim()
+                      : `Query ${idx + 1}`;
+                  const displayLabel = genAISummary ?? fallbackLabel;
+                  const fullTable = tableFromQuery(queryText);
+                  const tableLabel = tableFocusedLabel(
+                    queryText,
+                    idx,
+                    typeof rawId === 'string' ? rawId : undefined,
+                  );
+                  const provider = providerForTable(
+                    fullTable,
+                    selectedDatasourceItems,
+                  );
+                  const datasourceIconUrl =
+                    pluginLogoMap && provider
+                      ? pluginLogoMap.get(provider)
+                      : undefined;
+                  const isExecuting = isInProgress && idx === completedCount;
 
-                const hasTableData =
-                  Array.isArray(result?.columns) && Array.isArray(result?.rows);
-                const tableResult =
-                  hasTableData && result
-                    ? {
-                        columns: result!.columns as string[],
-                        rows: result!.rows as Array<Record<string, unknown>>,
-                      }
-                    : null;
-                const hasTable = !!tableResult;
-                const rowCount = tableResult?.rows.length ?? 0;
-
-                const meta = dedupeMeta[idx] ?? { isDuplicate: false, baseIndex: null, attemptIndex: 1 };
-                const isOpen = openQueries.has(idx);
-                const isLoading = isExecuting || (!isComplete && idx >= completedCount);
-                const isWaiting = !isComplete && !isExecuting && idx > completedCount;
-
-                return (
-                  <Collapsible
-                    key={idx}
-                    open={isOpen}
-                    onOpenChange={(open) => {
-                      setOpenQueries((prev) => {
-                        const next = new Set(prev);
-                        if (open) {
-                          next.add(idx);
-                        } else {
-                          next.delete(idx);
+                  const hasTableData =
+                    Array.isArray(result?.columns) &&
+                    Array.isArray(result?.rows);
+                  const tableResult =
+                    hasTableData && result
+                      ? {
+                          columns: result!.columns as string[],
+                          rows: result!.rows as Array<Record<string, unknown>>,
                         }
-                        return next;
-                      });
-                    }}
-                    className={cn(
-                      'border-border/40 bg-card/30 w-full overflow-hidden rounded-xl border transition-all duration-200',
-                      isExecuting && "ring-2 ring-primary/30 border-primary/40 bg-primary/[0.02] shadow-lg shadow-primary/5",
-                      success === false && 'border-destructive/30 bg-destructive/[0.02]'
-                    )}
-                  >
-                    <CollapsibleTrigger className="group/item hover:bg-muted/40 flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className="flex-shrink-0">
-                          {isExecuting ? (
-                            <div className="bg-primary/10 rounded-full p-1">
-                              <CircleDashedIcon className="h-4 w-4 text-primary animate-spin" />
-                            </div>
-                          ) : success === true ? (
-                            <div className="bg-emerald-500/10 rounded-full p-1">
-                              <CheckCircle2Icon className="h-4 w-4 text-emerald-500" />
-                            </div>
-                          ) : success === false ? (
-                            <div className="bg-destructive/10 rounded-full p-1">
-                              <XCircleIcon className="h-4 w-4 text-destructive" />
-                            </div>
-                          ) : (
-                            <div className="bg-muted/50 rounded-full p-1 opacity-40">
-                              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col min-w-0 flex-1">
-                          {isLoading && !isOpen ? (
-                            <div className="space-y-1.5">
-                              <div className="bg-muted/60 h-3 w-24 animate-pulse rounded" />
-                              <div className="bg-muted/40 h-2.5 w-16 animate-pulse rounded" />
-                            </div>
-                          ) : (
-                            <>
-                              <span className="truncate text-xs font-bold leading-none mb-1">
-                                {displayLabel}
-                              </span>
-                              {meta.isDuplicate && (
-                                <span className="text-muted-foreground text-[10px] font-medium opacity-70">
-                                  Retry #{meta.attemptIndex}
-                                </span>
-                              )}
-                              {isWaiting && (
-                                <span className="text-muted-foreground text-[10px] italic">Waiting...</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px]">
-                        <div className="hidden sm:flex max-w-[14rem] min-w-0 items-center gap-1.5 truncate text-muted-foreground">
-                          {datasourceIconUrl ? (
-                            <img
-                              src={datasourceIconUrl}
-                              alt=""
-                              className={cn(
-                                'h-3.5 w-3.5 shrink-0 object-contain',
-                                provider === 'json-online' && 'dark:invert',
-                              )}
-                            />
-                          ) : (
-                            <Database className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                          )}
-                          <span className="truncate font-medium" title={fullTable}>
-                            {tableLabel}
-                          </span>
-                        </div>
-                        {hasTable && (
-                          <span className="text-muted-foreground bg-muted/50 shrink-0 rounded-full px-2 py-0.5 font-medium tabular-nums">
-                            {rowCount} {rowCount === 1 ? 'row' : 'rows'}
-                          </span>
-                        )}
-                        <div className="bg-muted/40 flex size-6 shrink-0 items-center justify-center rounded-md transition-transform group-hover/item:scale-110">
-                          <ChevronDownIcon className="size-3.5 transition-transform duration-300 group-data-[state=open]/collapsible:rotate-180" />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    {isOpen && (
-                      <CollapsibleContent className="border-t border-border/10 bg-transparent animate-in slide-in-from-top-2 duration-300">
-                        {isLoading ? (
-                          <div className="p-4 space-y-4">
-                            <div className="space-y-1.5">
-                              <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest pl-1">SQL Query</p>
-                              <TableResultsSkeleton />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4 space-y-4">
-                            <div className="space-y-1.5">
-                              <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest pl-1">SQL Query</p>
-                              <SQLQueryVisualizer
-                                query={queryText ?? ''}
-                                result={
-                                  tableResult
-                                    ? {
-                                        result: tableResult,
-                                      }
-                                    : undefined
-                                }
-                                onPasteToNotebook={undefined}
-                                showPasteButton={false}
-                                chartExecutionOverride={false}
-                              />
-                            </div>
-                            {error && (
-                              <div className="mt-2">
-                                <p className="text-destructive text-[10px] uppercase font-bold tracking-widest pl-1 mb-1">Error Details</p>
-                                <ToolErrorVisualizer errorText={error} />
+                      : null;
+                  const hasTable = !!tableResult;
+                  const rowCount = tableResult?.rows.length ?? 0;
+
+                  const meta = dedupeMeta[idx] ?? {
+                    isDuplicate: false,
+                    baseIndex: null,
+                    attemptIndex: 1,
+                  };
+                  const isOpen = openQueries.has(idx);
+                  const isLoading =
+                    isExecuting || (!isComplete && idx >= completedCount);
+                  const isWaiting =
+                    !isComplete && !isExecuting && idx > completedCount;
+
+                  return (
+                    <Collapsible
+                      key={idx}
+                      open={isOpen}
+                      onOpenChange={(open) => {
+                        setOpenQueries((prev) => {
+                          const next = new Set(prev);
+                          if (open) {
+                            next.add(idx);
+                          } else {
+                            next.delete(idx);
+                          }
+                          return next;
+                        });
+                      }}
+                      className={cn(
+                        'border-border/40 bg-card/30 w-full overflow-hidden rounded-xl border transition-all duration-200',
+                        isExecuting &&
+                          'ring-primary/30 border-primary/40 bg-primary/[0.02] shadow-primary/5 shadow-lg ring-2',
+                        success === false &&
+                          'border-destructive/30 bg-destructive/[0.02]',
+                      )}
+                    >
+                      <CollapsibleTrigger className="group/item hover:bg-muted/40 flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className="flex-shrink-0">
+                            {isExecuting ? (
+                              <div className="bg-primary/10 rounded-full p-1">
+                                <CircleDashedIcon className="text-primary h-4 w-4 animate-spin" />
+                              </div>
+                            ) : success === true ? (
+                              <div className="rounded-full bg-emerald-500/10 p-1">
+                                <CheckCircle2Icon className="h-4 w-4 text-emerald-500" />
+                              </div>
+                            ) : success === false ? (
+                              <div className="bg-destructive/10 rounded-full p-1">
+                                <XCircleIcon className="text-destructive h-4 w-4" />
+                              </div>
+                            ) : (
+                              <div className="bg-muted/50 rounded-full p-1 opacity-40">
+                                <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
                               </div>
                             )}
                           </div>
-                        )}
-                      </CollapsibleContent>
-                    )}
-                  </Collapsible>
-                );
-              })}
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            {isLoading && !isOpen ? (
+                              <div className="space-y-1.5">
+                                <div className="bg-muted/60 h-3 w-24 animate-pulse rounded" />
+                                <div className="bg-muted/40 h-2.5 w-16 animate-pulse rounded" />
+                              </div>
+                            ) : (
+                              <>
+                                <span className="mb-1 truncate text-xs leading-none font-bold">
+                                  {displayLabel}
+                                </span>
+                                {meta.isDuplicate && (
+                                  <span className="text-muted-foreground text-[10px] font-medium opacity-70">
+                                    Retry #{meta.attemptIndex}
+                                  </span>
+                                )}
+                                {isWaiting && (
+                                  <span className="text-muted-foreground text-[10px] italic">
+                                    Waiting...
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px]">
+                          <div className="text-muted-foreground hidden max-w-[14rem] min-w-0 items-center gap-1.5 truncate sm:flex">
+                            {datasourceIconUrl ? (
+                              <img
+                                src={datasourceIconUrl}
+                                alt=""
+                                className={cn(
+                                  'h-3.5 w-3.5 shrink-0 object-contain',
+                                  provider === 'json-online' && 'dark:invert',
+                                )}
+                              />
+                            ) : (
+                              <Database className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                            )}
+                            <span
+                              className="truncate font-medium"
+                              title={fullTable}
+                            >
+                              {tableLabel}
+                            </span>
+                          </div>
+                          {hasTable && (
+                            <span className="text-muted-foreground bg-muted/50 shrink-0 rounded-full px-2 py-0.5 font-medium tabular-nums">
+                              {rowCount} {rowCount === 1 ? 'row' : 'rows'}
+                            </span>
+                          )}
+                          <div className="bg-muted/40 flex size-6 shrink-0 items-center justify-center rounded-md transition-transform group-hover/item:scale-110">
+                            <ChevronDownIcon className="size-3.5 transition-transform duration-300 group-data-[state=open]/collapsible:rotate-180" />
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                      {isOpen && (
+                        <CollapsibleContent className="border-border/10 animate-in slide-in-from-top-2 border-t bg-transparent duration-300">
+                          {isLoading ? (
+                            <div className="space-y-4 p-4">
+                              <div className="space-y-1.5">
+                                <p className="text-muted-foreground pl-1 text-[10px] font-bold tracking-widest uppercase">
+                                  SQL Query
+                                </p>
+                                <TableResultsSkeleton />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4 p-4">
+                              <div className="space-y-1.5">
+                                <p className="text-muted-foreground pl-1 text-[10px] font-bold tracking-widest uppercase">
+                                  SQL Query
+                                </p>
+                                <SQLQueryVisualizer
+                                  query={queryText ?? ''}
+                                  result={
+                                    tableResult
+                                      ? {
+                                          result: tableResult,
+                                        }
+                                      : undefined
+                                  }
+                                  onPasteToNotebook={undefined}
+                                  showPasteButton={false}
+                                  chartExecutionOverride={false}
+                                />
+                              </div>
+                              {error && (
+                                <div className="mt-2">
+                                  <p className="text-destructive mb-1 pl-1 text-[10px] font-bold tracking-widest uppercase">
+                                    Error Details
+                                  </p>
+                                  <ToolErrorVisualizer errorText={error} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CollapsibleContent>
+                      )}
+                    </Collapsible>
+                  );
+                },
+              )}
+            </div>
           </div>
-        </div>
+        </>
       );
     }
 
@@ -1764,9 +1797,9 @@ export function ToolPart({
       {...(isControlled
         ? { open, onOpenChange }
         : {
-          defaultOpen:
-            defaultOpenWhenUncontrolled ?? TOOL_UI_CONFIG.DEFAULT_OPEN,
-        })}
+            defaultOpen:
+              defaultOpenWhenUncontrolled ?? TOOL_UI_CONFIG.DEFAULT_OPEN,
+          })}
       variant={variant}
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',

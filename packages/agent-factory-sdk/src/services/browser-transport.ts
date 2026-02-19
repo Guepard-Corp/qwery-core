@@ -45,12 +45,9 @@ export class BrowserChatTransport implements ChatTransport<UIMessage> {
     const validated = await validateUIMessages({ messages });
     const bodyDatasources = body?.datasources as string[] | undefined;
     const messagesToSend =
-      bodyDatasources?.length &&
-      validated.length > 0
+      bodyDatasources?.length && validated.length > 0
         ? (() => {
-            const lastIdx = validated.findLastIndex(
-              (m) => m.role === 'user',
-            );
+            const lastIdx = validated.findLastIndex((m) => m.role === 'user');
             if (lastIdx < 0) return validated;
             const last = validated[lastIdx];
             if (!last) return validated;

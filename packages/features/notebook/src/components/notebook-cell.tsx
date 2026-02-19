@@ -183,7 +183,8 @@ function DatasourceSelectWithPagination({
   const paginatedDatasources = filteredAndSorted.slice(startIndex, endIndex);
 
   useEffect(() => {
-    setCurrentPage(1);
+    const id = setTimeout(() => setCurrentPage(1), 0);
+    return () => clearTimeout(id);
   }, [search, sortOrder]);
 
   const showClear = search.trim().length > 0 || value != null;
@@ -407,18 +408,16 @@ function NotebookCellComponent({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const justEnteredEditModeRef = useRef(false);
 
-  // Open results collapsible on every new run (when result changes)
   useEffect(() => {
-    if (result != null) {
-      setResultsOpen(true);
-    }
+    if (result == null) return;
+    const id = setTimeout(() => setResultsOpen(true), 0);
+    return () => clearTimeout(id);
   }, [result]);
 
-  // Open error collapsible when error appears
   useEffect(() => {
-    if (typeof error === 'string' && error.trim().length > 0) {
-      setErrorOpen(true);
-    }
+    if (typeof error !== 'string' || error.trim().length === 0) return;
+    const id = setTimeout(() => setErrorOpen(true), 0);
+    return () => clearTimeout(id);
   }, [error]);
 
   // Sync title value when cell.title changes

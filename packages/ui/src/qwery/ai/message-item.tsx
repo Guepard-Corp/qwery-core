@@ -31,7 +31,7 @@ import {
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
-import type { ToolUIPart } from 'ai';
+import { ToolUIPart } from 'ai';
 import { ToolPart, TodoPart } from './message-parts';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import {
@@ -41,6 +41,7 @@ import {
   getChatStatusConfig,
 } from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
+import { useToolVariant } from './tool-variant-context';
 import { MessageFeedbackButton } from './message-feedback-button';
 import {
   type FeedbackPayload,
@@ -132,6 +133,7 @@ function MessageItemComponent({
   onToolApproval,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
+  useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );

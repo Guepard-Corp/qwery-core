@@ -290,20 +290,19 @@ export function ChartWrapper({
     }
   }, [ref]);
 
+  /* eslint-disable react-hooks/preserve-manual-memoization -- ref.current read at call time, not as reactive dep */
   const downloadAsSVG = useCallback(() => {
     const currentRef = ref.current;
     if (!currentRef) {
       toast.error('Chart element not found');
       return;
     }
-
     try {
       const svgElement = currentRef.querySelector('svg');
       if (!svgElement) {
         toast.error('SVG element not found in chart');
         return;
       }
-
       const svgCode = new XMLSerializer().serializeToString(svgElement);
       const blob = new Blob([svgCode], {
         type: 'image/svg+xml;charset=utf-8',
