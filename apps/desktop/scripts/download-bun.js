@@ -33,6 +33,16 @@ function getTargetTriple() {
 }
 
 async function downloadBun() {
+  // Ensure binaries directory exists
+  fs.mkdirSync(BINARIES_DIR, { recursive: true });
+  
+  // Create node_modules directory for Tauri resources
+  const nodeModulesDir = path.join(BINARIES_DIR, 'node_modules');
+  if (!fs.existsSync(nodeModulesDir)) {
+    fs.mkdirSync(nodeModulesDir, { recursive: true });
+    console.log('✓ Created binaries/node_modules directory');
+  }
+  
   const target = getTargetTriple();
   const zipName = TARGET_TO_BUN_ZIP[target];
   if (!zipName) {
@@ -63,7 +73,6 @@ async function downloadBun() {
 
   const tmpZip = path.join(BINARIES_DIR, `bun-tmp-${Date.now()}.zip`);
   const tmpDir = path.join(BINARIES_DIR, `bun-tmp-${Date.now()}`);
-  fs.mkdirSync(BINARIES_DIR, { recursive: true });
   fs.writeFileSync(tmpZip, buffer);
 
   try {
