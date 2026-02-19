@@ -216,6 +216,17 @@ export async function runAgentToCompletion(
   }
 
   const modelString = modelInput ?? getDefaultModel();
+  let userId = 'system';
+  try {
+    const conversation =
+      (await repositories.conversation.findBySlug(conversationSlug)) ??
+      (await repositories.conversation.findById(conversationId));
+    if (conversation?.createdBy?.trim()) {
+      userId = conversation.createdBy;
+    }
+  } catch {
+    // keep default 'system'
+  }
   const usagePersistenceService = new UsagePersistenceService(
     repositories.usage,
     repositories.conversation,
@@ -224,7 +235,11 @@ export async function runAgentToCompletion(
   );
   if (rawUsage) {
     usagePersistenceService
-      .persistUsage(rawUsage as import('ai').LanguageModelUsage, modelString)
+      .persistUsage(
+        rawUsage as import('ai').LanguageModelUsage,
+        modelString,
+        userId,
+      )
       .catch(async (error) => {
         const log = await getLogger();
         log.error('[RunAgentToCompletion] Failed to persist usage:', error);
@@ -242,9 +257,11 @@ export async function runAgentToCompletion(
       undefined,
       {
         defaultMetadata: {
-          modelId: model.id,
-          providerId: model.providerID,
           agent: agentId,
+          model: {
+            modelID: model.id,
+            providerID: model.providerID,
+          },
         },
       },
     );

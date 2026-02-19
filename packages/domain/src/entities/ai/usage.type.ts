@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { Entity } from '../../common/entity';
 import { z } from 'zod';
 import { Exclude, Expose, plainToClass } from 'class-transformer';
@@ -55,6 +56,10 @@ export const UsageSchema = z.object({
     .describe('The timestamp of the usage'),
 });
 
+const UsageCreateSchema = UsageSchema.extend({
+  id: z.uuid().optional(),
+});
+
 export type Usage = z.infer<typeof UsageSchema>;
 
 @Exclude()
@@ -103,7 +108,9 @@ export class UsageEntity extends Entity<string, typeof UsageSchema> {
   public timestamp!: Date;
 
   public static new(usage: CreateUsageInput): UsageEntity {
-    return plainToClass(UsageEntity, UsageSchema.parse(usage), {
+    const parsed = UsageCreateSchema.parse(usage);
+    const withId = { ...parsed, id: parsed.id ?? uuidv4() };
+    return plainToClass(UsageEntity, withId, {
       excludeExtraneousValues: true,
     });
   }
