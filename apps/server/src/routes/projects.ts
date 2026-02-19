@@ -7,8 +7,11 @@ import {
   GetProjectService,
   GetProjectsByOrganizationIdService,
   UpdateProjectService,
+  InitWorkspaceService,
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
+import { WorkspaceRuntimeEnum } from '@qwery/domain/enums';
+import type { WorkspaceRuntimeUseCase } from '@qwery/domain/usecases';
 import {
   handleDomainException,
   parseLimit,
@@ -78,8 +81,28 @@ export function createProjectsRoutes(
     try {
       const repos = await getRepositories();
       const body = await c.req.json();
+      let createdBy = body.createdBy;
+      if (!createdBy) {
+        const workspaceRuntimeUseCase: WorkspaceRuntimeUseCase = {
+          execute: async () => WorkspaceRuntimeEnum.BROWSER,
+        };
+        const initWorkspaceService = new InitWorkspaceService(
+          repos.user,
+          workspaceRuntimeUseCase,
+          repos.organization,
+          repos.project,
+        );
+        const workspace = await initWorkspaceService.execute({ userId: '' });
+        createdBy = workspace.user?.id || '';
+      }
+      const input = {
+        organizationId: body.organizationId,
+        name: body.name,
+        description: body.description,
+        createdBy: createdBy,
+      };
       const useCase = new CreateProjectService(repos.project);
-      const project = await useCase.execute(body);
+      const project = await useCase.execute(input);
       return c.json(project, 201);
     } catch (error) {
       return handleDomainException(error);
