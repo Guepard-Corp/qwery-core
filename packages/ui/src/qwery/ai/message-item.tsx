@@ -31,16 +31,8 @@ import {
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-} from '../../ai-elements/tool';
 import { ToolUIPart } from 'ai';
-import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { ToolPart, TodoPart } from './message-parts';
-import { getUserFriendlyToolName } from './utils/tool-name';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import {
   isChatStreaming,
@@ -141,7 +133,7 @@ function MessageItemComponent({
   onToolApproval,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
-  const { variant } = useToolVariant();
+  useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );

@@ -1285,8 +1285,9 @@ export function NotebookUI({
               ) : (
                 <>
                   <h1 className="text-2xl font-semibold">{headerTitle}</h1>
-                  {((chatSidebarAgentState === 'processing') ||
-                    (isChatSidebarOpen && chatSidebarAgentState === 'idle')) && (
+                  {(chatSidebarAgentState === 'processing' ||
+                    (isChatSidebarOpen &&
+                      chatSidebarAgentState === 'idle')) && (
                     <span
                       className={cn(
                         'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',

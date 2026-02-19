@@ -62,8 +62,6 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from '../ai-elements/sources';
-import { Tool, ToolHeader, ToolContent, ToolInput } from '../ai-elements/tool';
-import { Loader } from '../ai-elements/loader';
 import { ChatTransport, UIMessage, ToolUIPart } from 'ai';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -80,7 +78,6 @@ import {
 import { QweryContextProps } from './ai/context';
 import { DatasourceBadges } from './ai/datasource-badge';
 import { DatasourceSelector } from './ai/datasource-selector';
-import { getUserFriendlyToolName } from './ai/utils/tool-name';
 import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
@@ -475,15 +472,14 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   const [badgesFadeToZero, setBadgesFadeToZero] = useState(false);
   const [badgesRevealing, setBadgesRevealing] = useState(false);
   const prevShowBadgesRef = useRef(false);
-  const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
+  const [, setIsScrollAtBottom] = useState(true);
   const previousIsLoadingRef = useRef(isLoading);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [isSentinelInView, setIsSentinelInView] = useState(false);
 
   useLayoutEffect(() => {
     if (messages.length === 0) return;
-
-    setIsSentinelInView(false);
+    const id = setTimeout(() => setIsSentinelInView(false), 0);
     const observerRef = { current: null as IntersectionObserver | null };
     const rafId = requestAnimationFrame(() => {
       const sentinel = sentinelRef.current;
@@ -509,6 +505,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     });
 
     return () => {
+      clearTimeout(id);
       cancelAnimationFrame(rafId);
       observerRef.current?.disconnect();
     };
@@ -516,8 +513,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
   useEffect(() => {
     if (isLoading || messages.length > 0 || !initialSuggestions?.length) {
-      setBadgesVisibleAfterDelay(false);
-      return;
+      const id = setTimeout(() => setBadgesVisibleAfterDelay(false), 0);
+      return () => clearTimeout(id);
     }
     const t = setTimeout(() => setBadgesVisibleAfterDelay(true), 500);
     return () => clearTimeout(t);
@@ -525,8 +522,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
   useEffect(() => {
     if (isLoading || messages.length === 0) {
-      setBadgesLoadDelayPassed(false);
-      return;
+      const id = setTimeout(() => setBadgesLoadDelayPassed(false), 0);
+      return () => clearTimeout(id);
     }
     const t = setTimeout(() => setBadgesLoadDelayPassed(true), 500);
     return () => clearTimeout(t);
@@ -845,22 +842,28 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
           !badgesVisibleAfterDelay)));
 
   useEffect(() => {
+    const ids: ReturnType<typeof setTimeout>[] = [];
     if (
       prevShowBadgesRef.current &&
       !showBadges &&
       badgeSuggestions.length > 0
     ) {
-      setBadgesFadingOut(true);
-      setBadgesFadeToZero(false);
+      ids.push(
+        setTimeout(() => {
+          setBadgesFadingOut(true);
+          setBadgesFadeToZero(false);
+        }, 0),
+      );
     }
     if (
       !prevShowBadgesRef.current &&
       showBadges &&
       badgeSuggestions.length > 0
     ) {
-      setBadgesRevealing(true);
+      ids.push(setTimeout(() => setBadgesRevealing(true), 0));
     }
     prevShowBadgesRef.current = showBadges;
+    return () => ids.forEach((id) => clearTimeout(id));
   }, [showBadges, badgeSuggestions.length]);
 
   useEffect(() => {
@@ -905,9 +908,14 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   );
 
   useEffect(() => {
-    setOpenToolPartKeys(
-      lastToolPartKey ? new Set([lastToolPartKey]) : new Set(),
+    const id = setTimeout(
+      () =>
+        setOpenToolPartKeys(
+          lastToolPartKey ? new Set([lastToolPartKey]) : new Set(),
+        ),
+      0,
     );
+    return () => clearTimeout(id);
   }, [lastToolPartKey]);
 
   const handleToolPartOpenChange = useCallback((key: string, open: boolean) => {
@@ -1860,10 +1868,8 @@ function PromptInputInner({
     setState((prev) => ({ ...prev, input: '' }));
 
     try {
-      const ds =
-        getDatasourcesForSend?.() ?? selectedDatasources ?? [];
-      const bodyDatasources =
-        ds.length > 0 ? ds : undefined;
+      const ds = getDatasourcesForSend?.() ?? selectedDatasources ?? [];
+      const bodyDatasources = ds.length > 0 ? ds : undefined;
       const sendPromise = sendMessage(
         {
           text: message.text || 'Sent with attachments',

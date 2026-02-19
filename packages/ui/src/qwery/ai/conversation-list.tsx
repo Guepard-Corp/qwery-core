@@ -11,16 +11,7 @@ import {
 import { Button } from '../../shadcn/button';
 import { sortByModifiedDesc } from '@qwery/shared/utils';
 import { cn } from '../../lib/utils';
-import {
-  MessageCircle,
-  Plus,
-  Pencil,
-  Check,
-  X,
-  Edit,
-  Trash2,
-  Loader2,
-} from 'lucide-react';
+import { MessageCircle, Pencil, Check, X, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,8 +64,8 @@ export function ConversationList({
   onConversationsDelete,
   className,
   showHeader = true,
-  searchPlaceholder = 'Search conversations...',
-  showNewButton = true,
+  searchPlaceholder: _searchPlaceholder = 'Search conversations...',
+  showNewButton: _showNewButton = true,
   searchQuery: externalSearchQuery,
   onSearchQueryChange,
   isEditMode: externalEditMode,
@@ -85,7 +76,7 @@ export function ConversationList({
     externalSearchQuery !== undefined
       ? externalSearchQuery
       : internalSearchQuery;
-  const setSearchQuery = onSearchQueryChange || setInternalSearchQuery;
+  const _setSearchQuery = onSearchQueryChange ?? setInternalSearchQuery;
 
   const [internalEditMode, setInternalEditMode] = useState(false);
   const isEditMode =
@@ -97,7 +88,7 @@ export function ConversationList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [_isLoadingMore, setIsLoadingMore] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
@@ -131,7 +122,7 @@ export function ConversationList({
     return sortTimeGroups(groupedConversations);
   }, [groupedConversations]);
 
-  const hasMore = allConversations.length > visibleCount;
+  const _hasMore = allConversations.length > visibleCount;
 
   const handleConversationSelect = (conversationSlug: string) => {
     if (!isEditMode) {
@@ -139,11 +130,11 @@ export function ConversationList({
     }
   };
 
-  const handleNewConversation = () => {
+  const _handleNewConversation = () => {
     onNewConversation?.();
   };
 
-  const handleToggleEditMode = () => {
+  const _handleToggleEditMode = () => {
     const nextMode = !isEditMode;
     setIsEditMode(nextMode);
     if (!nextMode) {
@@ -247,7 +238,7 @@ export function ConversationList({
     });
   }, [conversations]);
 
-  const handleLoadMore = () => {
+  const _handleLoadMore = () => {
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));

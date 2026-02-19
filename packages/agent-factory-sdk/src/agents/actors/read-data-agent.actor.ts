@@ -152,9 +152,7 @@ export const readDataAgent = async (
     supportedConnectors,
   );
 
-  async function runOneQuery(
-    query: string,
-  ): Promise<{
+  async function runOneQuery(query: string): Promise<{
     result: { columns: string[]; rows: Record<string, unknown>[] };
     queryId: string;
   }> {
@@ -181,8 +179,7 @@ export const readDataAgent = async (
       const referencedDatasources = new Set<string>();
       for (const tablePath of tablePaths) {
         const parts = tablePath.split('.');
-        if (parts.length >= 2 && parts[0])
-          referencedDatasources.add(parts[0]);
+        if (parts.length >= 2 && parts[0]) referencedDatasources.add(parts[0]);
       }
       const invalidDatasources = Array.from(referencedDatasources).filter(
         (dbName) => !attachedDbNames.has(dbName),
@@ -194,8 +191,7 @@ export const readDataAgent = async (
     }
     const schemaCache = orchestration.schemaCache;
     const tablePaths = extractTablePathsFromQuery(query);
-    const allAvailablePaths =
-      schemaCache.getAllTablePathsFromAllDatasources();
+    const allAvailablePaths = schemaCache.getAllTablePathsFromAllDatasources();
     const missingTables: string[] = [];
     for (const tablePath of tablePaths) {
       if (
@@ -216,12 +212,15 @@ export const readDataAgent = async (
       if (parts.length === 3) {
         const [datasourceName, schemaName, tableName] = parts;
         if (schemaName !== 'main') {
-          const queryPath =
-            schemaCache.getQueryPathForDisplayPath(tablePath);
+          const queryPath = schemaCache.getQueryPathForDisplayPath(tablePath);
           if (queryPath) replacements.push({ from: tablePath, to: queryPath });
           else {
             const constructedQueryPath = `${datasourceName}.main.${tableName}`;
-            if (schemaCache.getAllTablePathsFromAllDatasources().includes(constructedQueryPath))
+            if (
+              schemaCache
+                .getAllTablePathsFromAllDatasources()
+                .includes(constructedQueryPath)
+            )
               replacements.push({ from: tablePath, to: constructedQueryPath });
           }
         }

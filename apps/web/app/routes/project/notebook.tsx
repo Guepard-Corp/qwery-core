@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  Navigate,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 
 import { toast } from 'sonner';
 

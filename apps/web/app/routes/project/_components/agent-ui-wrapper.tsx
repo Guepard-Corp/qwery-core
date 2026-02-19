@@ -262,10 +262,9 @@ export const AgentUIWrapper = forwardRef<
     workspace.userId,
   ]);
 
-  // Clear pending when conversation changes (e.g. user switched conversation)
-  // so we show the new conversation's datasources instead of stale pending
   useEffect(() => {
-    setPendingDatasources(null);
+    const id = setTimeout(() => setPendingDatasources(null), 0);
+    return () => clearTimeout(id);
   }, [conversation?.id]);
 
   // Priority for display: cellDatasource > pending datasources > conversation datasources

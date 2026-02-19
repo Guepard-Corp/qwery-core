@@ -14,10 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../../../shadcn/chart';
-import {
-  getColorsForBarLine,
-  resolveChartKeys,
-} from './chart-utils';
+import { getColorsForBarLine, resolveChartKeys } from './chart-utils';
 import { validateChartData } from './chart-data-validator';
 import { ChartContext } from './chart-wrapper';
 
@@ -42,13 +39,6 @@ export function BarChart({ chartConfig }: BarChartProps) {
   const { showAxisLabels } = useContext(ChartContext);
 
   const { valid } = validateChartData(data);
-  if (!valid) {
-    return (
-      <div className="text-muted-foreground p-4 text-center text-sm">
-        No data available for chart
-      </div>
-    );
-  }
 
   const resolvedKeys = useMemo(
     () =>
@@ -82,6 +72,13 @@ export function BarChart({ chartConfig }: BarChartProps) {
     return configObj;
   }, [actualYKey, yKey, chartColors, labels]);
 
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">

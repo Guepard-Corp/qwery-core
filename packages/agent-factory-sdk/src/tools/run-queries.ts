@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { Tool, type ToolContext, type ToolResult } from './tool';
 import { RunQueryTool } from './run-query';
 
@@ -13,15 +13,17 @@ const QueryItemSchema = z.object({
   summary: z.string().optional(),
 });
 
+const RunQueriesParamsSchema = z.object({
+  queries: z.array(QueryItemSchema).min(1),
+});
+
 export const RunQueriesTool = Tool.define('runQueries', {
   description: DESCRIPTION,
-  parameters: z.object({
-    queries: z.array(QueryItemSchema).nonempty(),
-  }),
-  async execute(params, ctx) {
+  parameters: RunQueriesParamsSchema,
+  async execute(params: z.infer<typeof RunQueriesParamsSchema>, ctx) {
     const startTime = Date.now();
 
-    const runQueryTool = RunQueryTool as {
+    const runQueryTool = RunQueryTool as unknown as {
       execute: (
         args: { query: string },
         toolCtx: ToolContext,

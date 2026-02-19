@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import {
   isSuggestionPattern,
-  extractSuggestionText,
   extractAllSuggestionMatches,
   validateSuggestionElement,
 } from '../utils/suggestion-pattern';
