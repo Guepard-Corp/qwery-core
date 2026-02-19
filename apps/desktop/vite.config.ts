@@ -89,6 +89,16 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host: host || false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4096',
+        changeOrigin: true,
+      },
+      '/qwery': {
+        target: 'http://localhost:4096',
+        changeOrigin: true,
+      },
+    },
     hmr: host
       ? {
         protocol: "ws",
@@ -97,8 +107,8 @@ export default defineConfig(async () => ({
       }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri` and build artifacts
+      ignored: ["**/src-tauri/**", "**/target/**"],
     },
   },
   build: {
