@@ -305,11 +305,6 @@ export const AgentUIWrapper = forwardRef<
     [conversationSlug],
   );
 
-  const convertedInitialMessages = useMemo(
-    () => convertMessages(initialMessages),
-    [initialMessages],
-  );
-
   // Handle sendMessage and model from QweryAgentUI
   // eslint-disable react-hooks/preserve-manual-memoization -- React Compiler warning about dependency inference
   const handleSendMessageReady = useCallback(
@@ -545,6 +540,34 @@ export const AgentUIWrapper = forwardRef<
   const handleSubmitFeedback = useCallback(
     async (messageId: string, feedback: FeedbackPayload) => {
       await submitFeedback.mutateAsync({ messageId, feedback });
+
+      // After the server confirms success, sync feedback into useChat's message state.
+      // invalidateQueries alone won't work because useChat has its own internal state
+      // and the sync effect guards against metadata-only changes (IDs don't change).
+      if (setMessagesRef.current) {
+        setMessagesRef.current((prevMessages: UIMessage[]) => {
+          return prevMessages.map((msg) => {
+            if (msg.id === messageId) {
+              const currentMetadata = (msg.metadata || {}) as Record<
+                string,
+                unknown
+              >;
+              return {
+                ...msg,
+                metadata: {
+                  ...currentMetadata,
+                  feedback: {
+                    ...feedback,
+                    messageId,
+                    updatedAt: new Date().toISOString(),
+                  },
+                },
+              };
+            }
+            return msg;
+          });
+        });
+      }
     },
     [submitFeedback],
   );
@@ -654,7 +677,7 @@ export const AgentUIWrapper = forwardRef<
   return (
     <QweryAgentUI
       transport={transport}
-      initialMessages={convertedInitialMessages}
+      initialMessages={convertMessages(initialMessages)}
       models={SUPPORTED_MODELS as { name: string; value: string }[]}
       usage={convertUsage(usage)}
       emitFinish={handleEmitFinish}

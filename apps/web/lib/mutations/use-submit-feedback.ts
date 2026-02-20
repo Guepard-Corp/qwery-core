@@ -23,6 +23,7 @@ export function useSubmitFeedback(
     mutationFn: async (input: SubmitFeedbackInput) => {
       await apiPost('/feedback', {
         messageId: input.messageId,
+        conversationSlug,
         ...input.feedback,
       });
     },
