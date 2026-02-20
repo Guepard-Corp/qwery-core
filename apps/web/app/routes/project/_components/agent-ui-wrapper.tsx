@@ -181,10 +181,10 @@ export const AgentUIWrapper = forwardRef<
   // Track notebook context state for paste functionality
   const [notebookContextState, setNotebookContextState] = useState<
     | {
-      cellId: number;
-      notebookCellType: 'query' | 'prompt';
-      datasourceId: string;
-    }
+        cellId: number;
+        notebookCellType: 'query' | 'prompt';
+        datasourceId: string;
+      }
     | undefined
   >(undefined);
 

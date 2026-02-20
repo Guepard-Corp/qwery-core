@@ -120,8 +120,7 @@ export function createFeedbackRoutes(
           );
           message =
             messages.find(
-              (m) =>
-                (m.content as { id?: string })?.id === messageId,
+              (m) => (m.content as { id?: string })?.id === messageId,
             ) ?? null;
         }
       }
