@@ -32,8 +32,8 @@ describe('chart-data-validator', () => {
     ];
     const numeric = ensureNumericValues(data, ['value']);
 
-    expect(numeric[0].value).toBe(10);
-    expect(numeric[1].value).toBe(20);
+    expect(numeric[0]?.value).toBe(10);
+    expect(numeric[1]?.value).toBe(20);
   });
 
   it('validates chart data structure', () => {

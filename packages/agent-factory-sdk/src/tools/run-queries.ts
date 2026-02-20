@@ -13,22 +13,33 @@ const QueryItemSchema = z.object({
   summary: z.string().optional(),
 });
 
-const RunQueriesParamsSchema = z.object({
-  queries: z.array(QueryItemSchema).min(1),
+const RunQueryInputSchema = z.object({
+  query: z.string(),
+  datasourceId: z.string(),
 });
 
 export const RunQueriesTool = Tool.define('runQueries', {
   description: DESCRIPTION,
-  parameters: RunQueriesParamsSchema,
-  async execute(params: z.infer<typeof RunQueriesParamsSchema>, ctx) {
+  parameters: z.object({
+    queries: z.array(QueryItemSchema).min(1),
+  }),
+  async execute(params, ctx) {
     const startTime = Date.now();
 
-    const runQueryTool = RunQueryTool as unknown as {
-      execute: (
-        args: { query: string },
-        toolCtx: ToolContext,
-      ) => Promise<ToolResult>;
+    const { attachedDatasources } = ctx.extra as {
+      attachedDatasources: string[];
     };
+
+    if (!attachedDatasources?.[0]) {
+      throw new Error('No datasource attached');
+    }
+
+    const datasourceId = attachedDatasources[0];
+
+    if (!('execute' in RunQueryTool) || typeof RunQueryTool.execute !== 'function') {
+      throw new Error('RunQueryTool does not have a valid execute function');
+    }
+
     const results: Array<{
       id?: string;
       query: string;
@@ -42,7 +53,8 @@ export const RunQueriesTool = Tool.define('runQueries', {
       const { id, query, summary } = item;
 
       try {
-        const data = await runQueryTool.execute({ query }, ctx);
+        const input = RunQueryInputSchema.parse({ query, datasourceId });
+        const data = await RunQueryTool.execute(input, ctx);
 
         results.push({
           id,

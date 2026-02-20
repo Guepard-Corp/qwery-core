@@ -143,7 +143,7 @@ export const AgentUIWrapper = forwardRef<
     conversationSlug,
     initialMessages,
     isMessagesLoading = false,
-    initialSuggestions,
+    initialSuggestions: _initialSuggestions,
   },
   ref,
 ) {
@@ -567,7 +567,7 @@ export const AgentUIWrapper = forwardRef<
     ],
   );
 
-  const onBeforeSuggestionSend = useCallback(
+  const _onBeforeSuggestionSend = useCallback(
     (
       text: string,
       metadata?: { requiresDatasource?: boolean },
@@ -639,7 +639,7 @@ export const AgentUIWrapper = forwardRef<
 
   const notebookContext = notebookContextState;
 
-  const getDatasourceTooltip = useCallback(
+  const _getDatasourceTooltip = useCallback(
     (idOrSlug: string) => {
       const ds =
         datasourceItems.find((d) => d.id === idOrSlug) ??
@@ -664,7 +664,7 @@ export const AgentUIWrapper = forwardRef<
     [datasourceItems],
   );
 
-  const handleDatasourceNameClick = useCallback(
+  const _handleDatasourceNameClick = useCallback(
     (idOrSlug: string, _name: string) => {
       const ds =
         datasourceItems.find((d) => d.id === idOrSlug) ??

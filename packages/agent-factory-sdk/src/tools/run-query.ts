@@ -24,50 +24,14 @@ export const RunQueryTool = Tool.define('runQuery', {
       attachedDatasources: string[];
     };
 
-    const intent = {
-      needsSQL: false,
-      needsChart: false,
-    };
-
     const logger = await getLogger();
     const { datasourceId, query } = params;
 
-    const needSQL = intent?.needsSQL ?? false;
-    const needChart = intent?.needsChart ?? false;
-
-    const isChartRequestInInlineMode = needChart === true && needSQL === true;
-
-    const shouldSkipExecution = needSQL === true && !isChartRequestInInlineMode;
-
     logger.debug('[RunQueryToolV2] Tool execution:', {
-      needSQL,
-      needChart,
-      isChartRequestInInlineMode,
-      shouldSkipExecution,
       queryLength: query.length,
       queryPreview: query.substring(0, 100),
       datasourceId,
     });
-
-    if (shouldSkipExecution) {
-      logger.debug(
-        '[RunQueryToolV2] Skipping execution - SQL will be pasted to notebook cell',
-      );
-      return {
-        result: null,
-        shouldPaste: true,
-        sqlQuery: query,
-        executed: false,
-      };
-    }
-
-    if (isChartRequestInInlineMode) {
-      logger.debug(
-        '[RunQueryToolV2] Executing query for chart generation (inline mode override)',
-      );
-    } else {
-      logger.debug('[RunQueryToolV2] Executing query normally');
-    }
 
     const startTime = performance.now();
 
@@ -120,15 +84,6 @@ export const RunQueryTool = Tool.define('runQuery', {
         columns: columnNames,
         rows: result.rows,
       };
-
-      if (isChartRequestInInlineMode) {
-        return {
-          result: fullResult,
-          shouldPaste: true,
-          sqlQuery: query,
-          chartExecutionOverride: true,
-        };
-      }
 
       return {
         result: fullResult,
