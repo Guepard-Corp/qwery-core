@@ -18,6 +18,20 @@ import {
   setWorkspaceInLocalStorage,
 } from '~/lib/workspace/workspace-helper';
 
+const STORAGE_KEYS: (keyof Workspace)[] = [
+  'id',
+  'userId',
+  'username',
+  'organizationId',
+  'projectId',
+  'isAnonymous',
+  'mode',
+];
+
+function workspaceStorageEqual(a: Workspace, b: Workspace): boolean {
+  return STORAGE_KEYS.every((k) => a[k] === b[k]);
+}
+
 export function WorkspaceProvider(props: React.PropsWithChildren) {
   const [localWorkspace, setLocalWorkspace] = useState<Workspace>(
     getWorkspaceFromLocalStorage(),
@@ -28,8 +42,14 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
   useEffect(() => {
     const handleStorageChange = () => {
       const updated = getWorkspaceFromLocalStorage();
-      setLocalWorkspace(updated);
-      setWorkspace((prev) => (prev ? { ...prev, ...updated } : null));
+      setLocalWorkspace((prev) =>
+        workspaceStorageEqual(prev, updated) ? prev : updated,
+      );
+      setWorkspace((prev) => {
+        const next = prev ? { ...prev, ...updated } : null;
+        if (!prev || !next) return next;
+        return workspaceStorageEqual(prev, next) ? prev : next;
+      });
     };
 
     window.addEventListener('storage', handleStorageChange);

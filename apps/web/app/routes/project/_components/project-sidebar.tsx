@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import {
   Sidebar,
@@ -12,7 +12,7 @@ import { createNavigationConfig } from '~/config/project.navigation.config';
 import { useProject } from '~/lib/context/project-context';
 import { ProjectChatNotebookSidebarContent } from './project-chat-notebook-sidebar-content';
 
-export function ProjectSidebar() {
+function ProjectSidebarInner() {
   const { projectSlug } = useProject();
 
   const navigationConfig = useMemo(() => {
@@ -40,3 +40,5 @@ export function ProjectSidebar() {
     </Sidebar>
   );
 }
+
+export const ProjectSidebar = memo(ProjectSidebarInner);
