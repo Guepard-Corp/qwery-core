@@ -290,13 +290,28 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             .join('\n\n')
         : agentInfo.systemPrompt;
 
+    const metaToolIds = new Set([
+      'todowrite',
+      'todoread',
+      'task',
+      'webfetch',
+      'get_skill',
+    ]);
+    const capabilityIds = Object.keys(tools).filter(
+      (id) => !metaToolIds.has(id),
+    );
+    const systemPromptWithSuggestions =
+      capabilityIds.length > 0
+        ? `${systemPromptForLlm}\n\nSUGGESTIONS - Capabilities: When using {{suggestion: ...}}, only suggest actions you can perform with your tools: ${capabilityIds.join(', ')}. Do not suggest CSV/PDF export, file download, or other actions you cannot perform.`
+        : systemPromptForLlm;
+
     const result = await LLM.stream({
       model,
       messages: messagesForLlm,
       tools,
       maxSteps: inputMaxSteps ?? agentInfo.steps ?? 5,
       abortSignal: abortController.signal,
-      systemPrompt: systemPromptForLlm,
+      systemPrompt: systemPromptWithSuggestions,
       onFinish: closeMcp
         ? async () => {
             await closeMcp();
