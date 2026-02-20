@@ -1,21 +1,24 @@
 import { z } from 'zod';
 import { Tool, type ToolContext, type ToolResult } from './tool';
 import { RunQueryTool } from './run-query';
+import { ExportFilenameSchema } from './schema';
 
 const DESCRIPTION = `Run multiple SQL queries using the existing runQuery tool.
-Each query is executed against the same DuckDB instance and datasources.
-Execution is effectively sequential at the engine level due to DuckDB's Node.js bindings,
-but this tool provides a convenient batched API and per-query results.`;
+Each query is executed against the same datasource. Provide an exportFilename per query for table exports (e.g. machines-active-status).`;
 
 const QueryItemSchema = z.object({
   id: z.string().optional(),
   query: z.string(),
   summary: z.string().optional(),
+  exportFilename: ExportFilenameSchema.describe(
+    "Short filename for this query's table export (lowercase, hyphens; e.g. machines-active-status)",
+  ),
 });
 
 const RunQueryInputSchema = z.object({
   query: z.string(),
   datasourceId: z.string(),
+  exportFilename: ExportFilenameSchema,
 });
 
 export const RunQueriesTool = Tool.define('runQueries', {
@@ -36,7 +39,10 @@ export const RunQueriesTool = Tool.define('runQueries', {
 
     const datasourceId = attachedDatasources[0];
 
-    if (!('execute' in RunQueryTool) || typeof RunQueryTool.execute !== 'function') {
+    if (
+      !('execute' in RunQueryTool) ||
+      typeof RunQueryTool.execute !== 'function'
+    ) {
       throw new Error('RunQueryTool does not have a valid execute function');
     }
 
@@ -50,10 +56,14 @@ export const RunQueriesTool = Tool.define('runQueries', {
     }> = [];
 
     for (const item of params.queries) {
-      const { id, query, summary } = item;
+      const { id, query, summary, exportFilename } = item;
 
       try {
-        const input = RunQueryInputSchema.parse({ query, datasourceId });
+        const input = RunQueryInputSchema.parse({
+          query,
+          datasourceId,
+          exportFilename,
+        });
         const data = await RunQueryTool.execute(input, ctx);
 
         results.push({

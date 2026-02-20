@@ -7,8 +7,9 @@ import {
 import { getDriverInstance } from '@qwery/extensions-loader';
 import { getLogger } from '@qwery/shared/logger';
 import { Repositories } from '@qwery/domain/repositories';
+import { ExportFilenameSchema, RunQueryResultSchema } from './schema';
 
-const DESCRIPTION = `Run a SQL query directly against a single datasource using its native driver.`;
+const DESCRIPTION = `Run a SQL query directly against a single datasource using its native driver. When calling this tool, provide an exportFilename (short descriptive name for the table export, e.g. machines-active-status).`;
 
 export const RunQueryTool = Tool.define('runQuery', {
   description: DESCRIPTION,
@@ -17,6 +18,9 @@ export const RunQueryTool = Tool.define('runQuery', {
       .string()
       .describe('The ID of the datasource to run the query against'),
     query: z.string().describe('The SQL query to execute'),
+    exportFilename: ExportFilenameSchema.describe(
+      'Short filename for the table export (lowercase, hyphens; e.g. machines-active-status)',
+    ),
   }),
   async execute(params, ctx) {
     const { repositories, attachedDatasources } = ctx.extra as {
@@ -25,7 +29,7 @@ export const RunQueryTool = Tool.define('runQuery', {
     };
 
     const logger = await getLogger();
-    const { datasourceId, query } = params;
+    const { datasourceId, query, exportFilename } = params;
 
     logger.debug('[RunQueryToolV2] Tool execution:', {
       queryLength: query.length,
@@ -85,11 +89,13 @@ export const RunQueryTool = Tool.define('runQuery', {
         rows: result.rows,
       };
 
-      return {
+      const payload = {
         result: fullResult,
         sqlQuery: query,
         executed: true,
+        ...(exportFilename && { exportFilename }),
       };
+      return RunQueryResultSchema.parse(payload);
     } finally {
       if (typeof instance.close === 'function') {
         await instance.close();

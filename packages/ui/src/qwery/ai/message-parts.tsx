@@ -30,6 +30,7 @@ import {
   CollapsibleTrigger,
 } from '../../shadcn/collapsible';
 import { SQLQueryVisualizer } from './sql-query-visualizer';
+import { generateExportFilename } from './utils/generate-export-filename';
 
 import type { DatasourceMetadata } from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
@@ -627,6 +628,7 @@ export interface ToolPartProps {
     datasource_provider: string;
   }>;
   onToolApproval?: (approvalId: string, approved: boolean) => void;
+  messages?: UIMessage[];
 }
 
 export function ToolPart({
@@ -640,6 +642,7 @@ export function ToolPart({
   notebookContext,
   pluginLogoMap,
   selectedDatasourceItems,
+  messages,
 }: ToolPartProps) {
   const { variant } = useToolVariant();
   const [runQueriesAllOpen, setRunQueriesAllOpen] = useState<boolean | null>(
@@ -1008,6 +1011,23 @@ export function ToolPart({
             }
           : undefined;
 
+      const exportFilename =
+        (output &&
+        'exportFilename' in output &&
+        typeof output.exportFilename === 'string'
+          ? output.exportFilename
+          : undefined) ??
+        (messages
+          ? generateExportFilename(
+              messages,
+              messageId,
+              sqlQuery,
+              hasResults && output?.result?.columns
+                ? (output.result.columns as string[])
+                : undefined,
+            )
+          : undefined);
+
       return (
         <div className="flex w-full flex-col gap-1.5">
           <SQLQueryVisualizer
@@ -1027,6 +1047,7 @@ export function ToolPart({
             onPasteToNotebook={handlePasteToNotebook}
             showPasteButton={shouldShowPasteButton}
             chartExecutionOverride={chartExecutionOverride}
+            exportFilename={exportFilename}
           />
           {executedFlag === false && (
             <span className="text-muted-foreground text-[11px]">
@@ -1344,13 +1365,18 @@ export function ToolPart({
                       : (q as Record<string, unknown>).query
                   ) as string | undefined;
                   const result =
-                    'data' in q
-                      ? (q as Record<string, unknown>).data?.result
+                    'data' in q &&
+                    q.data &&
+                    typeof q.data === 'object' &&
+                    'result' in q.data
+                      ? (q.data as { result?: unknown }).result
                       : undefined;
                   const success = 'success' in q ? q.success : undefined;
                   const error =
-                    'error' in q
-                      ? (q as Record<string, unknown>).error
+                    'error' in q && q.error
+                      ? typeof (q as Record<string, unknown>).error === 'string'
+                        ? ((q as Record<string, unknown>).error as string)
+                        : String((q as Record<string, unknown>).error)
                       : undefined;
                   const rawId = (q as { id?: string }).id;
                   const rawSummary = (q as { summary?: string }).summary;
@@ -1381,13 +1407,20 @@ export function ToolPart({
                   const isExecuting = isInProgress && idx === completedCount;
 
                   const hasTableData =
-                    Array.isArray(result?.columns) &&
-                    Array.isArray(result?.rows);
+                    result &&
+                    typeof result === 'object' &&
+                    'columns' in result &&
+                    'rows' in result &&
+                    Array.isArray(result.columns) &&
+                    Array.isArray(result.rows);
                   const tableResult =
                     hasTableData && result
                       ? {
-                          columns: result!.columns as string[],
-                          rows: result!.rows as Array<Record<string, unknown>>,
+                          columns: (result as { columns: unknown[] })
+                            .columns as string[],
+                          rows: (result as { rows: unknown[] }).rows as Array<
+                            Record<string, unknown>
+                          >,
                         }
                       : null;
                   const hasTable = !!tableResult;
@@ -1533,6 +1566,23 @@ export function ToolPart({
                                   onPasteToNotebook={undefined}
                                   showPasteButton={false}
                                   chartExecutionOverride={false}
+                                  exportFilename={(() => {
+                                    const data = (
+                                      q as {
+                                        data?: { exportFilename?: string };
+                                      }
+                                    ).data;
+                                    if (data?.exportFilename)
+                                      return data.exportFilename;
+                                    return messages
+                                      ? generateExportFilename(
+                                          messages,
+                                          messageId,
+                                          queryText,
+                                          tableResult?.columns,
+                                        )
+                                      : undefined;
+                                  })()}
                                 />
                               </div>
                               {error && (
@@ -1540,7 +1590,13 @@ export function ToolPart({
                                   <p className="text-destructive mb-1 pl-1 text-[10px] font-bold tracking-widest uppercase">
                                     Error Details
                                   </p>
-                                  <ToolErrorVisualizer errorText={error} />
+                                  <ToolErrorVisualizer
+                                    errorText={
+                                      typeof error === 'string'
+                                        ? error
+                                        : String(error)
+                                    }
+                                  />
                                 </div>
                               )}
                             </div>

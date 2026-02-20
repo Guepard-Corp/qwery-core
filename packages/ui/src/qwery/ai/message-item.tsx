@@ -883,6 +883,7 @@ function MessageItemComponent({
                               onToolApproval={onToolApproval}
                               pluginLogoMap={pluginLogoMap}
                               selectedDatasourceItems={selectedDatasourceItems}
+                              messages={messages}
                             />
                           </div>
                         );
@@ -918,6 +919,7 @@ function MessageItemComponent({
                             onToolApproval={onToolApproval}
                             pluginLogoMap={pluginLogoMap}
                             selectedDatasourceItems={selectedDatasourceItems}
+                            messages={messages}
                           />
                         </div>
                       );
