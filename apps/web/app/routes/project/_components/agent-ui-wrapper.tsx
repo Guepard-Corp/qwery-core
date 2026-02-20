@@ -539,9 +539,13 @@ export const AgentUIWrapper = forwardRef<
 
   const handleSubmitFeedback = useCallback(
     async (messageId: string, feedback: FeedbackPayload) => {
-      // Optimistic update
+      await submitFeedback.mutateAsync({ messageId, feedback });
+
+      // After the server confirms success, sync feedback into useChat's message state.
+      // invalidateQueries alone won't work because useChat has its own internal state
+      // and the sync effect guards against metadata-only changes (IDs don't change).
       if (setMessagesRef.current) {
-        setMessagesRef.current((prevMessages) => {
+        setMessagesRef.current((prevMessages: UIMessage[]) => {
           return prevMessages.map((msg) => {
             if (msg.id === messageId) {
               const currentMetadata = (msg.metadata || {}) as Record<
@@ -564,8 +568,6 @@ export const AgentUIWrapper = forwardRef<
           });
         });
       }
-
-      await submitFeedback.mutateAsync({ messageId, feedback });
     },
     [submitFeedback],
   );
