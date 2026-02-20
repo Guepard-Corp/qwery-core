@@ -50,6 +50,22 @@ import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
 import { useProject } from '~/lib/context/project-context';
 
+function formatTimeAgo(date: Date): string {
+  const now = Date.now();
+  const diff = now - new Date(date).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
 export interface SidebarConversationHistoryProps {
   conversations?: Conversation[];
   isLoading?: boolean;
@@ -494,10 +510,15 @@ export function SidebarConversationHistory({
                                           ) &&
                                             'animate-in fade-in-0 slide-in-from-left-2',
                                         )}
-                                        title={currentConversation.title}
+                                        title={`${currentConversation.title} · ${formatTimeAgo(currentConversation.createdAt)}`}
                                       >
                                         {truncateChatTitle(
                                           currentConversation.title,
+                                        )}
+                                      </span>
+                                      <span className="text-muted-foreground shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+                                        {formatTimeAgo(
+                                          currentConversation.createdAt,
                                         )}
                                       </span>
                                       <div className="relative shrink-0">
@@ -713,10 +734,15 @@ export function SidebarConversationHistory({
                                             animatingIds.has(conversation.id) &&
                                               'animate-in fade-in-0 slide-in-from-left-2',
                                           )}
-                                          title={conversation.title}
+                                          title={`${conversation.title} · ${formatTimeAgo(conversation.createdAt)}`}
                                         >
                                           {truncateChatTitle(
                                             conversation.title,
+                                          )}
+                                        </span>
+                                        <span className="text-muted-foreground shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+                                          {formatTimeAgo(
+                                            conversation.createdAt,
                                           )}
                                         </span>
                                         <div className="relative shrink-0">
@@ -1178,10 +1204,15 @@ export function SidebarNotebookHistory({
                                           ) &&
                                             'animate-in fade-in-0 slide-in-from-left-2',
                                         )}
-                                        title={currentNotebook.title}
+                                        title={`${currentNotebook.title} · ${formatTimeAgo(currentNotebook.updatedAt)}`}
                                       >
                                         {truncateChatTitle(
                                           currentNotebook.title,
+                                        )}
+                                      </span>
+                                      <span className="text-muted-foreground shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+                                        {formatTimeAgo(
+                                          currentNotebook.updatedAt,
                                         )}
                                       </span>
                                       {isProcessing && (
@@ -1347,9 +1378,12 @@ export function SidebarNotebookHistory({
                                             animatingIds.has(notebook.id) &&
                                               'animate-in fade-in-0 slide-in-from-left-2',
                                           )}
-                                          title={notebook.title}
+                                          title={`${notebook.title} · ${formatTimeAgo(notebook.updatedAt)}`}
                                         >
                                           {truncateChatTitle(notebook.title)}
+                                        </span>
+                                        <span className="text-muted-foreground shrink-0 text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+                                          {formatTimeAgo(notebook.updatedAt)}
                                         </span>
                                         {unsavedNotebookIds.includes(
                                           notebook.id,

@@ -1,43 +1,101 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import type { useChat } from '@ai-sdk/react';
 import {
   createSuggestionButton,
+  injectMultipleSuggestionButtons,
   generateSuggestionId,
   cleanSuggestionPatterns,
-  scrollToConversationBottom,
 } from '../utils/suggestion-enhancement';
+import {
+  isSuggestionPattern,
+  isEntirelySuggestions,
+} from '../utils/suggestion-pattern';
+import type { SuggestionMetadata } from '../utils/suggestion-pattern';
 import type { DetectedSuggestion } from './use-suggestion-detection';
 
 export interface UseSuggestionEnhancementOptions {
   detectedSuggestions: DetectedSuggestion[];
-  containerRef: React.RefObject<HTMLElement | null>;
+  containerElement: HTMLElement | null;
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   contextMessages: {
     lastAssistantResponse?: string;
     parentConversationId?: string;
   };
+  scrollToBottom?: () => void;
+  disabled?: boolean;
+  isLastAgentResponse?: boolean;
+  onBeforeSuggestionSend?: (
+    text: string,
+    metadata?: SuggestionMetadata,
+  ) => Promise<boolean>;
 }
 
 export function useSuggestionEnhancement({
   detectedSuggestions,
-  containerRef,
+  containerElement,
   sendMessage,
   contextMessages,
+  scrollToBottom,
+  disabled = false,
+  isLastAgentResponse = true,
+  onBeforeSuggestionSend,
 }: UseSuggestionEnhancementOptions): void {
+  const applyOmit = isLastAgentResponse;
   const processedElementsRef = useRef<Set<Element>>(new Set());
-  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
-    null,
-  );
+  const disabledRef = useRef(disabled);
 
   useEffect(() => {
-    setContainerElement(containerRef.current);
-  }, [containerRef]);
+    disabledRef.current = disabled;
+  }, [disabled]);
+
+  useEffect(() => {
+    if (!containerElement) return;
+    const buttons = containerElement.querySelectorAll('[data-suggestion-btn]');
+    buttons.forEach((btn) => {
+      const el = btn as HTMLElement;
+      if (disabled) {
+        el.style.opacity = '0.5';
+        el.style.pointerEvents = 'none';
+      } else {
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+      }
+    });
+  }, [containerElement, disabled]);
 
   const handleSuggestionClick = useCallback(
-    (cleanSuggestionText: string, sourceSuggestionId: string | undefined) => {
-      if (!sendMessage) return;
+    async (
+      cleanSuggestionText: string,
+      sourceSuggestionId: string | undefined,
+      metadata?: SuggestionMetadata,
+    ) => {
+      console.log('[SuggestionFlow] handleSuggestionClick', {
+        text: cleanSuggestionText?.slice(0, 50),
+        metadata,
+        hasOnBefore: !!onBeforeSuggestionSend,
+      });
+      if (disabledRef.current || !sendMessage) {
+        if (disabledRef.current) {
+          // Agent is not idle – show a gentle toast and ignore the click
+          try {
+            toast(
+              'Agent is still processing. Please wait before using suggestions.',
+            );
+          } catch {
+            // ignore toast errors in non-browser environments
+          }
+        }
+        return;
+      }
 
       try {
+        const ok =
+          onBeforeSuggestionSend === undefined
+            ? true
+            : await onBeforeSuggestionSend(cleanSuggestionText, metadata);
+        if (!ok) return;
+
         let messageText = cleanSuggestionText;
         const { lastAssistantResponse, parentConversationId } = contextMessages;
 
@@ -55,7 +113,7 @@ export function useSuggestionEnhancement({
         }
 
         sendMessage({ text: messageText }, {});
-        scrollToConversationBottom();
+        scrollToBottom?.();
       } catch (error) {
         console.error(
           '[useSuggestionEnhancement] Error sending message:',
@@ -63,7 +121,7 @@ export function useSuggestionEnhancement({
         );
       }
     },
-    [sendMessage, contextMessages],
+    [sendMessage, contextMessages, scrollToBottom, onBeforeSuggestionSend],
   );
 
   useEffect(() => {
@@ -76,33 +134,93 @@ export function useSuggestionEnhancement({
 
     const processSuggestions = () => {
       try {
-        cleanSuggestionPatterns(containerElement);
-
-        detectedSuggestions.forEach(({ element, suggestionText }) => {
-          if (!element.isConnected) {
-            return;
-          }
-
-          if (
-            element.querySelector('[data-suggestion-button]') ||
-            processedElementsRef.current.has(element)
-          ) {
-            return;
-          }
-
-          processedElementsRef.current.add(element);
-          const suggestionId = generateSuggestionId(suggestionText);
-
-          const { cleanup } = createSuggestionButton(element, {
-            suggestionText,
-            suggestionId,
-            handlers: {
-              onClick: handleSuggestionClick,
-            },
+        if (applyOmit) {
+          const lists = containerElement.querySelectorAll('ul, ol');
+          lists.forEach((list) => {
+            const items = Array.from(list.querySelectorAll('li'));
+            if (
+              items.length > 0 &&
+              items.every((li) => isSuggestionPattern(li.textContent || ''))
+            ) {
+              const prev = list.previousElementSibling;
+              if (prev?.tagName === 'P') {
+                prev.textContent = '';
+              }
+              list.innerHTML = '';
+            }
           });
 
-          cleanupFunctions.push(cleanup);
-        });
+          containerElement.querySelectorAll('p').forEach((p) => {
+            const text = p.textContent || '';
+            if (isSuggestionPattern(text) && isEntirelySuggestions(text)) {
+              p.textContent = '';
+            }
+          });
+        }
+
+        cleanSuggestionPatterns(containerElement);
+
+        detectedSuggestions.forEach(
+          ({
+            element,
+            suggestionText,
+            suggestionMatches,
+            suggestionMetadata,
+          }) => {
+            if (!element.isConnected) {
+              return;
+            }
+
+            if (
+              element.querySelector('[data-suggestion-button]') ||
+              processedElementsRef.current.has(element)
+            ) {
+              return;
+            }
+
+            processedElementsRef.current.add(element);
+
+            const tagName = element.tagName;
+            const elementText = element.textContent || '';
+
+            if (
+              applyOmit &&
+              tagName === 'P' &&
+              isEntirelySuggestions(elementText)
+            ) {
+              element.textContent = '';
+              return;
+            }
+
+            const omitText = isLastAgentResponse && tagName === 'LI';
+
+            if (suggestionMatches && suggestionMatches.length > 1) {
+              const { cleanup } = injectMultipleSuggestionButtons(
+                element,
+                suggestionMatches,
+                { onClick: handleSuggestionClick },
+                generateSuggestionId,
+                { omitText },
+              );
+              cleanupFunctions.push(cleanup);
+            } else if (suggestionText) {
+              const suggestionId = generateSuggestionId(suggestionText);
+              const { cleanup } = createSuggestionButton(
+                element,
+                {
+                  suggestionText,
+                  suggestionId,
+                  handlers: {
+                    onClick: handleSuggestionClick,
+                  },
+                  metadata: suggestionMetadata,
+                },
+                { omitText },
+              );
+              cleanupFunctions.push(cleanup);
+            }
+          },
+        );
       } catch (error) {
         console.error(
           '[useSuggestionEnhancement] Error processing suggestions:',
@@ -130,5 +248,7 @@ export function useSuggestionEnhancement({
     containerElement,
     sendMessage,
     handleSuggestionClick,
+    isLastAgentResponse,
+    onBeforeSuggestionSend,
   ]);
 }

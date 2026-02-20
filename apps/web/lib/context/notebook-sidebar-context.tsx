@@ -138,16 +138,6 @@ export function NotebookSidebarProvider({ children }: { children: ReactNode }) {
             cellIdRef.current = options.cellId;
           }
 
-          console.log(
-            '[NotebookSidebarContext] Sending message with context:',
-            {
-              datasourceId: cellDatasourceRef.current,
-              notebookCellType: notebookCellTypeRef.current,
-              cellId: cellIdRef.current,
-              messagePreview: messageToSend?.substring(0, 50),
-            },
-          );
-
           if (messageToSend) {
             sidebarControlRef.current?.sendMessage?.(messageToSend);
           }

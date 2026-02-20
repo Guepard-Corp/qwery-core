@@ -7,8 +7,9 @@ import {
 import { getDriverInstance } from '@qwery/extensions-loader';
 import { getLogger } from '@qwery/shared/logger';
 import { Repositories } from '@qwery/domain/repositories';
+import { ExportFilenameSchema, RunQueryResultSchema } from './schema';
 
-const DESCRIPTION = `Run a SQL query directly against a single datasource using its native driver.`;
+const DESCRIPTION = `Run a SQL query directly against a single datasource using its native driver. When calling this tool, provide an exportFilename (short descriptive name for the table export, e.g. machines-active-status).`;
 
 export const RunQueryTool = Tool.define('runQuery', {
   description: DESCRIPTION,
@@ -17,6 +18,9 @@ export const RunQueryTool = Tool.define('runQuery', {
       .string()
       .describe('The ID of the datasource to run the query against'),
     query: z.string().describe('The SQL query to execute'),
+    exportFilename: ExportFilenameSchema.describe(
+      'Short filename for the table export (lowercase, hyphens; e.g. machines-active-status)',
+    ),
   }),
   async execute(params, ctx) {
     const { repositories, attachedDatasources } = ctx.extra as {
@@ -24,49 +28,14 @@ export const RunQueryTool = Tool.define('runQuery', {
       attachedDatasources: string[];
     };
 
-    const intent = {
-      needsSQL: false,
-      needsChart: false,
-    };
-
     const logger = await getLogger();
-    const { datasourceId, query } = params;
-
-    const needSQL = intent?.needsSQL ?? false;
-    const needChart = intent?.needsChart ?? false;
-
-    const isChartRequestInInlineMode = needChart === true && needSQL === true;
-
-    const shouldSkipExecution = needSQL === true && !isChartRequestInInlineMode;
+    const { datasourceId, query, exportFilename } = params;
 
     logger.debug('[RunQueryToolV2] Tool execution:', {
-      needSQL,
-      needChart,
-      isChartRequestInInlineMode,
-      shouldSkipExecution,
       queryLength: query.length,
       queryPreview: query.substring(0, 100),
       datasourceId,
     });
-
-    if (shouldSkipExecution) {
-      logger.debug(
-        '[RunQueryToolV2] Skipping execution - SQL will be pasted to notebook cell',
-      );
-      return {
-        result: null,
-        shouldPaste: true,
-        sqlQuery: query,
-      };
-    }
-
-    if (isChartRequestInInlineMode) {
-      logger.debug(
-        '[RunQueryToolV2] Executing query for chart generation (inline mode override)',
-      );
-    } else {
-      logger.debug('[RunQueryToolV2] Executing query normally');
-    }
 
     const startTime = performance.now();
 
@@ -120,19 +89,13 @@ export const RunQueryTool = Tool.define('runQuery', {
         rows: result.rows,
       };
 
-      if (isChartRequestInInlineMode) {
-        return {
-          result: fullResult,
-          shouldPaste: true,
-          sqlQuery: query,
-          chartExecutionOverride: true,
-        };
-      }
-
-      return {
+      const payload = {
         result: fullResult,
         sqlQuery: query,
+        executed: true,
+        ...(exportFilename && { exportFilename }),
       };
+      return RunQueryResultSchema.parse(payload);
     } finally {
       if (typeof instance.close === 'function') {
         await instance.close();

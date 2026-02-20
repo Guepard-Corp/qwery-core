@@ -119,7 +119,7 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
   return result.join('\n\n');
 }
 
-function getTextContentFromMessage(message: UIMessage): string {
+export function getTextContentFromMessage(message: UIMessage): string {
   const textParts: string[] = [];
   for (const part of message.parts) {
     if (part.type === 'text' && 'text' in part && part.text?.trim()) {

@@ -8,7 +8,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../../../shadcn/chart';
-import { getColors } from './chart-utils';
+import { getColors, resolveChartKeys } from './chart-utils';
+import { validateChartData } from './chart-data-validator';
 
 export interface PieChartConfig {
   chartType: 'pie';
@@ -27,7 +28,21 @@ export interface PieChartProps {
 
 export function PieChart({ chartConfig }: PieChartProps) {
   const { data, config } = chartConfig;
-  const { nameKey = 'name', valueKey = 'value', colors } = config;
+  const { nameKey, valueKey, colors } = config;
+
+  const { valid } = validateChartData(data);
+
+  const resolvedKeys = useMemo(
+    () =>
+      resolveChartKeys(data, { nameKey, valueKey }, 'pie') as {
+        nameKey: string;
+        valueKey: string;
+      },
+    [data, nameKey, valueKey],
+  );
+
+  const actualNameKey = resolvedKeys.nameKey;
+  const actualValueKey = resolvedKeys.valueKey;
 
   // Get colors (chart generation now uses direct hex colors)
   const chartColors = useMemo(() => getColors(colors), [colors]);
@@ -37,15 +52,22 @@ export function PieChart({ chartConfig }: PieChartProps) {
   // which are used by ChartTooltipContent for consistent theming
   const chartConfigForContainer = useMemo(() => {
     const configObj: Record<string, { label?: string; color?: string }> = {};
-    if (valueKey) {
-      configObj[valueKey] = {
-        label: config.labels?.[valueKey] || valueKey,
+    if (actualValueKey) {
+      configObj[actualValueKey] = {
+        label: config.labels?.[actualValueKey] || actualValueKey,
         color: chartColors[0],
       };
     }
     return configObj;
-  }, [valueKey, chartColors, config.labels]);
+  }, [actualValueKey, chartColors, config.labels]);
 
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">
@@ -67,8 +89,8 @@ export function PieChart({ chartConfig }: PieChartProps) {
         />
         <Pie
           data={data}
-          dataKey={valueKey}
-          nameKey={nameKey}
+          dataKey={actualValueKey}
+          nameKey={actualNameKey}
           cx="50%"
           cy="50%"
           outerRadius={80}

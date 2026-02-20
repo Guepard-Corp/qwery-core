@@ -6,7 +6,7 @@ import { DatasourceMetadata, DatasourceResultSet } from '@qwery/extensions-sdk';
 import { UIMessage } from 'ai';
 
 const models = [
-  'azure/gpt-5-mini',
+  'azure/gpt-5.2-chat',
   'azure/gpt-5-nano',
   'azure/gpt-5.1-codex-mini',
   'azure/Ministral-3B',

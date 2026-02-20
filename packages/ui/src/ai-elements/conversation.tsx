@@ -9,19 +9,27 @@ import { StickToBottom, useStickToBottomContext } from 'use-stick-to-bottom';
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
-export const Conversation = ({ className, ...props }: ConversationProps) => (
-  <StickToBottom
-    className={cn(
-      'relative flex-1 overflow-x-hidden overflow-y-auto',
-      className,
-    )}
-    initial="smooth"
-    resize="smooth"
-    role="log"
-    style={{ overflowX: 'hidden' }}
-    {...props}
-  />
+import { forwardRef } from 'react';
+
+export const Conversation = forwardRef<HTMLDivElement, ConversationProps>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className="relative flex-1 overflow-hidden">
+      <StickToBottom
+        className={cn(
+          'relative h-full overflow-x-hidden overflow-y-auto',
+          className,
+        )}
+        initial="smooth"
+        resize="smooth"
+        role="log"
+        style={{ overflowX: 'hidden' }}
+        {...props}
+      />
+    </div>
+  ),
 );
+
+Conversation.displayName = 'Conversation';
 
 export type ConversationContentProps = ComponentProps<
   typeof StickToBottom.Content

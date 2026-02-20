@@ -117,7 +117,6 @@ export const DatasourcePreview = forwardRef<
       const timer = setTimeout(() => setShowPublishingGuide(true), 2500);
       return () => clearTimeout(timer);
     }
-    queueMicrotask(() => setShowPublishingGuide(false));
   }, [needsPublicationCheck, publicationStatus]);
 
   useEffect(() => {
@@ -158,6 +157,7 @@ export const DatasourcePreview = forwardRef<
   const dataFormat = extensionMeta?.previewDataFormat;
   const isGSheetUrl = (url: string | null) =>
     !!url?.includes('docs.google.com/spreadsheets');
+  const isGoogleSheets = isGSheetUrl(debouncedPreviewUrl);
 
   useEffect(() => {
     if (!needsDataFetching || !debouncedPreviewUrl) {
@@ -337,6 +337,22 @@ export const DatasourcePreview = forwardRef<
       {hasPreview && (
         <div className="shrink-0">
           <h3 className="text-foreground text-sm font-semibold">Preview</h3>
+        </div>
+      )}
+
+      {/* Live preview collapsible - above main preview */}
+      {isGoogleSheets && showPublishingGuide && (
+        <div className="shrink-0">
+          <DatasourcePublishingGuide
+            isPublished={
+              publicationStatus === 'published'
+                ? true
+                : publicationStatus === 'not-published'
+                  ? false
+                  : null
+            }
+            isChecking={publicationStatus === 'checking'}
+          />
         </div>
       )}
 

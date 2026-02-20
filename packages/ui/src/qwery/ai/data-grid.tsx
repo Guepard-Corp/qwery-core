@@ -218,8 +218,8 @@ export function DataGrid({
     <div className={cn('flex h-full flex-col', className)}>
       {/* Data Grid */}
       <div className="max-w-full min-w-0 flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="overflow-x-auto">
+        <ScrollArea className="scrollbar-hidden h-full">
+          <div className="scrollbar-hidden overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted/20 border-border/30 border-b">

@@ -58,7 +58,7 @@ export function ConversationList({
   isProcessing: _isProcessing = false,
   processingConversationSlug,
   onConversationSelect,
-  onNewConversation: _onNewConversation,
+  onNewConversation,
   onConversationEdit,
   onConversationDelete,
   onConversationsDelete,
@@ -67,15 +67,16 @@ export function ConversationList({
   searchPlaceholder: _searchPlaceholder = 'Search conversations...',
   showNewButton: _showNewButton = true,
   searchQuery: externalSearchQuery,
-  onSearchQueryChange: _onSearchQueryChange,
+  onSearchQueryChange,
   isEditMode: externalEditMode,
   onEditModeChange,
 }: ConversationListProps) {
-  const [internalSearchQuery, _setInternalSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const searchQuery =
     externalSearchQuery !== undefined
       ? externalSearchQuery
       : internalSearchQuery;
+  const _setSearchQuery = onSearchQueryChange ?? setInternalSearchQuery;
 
   const [internalEditMode, setInternalEditMode] = useState(false);
   const isEditMode =
@@ -86,7 +87,8 @@ export function ConversationList({
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [visibleCount, _setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [_isLoadingMore, setIsLoadingMore] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
@@ -120,9 +122,23 @@ export function ConversationList({
     return sortTimeGroups(groupedConversations);
   }, [groupedConversations]);
 
+  const _hasMore = allConversations.length > visibleCount;
+
   const handleConversationSelect = (conversationSlug: string) => {
     if (!isEditMode) {
       onConversationSelect?.(conversationSlug);
+    }
+  };
+
+  const _handleNewConversation = () => {
+    onNewConversation?.();
+  };
+
+  const _handleToggleEditMode = () => {
+    const nextMode = !isEditMode;
+    setIsEditMode(nextMode);
+    if (!nextMode) {
+      setSelectedIds(new Set());
     }
   };
 
@@ -221,6 +237,14 @@ export function ConversationList({
       previousTitlesRef.current.set(conversation.id, currentTitle);
     });
   }, [conversations]);
+
+  const _handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));
+      setIsLoadingMore(false);
+    }, 100);
+  };
 
   const isSearching = searchQuery.trim().length > 0;
 

@@ -2,10 +2,10 @@
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useEffect, useState, useRef } from 'react';
-import { Send, AlertCircle, Sparkles, X, GripHorizontal } from 'lucide-react';
+import { ArrowUp, GripVertical, X } from 'lucide-react';
 import { Button } from '@qwery/ui/button';
 import { Textarea } from '@qwery/ui/textarea';
-import { Alert, AlertDescription } from '@qwery/ui/alert';
+import { PromptInputSubmit } from '@qwery/ui/ai-elements';
 import { cn } from '@qwery/ui/utils';
 
 interface NotebookCellAiPopupProps {
@@ -32,6 +32,8 @@ interface NotebookCellAiPopupProps {
   cellType?: 'query' | 'prompt';
   isLoading?: boolean;
   enableShortcut?: boolean;
+  embedded?: boolean;
+  onNoDatasourceError?: () => void;
 }
 
 export function NotebookCellAiPopup({
@@ -51,8 +53,9 @@ export function NotebookCellAiPopup({
   cellType,
   isLoading = false,
   enableShortcut = true,
+  embedded = false,
+  onNoDatasourceError,
 }: NotebookCellAiPopupProps) {
-  const [showDatasourceError, setShowDatasourceError] = useState(false);
   const [popupPosition, setPopupPosition] = useState<{
     top: number;
     left: number;
@@ -88,6 +91,8 @@ export function NotebookCellAiPopup({
       const target = event.target as HTMLElement | null;
       if (!container || !target || !container.contains(target)) return;
 
+      if (target.closest('[data-ai-popup]')) return;
+
       const isInputFocused =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
@@ -105,32 +110,14 @@ export function NotebookCellAiPopup({
   }, [cellContainerRef, cellId, isQueryCell, onOpenAiPopup, shortcutEnabled]);
 
   useEffect(() => {
-    if (!isOpen || !isQueryCell || !shortcutEnabled) {
-      setTimeout(() => {
-        setAiQuestion('');
-        setShowDatasourceError(false);
-      }, 0);
-      return;
-    }
-
-    if (selectedDatasource && showDatasourceError) {
-      setTimeout(() => setShowDatasourceError(false), 0);
-    }
+    if (!isOpen || !isQueryCell || !shortcutEnabled) return;
 
     const focusTimeout = setTimeout(() => aiInputRef.current?.focus(), 0);
 
     return () => {
       clearTimeout(focusTimeout);
     };
-  }, [
-    aiInputRef,
-    isOpen,
-    isQueryCell,
-    setAiQuestion,
-    selectedDatasource,
-    showDatasourceError,
-    shortcutEnabled,
-  ]);
+  }, [aiInputRef, isOpen, isQueryCell, shortcutEnabled]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -138,7 +125,6 @@ export function NotebookCellAiPopup({
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onCloseAiPopup();
-        setAiQuestion('');
       }
     };
 
@@ -147,9 +133,10 @@ export function NotebookCellAiPopup({
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onCloseAiPopup, setAiQuestion]);
+  }, [isOpen, onCloseAiPopup]);
 
   useEffect(() => {
+    if (embedded) return;
     if (
       !isOpen ||
       !isQueryCell ||
@@ -273,7 +260,7 @@ export function NotebookCellAiPopup({
         }),
       0,
     );
-  }, [isOpen, isQueryCell, codeMirrorRef, editorContainerRef]);
+  }, [embedded, isOpen, isQueryCell, codeMirrorRef, editorContainerRef]);
 
   useEffect(() => {
     if (
@@ -383,6 +370,84 @@ export function NotebookCellAiPopup({
     };
   }, [isResizing, popupPosition, editorContainerRef]);
 
+  const renderForm = () => (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!aiQuestion.trim() || !onRunQueryWithAgent || isLoading) return;
+        if (!selectedDatasource) return;
+
+        onRunQueryWithAgent(aiQuestion, selectedDatasource, cellType);
+      }}
+      className="relative flex min-h-0 flex-1 flex-col"
+    >
+      <Textarea
+        ref={aiInputRef}
+        value={aiQuestion}
+        onChange={(e) => setAiQuestion(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || e.shiftKey) return;
+          e.preventDefault();
+          if (!aiQuestion.trim() || isLoading) return;
+          if (!selectedDatasource) {
+            onNoDatasourceError?.();
+            return;
+          }
+          const form = e.currentTarget.form;
+          if (form) form.requestSubmit();
+        }}
+        placeholder={
+          cellType === 'prompt'
+            ? 'Describe what you want the AI to do...'
+            : 'Describe the query you need or ask a question...'
+        }
+        className="text-foreground placeholder:text-muted-foreground min-h-0 flex-1 resize-none border-0 bg-transparent pt-8 pr-3 pb-10 pl-3 text-sm focus-visible:ring-0"
+        autoFocus
+        disabled={isLoading}
+      />
+
+      <PromptInputSubmit
+        type="submit"
+        className="absolute right-2 bottom-2 z-10 h-8"
+        disabled={!aiQuestion.trim() || isLoading}
+        status={isLoading ? 'submitted' : undefined}
+      >
+        {isLoading ? (
+          <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <ArrowUp className="size-4" />
+        )}
+      </PromptInputSubmit>
+    </form>
+  );
+
+  if (embedded && isQueryCell) {
+    return (
+      <div
+        data-ai-popup
+        className={cn(
+          'border-border bg-muted/20 relative flex shrink-0 flex-col border-t p-4 transition-all duration-200 ease-out',
+          isOpen
+            ? 'max-h-[50vh] min-h-[100px] opacity-100'
+            : 'pointer-events-none max-h-0 min-h-0 overflow-hidden border-t-0 p-0 opacity-0',
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-foreground absolute top-2 right-2 z-10 size-7"
+          onClick={onCloseAiPopup}
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </Button>
+        {renderForm()}
+      </div>
+    );
+  }
+
   if (!isOpen || !isQueryCell || !popupPosition) {
     return null;
   }
@@ -417,8 +482,8 @@ export function NotebookCellAiPopup({
       data-ai-popup
       className={cn(
         'absolute z-50 flex flex-col overflow-hidden transition-all duration-200 ease-out',
-        'border-border bg-background',
-        'rounded-lg border shadow-lg',
+        'border-border bg-background/95 backdrop-blur-sm',
+        'rounded-lg border shadow-md',
         isOpen
           ? 'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2'
           : 'animate-out fade-out-0 zoom-out-95',
@@ -430,103 +495,21 @@ export function NotebookCellAiPopup({
         width: `${popupPosition.width}px`,
         height: `${popupPosition.height}px`,
       }}
-      onMouseDown={handleDragStart}
       onClick={(e) => e.stopPropagation()}
     >
       <div
         data-drag-handle
-        className="group border-border bg-muted/50 flex h-10 shrink-0 cursor-grab items-center justify-between border-b px-3 select-none active:cursor-grabbing"
+        className="text-muted-foreground/50 hover:text-muted-foreground absolute top-1 left-1 z-10 cursor-grab select-none active:cursor-grabbing"
         onMouseDown={(e) => {
           e.stopPropagation();
           handleDragStart(e);
         }}
+        aria-label="Drag to move"
       >
-        <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
-          <div className="bg-accent text-accent-foreground flex h-5 w-5 items-center justify-center rounded-md">
-            <Sparkles className="h-3 w-3" />
-          </div>
-          <span>AI Assistant</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <GripHorizontal
-            className="text-muted-foreground group-hover:text-foreground transition-colors"
-            size={14}
-          />
-          <div className="bg-border h-3 w-px" />
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => {
-              onCloseAiPopup();
-              setAiQuestion('');
-            }}
-            aria-label="Close"
-          >
-            <X size={14} />
-          </button>
-        </div>
+        <GripVertical className="size-3.5" />
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!aiQuestion.trim() || !onRunQueryWithAgent || isLoading) return;
-
-          if (!selectedDatasource) {
-            setShowDatasourceError(true);
-            return;
-          }
-
-          setShowDatasourceError(false);
-          onRunQueryWithAgent(aiQuestion, selectedDatasource, cellType);
-        }}
-        className="relative flex min-h-0 flex-1 flex-col"
-      >
-        {showDatasourceError && !selectedDatasource && (
-          <div className="animate-in fade-in slide-in-from-top-1 absolute top-2 right-2 left-2 z-20">
-            <Alert variant="destructive" className="px-3 py-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-3.5 w-3.5" />
-                <AlertDescription className="text-xs font-medium">
-                  Select a datasource first
-                </AlertDescription>
-              </div>
-            </Alert>
-          </div>
-        )}
-
-        <Textarea
-          ref={aiInputRef}
-          value={aiQuestion}
-          onChange={(e) => {
-            setAiQuestion(e.target.value);
-            if (showDatasourceError) {
-              setShowDatasourceError(false);
-            }
-          }}
-          placeholder="Ask me anything..."
-          className="text-foreground placeholder:text-muted-foreground h-full w-full resize-none border-0 bg-transparent p-4 text-sm focus-visible:ring-0"
-          autoFocus
-          disabled={isLoading}
-        />
-
-        <div className="border-border bg-muted/30 flex shrink-0 items-center justify-end border-t p-2">
-          <Button
-            type="submit"
-            size="sm"
-            className="h-7 gap-1.5 px-3 text-xs font-medium"
-            disabled={!aiQuestion.trim() || isLoading}
-          >
-            {isLoading ? (
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <>
-                Send <Send className="h-3 w-3" />
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
+      {renderForm()}
 
       <div
         className="absolute right-0 bottom-0 z-20 h-4 w-4 cursor-nwse-resize opacity-0 transition-opacity hover:opacity-100"

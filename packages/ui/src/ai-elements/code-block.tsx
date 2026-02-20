@@ -18,6 +18,7 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
   language: BundledLanguage;
   showLineNumbers?: boolean;
+  disableHover?: boolean;
 };
 
 type CodeBlockContextType = {
@@ -76,6 +77,7 @@ export const CodeBlock = ({
   code,
   language,
   showLineNumbers = false,
+  disableHover = false,
   className,
   children,
   ...props
@@ -109,7 +111,28 @@ export const CodeBlock = ({
         )}
         {...props}
       >
-        <div className="relative max-w-full min-w-0 overflow-x-auto">
+        <div
+          className={cn(
+            'relative max-w-full min-w-0 overflow-x-auto',
+            !disableHover && 'scrollbar-hover-visible',
+          )}
+        >
+          <style>{`
+            .scrollbar-hover-visible::-webkit-scrollbar {
+              height: 5px;
+              backgroundColor: transparent;
+            }
+            .scrollbar-hover-visible::-webkit-scrollbar-thumb {
+              background-color: transparent;
+              border-radius: 10px;
+            }
+            .scrollbar-hover-visible:hover::-webkit-scrollbar-thumb {
+              background-color: rgba(155, 155, 155, 0.3);
+            }
+            .dark .scrollbar-hover-visible:hover::-webkit-scrollbar-thumb {
+              background-color: rgba(255, 255, 255, 0.15);
+            }
+          `}</style>
           <div
             className={cn(
               '[&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed',
@@ -127,7 +150,14 @@ export const CodeBlock = ({
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
-            <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <div
+              className={cn(
+                'absolute top-2 right-2 flex items-center gap-2 transition-opacity',
+                disableHover
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100',
+              )}
+            >
               {children}
             </div>
           )}

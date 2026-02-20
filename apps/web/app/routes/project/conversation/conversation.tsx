@@ -13,6 +13,12 @@ import { toast } from 'sonner';
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/paths.config';
 
+const GENERIC_CHAT_SUGGESTIONS = [
+  'What can you help me with?',
+  'What questions can I ask about my data?',
+  'Show me a sample of my data',
+];
+
 export default function ConversationPage() {
   const slug = useParams().slug;
   const navigate = useNavigate();
@@ -187,6 +193,8 @@ export default function ConversationPage() {
     }
   }, [getMessages.data, getConversation.data, slug, isLoading]);
 
+  const initialSuggestions = useMemo(() => [...GENERIC_CHAT_SUGGESTIONS], []);
+
   if (isLoading) {
     return (
       <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -228,6 +236,7 @@ export default function ConversationPage() {
         ref={agentRef}
         conversationSlug={slug as string}
         initialMessages={getMessages.data}
+        initialSuggestions={initialSuggestions}
       />
       {notebookId && notebook.data?.slug && (
         <Button

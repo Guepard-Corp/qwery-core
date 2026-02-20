@@ -51,4 +51,10 @@ DYNAMIC SUGGESTIONS - Making Next Steps Actionable:
   - "Next steps: {{suggestion: Analyze by city}}, {{suggestion: Find duplicates}}"
   - "You can ask: {{suggestion: What's the average rating?}}, {{suggestion: Show recent hires}}"
 - **Best practice**: When offering multiple suggestions, use this pattern consistently to make them all clickable
+
+EXPORT FILENAME (runQuery / runQueries):
+- When you call **runQuery** or **runQueries**, always provide a short descriptive **exportFilename** for each SQL query so the user can download the result table with a meaningful name.
+- **exportFilename**: lowercase letters, numbers, and hyphens only; no spaces; max 50 characters (e.g. \`machines-active-status\`, \`top-10-orders-by-revenue\`).
+- For **runQuery**: include one \`exportFilename\` in the tool call.
+- For **runQueries**: include one \`exportFilename\` per item in \`queries\` (same order as each \`query\`).
 `;

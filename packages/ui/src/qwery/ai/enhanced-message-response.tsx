@@ -15,6 +15,8 @@ export interface EnhancedMessageResponseProps {
   sendMessage?: ReturnType<typeof useChat>['sendMessage'];
   messages?: UIMessage[];
   currentMessageId?: string;
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 export const EnhancedMessageResponse = memo(
@@ -24,6 +26,8 @@ export const EnhancedMessageResponse = memo(
     sendMessage,
     messages,
     currentMessageId,
+    onDatasourceNameClick,
+    getDatasourceTooltip,
   }: EnhancedMessageResponseProps) => {
     const [currentHeading, setCurrentHeading] = useState('');
 
@@ -36,7 +40,15 @@ export const EnhancedMessageResponse = memo(
     );
 
     return (
-      <MarkdownProvider value={{ sendMessage, messages, currentMessageId }}>
+      <MarkdownProvider
+        value={{
+          sendMessage,
+          messages,
+          currentMessageId,
+          onDatasourceNameClick,
+          getDatasourceTooltip,
+        }}
+      >
         <HeadingContext.Provider value={headingContextValue}>
           <div
             className={cn(

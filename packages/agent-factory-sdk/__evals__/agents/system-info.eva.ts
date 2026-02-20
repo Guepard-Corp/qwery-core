@@ -2,7 +2,7 @@ import { describe, it, expect, runEval } from '@qwery/evals';
 import { systemInfo } from '../../src/agents/actors/system-info.actor';
 
 const models = [
-  'azure/gpt-5-mini',
+  'azure/gpt-5.2-chat',
   'azure/gpt-5-nano',
   //'azure/gpt-5.1-codex-mini',
   'azure/Ministral-3B',

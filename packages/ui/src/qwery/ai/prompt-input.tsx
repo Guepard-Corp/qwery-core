@@ -22,7 +22,15 @@ import { isResponseInProgress } from './utils/chat-status';
 import { DatasourceSelector, type DatasourceItem } from './datasource-selector';
 import { useToolVariant } from './tool-variant-context';
 import { Switch } from '../../shadcn/switch';
-import { PlusIcon, SettingsIcon } from 'lucide-react';
+import {
+  ArrowUp,
+  ImageIcon,
+  PaperclipIcon,
+  PlusIcon,
+  SlidersHorizontalIcon,
+  SquareIcon,
+  XIcon,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +58,8 @@ export interface QweryPromptInputProps {
   datasources?: DatasourceItem[];
   pluginLogoMap?: Map<string, string>;
   datasourcesLoading?: boolean;
+  showSuggestionBadges?: boolean;
+  onShowSuggestionBadgesChange?: (value: boolean) => void;
 }
 
 /* eslint-disable react-hooks/refs -- React Compiler false positive: props are not refs */
@@ -101,24 +111,36 @@ function PromptInputContent(props: QweryPromptInputProps) {
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
-          <PromptInputButton
-            aria-label="Add attachments"
-            onClick={() => attachments.openFileDialog()}
-          >
-            <PlusIcon className="size-4" />
-          </PromptInputButton>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <PromptInputButton aria-label="Settings">
-                <SettingsIcon className="size-4" />
+              <PromptInputButton aria-label="Add or attach">
+                <PlusIcon className="size-4" />
               </PromptInputButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem disabled className="gap-2">
+                <ImageIcon className="size-4" />
+                <span>Add image/video</span>
+              </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                }}
-                className="flex items-center justify-between gap-3 py-2"
+                className="gap-2"
+                onSelect={() => attachments.openFileDialog()}
+              >
+                <PaperclipIcon className="size-4" />
+                <span>Attach file</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <PromptInputButton aria-label="Options">
+                <SlidersHorizontalIcon className="size-4" />
+              </PromptInputButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="flex cursor-default items-center justify-between gap-3 py-2"
               >
                 <span className="text-sm">Minimal Tool UI</span>
                 <Switch
@@ -128,6 +150,18 @@ function PromptInputContent(props: QweryPromptInputProps) {
                   }}
                 />
               </DropdownMenuItem>
+              {props.onShowSuggestionBadgesChange != null && (
+                <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
+                  className="flex cursor-default items-center justify-between gap-3 py-2"
+                >
+                  <span className="text-sm">Show suggestion badges</span>
+                  <Switch
+                    checked={props.showSuggestionBadges !== false}
+                    onCheckedChange={props.onShowSuggestionBadgesChange}
+                  />
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {props.datasources &&
@@ -158,6 +192,8 @@ function PromptInputContent(props: QweryPromptInputProps) {
               ))}
             </PromptInputSelectContent>
           </PromptInputSelect>
+        </PromptInputTools>
+        <div className="flex shrink-0 items-center gap-1">
           <QweryContext
             usedTokens={
               typeof props.usage?.usedTokens === 'number' &&
@@ -174,8 +210,6 @@ function PromptInputContent(props: QweryPromptInputProps) {
             usage={props.usage?.usage}
             modelId={props.usage?.modelId ?? props.model}
           />
-        </PromptInputTools>
-        <div className="shrink-0">
           <PromptInputSubmit
             disabled={
               props.stopDisabled ||
@@ -200,7 +234,15 @@ function PromptInputContent(props: QweryPromptInputProps) {
                 props.onStop();
               }
             }}
-          />
+          >
+            {isResponseInProgress(props.status) && !props.stopDisabled ? (
+              <SquareIcon className="size-4" />
+            ) : props.status === 'error' ? (
+              <XIcon className="size-4" />
+            ) : (
+              <ArrowUp className="size-4" />
+            )}
+          </PromptInputSubmit>
         </div>
       </PromptInputFooter>
     </>
@@ -209,7 +251,7 @@ function PromptInputContent(props: QweryPromptInputProps) {
 
 export default function QweryPromptInput(props: QweryPromptInputProps) {
   return (
-    <PromptInput onSubmit={props.onSubmit} className="mt-4" globalDrop multiple>
+    <PromptInput onSubmit={props.onSubmit} globalDrop multiple>
       <PromptInputContent {...props} />
     </PromptInput>
   );

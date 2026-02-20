@@ -143,6 +143,10 @@ User request: ${cleanText}`;
         },
       );
 
+      if (processedMessages.length === 0) {
+        return c.json({ error: 'Messages array must not be empty' }, 400);
+      }
+
       const validatedMessages = await validateUIMessages({
         messages: processedMessages,
       });
