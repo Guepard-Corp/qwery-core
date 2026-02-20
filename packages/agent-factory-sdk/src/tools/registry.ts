@@ -14,6 +14,18 @@ import { TaskTool } from './task';
 import { getLogger } from '@qwery/shared/logger';
 import { getMcpTools } from '../mcp/client.js';
 import { RunQueryTool } from './run-query';
+import { GetTodoByConversationService } from '@qwery/domain/services';
+import type { Repositories } from '@qwery/domain/repositories';
+
+const TASK_COMPLETING_TOOL_IDS = new Set([
+  'runQuery',
+  'getSchema',
+  'generateChart',
+  'selectChartType',
+]);
+
+const TODO_REMINDER =
+  '\n\n<system-reminder>You completed a task. Call todowrite to set that todo to completed and continue with the next one.</system-reminder>';
 
 const todowriteInputSchema = jsonSchema<{
   todos: Array<{
@@ -193,27 +205,56 @@ export const Registry = {
                     Object.keys(raw).length === 1
                   ? (raw as { output: string }).output
                   : null;
+            let finalStr: string | null = null;
+            let returnAsOutput = false;
             if (toTruncate != null) {
               try {
                 const { truncateOutput } = await import('./truncation');
                 const truncated = await truncateOutput(toTruncate);
                 if (truncated.truncated) {
-                  return typeof raw === 'string'
-                    ? truncated.content
-                    : { output: truncated.content };
+                  finalStr = truncated.content;
+                  returnAsOutput =
+                    typeof raw === 'object' &&
+                    raw !== null &&
+                    'output' in raw &&
+                    Object.keys(raw).length === 1;
                 }
               } catch {
-                // truncation not available (e.g. browser or Node without fs); return as-is
+                // truncation not available; fall through
               }
             }
-            if (typeof raw === 'string') return raw;
+            if (finalStr === null && typeof raw === 'string') {
+              finalStr = raw;
+            }
             if (
+              finalStr === null &&
               typeof raw === 'object' &&
               raw !== null &&
               'output' in raw &&
               Object.keys(raw).length === 1
             ) {
-              return (raw as { output: string }).output;
+              finalStr = (raw as { output: string }).output;
+              returnAsOutput = true;
+            }
+            if (finalStr !== null) {
+              if (
+                TASK_COMPLETING_TOOL_IDS.has(resolved.id) &&
+                context.extra?.repositories &&
+                context.conversationId
+              ) {
+                const repos = context.extra.repositories as Repositories;
+                const todoService = new GetTodoByConversationService(
+                  repos.todo,
+                  repos.conversation,
+                );
+                const todos = await todoService.execute({
+                  conversationId: context.conversationId,
+                });
+                if (todos.some((t) => t.status === 'in_progress')) {
+                  finalStr += TODO_REMINDER;
+                }
+              }
+              return returnAsOutput ? { output: finalStr } : finalStr;
             }
             return raw as Record<string, unknown>;
           },

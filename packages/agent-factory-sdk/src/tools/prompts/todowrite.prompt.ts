@@ -1,4 +1,6 @@
-export const TODOWRITE_DESCRIPTION = `Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
+import type { ToolInfo } from '../tool';
+
+export const TODOWRITE_BASE_DESCRIPTION = `Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
 It also helps the user understand the progress of the task and overall progress of their requests.
 
 ## When to Use This Tool
@@ -41,6 +43,12 @@ NOTE that you should not use this tool if there is only one trivial task to do. 
    - Create specific, actionable items
    - Break complex tasks into smaller, manageable steps
    - Use clear, descriptive task names
+
+## Completion and behavior
+
+- Do **not** send a final answer or a summary to the user until all todo items are completed or cancelled. If there are pending or in_progress todos, call the next tool or call todowrite; do not reply with a summary yet.
+- Do **not** stop to ask the user optional questions (e.g. time range, "all data or filtered?") when you have pending or in_progress todos. Use a **reasonable default** (e.g. all data), say it briefly, and **continue** with the next task (runQuery, getSchema, generateChart) or todowrite.
+- Before running getSchema, runQuery, or generateChart for a task from your list, call todowrite to set **that** task to **in_progress**. After the tool returns, call todowrite to mark it **completed** and set the next to in_progress if needed.
 
 When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.
 
@@ -107,3 +115,33 @@ Assistant: *Runs one query and returns the table or chart*
 The assistant did not use the todo list because this is a single query request. One tool call is sufficient.
 </reasoning>
 </example>`;
+
+export function TodoWritePrompt(availableTools: ToolInfo[]): string {
+  const toolList = availableTools
+    .filter((tool) => {
+      // Only include tools with static descriptions (exclude async tools like task/todowrite)
+      return 'description' in tool && typeof tool.description === 'string';
+    })
+    .map((tool) => {
+      const toolWithDesc = tool as ToolInfo & { description: string };
+      return `- ${tool.id}: ${toolWithDesc.description}`;
+    })
+    .join('\n');
+
+  const capabilitiesSection = toolList
+    ? `## Available Capabilities
+
+You can ONLY propose actions using these tools:
+${toolList}
+
+**CRITICAL**: Only create todo items for actions you can actually complete with the above tools.
+Do NOT propose: CSV/PDF export, file operations, or any action without a corresponding tool.`
+    : `## Available Capabilities
+
+**CRITICAL**: Only create todo items for actions you can actually complete with available tools.
+Do NOT propose: CSV/PDF export, file operations, or any action without a corresponding tool.`;
+
+  return `${TODOWRITE_BASE_DESCRIPTION}
+
+${capabilitiesSection}`;
+}
