@@ -30,6 +30,16 @@ export const datasources = {
   },
 };
 
+export function getDiscoveredDatasources(): Array<{
+  id: string;
+  name: string;
+}> {
+  return Array.from(driverRegistry.values()).map((r) => ({
+    id: r.id,
+    name: r.id,
+  }));
+}
+
 export function createExtensionContext(): ExtensionContext {
   return {
     subscriptions: [],

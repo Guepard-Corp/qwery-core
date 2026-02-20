@@ -157,6 +157,7 @@ export const DatasourcePreview = forwardRef<
   const dataFormat = extensionMeta?.previewDataFormat;
   const isGSheetUrl = (url: string | null) =>
     !!url?.includes('docs.google.com/spreadsheets');
+  const isGoogleSheets = isGSheetUrl(debouncedPreviewUrl);
 
   useEffect(() => {
     if (!needsDataFetching || !debouncedPreviewUrl) {
