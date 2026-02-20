@@ -1,9 +1,5 @@
 import {
-  Task,
-  TaskContent,
-  TaskItem,
   TaskItemIndicator,
-  TaskTrigger,
 } from '../../ai-elements/task';
 import {
   Message,
@@ -22,6 +18,7 @@ import {
   ToolContent,
   ToolInput,
   ToolOutput,
+  type ToolVariant,
 } from '../../ai-elements/tool';
 import { CodeBlock } from '../../ai-elements/code-block';
 import {
@@ -159,78 +156,113 @@ export interface TaskPartProps {
 function TaskStepRow({
   task,
   isSubstep,
+  variant,
 }: {
   task: TaskStep | TaskSubstep;
   isSubstep?: boolean;
+  variant: ToolVariant;
 }) {
+  const isCompleted = task.status === 'completed';
+  const isError = task.status === 'error';
+  const isInProgress = task.status === 'in-progress';
+
   return (
-    <>
-      <TaskItem
+    <div className="flex flex-col gap-1">
+      <div
         className={cn(
-          'text-foreground flex items-start gap-3 rounded-md py-1.5 pr-2 text-sm',
+          'flex items-start gap-3 rounded-lg py-2 transition-all duration-200',
+          variant === 'default' && !isSubstep && 'hover:bg-accent/30 -mx-2 px-2',
           isSubstep && 'pl-2',
         )}
       >
         <TaskItemIndicator
           status={task.status}
-          className={cn('mt-0.5 shrink-0', isSubstep ? 'size-3' : 'size-4')}
+          className={cn(
+            'mt-0.5 shrink-0 shadow-sm transition-colors duration-200',
+            isSubstep ? 'size-3' : 'size-4',
+          )}
         />
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span
             className={cn(
-              task.status === 'completed' &&
-                'text-muted-foreground line-through',
-              task.status === 'error' && 'text-destructive',
+              'text-sm leading-tight transition-all duration-200',
+              isCompleted && 'text-muted-foreground line-through opacity-70',
+              isError && 'text-destructive font-medium',
+              isInProgress && 'text-foreground font-medium',
               isSubstep && 'text-xs',
             )}
           >
             {task.label}
           </span>
           {task.description ? (
-            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed opacity-80">
               {task.description}
             </p>
           ) : null}
         </div>
-      </TaskItem>
+      </div>
       {'substeps' in task && task.substeps && task.substeps.length > 0 && (
-        <ul
-          className="border-muted/50 flex flex-col gap-0.5 border-l pl-3"
+        <div
+          className="ml-2 flex flex-col gap-1 border-l border-muted/50 pl-4"
           role="list"
         >
           {task.substeps.map((sub) => (
-            <li key={sub.id}>
-              <TaskStepRow task={sub} isSubstep />
-            </li>
+            <TaskStepRow key={sub.id} task={sub} isSubstep variant={variant} />
           ))}
-        </ul>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
 export function TaskPart({ part, messageId, index }: TaskPartProps) {
+  const { variant } = useToolVariant();
+  // Determine overall status based on tasks
+  const hasError = part.data.tasks.some((t) => t.status === 'error');
+  const allCompleted = part.data.tasks.every((t) => t.status === 'completed');
+  const anyInProgress = part.data.tasks.some((t) => t.status === 'in-progress');
+
+  const state: ToolUIPart['state'] = hasError
+    ? 'output-error'
+    : allCompleted
+      ? 'output-available'
+      : anyInProgress
+        ? 'input-available'
+        : 'input-streaming';
+
   return (
-    <Task
+    <Tool
       key={`${messageId}-${part.id}-${index}`}
-      className="bg-muted/30 border-border/60 w-full rounded-lg border px-2 py-1"
+      variant={variant}
+      state={state}
+      defaultOpen={true}
     >
-      <TaskTrigger title={part.data.title} />
-      <TaskContent>
-        {part.data.subtitle ? (
-          <p className="text-muted-foreground mb-2 text-xs">
-            {part.data.subtitle}
-          </p>
-        ) : null}
-        <ul className="flex flex-col gap-0.5" role="list">
-          {part.data.tasks.map((task) => (
-            <li key={task.id}>
-              <TaskStepRow task={task} />
-            </li>
-          ))}
-        </ul>
-      </TaskContent>
-    </Task>
+      <ToolHeader
+        title={part.data.title}
+        type="tool-startWorkflow" // Use workflow icon for tasks
+        state={state}
+        variant={variant}
+      />
+      <ToolContent variant={variant}>
+        <div
+          className={cn(
+            'flex flex-col gap-1',
+            variant === 'default' ? 'px-5 py-4' : 'py-2',
+          )}
+        >
+          {part.data.subtitle && (
+            <p className="text-muted-foreground mb-2 text-xs opacity-80 italic">
+              {part.data.subtitle}
+            </p>
+          )}
+          <div className="flex flex-col gap-1" role="list">
+            {part.data.tasks.map((task) => (
+              <TaskStepRow key={task.id} task={task} variant={variant} />
+            ))}
+          </div>
+        </div>
+      </ToolContent>
+    </Tool>
   );
 }
 
@@ -534,68 +566,94 @@ export type TodoPartProps = {
 };
 
 export function TodoPart({ part, messageId, index }: TodoPartProps) {
+  const { variant } = useToolVariant();
   const todos = parseTodosFromPart(part);
   const title = todoPartTitle(part, todos);
   const subtitle = todoPartSubtitle(todos);
   const displayTitle = subtitle ?? title;
 
   return (
-    <Task
+    <Tool
       key={`${messageId}-todo-${index}`}
-      className="group border-border bg-card hover:border-border/80 w-full rounded-xl border shadow-sm transition-colors"
+      state={part.state}
+      variant={variant}
+      defaultOpen={true}
     >
-      <TaskTrigger title={displayTitle}>
-        <div className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-2 py-2 pr-1.5 text-sm transition-colors">
-          <div className="bg-primary/10 text-primary flex shrink-0 items-center justify-center rounded-md p-1.5">
-            <ListTodo className="size-3.5" />
-          </div>
-          <span className="min-w-0 flex-1 font-medium">{displayTitle}</span>
-          <ChevronDownIcon className="size-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-        </div>
-      </TaskTrigger>
-      <TaskContent>
-        <div className="pl-3">
+      <ToolHeader
+        title={displayTitle}
+        type={part.type}
+        state={part.state}
+        variant={variant}
+      />
+      <ToolContent variant={variant}>
+        <div className={cn('space-y-1', variant === 'default' ? 'px-5 py-4' : 'py-2')}>
           {todos.length === 0 ? (
-            <p className="text-muted-foreground text-xs">No items yet</p>
+            <p className="text-muted-foreground text-xs italic">
+              No tasks planned yet...
+            </p>
           ) : (
-            <ul className="space-y-0.5" data-component="todos">
+            <ul className="flex flex-col gap-1.5" data-component="todos">
               {todos.map((todo) => {
                 const meta = getTodoStatusMeta(todo.status);
                 const StatusIcon = meta.Icon ?? CircleDashedIcon;
+                const isCompleted = todo.status === 'completed';
+                const isCancelled = todo.status === 'cancelled';
+                const isInProgress = todo.status === 'in_progress';
+
                 return (
                   <li
                     key={todo.id}
                     className={cn(
-                      'flex items-center gap-2 py-1.5 text-sm',
-                      meta.strikethrough && 'text-muted-foreground',
+                      'flex items-start gap-3 rounded-lg py-2 transition-all duration-200',
+                      variant === 'default' && 'hover:bg-accent/30 -mx-2 px-2',
                     )}
                     data-status={todo.status}
                   >
                     <div
                       className={cn(
-                        'flex shrink-0 items-center justify-center rounded-full p-1',
+                        'mt-0.5 flex shrink-0 items-center justify-center rounded-full p-1.5 shadow-sm transition-colors duration-200',
                         meta.badgeClass,
-                        meta.iconClass,
+                        variant === 'minimal' ? 'size-5' : 'size-6',
                       )}
                     >
-                      <StatusIcon className="size-3" />
+                      <StatusIcon
+                        className={cn(
+                          variant === 'minimal' ? 'size-2.5' : 'size-3',
+                          isInProgress && 'animate-pulse',
+                        )}
+                      />
                     </div>
-                    <span
-                      className={cn(
-                        'min-w-0 flex-1',
-                        meta.strikethrough && 'line-through',
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span
+                        className={cn(
+                          'text-sm leading-tight transition-all duration-200',
+                          (isCompleted || isCancelled) &&
+                          'text-muted-foreground line-through opacity-70',
+                          isInProgress && 'text-foreground font-medium',
+                        )}
+                      >
+                        {todo.content}
+                      </span>
+                      {todo.priority && variant === 'default' && (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold tracking-wider uppercase opacity-50',
+                            )}
+                          >
+                            Priority: {todo.priority}
+                          </span>
+                        </div>
                       )}
-                    >
-                      {todo.content}
-                    </span>
+                    </div>
                   </li>
                 );
               })}
             </ul>
           )}
         </div>
-      </TaskContent>
-    </Task>
+      </ToolContent>
+    </Tool>
   );
 }
 
@@ -889,15 +947,15 @@ export function ToolPart({
       const input = part.input as { query?: string } | null;
       const output = part.output as
         | {
-            result?: {
-              rows?: unknown[];
-              columns?: unknown[];
-              query?: string;
-            };
-            sqlQuery?: string;
-            shouldPaste?: boolean;
-            chartExecutionOverride?: boolean;
-          }
+          result?: {
+            rows?: unknown[];
+            columns?: unknown[];
+            query?: string;
+          };
+          sqlQuery?: string;
+          shouldPaste?: boolean;
+          chartExecutionOverride?: boolean;
+        }
         | null
         | undefined;
 
@@ -976,56 +1034,56 @@ export function ToolPart({
 
       const executedFlag =
         output &&
-        'executed' in output &&
-        typeof (output as Record<string, unknown>).executed === 'boolean'
+          'executed' in output &&
+          typeof (output as Record<string, unknown>).executed === 'boolean'
           ? (output as Record<string, unknown>).executed
           : undefined;
 
       // Check if we should show paste button (inline mode with shouldPaste flag)
       const shouldShowPasteButton = Boolean(
         shouldPaste === true &&
-          sqlQuery &&
-          onPasteToNotebook &&
-          notebookContext?.cellId !== undefined &&
-          notebookContext?.notebookCellType &&
-          notebookContext?.datasourceId,
+        sqlQuery &&
+        onPasteToNotebook &&
+        notebookContext?.cellId !== undefined &&
+        notebookContext?.notebookCellType &&
+        notebookContext?.datasourceId,
       );
 
       // Create paste handler callback
       const handlePasteToNotebook =
         shouldShowPasteButton && onPasteToNotebook
           ? () => {
-              if (
-                sqlQuery &&
-                notebookContext?.cellId !== undefined &&
-                notebookContext?.notebookCellType &&
-                notebookContext?.datasourceId
-              ) {
-                onPasteToNotebook(
-                  sqlQuery,
-                  notebookContext.notebookCellType,
-                  notebookContext.datasourceId,
-                  notebookContext.cellId,
-                );
-              }
+            if (
+              sqlQuery &&
+              notebookContext?.cellId !== undefined &&
+              notebookContext?.notebookCellType &&
+              notebookContext?.datasourceId
+            ) {
+              onPasteToNotebook(
+                sqlQuery,
+                notebookContext.notebookCellType,
+                notebookContext.datasourceId,
+                notebookContext.cellId,
+              );
             }
+          }
           : undefined;
 
       const exportFilename =
         (output &&
-        'exportFilename' in output &&
-        typeof output.exportFilename === 'string'
+          'exportFilename' in output &&
+          typeof output.exportFilename === 'string'
           ? output.exportFilename
           : undefined) ??
         (messages
           ? generateExportFilename(
-              messages,
-              messageId,
-              sqlQuery,
-              hasResults && output?.result?.columns
-                ? (output.result.columns as string[])
-                : undefined,
-            )
+            messages,
+            messageId,
+            sqlQuery,
+            hasResults && output?.result?.columns
+              ? (output.result.columns as string[])
+              : undefined,
+          )
           : undefined);
 
       return (
@@ -1035,13 +1093,13 @@ export function ToolPart({
             result={
               hasResults && output?.result
                 ? {
-                    result: {
-                      columns: output.result.columns as string[],
-                      rows: output.result.rows as Array<
-                        Record<string, unknown>
-                      >,
-                    },
-                  }
+                  result: {
+                    columns: output.result.columns as string[],
+                    rows: output.result.rows as Array<
+                      Record<string, unknown>
+                    >,
+                  },
+                }
                 : undefined
             }
             onPasteToNotebook={handlePasteToNotebook}
@@ -1065,22 +1123,22 @@ export function ToolPart({
       } | null;
       const runQueriesOutput = part.output as
         | {
-            results?: Array<{
-              id?: string;
-              query: string;
-              summary?: string;
-              success: boolean;
-              data?: {
-                result?: {
-                  columns?: unknown[];
-                  rows?: unknown[];
-                };
-                queryId?: string;
+          results?: Array<{
+            id?: string;
+            query: string;
+            summary?: string;
+            success: boolean;
+            data?: {
+              result?: {
+                columns?: unknown[];
+                rows?: unknown[];
               };
-              error?: string;
-            }>;
-            meta?: { total: number; succeeded: number; failed: number };
-          }
+              queryId?: string;
+            };
+            error?: string;
+          }>;
+          meta?: { total: number; succeeded: number; failed: number };
+        }
         | null
         | undefined;
 
@@ -1325,7 +1383,7 @@ export function ToolPart({
                       className={cn(
                         'text-muted-foreground border-border/40 bg-muted/20 flex -translate-y-0.5 items-center justify-center rounded-md border p-1.5 opacity-0 transition-all group-hover/summary:translate-y-0 group-hover/summary:opacity-100 hover:scale-105 active:scale-95',
                         runQueriesAllOpen === false &&
-                          'bg-primary/10 border-primary/40 text-primary shadow-sm',
+                        'bg-primary/10 border-primary/40 text-primary shadow-sm',
                       )}
                       title={
                         runQueriesAllOpen === true
@@ -1366,9 +1424,9 @@ export function ToolPart({
                   ) as string | undefined;
                   const result =
                     'data' in q &&
-                    q.data &&
-                    typeof q.data === 'object' &&
-                    'result' in q.data
+                      q.data &&
+                      typeof q.data === 'object' &&
+                      'result' in q.data
                       ? (q.data as { result?: unknown }).result
                       : undefined;
                   const success = 'success' in q ? q.success : undefined;
@@ -1382,7 +1440,7 @@ export function ToolPart({
                   const rawSummary = (q as { summary?: string }).summary;
                   const genAISummary =
                     typeof rawSummary === 'string' &&
-                    rawSummary.trim().length > 0
+                      rawSummary.trim().length > 0
                       ? rawSummary.trim()
                       : undefined;
                   const fallbackLabel =
@@ -1416,12 +1474,12 @@ export function ToolPart({
                   const tableResult =
                     hasTableData && result
                       ? {
-                          columns: (result as { columns: unknown[] })
-                            .columns as string[],
-                          rows: (result as { rows: unknown[] }).rows as Array<
-                            Record<string, unknown>
-                          >,
-                        }
+                        columns: (result as { columns: unknown[] })
+                          .columns as string[],
+                        rows: (result as { rows: unknown[] }).rows as Array<
+                          Record<string, unknown>
+                        >,
+                      }
                       : null;
                   const hasTable = !!tableResult;
                   const rowCount = tableResult?.rows.length ?? 0;
@@ -1455,9 +1513,9 @@ export function ToolPart({
                       className={cn(
                         'border-border/40 bg-card/30 w-full overflow-hidden rounded-xl border transition-all duration-200',
                         isExecuting &&
-                          'ring-primary/30 border-primary/40 bg-primary/[0.02] shadow-primary/5 shadow-lg ring-2',
+                        'ring-primary/30 border-primary/40 bg-primary/[0.02] shadow-primary/5 shadow-lg ring-2',
                         success === false &&
-                          'border-destructive/30 bg-destructive/[0.02]',
+                        'border-destructive/30 bg-destructive/[0.02]',
                       )}
                     >
                       <CollapsibleTrigger className="group/item hover:bg-muted/40 flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
@@ -1559,8 +1617,8 @@ export function ToolPart({
                                   result={
                                     tableResult
                                       ? {
-                                          result: tableResult,
-                                        }
+                                        result: tableResult,
+                                      }
                                       : undefined
                                   }
                                   onPasteToNotebook={undefined}
@@ -1576,11 +1634,11 @@ export function ToolPart({
                                       return data.exportFilename;
                                     return messages
                                       ? generateExportFilename(
-                                          messages,
-                                          messageId,
-                                          queryText,
-                                          tableResult?.columns,
-                                        )
+                                        messages,
+                                        messageId,
+                                        queryText,
+                                        tableResult?.columns,
+                                      )
                                       : undefined;
                                   })()}
                                 />
@@ -1853,9 +1911,9 @@ export function ToolPart({
       {...(isControlled
         ? { open, onOpenChange }
         : {
-            defaultOpen:
-              defaultOpenWhenUncontrolled ?? TOOL_UI_CONFIG.DEFAULT_OPEN,
-          })}
+          defaultOpen:
+            defaultOpenWhenUncontrolled ?? TOOL_UI_CONFIG.DEFAULT_OPEN,
+        })}
       variant={variant}
       className={cn(
         'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
