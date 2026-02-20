@@ -44,6 +44,12 @@ NOTE that you should not use this tool if there is only one trivial task to do. 
    - Break complex tasks into smaller, manageable steps
    - Use clear, descriptive task names
 
+## Completion and behavior
+
+- Do **not** send a final answer or a summary to the user until all todo items are completed or cancelled. If there are pending or in_progress todos, call the next tool or call todowrite; do not reply with a summary yet.
+- Do **not** stop to ask the user optional questions (e.g. time range, "all data or filtered?") when you have pending or in_progress todos. Use a **reasonable default** (e.g. all data), say it briefly, and **continue** with the next task (runQuery, getSchema, generateChart) or todowrite.
+- Before running getSchema, runQuery, or generateChart for a task from your list, call todowrite to set **that** task to **in_progress**. After the tool returns, call todowrite to mark it **completed** and set the next to in_progress if needed.
+
 When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.
 
 ## Examples of When to Use the Todo List
