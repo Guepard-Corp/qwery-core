@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +19,7 @@ import { ProjectBreadcrumb } from './project-breadcrumb';
 import { useProject } from '~/lib/context/project-context';
 import pathsConfig, { createPath } from '~/config/paths.config';
 
-export function ProjectLayoutTopBar() {
+function ProjectLayoutTopBarInner() {
   const { t } = useTranslation(['chat']);
   const { workspace } = useWorkspace();
   const { projectSlug } = useProject();
@@ -71,3 +72,5 @@ export function ProjectLayoutTopBar() {
     </PageTopBar>
   );
 }
+
+export const ProjectLayoutTopBar = memo(ProjectLayoutTopBarInner);
