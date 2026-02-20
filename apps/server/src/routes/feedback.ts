@@ -104,7 +104,27 @@ export function createFeedbackRoutes(
       }
 
       const repos = await getRepositories();
-      const message = await repos.message.findById(messageId);
+      const conversationSlug = body.conversationSlug as string | undefined;
+
+      // Try finding by DB primary key first
+      let message = await repos.message.findById(messageId);
+
+      // Fallback: the frontend may send the AI SDK message ID (stored in content.id)
+      // In that case, look up the conversation's messages and match by content.id
+      if (!message && conversationSlug) {
+        const conversation =
+          await repos.conversation.findBySlug(conversationSlug);
+        if (conversation) {
+          const messages = await repos.message.findByConversationId(
+            conversation.id,
+          );
+          message =
+            messages.find(
+              (m) =>
+                (m.content as { id?: string })?.id === messageId,
+            ) ?? null;
+        }
+      }
 
       if (!message) {
         return c.json({ error: 'Message not found' }, 404);

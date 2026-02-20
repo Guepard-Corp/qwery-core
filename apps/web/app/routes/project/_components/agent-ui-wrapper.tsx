@@ -181,10 +181,10 @@ export const AgentUIWrapper = forwardRef<
   // Track notebook context state for paste functionality
   const [notebookContextState, setNotebookContextState] = useState<
     | {
-        cellId: number;
-        notebookCellType: 'query' | 'prompt';
-        datasourceId: string;
-      }
+      cellId: number;
+      notebookCellType: 'query' | 'prompt';
+      datasourceId: string;
+    }
     | undefined
   >(undefined);
 
@@ -303,11 +303,6 @@ export const AgentUIWrapper = forwardRef<
       return transportFactory(conversationSlug, model);
     },
     [conversationSlug],
-  );
-
-  const convertedInitialMessages = useMemo(
-    () => convertMessages(initialMessages),
-    [initialMessages],
   );
 
   // Handle sendMessage and model from QweryAgentUI
@@ -544,6 +539,32 @@ export const AgentUIWrapper = forwardRef<
 
   const handleSubmitFeedback = useCallback(
     async (messageId: string, feedback: FeedbackPayload) => {
+      // Optimistic update
+      if (setMessagesRef.current) {
+        setMessagesRef.current((prevMessages) => {
+          return prevMessages.map((msg) => {
+            if (msg.id === messageId) {
+              const currentMetadata = (msg.metadata || {}) as Record<
+                string,
+                unknown
+              >;
+              return {
+                ...msg,
+                metadata: {
+                  ...currentMetadata,
+                  feedback: {
+                    ...feedback,
+                    messageId,
+                    updatedAt: new Date().toISOString(),
+                  },
+                },
+              };
+            }
+            return msg;
+          });
+        });
+      }
+
       await submitFeedback.mutateAsync({ messageId, feedback });
     },
     [submitFeedback],
@@ -654,7 +675,7 @@ export const AgentUIWrapper = forwardRef<
   return (
     <QweryAgentUI
       transport={transport}
-      initialMessages={convertedInitialMessages}
+      initialMessages={convertMessages(initialMessages)}
       models={SUPPORTED_MODELS as { name: string; value: string }[]}
       usage={convertUsage(usage)}
       emitFinish={handleEmitFinish}
