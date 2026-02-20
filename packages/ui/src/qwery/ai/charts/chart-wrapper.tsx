@@ -36,43 +36,7 @@ export const ChartContext = createContext<{
 /**
  * Enhanced chart wrapper with title, download, and copy functionality
  */
-/**
- * Converts chart data to CSV format
- */
-function convertToCSV(data: Array<Record<string, unknown>>): string {
-  if (!data || data.length === 0) {
-    return '';
-  }
-
-  // Get all unique keys from all objects
-  const allKeys = new Set<string>();
-  data.forEach((row) => {
-    Object.keys(row).forEach((key) => allKeys.add(key));
-  });
-
-  const headers = Array.from(allKeys);
-
-  // Create CSV header row
-  const csvRows: string[] = [
-    headers.map((h) => `"${String(h).replace(/"/g, '""')}"`).join(','),
-  ];
-
-  // Create CSV data rows
-  data.forEach((row) => {
-    const values = headers.map((header) => {
-      const value = row[header];
-      if (value === null || value === undefined) {
-        return '""';
-      }
-      // Convert value to string and escape quotes
-      const stringValue = String(value).replace(/"/g, '""');
-      return `"${stringValue}"`;
-    });
-    csvRows.push(values.join(','));
-  });
-
-  return csvRows.join('\n');
-}
+import { exportToCSV } from '@qwery/shared/export';
 
 export function ChartWrapper({
   title,
@@ -329,16 +293,7 @@ export function ChartWrapper({
     }
 
     try {
-      const csvContent = convertToCSV(chartData);
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${title || 'chart'}-data-${Date.now()}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      exportToCSV(chartData, `${title || 'chart'}-data-${Date.now()}`);
       toast.success('Chart data exported as CSV');
     } catch (error) {
       console.error('Error exporting CSV:', error);
