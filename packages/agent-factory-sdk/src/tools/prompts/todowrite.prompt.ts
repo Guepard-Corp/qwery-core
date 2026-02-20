@@ -1,4 +1,6 @@
-export const TODOWRITE_DESCRIPTION = `Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
+import type { ToolInfo } from '../tool';
+
+export const TODOWRITE_BASE_DESCRIPTION = `Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
 It also helps the user understand the progress of the task and overall progress of their requests.
 
 ## When to Use This Tool
@@ -107,3 +109,33 @@ Assistant: *Runs one query and returns the table or chart*
 The assistant did not use the todo list because this is a single query request. One tool call is sufficient.
 </reasoning>
 </example>`;
+
+export function TodoWritePrompt(availableTools: ToolInfo[]): string {
+  const toolList = availableTools
+    .filter((tool) => {
+      // Only include tools with static descriptions (exclude async tools like task/todowrite)
+      return 'description' in tool && typeof tool.description === 'string';
+    })
+    .map((tool) => {
+      const toolWithDesc = tool as ToolInfo & { description: string };
+      return `- ${tool.id}: ${toolWithDesc.description}`;
+    })
+    .join('\n');
+
+  const capabilitiesSection = toolList
+    ? `## Available Capabilities
+
+You can ONLY propose actions using these tools:
+${toolList}
+
+**CRITICAL**: Only create todo items for actions you can actually complete with the above tools.
+Do NOT propose: CSV/PDF export, file operations, or any action without a corresponding tool.`
+    : `## Available Capabilities
+
+**CRITICAL**: Only create todo items for actions you can actually complete with available tools.
+Do NOT propose: CSV/PDF export, file operations, or any action without a corresponding tool.`;
+
+  return `${TODOWRITE_BASE_DESCRIPTION}
+
+${capabilitiesSection}`;
+}
