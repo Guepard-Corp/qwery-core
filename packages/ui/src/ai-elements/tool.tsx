@@ -33,6 +33,7 @@ import {
   FileIcon,
   ListIcon,
   PlayIcon,
+  ListTodo,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { isValidElement } from 'react';
@@ -169,6 +170,8 @@ const getToolIcon = (type: string, size: 'sm' | 'md' = 'md') => {
     'tool-generateSql': <TerminalIcon className={sizeClass} />,
     'tool-startWorkflow': <WorkflowIcon className={sizeClass} />,
     'tool-viewSheet': <FileIcon className={sizeClass} />,
+    'tool-todowrite': <ListTodo className={sizeClass} />,
+    'tool-todoread': <ListTodo className={sizeClass} />,
   };
 
   return iconMap[type] ?? <TerminalIcon className={sizeClass} />;
