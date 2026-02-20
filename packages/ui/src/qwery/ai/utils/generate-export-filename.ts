@@ -34,7 +34,7 @@ export function generateExportFilename(
         .substring(0, 200) || ''
     : '';
 
-  const agentResponseText =
+  const _agentResponseText =
     currentMessage.parts
       ?.filter((p) => p.type === 'text')
       .map((p) => (p as { text: string }).text)

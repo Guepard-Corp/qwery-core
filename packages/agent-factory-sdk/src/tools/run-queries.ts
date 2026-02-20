@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Tool, type ToolContext, type ToolResult } from './tool';
+import { Tool } from './tool';
 import { RunQueryTool } from './run-query';
 import { ExportFilenameSchema } from './schema';
 
