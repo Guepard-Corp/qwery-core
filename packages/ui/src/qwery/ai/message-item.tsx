@@ -799,9 +799,10 @@ function MessageItemComponent({
                                 `tool-${toolPart.toolName}`,
                               )
                             : getUserFriendlyToolName(toolPart.type);
-                        const runQueryInput = toolPart.type === 'tool-runQuery'
-                          ? (toolPart.input as { query?: string } | null)
-                          : null;
+                        const runQueryInput =
+                          toolPart.type === 'tool-runQuery'
+                            ? (toolPart.input as { query?: string } | null)
+                            : null;
                         const showRunQuerySql =
                           runQueryInput?.query != null &&
                           runQueryInput.query !== '';
