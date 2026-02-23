@@ -195,6 +195,7 @@ export const Registry = {
               toolCallId: options.toolCallId,
               abortSignal: options.abortSignal,
             });
+            context.onToolStart?.(resolved.id, args, options.toolCallId ?? '');
             const raw = await resolved.execute(args, context);
             const toTruncate =
               typeof raw === 'string'

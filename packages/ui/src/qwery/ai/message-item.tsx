@@ -41,6 +41,7 @@ import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { ToolPart, TodoPart } from './message-parts';
+import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { getUserFriendlyToolName } from './utils/tool-name';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
@@ -798,6 +799,12 @@ function MessageItemComponent({
                                 `tool-${toolPart.toolName}`,
                               )
                             : getUserFriendlyToolName(toolPart.type);
+                        const runQueryInput = toolPart.type === 'tool-runQuery'
+                          ? (toolPart.input as { query?: string } | null)
+                          : null;
+                        const showRunQuerySql =
+                          runQueryInput?.query != null &&
+                          runQueryInput.query !== '';
                         return (
                           <div
                             key={`${message.id}-${i}`}
@@ -818,7 +825,14 @@ function MessageItemComponent({
                                 variant={variant}
                               />
                               <ToolContent variant={variant}>
-                                {toolPart.input != null ? (
+                                {showRunQuerySql ? (
+                                  <SQLQueryVisualizer
+                                    query={runQueryInput!.query}
+                                    result={undefined}
+                                    showPasteButton={false}
+                                    chartExecutionOverride={false}
+                                  />
+                                ) : toolPart.input != null ? (
                                   <ToolInput input={toolPart.input} />
                                 ) : null}
                                 <div className="flex items-center justify-center py-8">
