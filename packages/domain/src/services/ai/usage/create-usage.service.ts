@@ -50,6 +50,7 @@ export class CreateUsageService implements CreateUsageUseCase {
 
     const usageEntity = UsageEntity.new({
       ...input,
+      id: input.id ?? crypto.randomUUID(),
       conversationId: conversation.id,
       projectId: conversation.projectId,
       organizationId: project.organizationId,

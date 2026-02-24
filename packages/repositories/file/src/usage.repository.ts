@@ -34,6 +34,14 @@ function serialize(usage: Usage): Row {
 }
 
 function deserialize(row: Row): Usage {
+  const rawTimestamp = row.timestamp;
+  const timestamp =
+    rawTimestamp instanceof Date
+      ? rawTimestamp
+      : typeof rawTimestamp === 'string' || typeof rawTimestamp === 'number'
+        ? new Date(rawTimestamp)
+        : new Date();
+
   return {
     id: row.id as string,
     conversationId: row.conversationId as string,
@@ -55,8 +63,7 @@ function deserialize(row: Row): Usage {
     network: (row.network as number) ?? 0,
     gpu: (row.gpu as number) ?? 0,
     storage: (row.storage as number) ?? 0,
-    timestamp:
-      row.timestamp != null ? new Date(row.timestamp as string) : new Date(),
+    timestamp,
   };
 }
 

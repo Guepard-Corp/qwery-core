@@ -138,6 +138,10 @@ async function getSDK(model: Model): Promise<SDKWithLanguageModel> {
     ...(model.api.url ? { baseURL: model.api.url } : {}),
   };
 
+  if (model.api.npm === '@ai-sdk/openai-compatible') {
+    options.includeUsage = true;
+  }
+
   if (model.api.npm === '@ai-sdk/azure' && provider.env.length >= 2) {
     const resourceName =
       typeof process !== 'undefined' && provider.env[0]
