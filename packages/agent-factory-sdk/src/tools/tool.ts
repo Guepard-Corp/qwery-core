@@ -25,6 +25,8 @@ export type ToolContext = {
   messages: Message[];
   ask(req: AskRequest): Promise<void>;
   metadata(input: ToolMetadataInput): void | Promise<void>;
+  /** Called when a tool is about to execute; used to stream a tool part with input before the result is ready. */
+  onToolStart?: (toolName: string, args: unknown, toolCallId: string) => void;
 };
 
 export type ToolResult = { output: string } | string | Record<string, unknown>;
