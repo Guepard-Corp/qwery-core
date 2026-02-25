@@ -897,6 +897,11 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
     return false;
   }
 
+  // Re-render when metadata changes (e.g. feedback optimistic update)
+  if (prev.message.metadata !== next.message.metadata) {
+    return false;
+  }
+
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
   if (
     isLastMessage &&
