@@ -64,15 +64,6 @@ catalogs:
       specifier: ^4.0.0
       version: 4.3.6
 
-overrides:
-  react-is: 19.0.0
-  p-map: ^7.0.4
-  '@codemirror/state': ^6.4.0
-  '@codemirror/view': ^6.38.6
-  '@codemirror/commands': ^6.4.0
-  '@codemirror/language': ^6.10.0
-  '@codemirror/lang-text': ^6.0.1
-
 importers:
 
   .:
@@ -128,18 +119,30 @@ importers:
       '@qwery/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@radix-ui/react-menubar':
+        specifier: ^1.1.16
+        version: 1.1.16(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@react-router/node':
         specifier: ^7.13.0
         version: 7.13.0(react-router@7.13.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(typescript@5.9.3)
       '@tauri-apps/api':
         specifier: ^2
         version: 2.10.1
+      '@tauri-apps/plugin-dialog':
+        specifier: ^2.6.0
+        version: 2.6.0
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.5.3
+      '@tauri-apps/plugin-os':
+        specifier: ^2.3.2
+        version: 2.3.2
       isbot:
         specifier: ^5.1.31
         version: 5.1.32
+      lucide-react:
+        specifier: ^0.552.0
+        version: 0.552.0(react@19.2.3)
       react:
         specifier: 'catalog:'
         version: 19.2.3
@@ -382,7 +385,7 @@ importers:
         version: link:../../packages/i18n
       '@qwery/notebook':
         specifier: workspace:*
-        version: link:../../packages/features/notebook copy
+        version: link:../../packages/features/notebook
       '@qwery/playground':
         specifier: workspace:*
         version: link:../../packages/features/playground
@@ -1472,118 +1475,6 @@ importers:
         version: 4.3.6
 
   packages/features/notebook:
-    dependencies:
-      '@codemirror/basic-setup':
-        specifier: ^0.20.0
-        version: 0.20.0
-      '@codemirror/lang-sql':
-        specifier: ^6.10.0
-        version: 6.10.0
-      '@codemirror/theme-one-dark':
-        specifier: ^6.1.3
-        version: 6.1.3
-      '@codemirror/view':
-        specifier: ^6.38.6
-        version: 6.38.6
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@dnd-kit/modifiers':
-        specifier: ^9.0.0
-        version: 9.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
-      '@dnd-kit/sortable':
-        specifier: ^10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.2.3)
-      '@qwery/domain':
-        specifier: workspace:*
-        version: link:../../domain
-      '@uiw/react-codemirror':
-        specifier: ^4.25.2
-        version: 4.25.3(@babel/runtime@7.28.4)(@codemirror/autocomplete@6.19.1)(@codemirror/language@6.11.3)(@codemirror/lint@6.9.2)(@codemirror/search@6.5.11)(@codemirror/state@6.5.2)(@codemirror/theme-one-dark@6.1.3)(@codemirror/view@6.38.6)(codemirror@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      codemirror:
-        specifier: ^6.0.2
-        version: 6.0.2
-      motion:
-        specifier: ^12.23.24
-        version: 12.23.24(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      nanoid:
-        specifier: ^5.1.6
-        version: 5.1.6
-      react-markdown:
-        specifier: ^10.1.0
-        version: 10.1.0(@types/react@19.2.3)(react@19.2.3)
-      remark-gfm:
-        specifier: ^4.0.1
-        version: 4.0.1
-    devDependencies:
-      '@hookform/resolvers':
-        specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.66.0(react@19.2.3))
-      '@qwery/eslint-config':
-        specifier: workspace:*
-        version: link:../../../tooling/eslint
-      '@qwery/i18n':
-        specifier: workspace:*
-        version: link:../../i18n
-      '@qwery/prettier-config':
-        specifier: workspace:*
-        version: link:../../../tooling/prettier
-      '@qwery/shared':
-        specifier: workspace:*
-        version: link:../../shared
-      '@qwery/tailwind-config':
-        specifier: workspace:*
-        version: link:../../../tooling/tailwind
-      '@qwery/tsconfig':
-        specifier: workspace:*
-        version: link:../../../tooling/typescript
-      '@qwery/ui':
-        specifier: workspace:*
-        version: link:../../ui
-      '@radix-ui/react-icons':
-        specifier: ^1.3.2
-        version: 1.3.2(react@19.2.3)
-      '@tanstack/react-query':
-        specifier: 'catalog:'
-        version: 5.90.12(react@19.2.3)
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.3
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.2.3(@types/react@19.2.3)
-      eslint:
-        specifier: ^9.39.0
-        version: 9.39.1(jiti@2.6.1)
-      lucide-react:
-        specifier: ^0.552.0
-        version: 0.552.0(react@19.2.3)
-      next-themes:
-        specifier: 0.4.6
-        version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.3
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.2.3(react@19.2.3)
-      react-hook-form:
-        specifier: ^7.66.0
-        version: 7.66.0(react@19.2.3)
-      react-i18next:
-        specifier: ^16.2.3
-        version: 16.2.4(i18next@25.6.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
-      sonner:
-        specifier: ^2.0.7
-        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      zod:
-        specifier: 'catalog:'
-        version: 4.3.6
-
-  packages/features/notebook copy:
     dependencies:
       '@codemirror/basic-setup':
         specifier: ^0.20.0
@@ -3081,11 +2972,17 @@ packages:
     resolution: {integrity: sha512-W/ERKMLErWkrVLyP5I8Yh8PXl4r+WFNkdYVSzkXYPQv2RMPSkWpr2BgggiSJ8AHF/q3GuApncDD8I4BZz65fyg==}
     deprecated: In version 6.0, this package has been renamed to just 'codemirror'
 
+  '@codemirror/commands@0.20.0':
+    resolution: {integrity: sha512-v9L5NNVA+A9R6zaFvaTbxs30kc69F6BkOoiEbeFw4m4I0exmDEKBILN6mK+GksJtvTzGBxvhAPlVFTdQW8GB7Q==}
+
   '@codemirror/commands@6.10.0':
     resolution: {integrity: sha512-2xUIc5mHXQzT16JnyOFkh8PvfeXuIut3pslWGfsGOhxP/lpgRm9HOl/mpzLErgt5mXDovqA0d11P21gofRLb9w==}
 
   '@codemirror/lang-sql@6.10.0':
     resolution: {integrity: sha512-6ayPkEd/yRw0XKBx5uAiToSgGECo/GY2NoJIHXIIQh1EVwLuKoU8BP/qK0qH5NLXAbtJRLuT73hx7P9X34iO4w==}
+
+  '@codemirror/language@0.20.2':
+    resolution: {integrity: sha512-WB3Bnuusw0xhVvhBocieYKwJm04SOk5bPoOEYksVHKHcGHFOaYaw+eZVxR4gIqMMcGzOIUil0FsCmFk8yrhHpw==}
 
   '@codemirror/language@6.11.3':
     resolution: {integrity: sha512-9HBM2XnwDj7fnu0551HkGdrUrrqmYq/WC5iv6nbY2WdicXdGbhR/gfbZOH73Aqj4351alY1+aoG9rCNfiwS1RA==}
@@ -3102,11 +2999,17 @@ packages:
   '@codemirror/search@6.5.11':
     resolution: {integrity: sha512-KmWepDE6jUdL6n8cAAqIpRmLPBZ5ZKnicE8oGU/s3QrAVID+0VhLFrzUucVKHG5035/BSykhExDL/Xm7dHthiA==}
 
+  '@codemirror/state@0.20.1':
+    resolution: {integrity: sha512-ms0tlV5A02OK0pFvTtSUGMLkoarzh1F8mr6jy1cD7ucSC2X/VLHtQCxfhdSEGqTYlQF2hoZtmLv+amqhdgbwjQ==}
+
   '@codemirror/state@6.5.2':
     resolution: {integrity: sha512-FVqsPqtPWKVVL3dPSxy8wEF/ymIEuVzF1PK3VbUgrxXpJUSHQWWZz4JMToquRxnkw+36LTamCZG2iua2Ptq0fA==}
 
   '@codemirror/theme-one-dark@6.1.3':
     resolution: {integrity: sha512-NzBdIvEJmx6fjeremiGp3t/okrLPYT0d9orIc7AFun8oZcRk58aejkqhv6spnz4MLAevrKNPMQYXEWMg4s+sKA==}
+
+  '@codemirror/view@0.20.7':
+    resolution: {integrity: sha512-pqEPCb9QFTOtHgAH5XU/oVy9UR/Anj6r+tG5CRmkNVcqSKEPmBU05WtN/jxJCFZBXf6HumzWC9ydE4qstO3TxQ==}
 
   '@codemirror/view@6.38.6':
     resolution: {integrity: sha512-qiS0z1bKs5WOvHIAC0Cybmv4AJSkAXgX5aD6Mqd2epSLlVJsQl8NG23jCVouIgkh4All/mrbdsf2UOLFnJw0tw==}
@@ -4205,8 +4108,14 @@ packages:
   '@lezer/common@1.3.0':
     resolution: {integrity: sha512-L9X8uHCYU310o99L3/MpJKYxPzXPOS7S0NmBaM7UO/x2Kb2WbmMLSkfvdr1KxRIFYOpbY0Jhn7CfLSUDzL8arQ==}
 
+  '@lezer/highlight@0.16.0':
+    resolution: {integrity: sha512-iE5f4flHlJ1g1clOStvXNLbORJoiW4Kytso6ubfYzHnaNo/eo5SKhxs4wv/rtvwZQeZrK3we8S9SyA7OGOoRKQ==}
+
   '@lezer/highlight@1.2.3':
     resolution: {integrity: sha512-qXdH7UqTvGfdVBINrgKhDsVTJTxactNNxLk7+UMwZhU13lMHaOBlJe9Vqp907ya56Y3+ed2tlqzys7jDkTmW0g==}
+
+  '@lezer/lr@0.16.3':
+    resolution: {integrity: sha512-pau7um4eAw94BEuuShUIeQDTf3k4Wt6oIUOYxMmkZgDHdqtIcxWND4LRxi8nI9KuT4I1bXQv67BCapkxt7Ywqw==}
 
   '@lezer/lr@1.4.3':
     resolution: {integrity: sha512-yenN5SqAxAPv/qMnpWW0AT7l+SxVrgG+u0tNsRQWqbrz66HIl8DnEbBObvy21J5K7+I1v7gsAnlE2VQ5yYVSeA==}
@@ -6277,8 +6186,14 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
+  '@tauri-apps/plugin-dialog@2.6.0':
+    resolution: {integrity: sha512-q4Uq3eY87TdcYzXACiYSPhmpBA76shgmQswGkSVio4C82Sz2W4iehe9TnKYwbq7weHiL88Yw19XZm7v28+Micg==}
+
   '@tauri-apps/plugin-opener@2.5.3':
     resolution: {integrity: sha512-CCcUltXMOfUEArbf3db3kCE7Ggy1ExBEBl51Ko2ODJ6GDYHRp1nSNlQm5uNCFY5k7/ufaK5Ib3Du/Zir19IYQQ==}
+
+  '@tauri-apps/plugin-os@2.3.2':
+    resolution: {integrity: sha512-n+nXWeuSeF9wcEsSPmRnBEGrRgOy6jjkSU+UVCOV8YUGKb2erhDOxis7IqRXiRVHhY8XMKks00BJ0OAdkpf6+A==}
 
   '@testing-library/dom@10.4.0':
     resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
@@ -6610,20 +6525,20 @@ packages:
     resolution: {integrity: sha512-F1doRyD50CWScwGHG2bBUtUpwnOv/zqSnzkZqJcX5YAHQx6Z1CuX8jdnFMH6qktRrPU1tfpNYftTWu3QIoHiMA==}
     peerDependencies:
       '@codemirror/autocomplete': '>=6.0.0'
-      '@codemirror/commands': ^6.4.0
-      '@codemirror/language': ^6.10.0
+      '@codemirror/commands': '>=6.0.0'
+      '@codemirror/language': '>=6.0.0'
       '@codemirror/lint': '>=6.0.0'
       '@codemirror/search': '>=6.0.0'
-      '@codemirror/state': ^6.4.0
-      '@codemirror/view': ^6.38.6
+      '@codemirror/state': '>=6.0.0'
+      '@codemirror/view': '>=6.0.0'
 
   '@uiw/react-codemirror@4.25.3':
     resolution: {integrity: sha512-1wtBZTXPIp8u6F/xjHvsUAYlEeF5Dic4xZBnqJyLzv7o7GjGYEUfSz9Z7bo9aK9GAx2uojG/AuBMfhA4uhvIVQ==}
     peerDependencies:
       '@babel/runtime': '>=7.11.0'
-      '@codemirror/state': ^6.4.0
+      '@codemirror/state': '>=6.0.0'
       '@codemirror/theme-one-dark': '>=6.0.0'
-      '@codemirror/view': ^6.38.6
+      '@codemirror/view': '>=6.0.0'
       codemirror: '>=6.0.0'
       react: '>=17.0.0'
       react-dom: '>=17.0.0'
@@ -6851,6 +6766,10 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  aggregate-error@3.1.0:
+    resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
+    engines: {node: '>=8'}
 
   ai-sdk-ollama@3.3.0:
     resolution: {integrity: sha512-NIsy1HdxRCIKV4zzMteeAlNxGj+Ipt0DweEgrRO513Fa7dN7cKpsJrRFGQurA9SdCjWmT8e8tSPwZoCkXyYwKQ==}
@@ -7362,6 +7281,10 @@ packages:
 
   classcat@5.0.5:
     resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==}
+
+  clean-stack@2.2.0:
+    resolution: {integrity: sha512-4diC9HaTE+KRAMWhDhrGOECgWZxoevMc5TlkObMqNSsVU62PYzXZ/SMTjzyGAFF1YusgxGcSWTEXBhp0CPwQ1A==}
+    engines: {node: '>=6'}
 
   cli-cursor@3.1.0:
     resolution: {integrity: sha512-I/zHAwsKf9FqGoXM4WWRACob9+SNukZTd94DWF57E4toouRulbCxcUh6RKUEOQlYTHJnzkPMySvPNaaSLNfLZw==}
@@ -9927,6 +9850,10 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
+  p-map@3.0.0:
+    resolution: {integrity: sha512-d3qXVTF/s+W+CdJ5A29wywV2n8CQQYahlgz2bFiA+4eVNJbHJodPZ+/gXwPGh0bOqA+j8S+6+ckmvLGPk1QpxQ==}
+    engines: {node: '>=8'}
+
   p-map@7.0.4:
     resolution: {integrity: sha512-tkAQEw8ysMzmkhgw8k+1U/iPhWNhykKnSk4Rd5zLoPJCuJaGRPo6YposrZgaxHKzDHdDWWZvE/Sk7hsL2X/CpQ==}
     engines: {node: '>=18'}
@@ -10417,8 +10344,14 @@ packages:
       typescript:
         optional: true
 
-  react-is@19.0.0:
-    resolution: {integrity: sha512-H91OHcwjZsbq3ClIDHMzBShc1rotbfACdWENsmEf0IFvZ3FgGPtdHMcsv45bQ1hAbgdfiA8SnxTKfDS+x/8m2g==}
+  react-is@16.13.1:
+    resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
+
+  react-is@17.0.2:
+    resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
+
+  react-is@18.3.1:
+    resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
   react-markdown@10.1.0:
     resolution: {integrity: sha512-qKxVopLT/TyA6BX3Ue5NwabOsAzm0Q7kAPwq6L+wWDwisYs7R8vZ0nRXqq6rkueboxpkjvLGU9fWifiX/ZZFxQ==}
@@ -13214,9 +13147,9 @@ snapshots:
 
   '@codemirror/autocomplete@0.20.3':
     dependencies:
-      '@codemirror/language': 6.11.3
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.6
+      '@codemirror/language': 0.20.2
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
       '@lezer/common': 0.16.1
 
   '@codemirror/autocomplete@6.19.1':
@@ -13229,12 +13162,19 @@ snapshots:
   '@codemirror/basic-setup@0.20.0':
     dependencies:
       '@codemirror/autocomplete': 0.20.3
-      '@codemirror/commands': 6.10.0
-      '@codemirror/language': 6.11.3
+      '@codemirror/commands': 0.20.0
+      '@codemirror/language': 0.20.2
       '@codemirror/lint': 0.20.3
       '@codemirror/search': 0.20.1
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.6
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
+
+  '@codemirror/commands@0.20.0':
+    dependencies:
+      '@codemirror/language': 0.20.2
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
+      '@lezer/common': 0.16.1
 
   '@codemirror/commands@6.10.0':
     dependencies:
@@ -13252,6 +13192,15 @@ snapshots:
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.3
 
+  '@codemirror/language@0.20.2':
+    dependencies:
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
+      '@lezer/common': 0.16.1
+      '@lezer/highlight': 0.16.0
+      '@lezer/lr': 0.16.3
+      style-mod: 4.1.3
+
   '@codemirror/language@6.11.3':
     dependencies:
       '@codemirror/state': 6.5.2
@@ -13263,8 +13212,8 @@ snapshots:
 
   '@codemirror/lint@0.20.3':
     dependencies:
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.6
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
       crelt: 1.0.6
 
   '@codemirror/lint@6.9.2':
@@ -13275,8 +13224,8 @@ snapshots:
 
   '@codemirror/search@0.20.1':
     dependencies:
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.6
+      '@codemirror/state': 0.20.1
+      '@codemirror/view': 0.20.7
       crelt: 1.0.6
 
   '@codemirror/search@6.5.11':
@@ -13284,6 +13233,8 @@ snapshots:
       '@codemirror/state': 6.5.2
       '@codemirror/view': 6.38.6
       crelt: 1.0.6
+
+  '@codemirror/state@0.20.1': {}
 
   '@codemirror/state@6.5.2':
     dependencies:
@@ -13295,6 +13246,12 @@ snapshots:
       '@codemirror/state': 6.5.2
       '@codemirror/view': 6.38.6
       '@lezer/highlight': 1.2.3
+
+  '@codemirror/view@0.20.7':
+    dependencies:
+      '@codemirror/state': 0.20.1
+      style-mod: 4.1.3
+      w3c-keyname: 2.2.8
 
   '@codemirror/view@6.38.6':
     dependencies:
@@ -14193,9 +14150,17 @@ snapshots:
 
   '@lezer/common@1.3.0': {}
 
+  '@lezer/highlight@0.16.0':
+    dependencies:
+      '@lezer/common': 0.16.1
+
   '@lezer/highlight@1.2.3':
     dependencies:
       '@lezer/common': 1.3.0
+
+  '@lezer/lr@0.16.3':
+    dependencies:
+      '@lezer/common': 0.16.1
 
   '@lezer/lr@1.4.3':
     dependencies:
@@ -16515,7 +16480,15 @@ snapshots:
       '@tauri-apps/cli-win32-ia32-msvc': 2.10.0
       '@tauri-apps/cli-win32-x64-msvc': 2.10.0
 
+  '@tauri-apps/plugin-dialog@2.6.0':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+
   '@tauri-apps/plugin-opener@2.5.3':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+
+  '@tauri-apps/plugin-os@2.3.2':
     dependencies:
       '@tauri-apps/api': 2.10.1
 
@@ -17230,6 +17203,11 @@ snapshots:
 
   agent-base@7.1.4: {}
 
+  aggregate-error@3.1.0:
+    dependencies:
+      clean-stack: 2.2.0
+      indent-string: 4.0.0
+
   ai-sdk-ollama@3.3.0(ai@6.0.59(zod@4.3.6))(zod@4.3.6):
     dependencies:
       '@ai-sdk/provider': 3.0.5
@@ -17812,6 +17790,8 @@ snapshots:
 
   classcat@5.0.5: {}
 
+  clean-stack@2.2.0: {}
+
   cli-cursor@3.1.0:
     dependencies:
       restore-cursor: 3.1.0
@@ -18190,7 +18170,7 @@ snapshots:
       is-glob: 4.0.3
       is-path-cwd: 2.2.0
       is-path-inside: 3.0.3
-      p-map: 7.0.4
+      p-map: 3.0.0
       rimraf: 3.0.2
       slash: 3.0.0
 
@@ -20872,6 +20852,10 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
+  p-map@3.0.0:
+    dependencies:
+      aggregate-error: 3.1.0
+
   p-map@7.0.4: {}
 
   pac-proxy-agent@7.2.0:
@@ -21161,7 +21145,7 @@ snapshots:
     dependencies:
       ansi-regex: 5.0.1
       ansi-styles: 5.2.0
-      react-is: 19.0.0
+      react-is: 17.0.2
 
   process-nextick-args@2.0.1: {}
 
@@ -21173,7 +21157,7 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
       object-assign: 4.1.1
-      react-is: 19.0.0
+      react-is: 16.13.1
 
   proper-lockfile@4.1.2:
     dependencies:
@@ -21392,7 +21376,11 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       typescript: 5.9.3
 
-  react-is@19.0.0: {}
+  react-is@16.13.1: {}
+
+  react-is@17.0.2: {}
+
+  react-is@18.3.1: {}
 
   react-markdown@10.1.0(@types/react@19.2.3)(react@19.2.3):
     dependencies:
@@ -21544,7 +21532,7 @@ snapshots:
       lodash: 4.17.21
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      react-is: 19.0.0
+      react-is: 18.3.1
       react-smooth: 4.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       recharts-scale: 0.4.5
       tiny-invariant: 1.3.3

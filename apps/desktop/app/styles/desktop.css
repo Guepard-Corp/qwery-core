@@ -1,0 +1,16 @@
+:root {
+  --titlebar-height: 32px;
+}
+
+.platform-darwin {
+  --titlebar-height: 28px;
+}
+
+.platform-win32,
+.platform-linux {
+  --titlebar-height: 32px;
+}
+
+html.desktop-app .min-h-screen {
+  min-height: calc(100vh - var(--titlebar-height));
+}

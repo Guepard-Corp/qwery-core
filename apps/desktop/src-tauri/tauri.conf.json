@@ -14,7 +14,17 @@
       {
         "title": "Qwery",
         "width": 1024,
-        "height": 768
+        "height": 768,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
+        "decorations": false,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
+        "fullscreen": false,
+        "skipTaskbar": false
       }
     ],
     "security": {

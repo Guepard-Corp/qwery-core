@@ -43,8 +43,9 @@ const PORT = Number(process.env.PORT ?? 4096);
 const HOSTNAME = process.env.HOSTNAME ?? '0.0.0.0';
 
 const logger = await getLogger();
-const extensionsCount = ExtensionsRegistry.list(ExtensionScope.DATASOURCE)
-  .length;
+const extensionsCount = ExtensionsRegistry.list(
+  ExtensionScope.DATASOURCE,
+).length;
 logger.info(`Discovered ${extensionsCount} datasource extensions`);
 
 const app = createApp();

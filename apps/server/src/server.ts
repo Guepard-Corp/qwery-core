@@ -429,7 +429,6 @@ function getOpenAPISpec(): Record<string, unknown> {
           },
           responses: {
             '200': { description: 'Command result' },
-            '400': { description: 'Bad request (invalid action, missing sql for query)' },
             '404': { description: 'Datasource or driver not found' },
             '500': { description: 'Driver execution error' },
           },

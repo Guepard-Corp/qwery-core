@@ -1,3 +1,4 @@
+import { useCallback, useEffect } from 'react';
 import { Links, Meta, Outlet, Scripts, data } from "react-router";
 import type { Route } from '~/types/app/+types/root';
 
@@ -6,8 +7,17 @@ import styles from '../../web/styles/global.css?url';
 import { cn } from '@qwery/ui/utils';
 import { Spinner } from '@qwery/ui/spinner';
 import { RootProviders } from '../../web/components/root-providers';
+import { Titlebar } from './components/titlebar';
+import { initDesktopApi } from './lib/desktop-api';
+import { useMenuActions, type MenuActionId } from './hooks/use-menu-actions';
+import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 
-export const links = () => [{ rel: 'stylesheet', href: styles }];
+import desktopStyles from './styles/desktop.css?url';
+
+export const links = () => [
+  { rel: 'stylesheet', href: styles },
+  { rel: 'stylesheet', href: desktopStyles },
+];
 
 export const meta = () => {
   return [
@@ -86,13 +96,69 @@ export async function clientLoader() {
   });
 }
 
+function AppContent({
+  className,
+  theme,
+}: {
+  className?: string;
+  theme?: string;
+}) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) return;
+    initDesktopApi();
+    import('@tauri-apps/plugin-os')
+      .then(({ platform }) => platform())
+      .then((p) => {
+        document.documentElement.classList.add(`platform-${p}`);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleMenuAction = useCallback((action: MenuActionId) => {
+    switch (action) {
+      case 'file_new':
+      case 'file_open':
+      case 'file_save':
+      case 'file_save_as':
+      case 'edit_undo':
+      case 'edit_redo':
+      case 'view_zoom_in':
+      case 'view_zoom_out':
+      case 'view_actual_size':
+      case 'help_about':
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  useMenuActions(handleMenuAction);
+  const onOpenCommandPalette = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('open-command-palette'));
+  }, []);
+  useKeyboardShortcuts({ onOpenCommandPalette });
+
+  return (
+    <>
+      <div className="flex h-screen w-screen flex-col overflow-hidden">
+        <Titlebar onMenuAction={handleMenuAction} />
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <RootProviders theme={theme as 'light' | 'dark' | 'system' | undefined} language={'en'}>
+            <Outlet />
+          </RootProviders>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function App({
   loaderData,
 }: Route.ComponentProps) {
   const { className, theme } = loaderData ?? {};
 
   return (
-    <html lang={'en'} className={className}>
+    <html lang={'en'} className={cn(className, 'desktop-app')}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -121,10 +187,8 @@ export default function App({
         <Meta />
         <Links />
       </head>
-      <body>
-        <RootProviders theme={theme} language={'en'}>
-          <Outlet />
-        </RootProviders>
+      <body className="overflow-hidden">
+        <AppContent className={className} theme={theme} />
         <Scripts />
       </body>
     </html>

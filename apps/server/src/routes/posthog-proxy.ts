@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 
 const API_HOST =
-  process.env.VITE_POSTHOG_URL || process.env.POSTHOG_URL || 'https://us.i.posthog.com';
+  process.env.VITE_POSTHOG_URL ||
+  process.env.POSTHOG_URL ||
+  'https://us.i.posthog.com';
 const ASSET_HOST =
   process.env.VITE_POSTHOG_ASSETS_URL ||
   process.env.POSTHOG_ASSETS_URL ||
