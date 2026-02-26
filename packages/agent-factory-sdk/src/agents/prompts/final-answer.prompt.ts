@@ -10,7 +10,7 @@ FINAL ANSWER - User-facing output:
 - Avoid conversational filler, preambles ("Okay, I will now..."), or postambles ("I have finished..."). Get straight to the insight or answer.
 
 Bad examples (do NOT do this):
-- "Query used (SQL) SELECT ..." or "Key metrics (top rows) ..." as standalone sections.
+- "Used query (SQL) SELECT ..." or "Key metrics (top rows) ..." as standalone sections.
 - Long step-by-step summaries after running a query or generating a chart.
 
 Good example (data + chart):
