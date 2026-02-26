@@ -196,7 +196,23 @@ export const Registry = {
               abortSignal: options.abortSignal,
             });
             context.onToolStart?.(resolved.id, args, options.toolCallId ?? '');
-            const raw = await resolved.execute(args, context);
+            const startedAt = performance.now();
+            let isError = false;
+            let raw: Awaited<ReturnType<typeof resolved.execute>>;
+            try {
+              raw = await resolved.execute(args, context);
+            } catch (error) {
+              isError = true;
+              throw error;
+            } finally {
+              const executionTimeMs = Number(
+                (performance.now() - startedAt).toFixed(2),
+              );
+              context.onToolComplete?.(resolved.id, options.toolCallId ?? '', {
+                executionTimeMs,
+                isError,
+              });
+            }
             const toTruncate =
               typeof raw === 'string'
                 ? raw

@@ -127,6 +127,15 @@ type UseChatTransport = NonNullable<
   >['transport']
 >;
 
+function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+  if (!('executionTimeMs' in part)) {
+    return undefined;
+  }
+
+  const value = part.executionTimeMs;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 function QweryAgentUIContent(props: QweryAgentUIProps) {
   const {
     initialMessages,
@@ -1363,6 +1372,9 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                         title={toolName}
                                         type={toolPart.type}
                                         state={toolPart.state}
+                                        executionTimeMs={getExecutionTimeMs(
+                                          toolPart,
+                                        )}
                                         variant="default"
                                       />
                                       <ToolContent variant="default">

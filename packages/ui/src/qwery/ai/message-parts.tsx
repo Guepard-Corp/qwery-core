@@ -568,6 +568,15 @@ export interface ToolPartProps {
   };
 }
 
+function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+  if (!('executionTimeMs' in part)) {
+    return undefined;
+  }
+
+  const value = part.executionTimeMs;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 export function ToolPart({
   part,
   messageId,
@@ -1000,6 +1009,7 @@ export function ToolPart({
         title={toolName}
         type={part.type}
         state={part.state}
+        executionTimeMs={getExecutionTimeMs(part)}
         variant={variant}
       />
       <ToolContent variant={variant} className="max-w-full min-w-0 p-0">

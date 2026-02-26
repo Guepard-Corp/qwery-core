@@ -27,6 +27,15 @@ export type ToolContext = {
   metadata(input: ToolMetadataInput): void | Promise<void>;
   /** Called when a tool is about to execute; used to stream a tool part with input before the result is ready. */
   onToolStart?: (toolName: string, args: unknown, toolCallId: string) => void;
+  /** Called when a tool completes; used to attach execution stats to the tool call. */
+  onToolComplete?: (
+    toolName: string,
+    toolCallId: string,
+    stats: {
+      executionTimeMs: number;
+      isError: boolean;
+    },
+  ) => void;
 };
 
 export type ToolResult = { output: string } | string | Record<string, unknown>;

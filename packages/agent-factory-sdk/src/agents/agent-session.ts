@@ -86,6 +86,70 @@ function deriveState(msgs: Message[]) {
   return { lastUser, compactionUser, lastAssistant, lastFinished, tasks };
 }
 
+type ToolExecutionStat = {
+  toolName: string;
+  executionTimeMs: number;
+  isError: boolean;
+};
+
+function withToolExecutionStats(
+  messages: UIMessage[],
+  toolExecutionByCallId: ReadonlyMap<string, ToolExecutionStat>,
+): UIMessage[] {
+  return messages.map((message) => {
+    if (!Array.isArray(message.parts) || message.parts.length === 0) {
+      return message;
+    }
+
+    let hasUpdatedPart = false;
+    const updatedParts = message.parts.map((part) => {
+      if (
+        typeof part !== 'object' ||
+        part === null ||
+        !('type' in part) ||
+        typeof part.type !== 'string'
+      ) {
+        return part;
+      }
+
+      const isToolPart =
+        part.type.startsWith('tool-') || part.type === 'dynamic-tool';
+      if (!isToolPart) {
+        return part;
+      }
+
+      const toolCallId =
+        'toolCallId' in part && typeof part.toolCallId === 'string'
+          ? part.toolCallId
+          : '';
+
+      if (!toolCallId) {
+        return part;
+      }
+
+      const stat = toolExecutionByCallId.get(toolCallId);
+      if (!stat) {
+        return part;
+      }
+
+      hasUpdatedPart = true;
+      return {
+        ...part,
+        executionTimeMs: stat.executionTimeMs,
+      };
+    });
+
+    if (!hasUpdatedPart) {
+      return message;
+    }
+
+    return {
+      ...message,
+      parts: updatedParts,
+    };
+  });
+}
+
 /** One turn: loop with Messages.stream, steps, then return SSE Response. */
 export async function loop(input: AgentSessionPromptInput): Promise<Response> {
   const logger = await getLogger();
@@ -231,6 +295,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
     const assistantMessageId = uuidv4();
     const pendingToolStartChunks: Uint8Array[] = [];
+    const toolExecutionByCallId = new Map<string, ToolExecutionStat>();
     const encoder = new TextEncoder();
     const enqueueToolStartChunk = (
       toolName: string,
@@ -239,6 +304,24 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     ) => {
       const line = `data: ${JSON.stringify({ type: 'tool-input-available', toolCallId, toolName, input: args })}\n\n`;
       pendingToolStartChunks.push(encoder.encode(line));
+    };
+    const captureToolExecution = (
+      toolName: string,
+      toolCallId: string,
+      stats: {
+        executionTimeMs: number;
+        isError: boolean;
+      },
+    ) => {
+      if (!toolCallId) {
+        return;
+      }
+
+      toolExecutionByCallId.set(toolCallId, {
+        toolName,
+        executionTimeMs: stats.executionTimeMs,
+        isError: stats.isError,
+      });
     };
     const getContext = (options: {
       toolCallId?: string;
@@ -266,6 +349,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         });
       },
       onToolStart: enqueueToolStartChunk,
+      onToolComplete: captureToolExecution,
     });
 
     const { tools, close: closeMcp } = await Registry.tools.forAgent(
@@ -363,6 +447,10 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         }
       },
       onFinish: async ({ messages: finishedMessages }) => {
+        const messagesWithToolExecution = withToolExecutionStats(
+          finishedMessages,
+          toolExecutionByCallId,
+        );
         const totalUsage = await result.totalUsage;
         const usagePersistenceService = new UsagePersistenceService(
           repositories.usage,
@@ -381,7 +469,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           log.error('[AgentSession] Failed to persist usage:', error);
         }
 
-        const lastAssistant = [...finishedMessages]
+        const lastAssistant = [...messagesWithToolExecution]
           .reverse()
           .find((m) => m.role === 'assistant');
         if (lastAssistant && totalUsage) {
@@ -417,7 +505,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         );
         try {
           const persistResult = await persistence.persistMessages(
-            finishedMessages,
+            messagesWithToolExecution,
             undefined,
             {
               defaultMetadata: {

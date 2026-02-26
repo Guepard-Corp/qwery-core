@@ -96,6 +96,15 @@ export interface MessageItemProps {
   ) => Promise<void>;
 }
 
+function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+  if (!('executionTimeMs' in part)) {
+    return undefined;
+  }
+
+  const value = part.executionTimeMs;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 function MessageItemComponent({
   message,
   messages,
@@ -823,6 +832,7 @@ function MessageItemComponent({
                                 title={toolName}
                                 type={toolPart.type}
                                 state={toolPart.state}
+                                executionTimeMs={getExecutionTimeMs(toolPart)}
                                 variant={variant}
                               />
                               <ToolContent variant={variant}>
