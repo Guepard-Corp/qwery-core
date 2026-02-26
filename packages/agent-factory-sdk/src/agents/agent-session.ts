@@ -294,7 +294,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     };
 
     const assistantMessageId = uuidv4();
-    const pendingToolStartChunks: Uint8Array[] = [];
+    const pendingRealtimeChunks: Uint8Array[] = [];
     const toolExecutionByCallId = new Map<string, ToolExecutionStat>();
     const encoder = new TextEncoder();
     const enqueueToolStartChunk = (
@@ -303,7 +303,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       toolCallId: string,
     ) => {
       const line = `data: ${JSON.stringify({ type: 'tool-input-available', toolCallId, toolName, input: args })}\n\n`;
-      pendingToolStartChunks.push(encoder.encode(line));
+      pendingRealtimeChunks.push(encoder.encode(line));
     };
     const captureToolExecution = (
       toolName: string,
@@ -322,6 +322,17 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         executionTimeMs: stats.executionTimeMs,
         isError: stats.isError,
       });
+
+      const realtimeStatLine = `data: ${JSON.stringify({
+        type: 'data-tool-execution',
+        data: {
+          toolCallId,
+          toolName,
+          executionTimeMs: stats.executionTimeMs,
+          isError: stats.isError,
+        },
+      })}\n\n`;
+      pendingRealtimeChunks.push(encoder.encode(realtimeStatLine));
     };
     const getContext = (options: {
       toolCallId?: string;
@@ -539,7 +550,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       break;
     }
 
-    const wrapStreamWithToolStartFlush = (source: ReadableStream<Uint8Array>) =>
+    const wrapStreamWithRealtimeFlush = (source: ReadableStream<Uint8Array>) =>
       new ReadableStream<Uint8Array>({
         async start(controller) {
           const buffer: Uint8Array[] = [];
@@ -570,8 +581,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
           try {
             while (true) {
-              while (pendingToolStartChunks.length > 0) {
-                const chunk = pendingToolStartChunks.shift();
+              while (pendingRealtimeChunks.length > 0) {
+                const chunk = pendingRealtimeChunks.shift();
                 if (chunk) controller.enqueue(chunk);
               }
               if (buffer.length > 0) {
@@ -601,7 +612,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
     if (!shouldGenerateTitle || !userMessageText) {
       responseToReturn = new Response(
-        wrapStreamWithToolStartFlush(streamResponse.body),
+        wrapStreamWithRealtimeFlush(streamResponse.body),
         {
           headers: SSE_HEADERS,
         },
@@ -610,7 +621,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     }
 
     const conv = conversation;
-    const baseStream = wrapStreamWithToolStartFlush(streamResponse.body);
+    const baseStream = wrapStreamWithRealtimeFlush(streamResponse.body);
     const stream = new ReadableStream({
       async start(controller) {
         const reader = baseStream.getReader();

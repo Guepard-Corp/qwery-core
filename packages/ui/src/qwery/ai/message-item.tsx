@@ -40,7 +40,11 @@ import {
 import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
-import { ToolPart, TodoPart } from './message-parts';
+import {
+  ToolPart,
+  TodoPart,
+  getExecutionTimeMsFromMessageParts,
+} from './message-parts';
 import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { getUserFriendlyToolName } from './utils/tool-name';
 import { getLastTodoPartIndex } from './utils/todo-parts';
@@ -96,13 +100,28 @@ export interface MessageItemProps {
   ) => Promise<void>;
 }
 
-function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+function getExecutionTimeMs(
+  part: ToolUIPart,
+  message: UIMessage,
+): number | undefined {
   if (!('executionTimeMs' in part)) {
-    return undefined;
+    const toolCallId =
+      'toolCallId' in part && typeof part.toolCallId === 'string'
+        ? part.toolCallId
+        : undefined;
+    return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
   }
 
   const value = part.executionTimeMs;
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const toolCallId =
+    'toolCallId' in part && typeof part.toolCallId === 'string'
+      ? part.toolCallId
+      : undefined;
+  return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
 }
 
 function MessageItemComponent({
@@ -832,7 +851,10 @@ function MessageItemComponent({
                                 title={toolName}
                                 type={toolPart.type}
                                 state={toolPart.state}
-                                executionTimeMs={getExecutionTimeMs(toolPart)}
+                                executionTimeMs={getExecutionTimeMs(
+                                  toolPart,
+                                  message,
+                                )}
                                 variant={variant}
                               />
                               <ToolContent variant={variant}>
@@ -865,6 +887,10 @@ function MessageItemComponent({
                             part={toolPart}
                             messageId={message.id}
                             index={i}
+                            executionTimeMs={getExecutionTimeMs(
+                              toolPart,
+                              message,
+                            )}
                             onPasteToNotebook={onPasteToNotebook}
                             notebookContext={notebookContext}
                           />

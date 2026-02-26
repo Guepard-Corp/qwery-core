@@ -13,7 +13,10 @@ import {
   MessageResponse,
 } from '../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
-import { ReasoningPart } from './ai/message-parts';
+import {
+  ReasoningPart,
+  getExecutionTimeMsFromMessageParts,
+} from './ai/message-parts';
 import { StreamdownWithSuggestions } from './ai/streamdown-with-suggestions';
 import {
   UserMessageBubble,
@@ -127,13 +130,28 @@ type UseChatTransport = NonNullable<
   >['transport']
 >;
 
-function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+function getExecutionTimeMs(
+  part: ToolUIPart,
+  message: UIMessage,
+): number | undefined {
   if (!('executionTimeMs' in part)) {
-    return undefined;
+    const toolCallId =
+      'toolCallId' in part && typeof part.toolCallId === 'string'
+        ? part.toolCallId
+        : undefined;
+    return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
   }
 
   const value = part.executionTimeMs;
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const toolCallId =
+    'toolCallId' in part && typeof part.toolCallId === 'string'
+      ? part.toolCallId
+      : undefined;
+  return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
 }
 
 function QweryAgentUIContent(props: QweryAgentUIProps) {
@@ -1374,6 +1392,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                         state={toolPart.state}
                                         executionTimeMs={getExecutionTimeMs(
                                           toolPart,
+                                          message,
                                         )}
                                         variant="default"
                                       />
@@ -1398,6 +1417,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                     part={toolPart}
                                     messageId={message.id}
                                     index={i}
+                                    executionTimeMs={getExecutionTimeMs(
+                                      toolPart,
+                                      message,
+                                    )}
                                     onPasteToNotebook={onPasteToNotebook}
                                     notebookContext={currentNotebookContext}
                                   />

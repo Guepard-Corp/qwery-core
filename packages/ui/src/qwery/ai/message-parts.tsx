@@ -551,6 +551,7 @@ export interface ToolPartProps {
   part: ToolUIPart;
   messageId: string;
   index: number;
+  executionTimeMs?: number;
   onViewSheet?: (sheetName: string) => void;
   onDeleteSheets?: (sheetNames: string[]) => void;
   onRenameSheet?: (oldSheetName: string, newSheetName: string) => void;
@@ -568,19 +569,68 @@ export interface ToolPartProps {
   };
 }
 
-function getExecutionTimeMs(part: ToolUIPart): number | undefined {
+function getExecutionTimeMs(
+  part: ToolUIPart,
+  fallbackExecutionTimeMs?: number,
+): number | undefined {
   if (!('executionTimeMs' in part)) {
-    return undefined;
+    return fallbackExecutionTimeMs;
   }
 
   const value = part.executionTimeMs;
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : fallbackExecutionTimeMs;
+}
+
+export function getExecutionTimeMsFromMessageParts(
+  parts: UIMessage['parts'] | undefined,
+  toolCallId: string | undefined,
+): number | undefined {
+  if (!parts || !toolCallId) {
+    return undefined;
+  }
+
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    const part = parts[i];
+    if (!part) {
+      continue;
+    }
+
+    if (part.type !== 'data-tool-execution') {
+      continue;
+    }
+
+    const data =
+      'data' in part && typeof part.data === 'object' && part.data !== null
+        ? (part.data as Record<string, unknown>)
+        : null;
+
+    if (!data) {
+      continue;
+    }
+
+    const partToolCallId =
+      typeof data.toolCallId === 'string' ? data.toolCallId : undefined;
+    const executionTimeMs =
+      typeof data.executionTimeMs === 'number' &&
+      Number.isFinite(data.executionTimeMs)
+        ? data.executionTimeMs
+        : undefined;
+
+    if (partToolCallId === toolCallId && executionTimeMs !== undefined) {
+      return executionTimeMs;
+    }
+  }
+
+  return undefined;
 }
 
 export function ToolPart({
   part,
   messageId,
   index,
+  executionTimeMs,
   onPasteToNotebook,
   notebookContext,
 }: ToolPartProps) {
@@ -1009,7 +1059,7 @@ export function ToolPart({
         title={toolName}
         type={part.type}
         state={part.state}
-        executionTimeMs={getExecutionTimeMs(part)}
+        executionTimeMs={getExecutionTimeMs(part, executionTimeMs)}
         variant={variant}
       />
       <ToolContent variant={variant} className="max-w-full min-w-0 p-0">
