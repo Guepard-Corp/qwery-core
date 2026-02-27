@@ -14,7 +14,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../../../shadcn/chart';
-import { getColorsForBarLine } from './chart-utils';
+import { getColorsForBarLine, resolveChartKeys } from './chart-utils';
+import { validateChartData } from './chart-data-validator';
 import { ChartContext } from './chart-wrapper';
 
 export interface LineChartConfig {
@@ -37,20 +38,39 @@ export function LineChart({ chartConfig }: LineChartProps) {
   const { xKey = 'name', yKey = 'value', colors, labels } = config;
   const { showAxisLabels } = useContext(ChartContext);
 
-  // Line charts use colors directly from config without default fallback
+  const { valid } = validateChartData(data);
+
+  const resolvedKeys = useMemo(
+    () =>
+      resolveChartKeys(data, { xKey, yKey }, 'line') as {
+        xKey: string;
+        yKey: string;
+      },
+    [data, xKey, yKey],
+  );
+
+  const actualXKey = resolvedKeys.xKey;
+  const actualYKey = resolvedKeys.yKey;
   const chartColors = useMemo(() => getColorsForBarLine(colors), [colors]);
 
   const chartConfigForContainer = useMemo(() => {
     const configObj: Record<string, { label?: string; color?: string }> = {};
-    if (yKey) {
-      configObj[yKey] = {
-        label: labels?.[yKey] || yKey,
+    if (actualYKey) {
+      configObj[actualYKey] = {
+        label: labels?.[actualYKey] || actualYKey,
         color: chartColors[0],
       };
     }
     return configObj;
-  }, [yKey, chartColors, labels]);
+  }, [actualYKey, chartColors, labels]);
 
+  if (!valid) {
+    return (
+      <div className="text-muted-foreground p-4 text-center text-sm">
+        No data available for chart
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">
@@ -60,14 +80,14 @@ export function LineChart({ chartConfig }: LineChartProps) {
   }
 
   // Get axis labels
-  const xAxisLabel = labels?.[xKey] || labels?.name || xKey;
-  const yAxisLabel = labels?.[yKey] || labels?.value || 'Value';
+  const xAxisLabel = labels?.[actualXKey] || labels?.name || actualXKey;
+  const yAxisLabel = labels?.[actualYKey] || labels?.value || 'Value';
 
   return (
     <ChartContainer config={chartConfigForContainer}>
       <RechartsLineChart data={data} key={`line-${showAxisLabels}`}>
         <XAxis
-          dataKey={xKey}
+          dataKey={actualXKey}
           tickLine={false}
           axisLine={showAxisLabels}
           tickMargin={8}
@@ -99,7 +119,7 @@ export function LineChart({ chartConfig }: LineChartProps) {
         />
         <Line
           type="monotone"
-          dataKey={yKey}
+          dataKey={actualYKey}
           stroke={chartColors[0] || colors[0]}
           strokeWidth={2}
           dot={false}
