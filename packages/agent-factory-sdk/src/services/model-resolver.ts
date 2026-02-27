@@ -172,9 +172,7 @@ export function getDefaultModel(): string {
       break;
     case 'ollama-cloud':
       modelName =
-        getEnv('OLLAMA_MODEL') ||
-        getEnv('VITE_OLLAMA_MODEL') ||
-        'minimax-m2.5';
+        getEnv('OLLAMA_MODEL') || getEnv('VITE_OLLAMA_MODEL') || 'minimax-m2.5';
       break;
     case 'webllm':
       modelName =
