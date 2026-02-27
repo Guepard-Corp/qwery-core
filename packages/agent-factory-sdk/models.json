@@ -4136,6 +4136,106 @@
           "context": 131072,
           "output": 131072
         }
+      },
+      "glm-5": {
+        "id": "glm-5",
+        "name": "glm-5",
+        "family": "glm",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "release_date": "2026-02-11",
+        "last_updated": "2026-02-11",
+        "open_weights": true,
+        "interleaved": {
+          "field": "reasoning_content"
+        },
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "limit": {
+          "context": 202752,
+          "output": 131072
+        }
+      },
+      "minimax-m2.5": {
+        "id": "minimax-m2.5",
+        "name": "minimax-m2.5",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "knowledge": "2025-01",
+        "release_date": "2026-02-12",
+        "last_updated": "2026-02-12",
+        "open_weights": true,
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
+      "qwen3-coder-next": {
+        "id": "qwen3-coder-next",
+        "name": "qwen3-coder-next",
+        "family": "qwen",
+        "attachment": false,
+        "reasoning": false,
+        "tool_call": true,
+        "release_date": "2026-02-02",
+        "last_updated": "2026-02-08",
+        "open_weights": true,
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "limit": {
+          "context": 262144,
+          "output": 65536
+        }
+      },
+      "qwen3.5:397b": {
+        "id": "qwen3.5:397b",
+        "name": "qwen3.5:397b",
+        "family": "qwen",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "release_date": "2026-02-15",
+        "last_updated": "2026-02-17",
+        "open_weights": true,
+        "interleaved": {
+          "field": "reasoning_details"
+        },
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "limit": {
+          "context": 262144,
+          "output": 81920
+        }
       }
     }
   },
