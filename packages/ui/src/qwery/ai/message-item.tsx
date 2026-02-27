@@ -32,7 +32,11 @@ import {
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
 import { ToolUIPart } from 'ai';
-import { ToolPart, TodoPart } from './message-parts';
+import {
+  ToolPart,
+  TodoPart,
+  getExecutionTimeMsFromMessageParts,
+} from './message-parts';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import {
   isChatStreaming,
@@ -99,6 +103,30 @@ export interface MessageItemProps {
   ) => Promise<boolean>;
   onDatasourceNameClick?: (id: string, name: string) => void;
   getDatasourceTooltip?: (id: string) => string;
+}
+
+function getExecutionTimeMs(
+  part: ToolUIPart,
+  message: UIMessage,
+): number | undefined {
+  if (!('executionTimeMs' in part)) {
+    const toolCallId =
+      'toolCallId' in part && typeof part.toolCallId === 'string'
+        ? part.toolCallId
+        : undefined;
+    return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
+  }
+
+  const value = part.executionTimeMs;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const toolCallId =
+    'toolCallId' in part && typeof part.toolCallId === 'string'
+      ? part.toolCallId
+      : undefined;
+  return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
 }
 
 function MessageItemComponent({
@@ -865,6 +893,10 @@ function MessageItemComponent({
                               part={toolPart}
                               messageId={message.id}
                               index={i}
+                              executionTimeMs={getExecutionTimeMs(
+                                toolPart,
+                                message,
+                              )}
                               open={
                                 openToolPartKeys !== undefined &&
                                 openToolPartKeys !== null
@@ -899,6 +931,10 @@ function MessageItemComponent({
                             part={toolPart}
                             messageId={message.id}
                             index={i}
+                            executionTimeMs={getExecutionTimeMs(
+                              toolPart,
+                              message,
+                            )}
                             open={
                               openToolPartKeys !== undefined &&
                               openToolPartKeys !== null

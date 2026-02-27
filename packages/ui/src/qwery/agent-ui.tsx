@@ -13,7 +13,10 @@ import {
   MessageResponse,
 } from '../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
-import { ReasoningPart } from './ai/message-parts';
+import {
+  ReasoningPart,
+  getExecutionTimeMsFromMessageParts,
+} from './ai/message-parts';
 import { StreamdownWithSuggestions } from './ai/streamdown-with-suggestions';
 import {
   UserMessageBubble,
@@ -151,6 +154,30 @@ type UseChatTransport = NonNullable<
     { transport?: unknown }
   >['transport']
 >;
+
+function getExecutionTimeMs(
+  part: ToolUIPart,
+  message: UIMessage,
+): number | undefined {
+  if (!('executionTimeMs' in part)) {
+    const toolCallId =
+      'toolCallId' in part && typeof part.toolCallId === 'string'
+        ? part.toolCallId
+        : undefined;
+    return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
+  }
+
+  const value = part.executionTimeMs;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const toolCallId =
+    'toolCallId' in part && typeof part.toolCallId === 'string'
+      ? part.toolCallId
+      : undefined;
+  return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
+}
 
 function QweryAgentUIContent(props: QweryAgentUIProps) {
   const {
@@ -1616,6 +1643,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                       part={toolPart}
                                       messageId={message.id}
                                       index={i}
+                                      executionTimeMs={getExecutionTimeMs(
+                                        toolPart,
+                                        message,
+                                      )}
                                       open={openToolPartKeys.has(toolPartKey)}
                                       onOpenChange={(open) =>
                                         handleToolPartOpenChange(
@@ -1636,6 +1667,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                     part={toolPart}
                                     messageId={message.id}
                                     index={i}
+                                    executionTimeMs={getExecutionTimeMs(
+                                      toolPart,
+                                      message,
+                                    )}
                                     open={openToolPartKeys.has(toolPartKey)}
                                     onOpenChange={(open) =>
                                       handleToolPartOpenChange(

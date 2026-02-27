@@ -11,9 +11,28 @@ import {
   TodoPart,
   SourcesPart,
   TaskUIPart,
+  getExecutionTimeMsFromMessageParts,
 } from './message-parts';
 import { ToolUIPart as AIToolUIPart } from 'ai';
 import { getLastTodoPartIndex } from './utils/todo-parts';
+
+function getExecutionTimeMs(
+  part: AIToolUIPart,
+  message: UIMessage,
+): number | undefined {
+  if ('executionTimeMs' in part) {
+    const value = part.executionTimeMs;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  const toolCallId =
+    'toolCallId' in part && typeof part.toolCallId === 'string'
+      ? part.toolCallId
+      : undefined;
+  return getExecutionTimeMsFromMessageParts(message.parts, toolCallId);
+}
 
 export interface MessageRendererProps {
   message: UIMessage;
@@ -123,6 +142,7 @@ function MessageRendererComponent({
                   part={toolPart}
                   messageId={message.id}
                   index={i}
+                  executionTimeMs={getExecutionTimeMs(toolPart, message)}
                 />
               );
             }

@@ -80,10 +80,27 @@ export type ToolHeaderProps = {
   title?: string;
   type: ToolUIPart['type'];
   state: ToolUIPart['state'];
+  executionTimeMs?: number;
   className?: string;
   variant?: ToolVariant;
   children?: ReactNode;
 };
+
+function formatExecutionTime(executionTimeMs?: number): string | null {
+  if (
+    executionTimeMs === undefined ||
+    !Number.isFinite(executionTimeMs) ||
+    executionTimeMs < 0
+  ) {
+    return null;
+  }
+
+  if (executionTimeMs < 1000) {
+    return `${Math.round(executionTimeMs)}ms`;
+  }
+
+  return `${(executionTimeMs / 1000).toFixed(2)}s`;
+}
 
 const getStatusConfig = (
   status: ToolUIPart['state'],
@@ -182,6 +199,7 @@ export const ToolHeader = ({
   title,
   type,
   state,
+  executionTimeMs,
   variant = 'default',
   children,
   ...props
@@ -190,6 +208,7 @@ export const ToolHeader = ({
   const statusConfig = getStatusConfig(state, isMinimal ? 'sm' : 'md');
   const toolIcon = getToolIcon(type, isMinimal ? 'sm' : 'md');
   const toolName = title ?? getUserFriendlyToolName(type);
+  const executionTimeLabel = formatExecutionTime(executionTimeMs);
 
   if (isMinimal) {
     return (
@@ -212,6 +231,11 @@ export const ToolHeader = ({
           <span className="text-muted-foreground group-hover/header:text-foreground truncate text-sm transition-colors duration-200">
             {toolName}
           </span>
+          {executionTimeLabel ? (
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {executionTimeLabel}
+            </span>
+          ) : null}
           <div
             className={cn(
               'flex shrink-0 items-center transition-opacity duration-200 group-hover/header:opacity-80',
@@ -264,6 +288,15 @@ export const ToolHeader = ({
           {statusConfig.icon}
           <span className="whitespace-nowrap">{statusConfig.label}</span>
         </div>
+
+        {executionTimeLabel ? (
+          <Badge
+            variant="secondary"
+            className="text-muted-foreground bg-muted/70 border-border/60 rounded-full px-2 py-1 text-xs font-medium tabular-nums"
+          >
+            {executionTimeLabel}
+          </Badge>
+        ) : null}
 
         <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
           <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
