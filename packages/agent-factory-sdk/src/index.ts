@@ -42,8 +42,40 @@ const baseModels = [
     value: 'anthropic/claude-sonnet-4-5-20250929',
   },
   {
-    name: 'DeepSeek R1 (8B)',
-    value: 'ollama/deepseek-r1:8b',
+    name: 'DeepSeek V3.1 (671B, Ollama Cloud)',
+    value: 'ollama-cloud/deepseek-v3.1:671b',
+  },
+  {
+    name: 'Gemini 3 Flash Preview (Ollama Cloud)',
+    value: 'ollama-cloud/gemini-3-flash-preview',
+  },
+  {
+    name: 'Gemini 3 Pro Preview (Ollama Cloud)',
+    value: 'ollama-cloud/gemini-3-pro-preview',
+  },
+  {
+    name: 'GLM 5 (Ollama Cloud)',
+    value: 'ollama-cloud/glm-5',
+  },
+  {
+    name: 'GPT OSS (120B, Ollama Cloud)',
+    value: 'ollama-cloud/gpt-oss:120b',
+  },
+  {
+    name: 'Kimi K2.5 (Ollama Cloud)',
+    value: 'ollama-cloud/kimi-k2.5',
+  },
+  {
+    name: 'MiniMax M2.5 (Ollama Cloud)',
+    value: 'ollama-cloud/minimax-m2.5',
+  },
+  {
+    name: 'Mistral Large 3 (675B, Ollama Cloud)',
+    value: 'ollama-cloud/mistral-large-3:675b',
+  },
+  {
+    name: 'Qwen 3.5 (397B, Ollama Cloud)',
+    value: 'ollama-cloud/qwen3.5:397b',
   },
   {
     name: 'Llama 3.1 (8B)',

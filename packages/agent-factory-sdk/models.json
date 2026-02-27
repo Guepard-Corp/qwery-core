@@ -3455,60 +3455,14 @@
     "name": "Ollama Cloud",
     "doc": "https://docs.ollama.com/cloud",
     "models": {
-      "glm-4.7": {
-        "id": "glm-4.7",
-        "name": "glm-4.7",
-        "family": "glm",
+      "deepseek-v3.1:671b": {
+        "id": "deepseek-v3.1:671b",
+        "name": "deepseek-v3.1:671b",
+        "family": "deepseek",
         "attachment": false,
         "reasoning": true,
         "tool_call": true,
-        "release_date": "2025-12-22",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 202752,
-          "output": 131072
-        }
-      },
-      "qwen3-next:80b": {
-        "id": "qwen3-next:80b",
-        "name": "qwen3-next:80b",
-        "family": "qwen",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-09-15",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 32768
-        }
-      },
-      "cogito-2.1:671b": {
-        "id": "cogito-2.1:671b",
-        "name": "cogito-2.1:671b",
-        "family": "cogito",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-11-19",
+        "release_date": "2025-08-21",
         "last_updated": "2026-01-19",
         "modalities": {
           "input": [
@@ -3521,7 +3475,7 @@
         "open_weights": true,
         "limit": {
           "context": 163840,
-          "output": 32000
+          "output": 163840
         }
       },
       "gemini-3-flash-preview": {
@@ -3548,54 +3502,6 @@
           "output": 65536
         }
       },
-      "qwen3-vl:235b": {
-        "id": "qwen3-vl:235b",
-        "name": "qwen3-vl:235b",
-        "family": "qwen",
-        "attachment": true,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-09-22",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 32768
-        }
-      },
-      "ministral-3:3b": {
-        "id": "ministral-3:3b",
-        "name": "ministral-3:3b",
-        "family": "ministral",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2024-10-22",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 128000
-        }
-      },
       "gemini-3-pro-preview": {
         "id": "gemini-3-pro-preview",
         "name": "gemini-3-pro-preview",
@@ -3620,43 +3526,44 @@
           "output": 64000
         }
       },
-      "qwen3-vl:235b-instruct": {
-        "id": "qwen3-vl:235b-instruct",
-        "name": "qwen3-vl:235b-instruct",
-        "family": "qwen",
-        "attachment": true,
-        "reasoning": false,
+      "glm-5": {
+        "id": "glm-5",
+        "name": "glm-5",
+        "family": "glm",
+        "attachment": false,
+        "reasoning": true,
         "tool_call": true,
-        "release_date": "2025-09-22",
-        "last_updated": "2026-01-19",
+        "release_date": "2026-02-11",
+        "last_updated": "2026-02-11",
+        "open_weights": true,
+        "interleaved": {
+          "field": "reasoning_content"
+        },
         "modalities": {
           "input": [
-            "text",
-            "image"
+            "text"
           ],
           "output": [
             "text"
           ]
         },
-        "open_weights": true,
         "limit": {
-          "context": 262144,
+          "context": 202752,
           "output": 131072
         }
       },
-      "devstral-small-2:24b": {
-        "id": "devstral-small-2:24b",
-        "name": "devstral-small-2:24b",
-        "family": "devstral",
-        "attachment": true,
-        "reasoning": false,
+      "gpt-oss:120b": {
+        "id": "gpt-oss:120b",
+        "name": "gpt-oss:120b",
+        "family": "gpt-oss",
+        "attachment": false,
+        "reasoning": true,
         "tool_call": true,
-        "release_date": "2025-12-09",
+        "release_date": "2025-08-05",
         "last_updated": "2026-01-19",
         "modalities": {
           "input": [
-            "text",
-            "image"
+            "text"
           ],
           "output": [
             "text"
@@ -3664,8 +3571,8 @@
         },
         "open_weights": true,
         "limit": {
-          "context": 262144,
-          "output": 262144
+          "context": 131072,
+          "output": 32768
         }
       },
       "kimi-k2.5": {
@@ -3692,15 +3599,17 @@
           "output": 262144
         }
       },
-      "minimax-m2": {
-        "id": "minimax-m2",
-        "name": "minimax-m2",
+      "minimax-m2.5": {
+        "id": "minimax-m2.5",
+        "name": "minimax-m2.5",
         "family": "minimax",
         "attachment": false,
-        "reasoning": false,
+        "reasoning": true,
         "tool_call": true,
-        "release_date": "2025-10-23",
-        "last_updated": "2026-01-19",
+        "knowledge": "2025-01",
+        "release_date": "2026-02-12",
+        "last_updated": "2026-02-12",
+        "open_weights": true,
         "modalities": {
           "input": [
             "text"
@@ -3709,338 +3618,9 @@
             "text"
           ]
         },
-        "open_weights": true,
         "limit": {
           "context": 204800,
-          "output": 128000
-        }
-      },
-      "qwen3-coder:480b": {
-        "id": "qwen3-coder:480b",
-        "name": "qwen3-coder:480b",
-        "family": "qwen",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2025-07-22",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 65536
-        }
-      },
-      "gpt-oss:20b": {
-        "id": "gpt-oss:20b",
-        "name": "gpt-oss:20b",
-        "family": "gpt-oss",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 131072,
-          "output": 32768
-        }
-      },
-      "gemma3:27b": {
-        "id": "gemma3:27b",
-        "name": "gemma3:27b",
-        "family": "gemma",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": false,
-        "release_date": "2025-07-27",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 131072,
           "output": 131072
-        }
-      },
-      "kimi-k2-thinking": {
-        "id": "kimi-k2-thinking",
-        "name": "kimi-k2-thinking",
-        "family": "kimi-thinking",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "knowledge": "2024-08",
-        "release_date": "2025-11-06",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 262144
-        }
-      },
-      "rnj-1:8b": {
-        "id": "rnj-1:8b",
-        "name": "rnj-1:8b",
-        "family": "rnj",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2025-12-06",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 32768,
-          "output": 4096
-        }
-      },
-      "deepseek-v3.1:671b": {
-        "id": "deepseek-v3.1:671b",
-        "name": "deepseek-v3.1:671b",
-        "family": "deepseek",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-08-21",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 163840,
-          "output": 163840
-        }
-      },
-      "ministral-3:8b": {
-        "id": "ministral-3:8b",
-        "name": "ministral-3:8b",
-        "family": "ministral",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2024-12-01",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 128000
-        }
-      },
-      "glm-4.6": {
-        "id": "glm-4.6",
-        "name": "glm-4.6",
-        "family": "glm",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-09-29",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 202752,
-          "output": 131072
-        }
-      },
-      "kimi-k2:1t": {
-        "id": "kimi-k2:1t",
-        "name": "kimi-k2:1t",
-        "family": "kimi",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": true,
-        "knowledge": "2024-10",
-        "release_date": "2025-07-11",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 262144
-        }
-      },
-      "devstral-2:123b": {
-        "id": "devstral-2:123b",
-        "name": "devstral-2:123b",
-        "family": "devstral",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2025-12-09",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 262144
-        }
-      },
-      "gpt-oss:120b": {
-        "id": "gpt-oss:120b",
-        "name": "gpt-oss:120b",
-        "family": "gpt-oss",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 131072,
-          "output": 32768
-        }
-      },
-      "gemma3:4b": {
-        "id": "gemma3:4b",
-        "name": "gemma3:4b",
-        "family": "gemma",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": false,
-        "release_date": "2024-12-01",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 131072,
-          "output": 131072
-        }
-      },
-      "nemotron-3-nano:30b": {
-        "id": "nemotron-3-nano:30b",
-        "name": "nemotron-3-nano:30b",
-        "family": "nemotron",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-12-15",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 1048576,
-          "output": 131072
-        }
-      },
-      "ministral-3:14b": {
-        "id": "ministral-3:14b",
-        "name": "ministral-3:14b",
-        "family": "ministral",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": true,
-        "release_date": "2024-12-01",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 128000
         }
       },
       "mistral-large-3:675b": {
@@ -4067,61 +3647,19 @@
           "output": 262144
         }
       },
-      "minimax-m2.1": {
-        "id": "minimax-m2.1",
-        "name": "minimax-m2.1",
-        "family": "minimax",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-12-23",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 204800,
-          "output": 131072
-        }
-      },
-      "deepseek-v3.2": {
-        "id": "deepseek-v3.2",
-        "name": "deepseek-v3.2",
-        "family": "deepseek",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2025-06-15",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 163840,
-          "output": 65536
-        }
-      },
-      "gemma3:12b": {
-        "id": "gemma3:12b",
-        "name": "gemma3:12b",
-        "family": "gemma",
+      "qwen3.5:397b": {
+        "id": "qwen3.5:397b",
+        "name": "qwen3.5:397b",
+        "family": "qwen",
         "attachment": true,
-        "reasoning": false,
-        "tool_call": false,
-        "release_date": "2024-12-01",
-        "last_updated": "2026-01-19",
+        "reasoning": true,
+        "tool_call": true,
+        "release_date": "2026-02-15",
+        "last_updated": "2026-02-17",
+        "open_weights": true,
+        "interleaved": {
+          "field": "reasoning_details"
+        },
         "modalities": {
           "input": [
             "text",
@@ -4131,10 +3669,9 @@
             "text"
           ]
         },
-        "open_weights": true,
         "limit": {
-          "context": 131072,
-          "output": 131072
+          "context": 262144,
+          "output": 81920
         }
       }
     }
@@ -42397,7 +41934,7 @@
         },
         "open_weights": true,
         "cost": {
-          "input": 0.0000025,
+          "input": 2.5e-06,
           "output": 0
         },
         "limit": {
@@ -42679,7 +42216,7 @@
         },
         "open_weights": true,
         "cost": {
-          "input": 0.000053,
+          "input": 5.3e-05,
           "output": 0.00011
         },
         "limit": {
