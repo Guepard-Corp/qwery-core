@@ -73,6 +73,17 @@ async function createProvider(
         defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
       });
     }
+    case 'ollama-cloud': {
+      const { createOpenAICompatibleModelProvider } = await import(
+        './models/openai-compatible-model.provider'
+      );
+      return createOpenAICompatibleModelProvider({
+        name: 'ollama-cloud',
+        baseURL: getEnv('OLLAMA_BASE_URL') ?? 'https://ollama.com/v1',
+        apiKey: requireEnv('OLLAMA_API_KEY', 'Ollama Cloud'),
+        defaultModel: getEnv('OLLAMA_MODEL') ?? modelName,
+      });
+    }
     case 'browser': {
       const { createBuiltInModelProvider } = await import(
         './models/built-in-model.provider'
@@ -107,7 +118,7 @@ async function createProvider(
     }
     default:
       throw new Error(
-        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, browser, transformer-browser, transformer, webllm, anthropic.`,
+        `[AgentFactory] Unsupported provider '${providerId}'. Available providers: azure, ollama, ollama-cloud, browser, transformer-browser, transformer, webllm, anthropic.`,
       );
   }
 }
@@ -135,6 +146,7 @@ export async function resolveModel(
  * Model name is determined from provider-specific env vars (checks both regular and VITE_ prefixed):
  * - Azure: AZURE_OPENAI_DEPLOYMENT or VITE_AZURE_OPENAI_DEPLOYMENT (defaults to "gpt-5.2-chat")
  * - Ollama: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "deepseek-r1:8b")
+ * - Ollama Cloud: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "glm-4.7")
  * - WebLLM: WEBLLM_MODEL or VITE_WEBLLM_MODEL (defaults to "Llama-3.1-8B-Instruct-q4f32_1-MLC")
  * - Transformer: TRANSFORMER_MODEL or VITE_TRANSFORMER_MODEL (defaults to "SmolLM2-360M-Instruct")
  * - Anthropic: ANTHROPIC_MODEL or VITE_ANTHROPIC_MODEL (defaults to "claude-3.5-sonnet")
@@ -157,6 +169,10 @@ export function getDefaultModel(): string {
         getEnv('OLLAMA_MODEL') ||
         getEnv('VITE_OLLAMA_MODEL') ||
         'deepseek-r1:8b';
+      break;
+    case 'ollama-cloud':
+      modelName =
+        getEnv('OLLAMA_MODEL') || getEnv('VITE_OLLAMA_MODEL') || 'glm-4.7';
       break;
     case 'webllm':
       modelName =
