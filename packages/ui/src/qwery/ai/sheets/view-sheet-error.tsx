@@ -15,7 +15,7 @@ import {
 } from '../../../shadcn/collapsible';
 import { cn } from '../../../lib/utils';
 import { useState } from 'react';
-import { toUserFacingError } from '../user-facing-error';
+import { toToolError, toUserFacingError } from '../user-facing-error';
 import { useTranslation } from 'react-i18next';
 
 export interface ViewSheetErrorProps {
@@ -130,8 +130,10 @@ export function ViewSheetError({
     );
   }
 
-  const { message, details } = toUserFacingError(errorText, (key: string) =>
-    t(key, { defaultValue: key }),
+  const { message, details } = toUserFacingError(
+    toToolError(errorText),
+    (key: string, params?: Record<string, unknown>) =>
+      t(key, { defaultValue: key, ...(params ?? {}) }),
   );
   return (
     <div className="min-w-0 space-y-3 p-4">

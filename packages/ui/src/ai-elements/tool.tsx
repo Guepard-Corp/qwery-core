@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
 } from '../shadcn/collapsible';
 import { cn } from '../lib/utils';
-import { toUserFacingError } from '../qwery/ai/user-facing-error';
+import { toToolError, toUserFacingError } from '../qwery/ai/user-facing-error';
 import type { ToolUIPart } from 'ai';
 import { useTranslation } from 'react-i18next';
 import { getUserFriendlyToolName } from '../qwery/ai/utils/tool-name';
@@ -134,8 +134,8 @@ const getStatusConfig = (
     'output-error': {
       label: 'Failed',
       icon: <XCircleIcon className={iconSizeClass} />,
-      className: 'text-destructive',
-      bgClassName: 'bg-red-100 dark:bg-red-950',
+      className: 'text-destructive font-medium',
+      bgClassName: 'bg-destructive/10',
     },
     'output-denied': {
       label: 'Denied',
@@ -354,8 +354,10 @@ export const ToolOutput = ({
   }
 
   if (errorText) {
-    const { message, details } = toUserFacingError(errorText, (key: string) =>
-      t(key, { defaultValue: key }),
+    const { message, details } = toUserFacingError(
+      toToolError(errorText),
+      (key: string, params?: Record<string, unknown>) =>
+        t(key, { defaultValue: key, ...(params ?? {}) }),
     );
     return (
       <div

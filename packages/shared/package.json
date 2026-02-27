@@ -31,6 +31,7 @@
     "@qwery/prettier-config": "workspace:*",
     "@qwery/tailwind-config": "workspace:*",
     "@qwery/tsconfig": "workspace:*",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "catalog:",
     "@vitest/coverage-istanbul": "catalog:",
     "eslint": "^9.39.0",

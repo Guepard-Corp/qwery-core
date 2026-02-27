@@ -81,8 +81,9 @@ describe('Server API – Projects', () => {
         body: JSON.stringify({}),
       });
       expect(res.status).toBe(400);
-      const body = (await res.json()) as { error: string };
-      expect(body.error).toContain('Invalid request body');
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBe(400);
+      expect(body.details).toContain('Invalid request body');
     });
 
     it('POST /api/projects/bulk delete removes projects', async () => {

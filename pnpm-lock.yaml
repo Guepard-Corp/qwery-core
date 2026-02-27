@@ -71,6 +71,9 @@ importers:
       '@manypkg/cli':
         specifier: ^0.25.1
         version: 0.25.1
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@qwery/prettier-config':
         specifier: workspace:*
         version: link:tooling/prettier
@@ -168,6 +171,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.25.3(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.3.6)
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@qwery/agent-factory-sdk':
         specifier: workspace:*
         version: link:../../packages/agent-factory-sdk
@@ -1824,6 +1830,9 @@ importers:
       '@qwery/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.3
@@ -6418,6 +6427,9 @@ packages:
 
   '@types/node@24.9.2':
     resolution: {integrity: sha512-uWN8YqxXxqFMX2RqGOrumsKeti4LlmIMIyV0lgut4jx7KQBcBiW6vkDtIBvHnHIquwNfJhk8v2OtmO8zXWHfPA==}
+
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
   '@types/pg@8.15.6':
     resolution: {integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==}
@@ -17510,6 +17522,10 @@ snapshots:
   '@types/node@24.9.2':
     dependencies:
       undici-types: 7.16.0
+
+  '@types/papaparse@5.5.2':
+    dependencies:
+      '@types/node': 20.19.25
 
   '@types/pg@8.15.6':
     dependencies:

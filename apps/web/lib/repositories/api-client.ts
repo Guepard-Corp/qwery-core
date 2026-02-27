@@ -1,4 +1,5 @@
 import { type ApiErrorResponseBody } from '@qwery/shared/error';
+import { getLogger } from '@qwery/shared/logger';
 
 function getApiBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env) {
@@ -75,15 +76,39 @@ async function handleResponse<T>(
   }
 
   if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({
-      code: 500,
-    }))) as Partial<ApiErrorResponseBody>;
+    let errorData: Partial<ApiErrorResponseBody> | null = null;
+    let parseFailed = false;
+
+    try {
+      errorData = (await response.json()) as Partial<ApiErrorResponseBody>;
+    } catch {
+      parseFailed = true;
+    }
+
+    const hasNumericCode =
+      errorData !== null &&
+      typeof errorData.code === 'number' &&
+      Number.isFinite(errorData.code);
+
+    if (parseFailed || !hasNumericCode) {
+      void getLogger().then((logger) =>
+        logger.warn(
+          {
+            status: response.status,
+            body: errorData ?? null,
+          },
+          'Api client: malformed error body',
+        ),
+      );
+    }
+
+    const code = hasNumericCode ? (errorData!.code as number) : 500;
 
     throw new ApiError(
       response.status,
-      errorData.code ?? 500,
-      errorData.params,
-      errorData.details,
+      code,
+      errorData?.params,
+      errorData?.details,
     );
   }
 

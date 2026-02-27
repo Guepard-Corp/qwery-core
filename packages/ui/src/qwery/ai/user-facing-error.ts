@@ -6,22 +6,32 @@ import {
 } from '@qwery/shared/error';
 import { getLogger } from '@qwery/shared/logger';
 
-function logUnmappedCode(code: number): void {
-  void getLogger().then((logger) =>
-    logger.warn({ code }, 'Error resolution: unmapped code'),
-  );
-}
+export type ToolErrorShape = {
+  details: string;
+  status?: number;
+};
 
-function logFallbackToCategory(
-  code: number,
-  category: UserFacingErrorKey,
-): void {
-  void getLogger().then((logger) =>
-    logger.warn(
-      { code, category },
-      'Error resolution: fallback to category (contract drift risk)',
-    ),
-  );
+export function toToolError(error: unknown, status?: number): ToolErrorShape {
+  if (typeof error === 'string') {
+    return { details: error, status };
+  }
+  if (error instanceof Error) {
+    return {
+      details: error.message || error.toString(),
+      status,
+    };
+  }
+  try {
+    return {
+      details: JSON.stringify(error),
+      status,
+    };
+  } catch {
+    return {
+      details: String(error),
+      status,
+    };
+  }
 }
 
 /**
@@ -40,12 +50,34 @@ export function toUserFacingError(
   details?: string;
   code?: number;
 } {
+  const requestId =
+    error &&
+    typeof error === 'object' &&
+    'requestId' in error &&
+    typeof (error as { requestId?: unknown }).requestId === 'string'
+      ? (error as { requestId: string }).requestId
+      : undefined;
+
   const resolved = resolveError(error, {
     translate,
     defaultMessages: DEFAULT_ERROR_MESSAGES,
     overrides: ERROR_REGISTRY_OVERRIDES,
-    onUnmappedCode: logUnmappedCode,
-    onFallbackToCategory: logFallbackToCategory,
+    onUnmappedCode: (code: number) => {
+      void getLogger().then((logger) =>
+        logger.warn(
+          { code, ...(requestId ? { requestId } : {}) },
+          'Error resolution: unmapped code',
+        ),
+      );
+    },
+    onFallbackToCategory: (code: number, category: UserFacingErrorKey) => {
+      void getLogger().then((logger) =>
+        logger.warn(
+          { code, category, ...(requestId ? { requestId } : {}) },
+          'Error resolution: fallback to category (contract drift risk)',
+        ),
+      );
+    },
   });
 
   return {

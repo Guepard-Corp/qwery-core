@@ -217,6 +217,43 @@ API error body:
 
 HTTP status: `2000–2999` → 404; `400–499` → same; others → 500.
 
+### Server helpers and global boundary
+
+All API errors should go through `apps/server/src/lib/http-utils.ts`:
+
+- `handleDomainException(error: unknown): Response`
+  - Entry point for **all** unhandled route errors.
+  - Maps `DomainException` to `{ code, params, details? }` and status as above.
+  - Maps unknown errors to `{ code: 500, details? }`, status 500.
+- `createValidationErrorResponse(message: string, code: CodeDescription = Code.BAD_REQUEST_ERROR): Response`
+  - For request-shape / validation errors (missing query params, invalid bulk body, etc.).
+  - Do **not** hand-roll `c.json({ error: ... }, 400)`. Always use this helper so the client sees a proper `{ code, params?, details? }` body.
+- `createNotFoundErrorResponse(message: string, code: CodeDescription = Code.ENTITY_NOT_FOUND_ERROR): Response`
+  - For “thing not found” paths that do not already throw a `DomainException` (e.g. extensions registry).
+  - Keeps 404 responses consistent with the rest of the contract.
+
+The Hono app is wired with a **global error boundary** in `apps/server/src/server.ts`:
+
+```ts
+app.onError(async (err) => {
+  const logger = await getLogger();
+  const traceId = getCurrentTraceId();
+  logger.error(
+    {
+      err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      ...(traceId ? { traceId } : {}),
+    },
+    'Unhandled request error',
+  );
+  return handleDomainException(err);
+});
+```
+
+- This guarantees that any uncaught exception still returns the canonical error body.
+- Logs always contain either the error code (for `DomainException`) or a 500, and optionally a `traceId` for correlation with other telemetry.
+
 ### `details` — internal-only
 
 - **Purpose:** Debugging only (e.g. exception message, driver error). **Not safe for end users** — may contain internal or dependency messages.

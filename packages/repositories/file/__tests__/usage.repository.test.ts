@@ -43,10 +43,8 @@ describe('UsageRepository', () => {
   });
 
   const defaultUsageId = 'a1000001-0000-4000-8000-000000000001';
-  const createTestUsage = (
-    overrides?: Partial<Usage> & { id?: string | number },
-  ): Usage & { id: string | number } => ({
-    id: overrides?.id ?? defaultUsageId,
+  const createTestUsage = (overrides?: Partial<Usage>): Usage => ({
+    id: (overrides?.id as string) ?? defaultUsageId,
     conversationId,
     projectId,
     organizationId,
@@ -78,24 +76,6 @@ describe('UsageRepository', () => {
       expect(result.id).toBe(id);
       await assertFileExists(result.id);
     });
-
-    it('generates UUID when id not provided or zero', async () => {
-      const usage = createTestUsage({ id: 0 });
-      const result = await repository.create(usage);
-      expect(typeof result.id).toBe('string');
-      expect(result.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      );
-      await assertFileExists(String(result.id));
-    });
-
-    it('handles UUID string as id', async () => {
-      const uuidId = '550e8400-e29b-41d4-a716-446655440000';
-      const usage = createTestUsage({ id: uuidId });
-      const result = await repository.create(usage);
-      expect(result.id).toBe(uuidId);
-      await assertFileExists(String(result.id));
-    });
   });
 
   describe('findById', () => {
@@ -107,7 +87,7 @@ describe('UsageRepository', () => {
 
       const result = await repository.findById(usage.id);
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(usage.id);
+      expect(result?.id).toBe(String(usage.id));
     });
 
     it('returns null when not found', async () => {

@@ -27,6 +27,7 @@ export type ApiErrorResponseBody = {
   code: number;
   params?: unknown;
   details?: string;
+  requestId?: string;
 };
 
 export function isUserFacingErrorKey(

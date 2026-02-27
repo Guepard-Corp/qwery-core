@@ -25,7 +25,7 @@ import {
   MessageContent,
   MessageResponse,
 } from '../../ai-elements/message';
-import { toUserFacingError } from './user-facing-error';
+import { toToolError, toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
 
 const FullWidthScroller = forwardRef<
@@ -280,8 +280,9 @@ export const VirtuosoMessageList = forwardRef<
 
         if (state.loadError) {
           const { message, details } = toUserFacingError(
-            state.loadError,
-            (key: string) => t(key, { defaultValue: key }),
+            toToolError(state.loadError),
+            (key: string, params?: Record<string, unknown>) =>
+              t(key, { defaultValue: key, ...(params ?? {}) }),
           );
           return (
             <>

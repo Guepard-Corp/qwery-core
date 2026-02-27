@@ -24,24 +24,6 @@ initializeErrorHandling();
 
 export const ERROR_KEYS = ERROR_I18N_KEYS;
 
-function logUnmappedCode(code: number): void {
-  void getLogger().then((logger) =>
-    logger.warn({ code }, 'Error resolution: unmapped code'),
-  );
-}
-
-function logFallbackToCategory(
-  code: number,
-  category: UserFacingErrorKey,
-): void {
-  void getLogger().then((logger) =>
-    logger.warn(
-      { code, category },
-      'Error resolution: fallback to category (contract drift risk)',
-    ),
-  );
-}
-
 function formatZodErrorMessage(error: ZodError): string {
   const first = error.issues?.[0];
   return first?.message ?? '';
@@ -66,13 +48,35 @@ export function getErrorKey(
   }
 
   const normalized = normalizeErrorForResolution(error);
+  const requestId =
+    normalized &&
+    typeof normalized === 'object' &&
+    'requestId' in normalized &&
+    typeof (normalized as { requestId?: unknown }).requestId === 'string'
+      ? (normalized as { requestId: string }).requestId
+      : undefined;
+
   const resolved = resolveError(normalized, {
     translate: t,
     defaultMessages: DEFAULT_ERROR_MESSAGES,
     overrides: ERROR_REGISTRY_OVERRIDES,
     translations: commonTranslations,
-    onUnmappedCode: logUnmappedCode,
-    onFallbackToCategory: logFallbackToCategory,
+    onUnmappedCode: (code: number) => {
+      void getLogger().then((logger) =>
+        logger.warn(
+          { code, ...(requestId ? { requestId } : {}) },
+          'Error resolution: unmapped code',
+        ),
+      );
+    },
+    onFallbackToCategory: (code: number, category: UserFacingErrorKey) => {
+      void getLogger().then((logger) =>
+        logger.warn(
+          { code, category, ...(requestId ? { requestId } : {}) },
+          'Error resolution: fallback to category (contract drift risk)',
+        ),
+      );
+    },
   });
   return resolved.message;
 }

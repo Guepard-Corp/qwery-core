@@ -136,9 +136,8 @@ export function createOrganizationsRoutes(
       const repos = await getRepositories();
       const body = (await c.req.json()) as unknown;
       if (!isBulkOrganizationRequest(body)) {
-        return c.json(
-          { error: 'Invalid request body. Expected { operation, ids }.' },
-          400,
+        return createValidationErrorResponse(
+          'Invalid request body. Expected { operation, ids }.',
         );
       }
 

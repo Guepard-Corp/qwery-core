@@ -112,6 +112,12 @@
       "deleteError": "Failed to delete message.",
       "getError": "Failed to retrieve message.",
       "createError": "Failed to create message."
+    },
+    "tool": {
+      "title": "Error",
+      "description": "An error occurred while executing this operation.",
+      "viewTechnicalDetails": "View technical details",
+      "hideTechnicalDetails": "Hide technical details"
     }
   },
   "anonymousUser": "Anonymous",

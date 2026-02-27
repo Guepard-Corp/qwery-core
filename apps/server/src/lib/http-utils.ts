@@ -1,6 +1,7 @@
 import { DomainException } from '@qwery/domain/exceptions';
 import { Code, type CodeDescription } from '@qwery/domain/common';
 import { SAFE_ERROR_MESSAGE } from '@qwery/shared/error';
+import { trace } from '@opentelemetry/api';
 
 function getTechnicalDetails(error: unknown): string | undefined {
   if (error instanceof DomainException) {
@@ -18,10 +19,27 @@ function getTechnicalDetails(error: unknown): string | undefined {
 const isProduction = () =>
   typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
 
+export function getCurrentTraceId(): string | undefined {
+  try {
+    const span = trace.getActiveSpan();
+    const context = span?.spanContext();
+    if (!context?.traceId) {
+      return undefined;
+    }
+    if (context.traceId === '00000000000000000000000000000000') {
+      return undefined;
+    }
+    return context.traceId;
+  } catch {
+    return undefined;
+  }
+}
+
 export function handleDomainException(error: unknown): Response {
   const rawDetails = getTechnicalDetails(error);
   const details =
     !isProduction() && rawDetails !== undefined ? rawDetails : undefined;
+  const requestId = getCurrentTraceId();
 
   if (error instanceof DomainException) {
     const status =
@@ -31,22 +49,30 @@ export function handleDomainException(error: unknown): Response {
           ? error.code
           : 500;
 
-    return Response.json(
-      {
-        code: error.code,
-        params: error.data,
-        ...(details !== undefined && { details }),
-      },
-      { status },
-    );
-  }
-  return Response.json(
-    {
-      code: 500,
+    const body = {
+      code: error.code,
+      params: error.data,
       ...(details !== undefined && { details }),
-    },
-    { status: 500 },
-  );
+      ...(requestId !== undefined && { requestId }),
+    };
+    const response = Response.json(body, { status });
+    if (requestId !== undefined) {
+      response.headers.set('X-Request-Id', requestId);
+      response.headers.set('X-Trace-Id', requestId);
+    }
+    return response;
+  }
+  const body = {
+    code: 500,
+    ...(details !== undefined && { details }),
+    ...(requestId !== undefined && { requestId }),
+  };
+  const response = Response.json(body, { status: 500 });
+  if (requestId !== undefined) {
+    response.headers.set('X-Request-Id', requestId);
+    response.headers.set('X-Trace-Id', requestId);
+  }
+  return response;
 }
 
 export function createValidationErrorResponse(

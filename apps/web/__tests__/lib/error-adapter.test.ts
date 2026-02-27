@@ -4,24 +4,42 @@ import { ApiError } from '~/lib/repositories/api-client';
 import { ERROR_CODES } from '@qwery/shared/error';
 
 describe('normalizeErrorForResolution', () => {
-  it('returns status 403 for RLS-like message', () => {
-    const error = new Error(
+  it('returns status 403 for row-level security violations', () => {
+    const messages = [
       'new row violates row-level security policy for table "x"',
-    );
-    const result = normalizeErrorForResolution(error);
-    expect(result).toEqual({ status: 403 });
+      'permission denied for table due to row-level security',
+      'Row-level security policy violation',
+    ];
+
+    for (const msg of messages) {
+      const error = new Error(msg);
+      const result = normalizeErrorForResolution(error);
+      expect(result).toEqual({ status: 403 });
+    }
   });
 
-  it('returns status 404 for "not found" message', () => {
-    const error = new Error('Resource not found');
-    const result = normalizeErrorForResolution(error);
-    expect(result).toEqual({ status: 404 });
+  it('returns status 404 for "not found" messages including PostgREST codes', () => {
+    const messages = ['Resource not found', '404 Not Found', 'pgrst116'];
+
+    for (const msg of messages) {
+      const error = new Error(msg);
+      const result = normalizeErrorForResolution(error);
+      expect(result).toEqual({ status: 404 });
+    }
   });
 
-  it('returns status 0 for network-like message', () => {
-    const error = new Error('failed to fetch');
-    const result = normalizeErrorForResolution(error);
-    expect(result).toEqual({ status: 0 });
+  it('returns status 0 for network-like messages', () => {
+    const messages = [
+      'failed to fetch',
+      'Network error while fetching',
+      'load failed',
+    ];
+
+    for (const msg of messages) {
+      const error = new Error(msg);
+      const result = normalizeErrorForResolution(error);
+      expect(result).toEqual({ status: 0 });
+    }
   });
 
   it('passes through error that already has numeric code', () => {

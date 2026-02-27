@@ -18,7 +18,7 @@ import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
-import { handleDomainException } from './lib/http-utils';
+import { getCurrentTraceId, handleDomainException } from './lib/http-utils';
 
 export function createApp() {
   const app = new Hono();
@@ -27,11 +27,13 @@ export function createApp() {
 
   app.onError(async (err) => {
     const logger = await getLogger();
+    const traceId = getCurrentTraceId();
     logger.error(
       {
         err,
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
+        ...(traceId ? { traceId } : {}),
       },
       'Unhandled request error',
     );
