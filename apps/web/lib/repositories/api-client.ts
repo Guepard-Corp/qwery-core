@@ -15,6 +15,7 @@ export class ApiError extends Error {
     public code: number,
     public params?: unknown,
     public details?: string,
+    public requestId?: string,
   ) {
     super(`API Error ${code}`);
     this.name = 'ApiError';
@@ -109,6 +110,7 @@ async function handleResponse<T>(
       code,
       errorData?.params,
       errorData?.details,
+      errorData?.requestId,
     );
   }
 

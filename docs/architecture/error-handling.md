@@ -10,6 +10,19 @@ This doc is for **developers** who need to understand how errors flow from backe
 - **Flow:** Domain (numeric codes) → Shared (code → i18n key) → Web/UI (translate key → message). Raw errors without a code are normalized in the web app (e.g. RLS/Postgres phrases) before resolution.
 - **Adding an error:** Define code in domain → register in shared → add i18n key (convention or override) → add translation in `common.json`. CI checks that every code has a key in `common.json`.
 
+### 500 vs 502/503 — downstream failures
+
+Use a **separate path** for known downstream/infrastructure failures so they are not all returned as 500:
+
+| Status | When to use | Domain code | User category |
+|--------|--------------|-------------|----------------|
+| **500** | Unexpected server bug, unhandled exception, logic error | `Code.INTERNAL_ERROR` | generic |
+| **502** | Downstream returned invalid response (proxy/gateway semantics) | `Code.BAD_GATEWAY_ERROR` | network |
+| **503** | Downstream unavailable (DB, driver, external API down or unreachable) | `Code.SERVICE_UNAVAILABLE_ERROR` | network |
+
+- **Backend:** In route or service code, when the failure is clearly from a **downstream dependency** (DB connection, driver error, external HTTP call), throw `DomainException` with `Code.SERVICE_UNAVAILABLE_ERROR` (or `Code.BAD_GATEWAY_ERROR` for invalid upstream response). `handleDomainException` maps those codes to HTTP 503 (or 502).
+- **Frontend:** Status 502/503 (and code 502/503) are categorized as `network`; resolution uses the same category defaults or the specific i18n keys `common:errors.badGateway` / `common:errors.serviceUnavailable` for a distinct “service unavailable” message.
+
 ---
 
 ## Three error channels
@@ -259,6 +272,14 @@ app.onError(async (err) => {
 - **Purpose:** Debugging only (e.g. exception message, driver error). **Not safe for end users** — may contain internal or dependency messages.
 - **Contract:** Backend **strips `details` in production** (`NODE_ENV === 'production'`). In development/test it may be present.
 - **Frontend:** May receive `details` only in non-production. Do not rely on it for UX; use `code`/`status` + i18n for user-facing text. If you show `details` in UI (e.g. collapsible “View details”), treat it as dev-only — in production it will be absent.
+
+### MCP tool errors — out of scope for REST contract
+
+MCP error responses are **intentionally outside the REST contract**. They do not use `{ code, params?, details? }` and are not part of the shared resolution or i18n pipeline.
+
+- **Shape:** Tool failures return a simple JSON payload `{ error: string }` (e.g. "Conversation not found: …", "Notebook not found: …", or exception messages). No numeric codes, no i18n keys.
+- **Where produced:** `apps/server/src/lib/mcp-handler.ts` — all MCP tool handlers use `errorContent(message)` for failures. The endpoint is `POST /mcp` (see `apps/server/src/server.ts`).
+- **Where consumed:** The agent runtime calls MCP tools via `packages/agent-factory-sdk` (e.g. `mcp/client.ts`, `tools/registry.ts` when `mcpServerUrl` is set). Tool results (including `{ error: string }`) are returned to the agent; the chat route (`apps/server/src/routes/chat.ts`) passes `mcpServerUrl` so the agent can use these tools. Any tool error text may later appear in the UI as tool output (e.g. in `@qwery/ui` tool visualizers); that display is **not** routed through `getErrorKey` or `resolveError`. If you need user-facing consistency, map known MCP error message patterns in the client that renders tool output, not in the MCP response.
 
 ---
 

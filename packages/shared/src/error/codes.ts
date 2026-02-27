@@ -6,6 +6,8 @@ export const ERROR_CODES = {
   WRONG_CREDENTIALS: Code.WRONG_CREDENTIALS_ERROR.code,
   ACCESS_DENIED: Code.ACCESS_DENIED_ERROR.code,
   INTERNAL_ERROR: Code.INTERNAL_ERROR.code,
+  BAD_GATEWAY: Code.BAD_GATEWAY_ERROR.code,
+  SERVICE_UNAVAILABLE: Code.SERVICE_UNAVAILABLE_ERROR.code,
   ENTITY_NOT_FOUND: Code.ENTITY_NOT_FOUND_ERROR.code,
   ENTITY_VALIDATION_ERROR: Code.ENTITY_VALIDATION_ERROR.code,
   USE_CASE_PORT_VALIDATION_ERROR: Code.USE_CASE_PORT_VALIDATION_ERROR.code,
@@ -73,6 +75,7 @@ export function getErrorCategory(
   if (code >= 2000 && code < 3000) return 'notFound';
   if (code === 401 || code === 403) return 'permissionDenied';
   if (code >= 400 && code < 500) return 'generic';
+  if (code === 502 || code === 503 || code === 504) return 'network';
   return 'generic';
 }
 

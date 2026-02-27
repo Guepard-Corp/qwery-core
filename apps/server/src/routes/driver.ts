@@ -111,7 +111,7 @@ export function createDriverRoutes() {
       logger.error({ error }, 'Error executing driver action');
       return handleDomainException(
         DomainException.new({
-          code: Code.INTERNAL_ERROR,
+          code: Code.SERVICE_UNAVAILABLE_ERROR,
           overrideMessage: formatError(error),
         }),
       );

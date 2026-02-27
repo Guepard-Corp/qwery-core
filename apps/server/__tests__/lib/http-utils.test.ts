@@ -115,7 +115,7 @@ describe('handleDomainException', () => {
     expect(body.code).toBe(400);
   });
 
-  it('returns 500 and code for DomainException with other codes', async () => {
+  it('returns 500 and code for DomainException with INTERNAL_ERROR', async () => {
     const error = DomainException.new({
       code: Code.INTERNAL_ERROR,
       overrideMessage: 'Internal',
@@ -124,6 +124,28 @@ describe('handleDomainException', () => {
     expect(res.status).toBe(500);
     const body = (await res.json()) as { code: number };
     expect(body.code).toBe(500);
+  });
+
+  it('returns 502 and code for DomainException with BAD_GATEWAY_ERROR', async () => {
+    const error = DomainException.new({
+      code: Code.BAD_GATEWAY_ERROR,
+      overrideMessage: 'Bad gateway',
+    });
+    const res = handleDomainException(error);
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(502);
+  });
+
+  it('returns 503 and code for DomainException with SERVICE_UNAVAILABLE_ERROR', async () => {
+    const error = DomainException.new({
+      code: Code.SERVICE_UNAVAILABLE_ERROR,
+      overrideMessage: 'Service unavailable',
+    });
+    const res = handleDomainException(error);
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(503);
   });
 
   it('returns 500 with code for generic Error', async () => {

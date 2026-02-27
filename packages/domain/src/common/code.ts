@@ -36,6 +36,16 @@ export class Code {
     message: 'Internal error.',
   };
 
+  public static BAD_GATEWAY_ERROR: CodeDescription = {
+    code: 502,
+    message: 'Bad gateway.',
+  };
+
+  public static SERVICE_UNAVAILABLE_ERROR: CodeDescription = {
+    code: 503,
+    message: 'Service unavailable.',
+  };
+
   public static ENTITY_NOT_FOUND_ERROR: CodeDescription = {
     code: 1000,
     message: 'Entity not found.',

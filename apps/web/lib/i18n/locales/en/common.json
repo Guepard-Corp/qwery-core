@@ -38,6 +38,10 @@
     "wrongCredentials": "Invalid credentials.",
     "accessDenied": "You don't have permission to perform this action.",
     "internalError": "An internal error occurred. Please try again later.",
+    "badGateway": "A downstream service returned an invalid response. Please try again.",
+    "service": {
+      "unavailable": "Service is temporarily unavailable. Please try again later."
+    },
     "entityNotFound": "The requested entity was not found.",
     "entityValidationError": "Validation error. Please check your input.",
     "useCasePortValidationError": "Invalid request parameters.",

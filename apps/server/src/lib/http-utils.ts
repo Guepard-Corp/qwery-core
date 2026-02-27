@@ -42,12 +42,16 @@ export function handleDomainException(error: unknown): Response {
   const requestId = getCurrentTraceId();
 
   if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
+    let status: number;
+    if (error.code >= 2000 && error.code < 3000) {
+      status = 404;
+    } else if (error.code >= 400 && error.code < 500) {
+      status = error.code;
+    } else if (error.code === 502 || error.code === 503) {
+      status = error.code;
+    } else {
+      status = 500;
+    }
 
     const body = {
       code: error.code,
