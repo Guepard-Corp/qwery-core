@@ -16124,6 +16124,12 @@ var ExtensionScope = /* @__PURE__ */ ((ExtensionScope2) => {
   ExtensionScope2["SKILL"] = "skill";
   return ExtensionScope2;
 })(ExtensionScope || {});
+var PreviewUrlKindSchema = external_exports.enum([
+  "embeddable",
+  "data-file",
+  "connection"
+]);
+var PreviewDataFormatSchema = external_exports.enum(["json", "parquet", "csv"]);
 var ExtensionDefinitionSchema = external_exports.object({
   id: external_exports.string(),
   name: external_exports.string(),
@@ -16133,7 +16139,9 @@ var ExtensionDefinitionSchema = external_exports.object({
   scope: external_exports.nativeEnum(ExtensionScope),
   schema: external_exports.any().optional().nullable(),
   docsUrl: external_exports.string().nullable().optional(),
-  supportsPreview: external_exports.boolean().optional()
+  supportsPreview: external_exports.boolean().optional(),
+  previewUrlKind: PreviewUrlKindSchema.optional(),
+  previewDataFormat: PreviewDataFormatSchema.optional()
 });
 var DriverRuntimeSchema = external_exports.enum(["node", "browser"]);
 var DriverExtensionSchema = external_exports.object({
@@ -18389,7 +18397,7 @@ var ProjectSchema = external_exports.object({
   organizationId: external_exports.string().uuid().describe("The unique identifier for the organisation"),
   name: external_exports.string().min(1).max(255).describe("The name of the project"),
   slug: external_exports.string().min(1).describe("The slug of the project"),
-  description: external_exports.string().min(1).max(1024).optional().describe("The description of the project"),
+  description: external_exports.string().max(1024).optional().describe("The description of the project"),
   status: external_exports.string().min(1).max(255).optional().describe("The status of the project"),
   createdAt: external_exports.coerce.date().describe("The date and time the project was created"),
   updatedAt: external_exports.coerce.date().describe("The date and time the project was last updated"),
@@ -18419,7 +18427,9 @@ var ProjectEntity = class extends Entity {
     const updatedProject = {
       ...project,
       ...projectDTO.name && { name: projectDTO.name },
-      ...projectDTO.description && { description: projectDTO.description },
+      ...projectDTO.description !== void 0 && {
+        description: projectDTO.description
+      },
       ...projectDTO.status && { status: projectDTO.status },
       ...projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy },
       updatedAt: date5
@@ -19178,9 +19188,14 @@ var UsageSchema = external_exports.object({
   storage: external_exports.number().describe("The storage usage in percentage").default(0),
   timestamp: external_exports.date().default(/* @__PURE__ */ new Date()).describe("The timestamp of the usage")
 });
+var UsageCreateSchema = UsageSchema.extend({
+  id: external_exports.uuid().optional()
+});
 var UsageEntity = class extends Entity {
   static new(usage) {
-    return plainToClass(UsageEntity, UsageSchema.parse(usage), {
+    const parsed = UsageCreateSchema.parse(usage);
+    const withId = { ...parsed, id: parsed.id ?? v4_default() };
+    return plainToClass(UsageEntity, withId, {
       excludeExtraneousValues: true
     });
   }

@@ -120,10 +120,20 @@ export default defineConfig(async () => ({
     },
   },
   build: {
-    sourcemap: false, // Disable sourcemaps to avoid resolution errors in monorepo
-    manifest: true, // Enable manifest generation for React Router
-
-  optimizeDeps: {
+    sourcemap: false,
+    manifest: true,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (
+          typeof warning.message === 'string' &&
+          warning.message.includes('sourcemap')
+        ) {
+          return;
+        }
+        warn(warning);
+      },
+    },
+    optimizeDeps: {
     exclude: [
       'fsevents',
       '@electric-sql/pglite',

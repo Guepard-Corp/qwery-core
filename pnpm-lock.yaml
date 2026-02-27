@@ -116,6 +116,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@qwery/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@qwery/ui':
         specifier: workspace:*
         version: link:../../packages/ui

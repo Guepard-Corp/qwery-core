@@ -1,13 +1,13 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { tmpdir } from 'node:os';
-
 export const Truncate = {
   MAX_LINES: 2000,
   MAX_BYTES: 50 * 1024,
-  /** Directory for truncated tool outputs. Defaults to os.tmpdir()/qwery-tool-output. */
-  getDir: (): string => path.join(tmpdir(), 'qwery-tool-output'),
 } as const;
+
+async function getNodeOutputDir(): Promise<string> {
+  const path = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  return path.default.join(tmpdir(), 'qwery-tool-output');
+}
 
 export type TruncateResult =
   | { content: string; truncated: false }
@@ -32,10 +32,15 @@ export async function truncateOutput(
   text: string,
   options: TruncateOptions = {},
 ): Promise<TruncateResult> {
+  const [{ mkdir, writeFile }, path, outputDir] = await Promise.all([
+    import('node:fs/promises'),
+    import('node:path'),
+    options.outputDir ? Promise.resolve(options.outputDir) : getNodeOutputDir(),
+  ]);
+
   const maxLines = options.maxLines ?? Truncate.MAX_LINES;
   const maxBytes = options.maxBytes ?? Truncate.MAX_BYTES;
   const direction = options.direction ?? 'head';
-  const outputDir = options.outputDir ?? Truncate.getDir();
 
   const lines = text.split('\n');
   const totalBytes = Buffer.byteLength(text, 'utf-8');
@@ -78,7 +83,7 @@ export async function truncateOutput(
 
   await mkdir(outputDir, { recursive: true });
   const id = createId();
-  const filepath = path.join(outputDir, id);
+  const filepath = path.default.join(outputDir, id);
   await writeFile(filepath, text, 'utf-8');
 
   const hint = `Full output saved to: ${filepath}`;

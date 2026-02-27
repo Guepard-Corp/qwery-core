@@ -159,7 +159,8 @@ export function resolveDriverEntryPath(
   pkgMain: string | undefined,
   pkg?: { exports?: { '.'?: { bun?: string } } },
 ): string {
-  let relative = entry ?? pkgMain ?? './dist/driver.js';
+  const bunEntry = 'Bun' in globalThis ? pkg?.exports?.['.']?.bun : undefined;
+  const relative = String(bunEntry ?? entry ?? pkgMain ?? './dist/driver.js');
   const absolute = path.resolve(extDir, relative.replace(/^\.\//, ''));
   return pathToFileURL(absolute).href;
 }
