@@ -17,6 +17,7 @@ function mapLanguageModelUsageToCreateUsageInput(
   model: string,
   userId: string = 'system',
   cost: number = 0,
+  contextSize: number = 0,
 ): Omit<CreateUsageInput, 'conversationId' | 'projectId' | 'organizationId'> {
   return {
     userId,
@@ -27,7 +28,7 @@ function mapLanguageModelUsageToCreateUsageInput(
     reasoningTokens: usage.reasoningTokens ?? 0,
     cachedInputTokens: usage.cachedInputTokens ?? 0,
     cost,
-    contextSize: 0, // Not available in LanguageModelV2Usage
+    contextSize,
     creditsCap: 0,
     creditsUsed: 0,
     cpu: 0,
@@ -49,7 +50,7 @@ export class UsagePersistenceService {
   /**
    * Persists LanguageModelUsage to the database
    * @param usage - LanguageModelUsage from AI SDK
-   * @param model - Model identifier (e.g., 'azure/gpt-5-mini')
+   * @param model - Model identifier (e.g., 'azure/gpt-5.2-chat')
    * @param userId - User identifier (default: 'system')
    */
   async persistUsage(
@@ -58,6 +59,20 @@ export class UsagePersistenceService {
     userId: string = 'system',
   ): Promise<void> {
     const catalog = await getModelsCatalog();
+    const [providerId, modelId] = model.includes('/')
+      ? model.split('/', 2)
+      : ['', model];
+    const contextSize =
+      providerId && modelId
+        ? ((
+            (catalog as Record<string, unknown>)[providerId] as
+              | {
+                  models?: Record<string, { limit?: { context?: number } }>;
+                }
+              | undefined
+          )?.models?.[modelId]?.limit?.context ?? 0)
+        : 0;
+
     const { cost } = getUsageFromCatalog(catalog, model, {
       inputTokens: usage.inputTokens ?? 0,
       outputTokens: usage.outputTokens ?? 0,
@@ -76,6 +91,7 @@ export class UsagePersistenceService {
       model,
       userId,
       cost,
+      contextSize,
     );
 
     await useCase.execute({

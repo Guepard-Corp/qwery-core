@@ -32,23 +32,11 @@ export default function ProjectNotebooksPage() {
     };
 
     updateUnsavedIds();
-
     window.addEventListener('storage', updateUnsavedIds);
-
-    const handleCustomStorage = () => {
-      updateUnsavedIds();
-    };
-    window.addEventListener('notebook:unsaved-changed', handleCustomStorage);
-
-    const interval = setInterval(updateUnsavedIds, 500);
-
+    window.addEventListener('notebook:unsaved-changed', updateUnsavedIds);
     return () => {
       window.removeEventListener('storage', updateUnsavedIds);
-      window.removeEventListener(
-        'notebook:unsaved-changed',
-        handleCustomStorage,
-      );
-      clearInterval(interval);
+      window.removeEventListener('notebook:unsaved-changed', updateUnsavedIds);
     };
   }, []);
 

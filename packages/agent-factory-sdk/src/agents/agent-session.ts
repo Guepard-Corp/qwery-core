@@ -51,6 +51,7 @@ const SSE_HEADERS = {
   'Content-Type': 'text/event-stream',
   'Cache-Control': 'no-cache',
   Connection: 'keep-alive',
+  'x-vercel-ai-ui-message-stream': 'v1',
 } as const;
 
 function ensureTitle(_opts: {
@@ -229,6 +230,16 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     };
 
     const assistantMessageId = uuidv4();
+    const pendingToolStartChunks: Uint8Array[] = [];
+    const encoder = new TextEncoder();
+    const enqueueToolStartChunk = (
+      toolName: string,
+      args: unknown,
+      toolCallId: string,
+    ) => {
+      const line = `data: ${JSON.stringify({ type: 'tool-input-available', toolCallId, toolName, input: args })}\n\n`;
+      pendingToolStartChunks.push(encoder.encode(line));
+    };
     const getContext = (options: {
       toolCallId?: string;
       abortSignal?: AbortSignal;
@@ -254,6 +265,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           ...input,
         });
       },
+      onToolStart: enqueueToolStartChunk,
     });
 
     const { tools, close: closeMcp } = await Registry.tools.forAgent(
@@ -290,13 +302,28 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             .join('\n\n')
         : agentInfo.systemPrompt;
 
+    const metaToolIds = new Set([
+      'todowrite',
+      'todoread',
+      'task',
+      'webfetch',
+      'get_skill',
+    ]);
+    const capabilityIds = Object.keys(tools).filter(
+      (id) => !metaToolIds.has(id),
+    );
+    const systemPromptWithSuggestions =
+      capabilityIds.length > 0
+        ? `${systemPromptForLlm}\n\nSUGGESTIONS - Capabilities: When using {{suggestion: ...}}, only suggest actions you can perform with your tools: ${capabilityIds.join(', ')}. Do not suggest CSV/PDF export, file download, or other actions you cannot perform.`
+        : systemPromptForLlm;
+
     const result = await LLM.stream({
       model,
       messages: messagesForLlm,
       tools,
       maxSteps: inputMaxSteps ?? agentInfo.steps ?? 5,
       abortSignal: abortController.signal,
-      systemPrompt: systemPromptForLlm,
+      systemPrompt: systemPromptWithSuggestions,
       onFinish: closeMcp
         ? async () => {
             await closeMcp();
@@ -343,12 +370,16 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
           repositories.project,
           conversationSlug,
         );
-        usagePersistenceService
-          .persistUsage(totalUsage, model, conversation.createdBy)
-          .catch(async (error) => {
-            const log = await getLogger();
-            log.error('[AgentSession] Failed to persist usage:', error);
-          });
+        try {
+          await usagePersistenceService.persistUsage(
+            totalUsage,
+            model,
+            conversation.createdBy,
+          );
+        } catch (error) {
+          const log = await getLogger();
+          log.error('[AgentSession] Failed to persist usage:', error);
+        }
 
         const lastAssistant = [...finishedMessages]
           .reverse()
@@ -390,9 +421,11 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             undefined,
             {
               defaultMetadata: {
-                modelId: providerModel.id,
-                providerId: providerModel.providerID,
                 agent: agentId,
+                model: {
+                  modelID: providerModel.id,
+                  providerID: providerModel.providerID,
+                },
               },
             },
           );
@@ -418,6 +451,57 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       break;
     }
 
+    const wrapStreamWithToolStartFlush = (source: ReadableStream<Uint8Array>) =>
+      new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const buffer: Uint8Array[] = [];
+          let streamDone = false;
+          const wake = { f: null as (() => void) | null };
+          const waitForChunk = (): Promise<void> =>
+            new Promise((r) => {
+              wake.f = r;
+            });
+
+          const reader = source.getReader();
+          void (async () => {
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer.push(value);
+                const f = wake.f;
+                wake.f = null;
+                f?.();
+              }
+            } finally {
+              streamDone = true;
+              wake.f?.();
+              reader.releaseLock();
+            }
+          })();
+
+          try {
+            while (true) {
+              while (pendingToolStartChunks.length > 0) {
+                const chunk = pendingToolStartChunks.shift();
+                if (chunk) controller.enqueue(chunk);
+              }
+              if (buffer.length > 0) {
+                const chunk = buffer.shift()!;
+                controller.enqueue(chunk);
+              } else if (streamDone) {
+                break;
+              } else {
+                await waitForChunk();
+              }
+            }
+            controller.close();
+          } catch (e) {
+            controller.error(e);
+          }
+        },
+      });
+
     const firstUser = messages.find((m) => m.role === 'user');
     const userMessageText = firstUser
       ? (firstUser.parts
@@ -428,16 +512,20 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       : '';
 
     if (!shouldGenerateTitle || !userMessageText) {
-      responseToReturn = new Response(streamResponse.body, {
-        headers: SSE_HEADERS,
-      });
+      responseToReturn = new Response(
+        wrapStreamWithToolStartFlush(streamResponse.body),
+        {
+          headers: SSE_HEADERS,
+        },
+      );
       break;
     }
 
     const conv = conversation;
+    const baseStream = wrapStreamWithToolStartFlush(streamResponse.body);
     const stream = new ReadableStream({
       async start(controller) {
-        const reader = streamResponse.body!.getReader();
+        const reader = baseStream.getReader();
         const decoder = new TextDecoder();
 
         try {

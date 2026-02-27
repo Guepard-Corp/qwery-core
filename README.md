@@ -76,6 +76,28 @@ The web app will be available at `http://localhost:3000`
 
 **Using apps/web with apps/server**: To have the web app use the API server (file repositories) instead of in-app API routes, start the server (`pnpm --filter server dev`, port 4096) and set `VITE_API_URL=http://localhost:4096/api` in `apps/web/.env`. Then start the web app (`pnpm --filter web dev`). Flow: Web Browser → SSR/Loader → apps/server Hono.
 
+### Local connectivity fix (hostname pitfall)
+
+On some systems, the `HOSTNAME` environment variable contains your PC name (for example `my-laptop`) instead of a bind address, which can make the server unreachable from other devices.
+
+To force a proper bind address, set `SERVER_HOST` explicitly before starting the server.
+
+Example:
+
+```bash
+SERVER_HOST=0.0.0.0 pnpm --filter server dev
+```
+
+Use `0.0.0.0` when you want the server reachable from your local network.
+
+If the web app still shows `TypeError: fetch failed`, set `SERVER_API_URL` to the correct server host.
+
+```bash
+SERVER_API_URL=http://<your-server-host>:4096/api
+```
+
+Set it in `apps/server/.env` (or your local env override).
+
 ### Desktop Application
 
 ```bash

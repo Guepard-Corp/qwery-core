@@ -74,15 +74,6 @@
   "prettier": "@qwery/prettier-config",
   "packageManager": "pnpm@10.18.1",
   "pnpm": {
-    "overrides": {
-      "react-is": "19.0.0",
-      "p-map": "^7.0.4",
-      "@codemirror/state": "^6.4.0",
-      "@codemirror/view": "^6.38.6",
-      "@codemirror/commands": "^6.4.0",
-      "@codemirror/language": "^6.10.0",
-      "@codemirror/lang-text": "^6.0.1"
-    },
     "onlyBuiltDependencies": [
       "@duckdb/node-api",
       "@sentry/cli",
@@ -116,5 +107,42 @@
     "ts-node": "^10.9.2",
     "turbo": "^2.6.0",
     "typescript": "catalog:"
+  },
+  "overrides": {
+    "react-is": "19.0.0",
+    "p-map": "^7.0.4",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.38.6",
+    "@codemirror/commands": "^6.4.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/lang-text": "^6.0.1"
+  },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/**",
+      "tooling/*"
+    ],
+    "catalog": {
+      "@storybook/react": "^8.6.14",
+      "@storybook/react-vite": "^8.6.14",
+      "@tanstack/react-query": "5.90.12",
+      "@tanstack/react-query-devtools": "5.91.1",
+      "@types/node": "24.9.2",
+      "@types/react": "19.2.3",
+      "@types/react-dom": "19.2.3",
+      "@vitest/coverage-istanbul": "^4.0.18",
+      "ai": "6.0.58",
+      "date-fns": "^4.1.0",
+      "msw": "^2.12.4",
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
+      "react-router": "^7.13.0",
+      "typescript": "^5.9.3",
+      "uuid": "^11.0.3",
+      "vite": "^7.1.12",
+      "vitest": "^4.0.18",
+      "zod": "^4.0.0"
+    }
   }
 }

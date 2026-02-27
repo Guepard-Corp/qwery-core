@@ -72,12 +72,16 @@ export function ProjectChatNotebookSidebarContent() {
         setUnsavedNotebookIds([]);
       }
     };
+    handleUnsavedChanged();
+    window.addEventListener('storage', handleUnsavedChanged);
     window.addEventListener('notebook:unsaved-changed', handleUnsavedChanged);
-    return () =>
+    return () => {
+      window.removeEventListener('storage', handleUnsavedChanged);
       window.removeEventListener(
         'notebook:unsaved-changed',
         handleUnsavedChanged,
       );
+    };
   }, []);
 
   const { data: conversations = [], isLoading: isLoadingConversations } =

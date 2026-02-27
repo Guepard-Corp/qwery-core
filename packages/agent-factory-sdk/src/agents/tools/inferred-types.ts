@@ -77,6 +77,37 @@ type RunQueryTool = ReturnType<
   }>
 >;
 
+type RunQueriesTool = ReturnType<
+  typeof tool<{
+    description: string;
+    inputSchema: z.ZodObject<{
+      queries: z.ZodArray<
+        z.ZodObject<{
+          id: z.ZodOptional<z.ZodString>;
+          query: z.ZodString;
+        }>
+      >;
+    }>;
+    execute: (input: {
+      queries: Array<{ id?: string; query: string }>;
+    }) => Promise<{
+      results: Array<{
+        id?: string;
+        query: string;
+        success: boolean;
+        data?: unknown;
+        error?: string;
+      }>;
+      meta: {
+        total: number;
+        succeeded: number;
+        failed: number;
+        durationMs?: number;
+      };
+    }>;
+  }>
+>;
+
 type SelectChartTypeTool = ReturnType<
   typeof tool<{
     description: string;
@@ -173,6 +204,7 @@ export type ReadDataAgentTools = {
   deleteTable: DeleteTableTool;
   getSchema: GetSchemaTool;
   runQuery: RunQueryTool;
+  runQueries: RunQueriesTool;
   selectChartType: SelectChartTypeTool;
   generateChart: GenerateChartTool;
 };
@@ -197,6 +229,7 @@ export type RenameTableToolType = InferUIToolUnsafe<RenameTableTool>;
 export type DeleteTableToolType = InferUIToolUnsafe<DeleteTableTool>;
 export type GetSchemaToolType = InferUIToolUnsafe<GetSchemaTool>;
 export type RunQueryToolType = InferUIToolUnsafe<RunQueryTool>;
+export type RunQueriesToolType = InferUIToolUnsafe<RunQueriesTool>;
 export type SelectChartTypeToolType = InferUIToolUnsafe<SelectChartTypeTool>;
 export type GenerateChartToolType = InferUIToolUnsafe<GenerateChartTool>;
 

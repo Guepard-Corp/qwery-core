@@ -7,13 +7,27 @@ import { AskAgent, QueryAgent, CompactionAgent, SummaryAgent } from '../agents';
 import { TodoWriteTool, TodoReadTool } from './todo';
 import { WebFetchTool } from './webfetch';
 import { GetSchemaTool } from './get-schema';
+import { RunQueryTool } from './run-query';
+import { RunQueriesTool } from './run-queries';
 import { SelectChartTypeTool } from './select-chart-type-tool';
 import { GenerateChartTool } from './generate-chart-tool';
 import { GetSkillTool } from './get-skill';
 import { TaskTool } from './task';
 import { getLogger } from '@qwery/shared/logger';
 import { getMcpTools } from '../mcp/client.js';
-import { RunQueryTool } from './run-query';
+import { GetTodoByConversationService } from '@qwery/domain/services';
+import type { Repositories } from '@qwery/domain/repositories';
+
+const TASK_COMPLETING_TOOL_IDS = new Set([
+  'runQuery',
+  'runQueries',
+  'getSchema',
+  'generateChart',
+  'selectChartType',
+]);
+
+const TODO_REMINDER =
+  '\n\n<system-reminder>You completed a task. Call todowrite to set that todo to completed and continue with the next one.</system-reminder>';
 
 const todowriteInputSchema = jsonSchema<{
   todos: Array<{
@@ -56,6 +70,7 @@ function registerTools() {
   //tools.set(TestConnectionTool.id, TestConnectionTool as unknown as ToolInfo);
   tools.set(GetSchemaTool.id, GetSchemaTool as unknown as ToolInfo);
   tools.set(RunQueryTool.id, RunQueryTool as unknown as ToolInfo);
+  tools.set(RunQueriesTool.id, RunQueriesTool as unknown as ToolInfo);
   tools.set(SelectChartTypeTool.id, SelectChartTypeTool as unknown as ToolInfo);
   tools.set(GenerateChartTool.id, GenerateChartTool as unknown as ToolInfo);
   tools.set(GetSkillTool.id, GetSkillTool as unknown as ToolInfo);
@@ -183,6 +198,7 @@ export const Registry = {
               toolCallId: options.toolCallId,
               abortSignal: options.abortSignal,
             });
+            context.onToolStart?.(resolved.id, args, options.toolCallId ?? '');
             const raw = await resolved.execute(args, context);
             const toTruncate =
               typeof raw === 'string'
@@ -193,27 +209,56 @@ export const Registry = {
                     Object.keys(raw).length === 1
                   ? (raw as { output: string }).output
                   : null;
+            let finalStr: string | null = null;
+            let returnAsOutput = false;
             if (toTruncate != null) {
               try {
                 const { truncateOutput } = await import('./truncation');
                 const truncated = await truncateOutput(toTruncate);
                 if (truncated.truncated) {
-                  return typeof raw === 'string'
-                    ? truncated.content
-                    : { output: truncated.content };
+                  finalStr = truncated.content;
+                  returnAsOutput =
+                    typeof raw === 'object' &&
+                    raw !== null &&
+                    'output' in raw &&
+                    Object.keys(raw).length === 1;
                 }
               } catch {
-                // truncation not available (e.g. browser or Node without fs); return as-is
+                // truncation not available; fall through
               }
             }
-            if (typeof raw === 'string') return raw;
+            if (finalStr === null && typeof raw === 'string') {
+              finalStr = raw;
+            }
             if (
+              finalStr === null &&
               typeof raw === 'object' &&
               raw !== null &&
               'output' in raw &&
               Object.keys(raw).length === 1
             ) {
-              return (raw as { output: string }).output;
+              finalStr = (raw as { output: string }).output;
+              returnAsOutput = true;
+            }
+            if (finalStr !== null) {
+              if (
+                TASK_COMPLETING_TOOL_IDS.has(resolved.id) &&
+                context.extra?.repositories &&
+                context.conversationId
+              ) {
+                const repos = context.extra.repositories as Repositories;
+                const todoService = new GetTodoByConversationService(
+                  repos.todo,
+                  repos.conversation,
+                );
+                const todos = await todoService.execute({
+                  conversationId: context.conversationId,
+                });
+                if (todos.some((t) => t.status === 'in_progress')) {
+                  finalStr += TODO_REMINDER;
+                }
+              }
+              return returnAsOutput ? { output: finalStr } : finalStr;
             }
             return raw as Record<string, unknown>;
           },

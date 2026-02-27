@@ -31,19 +31,15 @@ import {
 } from './user-message-bubble';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-} from '../../ai-elements/tool';
-import { Loader } from '../../ai-elements/loader';
 import { ToolUIPart } from 'ai';
-import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { ToolPart, TodoPart } from './message-parts';
-import { getUserFriendlyToolName } from './utils/tool-name';
 import { getLastTodoPartIndex } from './utils/todo-parts';
-import { isChatStreaming, getChatStatusConfig } from './utils/chat-status';
+import {
+  isChatStreaming,
+  isChatActive,
+  isChatIdle,
+  getChatStatusConfig,
+} from './utils/chat-status';
 import type { NotebookCellType } from './utils/notebook-cell-type';
 import { useToolVariant } from './tool-variant-context';
 import { MessageFeedbackButton } from './message-feedback-button';
@@ -83,6 +79,7 @@ export interface MessageItemProps {
   sendMessage?: ReturnType<
     typeof import('@ai-sdk/react').useChat
   >['sendMessage'];
+  onToolApproval?: (approvalId: string, approved: boolean) => void;
   onPasteToNotebook?: (
     sqlQuery: string,
     notebookCellType: NotebookCellType,
@@ -93,6 +90,15 @@ export interface MessageItemProps {
     messageId: string,
     feedback: FeedbackPayload,
   ) => Promise<void>;
+  openToolPartKeys?: Set<string> | null;
+  onToolPartOpenChange?: (key: string, open: boolean) => void;
+  scrollToBottom?: () => void;
+  onBeforeSuggestionSend?: (
+    text: string,
+    metadata?: import('./utils/suggestion-pattern').SuggestionMetadata,
+  ) => Promise<boolean>;
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 function MessageItemComponent({
@@ -118,9 +124,16 @@ function MessageItemComponent({
   sendMessage,
   onPasteToNotebook,
   onSubmitFeedback,
+  openToolPartKeys,
+  onToolPartOpenChange,
+  scrollToBottom,
+  onBeforeSuggestionSend,
+  onDatasourceNameClick,
+  getDatasourceTooltip,
+  onToolApproval,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
-  const { variant } = useToolVariant();
+  useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
@@ -132,6 +145,11 @@ function MessageItemComponent({
     textParts.length > 0
       ? message.parts.findLastIndex((p) => p.type === 'text')
       : -1;
+
+  const selectedDatasourceItems =
+    datasources && selectedDatasources?.length
+      ? datasources.filter((ds) => selectedDatasources.includes(ds.id))
+      : undefined;
 
   return (
     <div
@@ -285,7 +303,7 @@ function MessageItemComponent({
                         >
                           <div
                             className={cn(
-                              'flex-end flex w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
+                              'group flex-end flex w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden',
                               isEditing ? 'max-w-full' : 'max-w-[80%]',
                             )}
                           >
@@ -403,23 +421,25 @@ function MessageItemComponent({
                                           />
                                           {isLastTextPart && (
                                             <div className="mt-1 flex items-center justify-end gap-1">
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() =>
-                                                  onEditStart(
-                                                    message.id,
-                                                    text,
-                                                    messageDatasources?.map(
-                                                      (ds) => ds.id,
-                                                    ) ?? [],
-                                                  )
-                                                }
-                                                className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                title={t('sidebar.edit')}
-                                              >
-                                                <PencilIcon className="size-3" />
-                                              </Button>
+                                              {!isChatActive(status) && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                    onEditStart(
+                                                      message.id,
+                                                      text,
+                                                      messageDatasources?.map(
+                                                        (ds) => ds.id,
+                                                      ) ?? [],
+                                                    )
+                                                  }
+                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                  title={t('sidebar.edit')}
+                                                >
+                                                  <PencilIcon className="size-3" />
+                                                </Button>
+                                              )}
                                               <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -489,23 +509,25 @@ function MessageItemComponent({
                                             'user' &&
                                             isLastTextPart && (
                                               <div className="mt-1 flex items-center justify-end gap-1">
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  onClick={() =>
-                                                    onEditStart(
-                                                      message.id,
-                                                      part.text,
-                                                      messageDatasources?.map(
-                                                        (ds) => ds.id,
-                                                      ) ?? [],
-                                                    )
-                                                  }
-                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                  title={t('sidebar.edit')}
-                                                >
-                                                  <PencilIcon className="size-3" />
-                                                </Button>
+                                                {!isChatActive(status) && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() =>
+                                                      onEditStart(
+                                                        message.id,
+                                                        part.text,
+                                                        messageDatasources?.map(
+                                                          (ds) => ds.id,
+                                                        ) ?? [],
+                                                      )
+                                                    }
+                                                    className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                    title={t('sidebar.edit')}
+                                                  >
+                                                    <PencilIcon className="size-3" />
+                                                  </Button>
+                                                )}
                                                 <Button
                                                   variant="ghost"
                                                   size="icon"
@@ -560,6 +582,20 @@ function MessageItemComponent({
                                               sendMessage={sendMessage}
                                               messages={messages}
                                               currentMessageId={message.id}
+                                              scrollToBottom={scrollToBottom}
+                                              disabled={!isChatIdle(status)}
+                                              isLastAgentResponse={
+                                                isLastAssistantMessage
+                                              }
+                                              onBeforeSuggestionSend={
+                                                onBeforeSuggestionSend
+                                              }
+                                              onDatasourceNameClick={
+                                                onDatasourceNameClick
+                                              }
+                                              getDatasourceTooltip={
+                                                getDatasourceTooltip
+                                              }
                                             >
                                               {part.text}
                                             </StreamdownWithSuggestions>
@@ -578,6 +614,20 @@ function MessageItemComponent({
                                               sendMessage={sendMessage}
                                               messages={messages}
                                               currentMessageId={message.id}
+                                              scrollToBottom={scrollToBottom}
+                                              disabled={!isChatIdle(status)}
+                                              isLastAgentResponse={
+                                                isLastAssistantMessage
+                                              }
+                                              onBeforeSuggestionSend={
+                                                onBeforeSuggestionSend
+                                              }
+                                              onDatasourceNameClick={
+                                                onDatasourceNameClick
+                                              }
+                                              getDatasourceTooltip={
+                                                getDatasourceTooltip
+                                              }
                                             >
                                               {part.text}
                                             </StreamdownWithSuggestions>
@@ -587,10 +637,10 @@ function MessageItemComponent({
                                     )}
                                   </>
                                 )}
-                                {/* Actions below the bubble - only for assistant messages */}
+                                {/* Actions below the bubble - only for assistant messages, visible on hover */}
                                 {isResponseComplete &&
                                   message.role === 'assistant' && (
-                                    <div className="mt-1 flex items-center gap-2">
+                                    <div className="mt-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                       {statusConfig.showRegenerateButton &&
                                         !(
                                           isLastAssistantMessage &&
@@ -664,7 +714,7 @@ function MessageItemComponent({
                     return (
                       <div
                         key={`${message.id}-${i}`}
-                        className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden pr-2 sm:pr-4"
+                        className="group flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden pr-2 sm:pr-4"
                       >
                         {!isStreaming && (
                           <Message
@@ -676,6 +726,12 @@ function MessageItemComponent({
                                 sendMessage={sendMessage}
                                 messages={messages}
                                 currentMessageId={message.id}
+                                scrollToBottom={scrollToBottom}
+                                disabled={!isChatIdle(status)}
+                                isLastAgentResponse={isLastAssistantMessage}
+                                onBeforeSuggestionSend={onBeforeSuggestionSend}
+                                onDatasourceNameClick={onDatasourceNameClick}
+                                getDatasourceTooltip={getDatasourceTooltip}
                               >
                                 {part.text}
                               </StreamdownWithSuggestions>
@@ -692,15 +748,21 @@ function MessageItemComponent({
                                 sendMessage={sendMessage}
                                 messages={messages}
                                 currentMessageId={message.id}
+                                scrollToBottom={scrollToBottom}
+                                disabled={!isChatIdle(status)}
+                                isLastAgentResponse={isLastAssistantMessage}
+                                onBeforeSuggestionSend={onBeforeSuggestionSend}
+                                onDatasourceNameClick={onDatasourceNameClick}
+                                getDatasourceTooltip={getDatasourceTooltip}
                               >
                                 {part.text}
                               </StreamdownWithSuggestions>
                             </MessageContent>
                           </Message>
                         )}
-                        {/* Actions below the bubble */}
+                        {/* Actions below the bubble - visible on hover */}
                         {isResponseComplete && (
-                          <div className="mt-1 flex items-center gap-2">
+                          <div className="mt-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                             {message.role === 'assistant' &&
                               statusConfig.showRegenerateButton &&
                               !(
@@ -790,42 +852,39 @@ function MessageItemComponent({
                         toolPart.state as string,
                       );
 
+                      const toolPartKey = `${message.id}-${i}`;
+                      const isLastPart = i === message.parts.length - 1;
+
                       if (isToolInProgress) {
-                        const toolName =
-                          'toolName' in toolPart &&
-                          typeof toolPart.toolName === 'string'
-                            ? getUserFriendlyToolName(
-                                `tool-${toolPart.toolName}`,
-                              )
-                            : getUserFriendlyToolName(toolPart.type);
                         return (
                           <div
-                            key={`${message.id}-${i}`}
+                            key={toolPartKey}
                             className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
                           >
-                            <Tool
-                              defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
-                              variant={variant}
-                              className={cn(
-                                'max-w-[min(43.2rem,calc(100%-3rem))]',
-                                'mx-4 sm:mx-6',
-                              )}
-                            >
-                              <ToolHeader
-                                title={toolName}
-                                type={toolPart.type}
-                                state={toolPart.state}
-                                variant={variant}
-                              />
-                              <ToolContent variant={variant}>
-                                {toolPart.input != null ? (
-                                  <ToolInput input={toolPart.input} />
-                                ) : null}
-                                <div className="flex items-center justify-center py-8">
-                                  <Loader size={20} />
-                                </div>
-                              </ToolContent>
-                            </Tool>
+                            <ToolPart
+                              part={toolPart}
+                              messageId={message.id}
+                              index={i}
+                              open={
+                                openToolPartKeys !== undefined &&
+                                openToolPartKeys !== null
+                                  ? openToolPartKeys.has(toolPartKey)
+                                  : undefined
+                              }
+                              onOpenChange={
+                                onToolPartOpenChange
+                                  ? (open) =>
+                                      onToolPartOpenChange(toolPartKey, open)
+                                  : undefined
+                              }
+                              defaultOpenWhenUncontrolled={isLastPart}
+                              onPasteToNotebook={onPasteToNotebook}
+                              notebookContext={notebookContext}
+                              onToolApproval={onToolApproval}
+                              pluginLogoMap={pluginLogoMap}
+                              selectedDatasourceItems={selectedDatasourceItems}
+                              messages={messages}
+                            />
                           </div>
                         );
                       }
@@ -833,15 +892,34 @@ function MessageItemComponent({
                       // Use ToolPart component for completed tools (includes visualizers)
                       return (
                         <div
-                          key={`${message.id}-${i}`}
+                          key={toolPartKey}
                           className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
                         >
                           <ToolPart
                             part={toolPart}
                             messageId={message.id}
                             index={i}
+                            open={
+                              openToolPartKeys !== undefined &&
+                              openToolPartKeys !== null
+                                ? openToolPartKeys.has(toolPartKey)
+                                : undefined
+                            }
+                            onOpenChange={
+                              onToolPartOpenChange
+                                ? (open) =>
+                                    onToolPartOpenChange(toolPartKey, open)
+                                : undefined
+                            }
+                            defaultOpenWhenUncontrolled={
+                              i === message.parts.length - 1
+                            }
                             onPasteToNotebook={onPasteToNotebook}
                             notebookContext={notebookContext}
+                            onToolApproval={onToolApproval}
+                            pluginLogoMap={pluginLogoMap}
+                            selectedDatasourceItems={selectedDatasourceItems}
+                            messages={messages}
                           />
                         </div>
                       );
@@ -882,6 +960,11 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
     return false;
   }
 
+  // Re-render when metadata changes (e.g. feedback optimistic update)
+  if (prev.message.metadata !== next.message.metadata) {
+    return false;
+  }
+
   const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
   if (
     isLastMessage &&
@@ -900,6 +983,10 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
     if (isLastMessage) {
       return false;
     }
+  }
+
+  if (prev.openToolPartKeys !== next.openToolPartKeys) {
+    return false;
   }
 
   return true;

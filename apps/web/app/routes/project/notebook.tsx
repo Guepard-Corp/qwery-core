@@ -396,15 +396,11 @@ export default function NotebookPage() {
       // Always pass actualCellType to ensure it's never undefined
       openSidebar(conversationSlug, {
         datasourceId,
-        messageToSend: query, // This will be sent through chat interface and stream properly
+        messageToSend: query,
         notebookCellType: actualCellType, // Always pass cellType (either 'query' or 'prompt')
-        cellId, // Pass cellId to track which cell is loading
+        cellId,
       });
-
-      // Loading state will be synced with chat interface streaming state
-      // Don't clear it here - it will be cleared when streaming completes
     } else {
-      // Notebook not loaded yet - show error and don't proceed
       toast.error(t(ERROR_KEYS.generic));
       setLoadingCellId(null);
     }

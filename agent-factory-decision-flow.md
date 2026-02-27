@@ -187,10 +187,10 @@ graph TB
 
 ### All Actors
 - **loadContextActor**: Loads previous messages from repository using `GetMessagesByConversationIdService`
-- **detectIntentActor**: Uses LLM (`azure/gpt-5-mini`) with `generateObject` to classify intent (greeting/read-data/other)
-- **greetingActor**: Uses `streamText` with `azure/gpt-5-mini` to generate greeting response
-- **readDataAgentActor**: Agent (`Experimental_Agent`) with 5 tools, max 20 steps, uses `azure/gpt-5-mini`
-- **summarizeIntentActor**: Uses `streamText` with `azure/gpt-5-mini` to generate general response
+- **detectIntentActor**: Uses LLM (`azure/gpt-5.2-chat`) with `generateObject` to classify intent (greeting/read-data/other)
+- **greetingActor**: Uses `streamText` with `azure/gpt-5.2-chat` to generate greeting response
+- **readDataAgentActor**: Agent (`Experimental_Agent`) with 5 tools, max 20 steps, uses `azure/gpt-5.2-chat`
+- **summarizeIntentActor**: Uses `streamText` with `azure/gpt-5.2-chat` to generate general response
 
 ### Read Data Agent Tools
 1. **testConnection**: Tests DuckDB connection

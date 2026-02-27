@@ -40,11 +40,13 @@ function convertUIMessageToContent(
 
 export type PersistMessageOptions = {
   createdBy?: string;
-  /** Merged into each message's metadata when saving (e.g. modelId, providerId, agent). */
+  /** Merged into each message's metadata when saving (e.g. agent, model with modelID/providerID). */
   defaultMetadata?: {
-    modelId?: string;
-    providerId?: string;
     agent?: string;
+    model?: {
+      modelID: string;
+      providerID: string;
+    };
   };
 };
 

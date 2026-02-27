@@ -1,7 +1,6 @@
 import type { Usage } from '@qwery/domain/entities';
 import { RepositoryFindOptions } from '@qwery/domain/common';
 import { IUsageRepository } from '@qwery/domain/repositories';
-import { v4 as uuidv4 } from 'uuid';
 import * as Storage from './storage.js';
 
 const ENTITY = 'usage';
@@ -9,9 +8,8 @@ const ENTITY = 'usage';
 type Row = Record<string, unknown>;
 
 function serialize(usage: Usage): Row {
-  const idValue = usage.id as string | number;
   return {
-    id: typeof idValue === 'number' ? idValue : idValue,
+    id: usage.id,
     conversationId: usage.conversationId,
     projectId: usage.projectId,
     organizationId: usage.organizationId,
@@ -36,9 +34,16 @@ function serialize(usage: Usage): Row {
 }
 
 function deserialize(row: Row): Usage {
-  const idValue = row.id;
+  const rawTimestamp = row.timestamp;
+  const timestamp =
+    rawTimestamp instanceof Date
+      ? rawTimestamp
+      : typeof rawTimestamp === 'string' || typeof rawTimestamp === 'number'
+        ? new Date(rawTimestamp)
+        : new Date();
+
   return {
-    id: (typeof idValue === 'number' ? idValue : idValue) as string & number,
+    id: row.id as string,
     conversationId: row.conversationId as string,
     projectId: row.projectId as string,
     organizationId: row.organizationId as string,
@@ -58,7 +63,7 @@ function deserialize(row: Row): Usage {
     network: (row.network as number) ?? 0,
     gpu: (row.gpu as number) ?? 0,
     storage: (row.storage as number) ?? 0,
-    timestamp: (row.timestamp as Date) ?? new Date(),
+    timestamp,
   };
 }
 
@@ -108,16 +113,8 @@ export class UsageRepository extends IUsageRepository {
   }
 
   async create(entity: Usage): Promise<Usage> {
-    const idValue = entity.id as string | number | undefined;
-    const id =
-      !idValue || idValue === '0' || idValue === 0
-        ? uuidv4()
-        : typeof idValue === 'number'
-          ? idValue
-          : idValue;
-    const entityWithId = { ...entity, id: id as string & number };
-    await Storage.write([ENTITY, String(id)], serialize(entityWithId));
-    return entityWithId as Usage;
+    await Storage.write([ENTITY, entity.id], serialize(entity));
+    return entity;
   }
 
   async update(entity: Usage): Promise<Usage> {

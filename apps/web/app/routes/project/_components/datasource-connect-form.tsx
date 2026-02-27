@@ -226,13 +226,7 @@ export function DatasourceConnectForm({
       onSuccess();
     },
     (error) => {
-      const errorMessage =
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:updateFailed" />
-        );
-      toast.error(errorMessage);
+      toast.error(getErrorKey(error, t));
       console.error(error);
       setIsConnecting(false);
     },
@@ -246,13 +240,7 @@ export function DatasourceConnectForm({
       onSuccess();
     },
     (error) => {
-      const errorMessage =
-        error instanceof Error ? (
-          error.message
-        ) : (
-          <Trans i18nKey="datasources:deleteFailed" />
-        );
-      toast.error(errorMessage);
+      toast.error(getErrorKey(error, t));
       console.error(error);
     },
   );

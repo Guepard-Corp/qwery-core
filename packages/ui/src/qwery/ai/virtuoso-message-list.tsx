@@ -14,6 +14,7 @@ import {
 } from 'react';
 import type { UIMessage } from 'ai';
 import type { ChatStatus } from 'ai';
+import { cn } from '../../lib/utils';
 import { MessageItem, type MessageItemProps } from './message-item';
 import { isChatStreaming, isChatSubmitted } from './utils/chat-status';
 import { Loader } from '../../ai-elements/loader';
@@ -26,6 +27,32 @@ import {
 } from '../../ai-elements/message';
 import { toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
+
+const FullWidthScroller = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ style, ...props }, ref) => (
+  <div
+    ref={ref}
+    style={style}
+    className="w-full overflow-x-hidden overflow-y-auto"
+    {...props}
+  />
+));
+FullWidthScroller.displayName = 'FullWidthScroller';
+
+const CenteredList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ style, ...props }, ref) => (
+  <div
+    ref={ref}
+    style={style}
+    className="mx-auto w-full max-w-4xl px-6"
+    {...props}
+  />
+));
+CenteredList.displayName = 'CenteredList';
 
 interface VirtuosoMessageListProps extends Omit<MessageItemProps, 'message'> {
   messages: UIMessage[];
@@ -42,8 +69,12 @@ interface VirtuosoMessageListProps extends Omit<MessageItemProps, 'message'> {
     scrollToBottom: () => void,
     isAtBottom: boolean,
   ) => ReactNode;
+  onAtBottomChange?: (isAtBottom: boolean) => void;
   lastAssistantHasText?: boolean;
   lastMessageIsAssistant?: boolean;
+  contentSentinelRef?: RefObject<HTMLDivElement | null>;
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  scrollerRef?: RefObject<HTMLDivElement | null>;
 }
 
 export interface VirtuosoMessageListRef {
@@ -64,11 +95,15 @@ export const VirtuosoMessageList = forwardRef<
     loadError,
     onLoadOlder,
     onRetryLoadOlder,
-    conversationSlug: _conversationSlug,
+    conversationSlug,
     scrollToBottomRef,
     renderScrollButton,
+    onAtBottomChange,
     lastAssistantHasText = false,
     lastMessageIsAssistant = false,
+    contentSentinelRef,
+    onScroll,
+    scrollerRef,
     ...messageItemProps
   } = props;
 
@@ -79,6 +114,27 @@ export const VirtuosoMessageList = forwardRef<
   const wasAtBottomWhenStreamStartedRef = useRef(true);
   const [wasAtBottomWhenStreamStarted, setWasAtBottomWhenStreamStarted] =
     useState(true);
+
+  const footerContext = useMemo(
+    () => ({
+      isLoadingOlder,
+      loadError,
+      onRetryLoadOlder,
+      status,
+      lastAssistantHasText,
+      lastMessageIsAssistant,
+      contentSentinelRef,
+    }),
+    [
+      isLoadingOlder,
+      loadError,
+      onRetryLoadOlder,
+      status,
+      lastAssistantHasText,
+      lastMessageIsAssistant,
+      contentSentinelRef,
+    ],
+  );
 
   useEffect(() => {
     if (isChatStreaming(status)) {
@@ -111,121 +167,8 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.sendMessage,
       messageItemProps.onPasteToNotebook,
       messageItemProps.onSubmitFeedback,
-    ],
-  );
-
-  const itemContent = useCallback(
-    (index: number, message: UIMessage) => {
-      if (!message || !message.id) {
-        console.warn('Invalid message at index', index);
-        return null;
-      }
-
-      return (
-        <MessageItem
-          key={message.id}
-          message={message}
-          messages={messages}
-          status={status}
-          {...stableMessageItemProps}
-        />
-      );
-    },
-    [messages, status, stableMessageItemProps],
-  );
-
-  const components = useMemo(
-    () => ({
-      Header: () => {
-        if (isLoadingOlder) {
-          return (
-            <div className="flex items-center justify-center py-4">
-              <Loader size={16} />
-            </div>
-          );
-        }
-        if (loadError) {
-          return (
-            <div className="flex flex-col items-center gap-2 py-4">
-              <span className="text-destructive text-sm">
-                Failed to load messages
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRetryLoadOlder}
-                className="text-sm underline hover:no-underline"
-              >
-                Retry
-              </Button>
-            </div>
-          );
-        }
-        return null;
-      },
-      Footer: () => {
-        if (loadError) {
-          const { message, details } = toUserFacingError(
-            loadError,
-            (key: string) => t(key, { defaultValue: key }),
-          );
-          return (
-            <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
-              <BotAvatar size={6} isLoading={false} className="mt-1 shrink-0" />
-              <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                <Message from="assistant" className="w-full max-w-full min-w-0">
-                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                    <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
-                      <p className="font-medium">Error</p>
-                      <p className="text-destructive/80 mt-1">{message}</p>
-                      {details && (
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-xs underline">
-                            View details
-                          </summary>
-                          <pre className="text-destructive/80 mt-2 text-xs whitespace-pre-wrap">
-                            {details}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
-                  </MessageContent>
-                </Message>
-              </div>
-            </div>
-          );
-        }
-        if (
-          isChatSubmitted(status) ||
-          (isChatStreaming(status) &&
-            (!lastAssistantHasText || !lastMessageIsAssistant))
-        ) {
-          return (
-            <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
-              <BotAvatar size={6} isLoading={true} className="mt-1 shrink-0" />
-              <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
-                <Message from="assistant" className="w-full max-w-full min-w-0">
-                  <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                    <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
-                      <MessageResponse></MessageResponse>
-                    </div>
-                  </MessageContent>
-                </Message>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      },
-    }),
-    [
-      isLoadingOlder,
-      loadError,
-      onRetryLoadOlder,
-      t,
-      status,
-      lastAssistantHasText,
-      lastMessageIsAssistant,
+      messageItemProps.openToolPartKeys,
+      messageItemProps.onToolPartOpenChange,
     ],
   );
 
@@ -239,6 +182,188 @@ export const VirtuosoMessageList = forwardRef<
       });
     }
   }, [messages.length]);
+
+  const itemContent = useCallback(
+    (index: number, message: UIMessage) => {
+      if (!message || !message.id) {
+        console.warn('Invalid message at index', index);
+        return null;
+      }
+
+      return (
+        <div className={cn('pt-4 pb-4', index === 0 && 'pt-8')}>
+          <MessageItem
+            key={message.id}
+            message={message}
+            messages={messages}
+            status={status}
+            {...stableMessageItemProps}
+            scrollToBottom={scrollToBottom}
+          />
+        </div>
+      );
+    },
+    [messages, status, stableMessageItemProps, scrollToBottom],
+  );
+
+  const components = useMemo(() => {
+    const scrollerRefStable = scrollerRef;
+    const Scroller = forwardRef<
+      HTMLDivElement,
+      React.HTMLAttributes<HTMLDivElement>
+    >((props, ref) => {
+      return (
+        <FullWidthScroller
+          {...props}
+          ref={(node) => {
+            if (typeof ref === 'function') ref(node);
+            else if (ref) ref.current = node;
+
+            if (scrollerRefStable) {
+              if (typeof scrollerRefStable === 'function') {
+                (scrollerRefStable as (node: HTMLDivElement | null) => void)(
+                  node,
+                );
+              } else {
+                (
+                  scrollerRefStable as React.RefObject<HTMLDivElement | null>
+                ).current = node;
+              }
+            }
+          }}
+        />
+      );
+    });
+    Scroller.displayName = 'VirtuosoScroller';
+    return {
+      Scroller,
+      List: CenteredList,
+      Header: ({ context }: { context: typeof footerContext }) => {
+        const state = context;
+        if (state.isLoadingOlder) {
+          return (
+            <div className="flex items-center justify-center py-4">
+              <Loader size={16} />
+            </div>
+          );
+        }
+        if (state.loadError) {
+          return (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <span className="text-destructive text-sm">
+                Failed to load messages
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={state.onRetryLoadOlder}
+                className="text-sm underline hover:no-underline"
+              >
+                Retry
+              </Button>
+            </div>
+          );
+        }
+        return null;
+      },
+      Footer: ({ context }: { context: typeof footerContext }) => {
+        const state = context;
+        const sentinel = state.contentSentinelRef ? (
+          <div
+            ref={state.contentSentinelRef}
+            className="h-px min-h-px w-full"
+            aria-hidden
+          />
+        ) : null;
+
+        const spacer = <div className="h-32 w-full" aria-hidden />;
+
+        if (state.loadError) {
+          const { message, details } = toUserFacingError(
+            state.loadError,
+            (key: string) => t(key, { defaultValue: key }),
+          );
+          return (
+            <>
+              <div className="mx-auto w-full max-w-4xl px-6">
+                <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
+                  <BotAvatar
+                    size={6}
+                    isLoading={false}
+                    className="mt-1 shrink-0"
+                  />
+                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                    <Message
+                      from="assistant"
+                      className="w-full max-w-full min-w-0"
+                    >
+                      <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                        <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
+                          <p className="font-medium">Error</p>
+                          <p className="text-destructive/80 mt-1">{message}</p>
+                          {details && (
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-xs underline">
+                                View details
+                              </summary>
+                              <pre className="text-destructive/80 mt-2 text-xs whitespace-pre-wrap">
+                                {details}
+                              </pre>
+                            </details>
+                          )}
+                        </div>
+                      </MessageContent>
+                    </Message>
+                  </div>
+                </div>
+              </div>
+              {sentinel}
+              {spacer}
+            </>
+          );
+        }
+        if (
+          isChatSubmitted(state.status) ||
+          (isChatStreaming(state.status) &&
+            (!state.lastAssistantHasText || !state.lastMessageIsAssistant))
+        ) {
+          return (
+            <>
+              <div className="mx-auto w-full max-w-4xl px-6">
+                <div className="animate-in fade-in slide-in-from-bottom-4 relative flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden pb-4 duration-300">
+                  <BotAvatar
+                    size={6}
+                    isLoading={true}
+                    className="mt-1 shrink-0"
+                  />
+                  <div className="flex-end flex w-full max-w-[80%] min-w-0 flex-col justify-start gap-2 overflow-x-hidden">
+                    <Message
+                      from="assistant"
+                      className="w-full max-w-full min-w-0"
+                    >
+                      <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
+                        <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                          <MessageResponse></MessageResponse>
+                        </div>
+                      </MessageContent>
+                    </Message>
+                  </div>
+                </div>
+              </div>
+              {sentinel}
+              {spacer}
+            </>
+          );
+        }
+        return (
+          <>
+            {sentinel}
+            {spacer}
+          </>
+        );
+      },
+    };
+  }, [scrollerRef, t]);
 
   useImperativeHandle(
     ref,
@@ -254,92 +379,89 @@ export const VirtuosoMessageList = forwardRef<
     }
   }, [scrollToBottom, scrollToBottomRef]);
 
-  // Scroll to bottom on initial mount if messages exist
   const hasPerformedInitialScrollRef = useRef(false);
-  const previousMessagesLengthRef = useRef(messages.length);
-  const previousLastMessageIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!hasPerformedInitialScrollRef.current && messages.length > 0) {
-      const wasEmpty = previousMessagesLengthRef.current === 0;
-      const isFirstRender =
-        previousMessagesLengthRef.current === messages.length;
-
-      if ((wasEmpty || isFirstRender) && virtuosoRef.current) {
-        const timeoutId = setTimeout(() => {
-          if (virtuosoRef.current) {
-            virtuosoRef.current.scrollToIndex({
-              index: messages.length - 1,
-              behavior: 'auto',
-              align: 'end',
-            });
-            hasPerformedInitialScrollRef.current = true;
-          }
-        }, 0);
-        previousMessagesLengthRef.current = messages.length;
-        if (messages.length > 0) {
-          previousLastMessageIdRef.current = messages[messages.length - 1]?.id;
-        }
-        return () => clearTimeout(timeoutId);
-      }
+    if (conversationSlug !== undefined) {
+      hasPerformedInitialScrollRef.current = false;
     }
-    previousMessagesLengthRef.current = messages.length;
-  }, [messages]);
+  }, [conversationSlug]);
 
-  // Force scroll when a new assistant message appears (to ensure visibility)
   useEffect(() => {
-    if (messages.length === 0 || !virtuosoRef.current) return;
-
-    const lastMessage = messages[messages.length - 1];
-    const lastMessageId = lastMessage?.id;
-    const previousLastMessageId = previousLastMessageIdRef.current;
-
-    // Check if a new message was added (different ID) and it's from assistant
     if (
-      lastMessageId &&
-      lastMessageId !== previousLastMessageId &&
-      lastMessage.role === 'assistant'
+      !hasPerformedInitialScrollRef.current &&
+      messages.length > 0 &&
+      virtuosoRef.current
     ) {
-      // Force scroll to show the new assistant message
-      // Use multiple timeouts to ensure DOM is updated and message is rendered
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (virtuosoRef.current) {
-            virtuosoRef.current.scrollToIndex({
-              index: messages.length - 1,
-              behavior: 'auto',
-              align: 'end',
-            });
-          }
-        }, 0);
-        setTimeout(() => {
-          if (virtuosoRef.current) {
-            virtuosoRef.current.scrollToIndex({
-              index: messages.length - 1,
-              behavior: 'auto',
-              align: 'end',
-            });
-          }
-        }, 50);
-        setTimeout(() => {
-          if (virtuosoRef.current) {
-            virtuosoRef.current.scrollToIndex({
-              index: messages.length - 1,
-              behavior: 'auto',
-              align: 'end',
-            });
-          }
-        }, 150);
+      const id = requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: messages.length - 1,
+          behavior: 'auto',
+          align: 'end',
+        });
       });
+      hasPerformedInitialScrollRef.current = true;
+      return () => cancelAnimationFrame(id);
     }
+  }, [messages.length, conversationSlug]);
 
-    // Update the ref to track the last message ID
-    if (lastMessageId) {
-      previousLastMessageIdRef.current = lastMessageId;
-    }
-  }, [messages]);
+  useEffect(() => {
+    if (conversationSlug === undefined) return;
+
+    const t = setTimeout(() => {
+      if (messages.length > 0 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({
+          index: messages.length - 1,
+          behavior: 'auto',
+          align: 'end',
+        });
+      }
+    }, 150);
+
+    return () => clearTimeout(t);
+  }, [conversationSlug]);
 
   const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
+
+  const lastMessageContentKey = useMemo(() => {
+    const last = messages.at(-1);
+    if (!last?.parts) return '';
+    return last.parts
+      .map((p) =>
+        p && typeof p === 'object' && 'text' in p
+          ? String((p as { text?: string }).text ?? '').length
+          : 0,
+      )
+      .join(',');
+  }, [messages]);
+
+  useEffect(() => {
+    if (
+      messages.length <= 1 ||
+      !isChatStreaming(status) ||
+      !shouldAutoScroll ||
+      !virtuosoRef.current
+    ) {
+      return;
+    }
+    const scrollLastIntoView = () => {
+      virtuosoRef.current?.scrollToIndex({
+        index: messages.length - 1,
+        behavior: 'auto',
+        align: 'end',
+      });
+    };
+    const id1 = requestAnimationFrame(scrollLastIntoView);
+    const t0 = setTimeout(scrollLastIntoView, 0);
+    const t1 = setTimeout(scrollLastIntoView, 50);
+    const t2 = setTimeout(scrollLastIntoView, 150);
+    return () => {
+      cancelAnimationFrame(id1);
+      clearTimeout(t0);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [lastMessageContentKey, status, shouldAutoScroll, messages.length]);
   return (
     <div
       ref={containerRef}
@@ -350,6 +472,9 @@ export const VirtuosoMessageList = forwardRef<
         data={messages}
         firstItemIndex={firstItemIndex}
         initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
+        computeItemKey={(_index, message) => message?.id ?? _index}
+        scrollIntoViewOnChange={() => undefined}
+        context={footerContext}
         itemContent={itemContent}
         components={components}
         startReached={() => {
@@ -360,11 +485,12 @@ export const VirtuosoMessageList = forwardRef<
           }
         }}
         followOutput={(atBottom: boolean) =>
-          shouldAutoScroll && atBottom ? 'smooth' : false
+          shouldAutoScroll && atBottom ? 'auto' : false
         }
         atBottomStateChange={(atBottom: boolean) => {
           setShouldFollowOutput(atBottom);
           setIsAtBottom(atBottom);
+          onAtBottomChange?.(atBottom);
         }}
         overscan={{
           main: 500,
@@ -375,7 +501,9 @@ export const VirtuosoMessageList = forwardRef<
           bottom: 600,
         }}
         alignToBottom
+        skipAnimationFrameInResizeObserver
         style={{ height: '100%', overflowX: 'hidden' }}
+        onScroll={onScroll}
       />
       {renderScrollButton &&
         !isAtBottom &&

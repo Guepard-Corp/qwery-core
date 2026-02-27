@@ -11,6 +11,12 @@ import { SystemPrompt } from './system';
 import type { Message } from '@qwery/domain/entities';
 import { Messages } from './message';
 
+/**
+ * Multi-step tool loop (streamText + tools + stopWhen).
+ * AI SDK 6 supports adding output: Output.object({ schema }) for a final
+ * structured step after the tool loop; we enforce structure at the tool
+ * level (e.g. runQuery/runQueries exportFilename in tool input schema).
+ */
 export type StreamInput = {
   model?: string | Model;
   prompt?: string;

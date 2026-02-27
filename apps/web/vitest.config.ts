@@ -3,7 +3,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [react(), tsconfigPaths({ ignoreConfigErrors: true })],
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {},

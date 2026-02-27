@@ -3,7 +3,7 @@ import { detectIntent } from '../../src/agents/actors/detect-intent.actor';
 import { Intent } from '../../src/agents/types';
 
 const models = [
-  'azure/gpt-5-mini',
+  'azure/gpt-5.2-chat',
   'azure/gpt-5-nano',
   //'azure/gpt-5.1-codex-mini',
   'azure/Ministral-3B',
