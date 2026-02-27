@@ -67,6 +67,7 @@ function createMcpServer(getRepos: () => Promise<Repositories>): McpServer {
     ],
   });
 
+  /** MCP tool errors: simple { error: string }. Out of scope for REST { code, params?, details? } — see docs/architecture/error-handling.md. */
   const errorContent = (message: string) => jsonContent({ error: message });
 
   const createDatasourceInputSchema = z

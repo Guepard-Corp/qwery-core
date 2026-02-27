@@ -39,6 +39,7 @@ import {
 } from '~/lib/mutations/use-project';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { getErrorKey } from '~/lib/utils/error-key';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
@@ -62,7 +63,7 @@ export function ProjectDialog({
   organizationId,
   onSuccess,
 }: ProjectDialogProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('common');
   const { workspace, repositories } = useWorkspace();
   const navigate = useNavigate();
   const isEditing = !!project;
@@ -78,86 +79,7 @@ export function ProjectDialog({
       }
     },
     onError: (error: unknown) => {
-      let displayMessage = 'Failed to create project';
-
-      if (error instanceof Error) {
-        const errorMessage = error.message;
-
-        try {
-          const parsed = JSON.parse(errorMessage);
-
-          if (Array.isArray(parsed)) {
-            const messages = parsed
-              .map((e: unknown) => {
-                if (typeof e === 'object' && e !== null) {
-                  const errorObj = e as Record<string, unknown>;
-                  const field = Array.isArray(errorObj.path)
-                    ? errorObj.path.join('.')
-                    : (errorObj.path as string) || 'field';
-                  const message =
-                    (errorObj.message as string) || 'Validation error';
-                  return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
-                }
-                return String(e);
-              })
-              .filter(Boolean);
-            displayMessage =
-              messages.length > 0 ? messages.join('. ') : 'Validation failed';
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            const parsedObj = parsed as Record<string, unknown>;
-            if (parsedObj.message) {
-              displayMessage = parsedObj.message as string;
-            } else if (parsedObj.error) {
-              displayMessage = parsedObj.error as string;
-            } else if (Array.isArray(parsedObj.errors)) {
-              displayMessage = (parsedObj.errors as unknown[])
-                .map((e: unknown) =>
-                  typeof e === 'string'
-                    ? e
-                    : (e as Record<string, unknown>)?.message || String(e),
-                )
-                .filter(Boolean)
-                .join(', ');
-            }
-          }
-        } catch {
-          displayMessage = errorMessage || 'Failed to create project';
-        }
-      } else if (typeof error === 'string') {
-        try {
-          const parsed = JSON.parse(error);
-          if (Array.isArray(parsed)) {
-            const messages = parsed
-              .map((e: unknown) => {
-                if (typeof e === 'object' && e !== null) {
-                  const errorObj = e as Record<string, unknown>;
-                  const field = Array.isArray(errorObj.path)
-                    ? errorObj.path.join('.')
-                    : (errorObj.path as string) || 'field';
-                  const message =
-                    (errorObj.message as string) || 'Validation error';
-                  return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
-                }
-                return String(e);
-              })
-              .filter(Boolean);
-            displayMessage =
-              messages.length > 0 ? messages.join('. ') : 'Validation failed';
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            const parsedObj = parsed as Record<string, unknown>;
-            displayMessage =
-              (parsedObj.message as string) ||
-              (parsedObj.error as string) ||
-              'Failed to create project';
-          } else {
-            displayMessage = error;
-          }
-        } catch {
-          displayMessage = error;
-        }
-      }
-
-      toast.error(displayMessage);
+      toast.error(getErrorKey(error, t));
     },
   });
 
@@ -168,79 +90,7 @@ export function ProjectDialog({
       onSuccess?.();
     },
     onError: (error: unknown) => {
-      let displayMessage = 'Failed to update project';
-
-      if (error instanceof Error) {
-        const errorMessage = error.message;
-
-        try {
-          const parsed = JSON.parse(errorMessage);
-
-          if (Array.isArray(parsed)) {
-            const messages = parsed
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((e: any) => {
-                if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path)
-                    ? e.path.join('.')
-                    : e.path || 'field';
-                  const message = e.message || 'Validation error';
-                  return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
-                }
-                return String(e);
-              })
-              .filter(Boolean);
-            displayMessage =
-              messages.length > 0 ? messages.join('. ') : 'Validation failed';
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            if (parsed.message) {
-              displayMessage = parsed.message;
-            } else if (parsed.error) {
-              displayMessage = parsed.error;
-            } else if (Array.isArray(parsed.errors)) {
-              displayMessage = parsed.errors
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .map((e: any) =>
-                  typeof e === 'string' ? e : e?.message || String(e),
-                )
-                .filter(Boolean)
-                .join(', ');
-            }
-          }
-        } catch {
-          displayMessage = errorMessage || 'Failed to update project';
-        }
-      } else if (typeof error === 'string') {
-        try {
-          const parsed = JSON.parse(error);
-          if (Array.isArray(parsed)) {
-            const messages = parsed
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((e: any) => {
-                if (typeof e === 'object' && e !== null) {
-                  const field = Array.isArray(e.path)
-                    ? e.path.join('.')
-                    : e.path || 'field';
-                  const message = e.message || 'Validation error';
-                  return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`;
-                }
-                return String(e);
-              })
-              .filter(Boolean);
-            displayMessage =
-              messages.length > 0 ? messages.join('. ') : 'Validation failed';
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            displayMessage =
-              parsed.message || parsed.error || 'Failed to update project';
-          } else {
-            displayMessage = error;
-          }
-        } catch {
-          displayMessage = error;
-        }
-      }
-
-      toast.error(displayMessage);
+      toast.error(getErrorKey(error, t));
     },
   });
 

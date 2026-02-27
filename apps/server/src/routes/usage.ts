@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { Code } from '@qwery/domain/common';
 import type { CreateUsageInput } from '@qwery/domain/usecases';
 import {
   CreateUsageService,
@@ -6,7 +7,11 @@ import {
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
 import { getLogger } from '@qwery/shared/logger';
-import { handleDomainException } from '../lib/http-utils';
+import {
+  handleDomainException,
+  createValidationErrorResponse,
+  createNotFoundErrorResponse,
+} from '../lib/http-utils';
 
 export function createUsageRoutes(
   getRepositories: () => Promise<Repositories>,
@@ -20,9 +25,8 @@ export function createUsageRoutes(
       const userId = c.req.query('userId') ?? '';
 
       if (!conversationSlug) {
-        return c.json(
-          { error: 'conversationSlug query parameter is required' },
-          400,
+        return createValidationErrorResponse(
+          'conversationSlug query parameter is required',
         );
       }
 
@@ -57,18 +61,17 @@ export function createUsageRoutes(
       if (!slug && conversationId) {
         const conversation = await repos.conversation.findById(conversationId);
         if (!conversation) {
-          return c.json(
-            { error: `Conversation with id '${conversationId}' not found` },
-            404,
+          return createNotFoundErrorResponse(
+            `Conversation with id '${conversationId}' not found`,
+            Code.CONVERSATION_NOT_FOUND_ERROR,
           );
         }
         slug = conversation.slug;
       }
 
       if (!slug) {
-        return c.json(
-          { error: 'conversationSlug or conversationId is required' },
-          400,
+        return createValidationErrorResponse(
+          'conversationSlug or conversationId is required',
         );
       }
 

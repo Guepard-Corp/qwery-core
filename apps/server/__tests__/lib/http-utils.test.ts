@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Code } from '@qwery/domain/common';
 import { DomainException } from '@qwery/domain/exceptions';
+import { getErrorKeyFromError } from '@qwery/shared/error';
 
 import {
   handleDomainException,
@@ -64,17 +65,43 @@ describe('isUUID', () => {
   });
 });
 
+describe('getErrorKeyFromError', () => {
+  it('returns notFound for DomainException with code in 2000-2999', () => {
+    const error = DomainException.new({
+      code: Code.NOTEBOOK_NOT_FOUND_ERROR,
+      overrideMessage: 'Not found',
+    });
+    expect(getErrorKeyFromError(error)).toBe('notFound');
+  });
+
+  it('returns generic for raw Error with no code/status (message-rule matching is app-layer responsibility; shared resolves only code/status)', () => {
+    expect(
+      getErrorKeyFromError(
+        new Error('new row violates row-level security policy for table "x"'),
+      ),
+    ).toBe('generic');
+  });
+
+  it('returns generic for unknown Error', () => {
+    expect(getErrorKeyFromError(new Error('Something failed'))).toBe('generic');
+  });
+});
+
 describe('handleDomainException', () => {
-  it('returns 404 for DomainException with code in 2000-2999', async () => {
+  it('returns 404 and code for DomainException with code in 2000-2999', async () => {
     const error = DomainException.new({
       code: Code.NOTEBOOK_NOT_FOUND_ERROR,
       overrideMessage: 'Not found',
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: string; code: number };
-    expect(body.error).toBe('Not found');
+    const body = (await res.json()) as {
+      code: number;
+      params?: unknown;
+      details?: string;
+    };
     expect(body.code).toBe(2000);
+    expect(body.params).toBeUndefined();
   });
 
   it('returns error.code for DomainException with code in 400-499', async () => {
@@ -84,43 +111,96 @@ describe('handleDomainException', () => {
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string; code: number };
-    expect(body.error).toBe('Bad request');
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(400);
   });
 
-  it('returns 500 for DomainException with other codes', async () => {
+  it('returns 500 and code for DomainException with INTERNAL_ERROR', async () => {
     const error = DomainException.new({
       code: Code.INTERNAL_ERROR,
       overrideMessage: 'Internal',
     });
     const res = handleDomainException(error);
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Internal');
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(500);
   });
 
-  it('returns 500 for generic Error', async () => {
+  it('returns 502 and code for DomainException with BAD_GATEWAY_ERROR', async () => {
+    const error = DomainException.new({
+      code: Code.BAD_GATEWAY_ERROR,
+      overrideMessage: 'Bad gateway',
+    });
+    const res = handleDomainException(error);
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(502);
+  });
+
+  it('returns 503 and code for DomainException with SERVICE_UNAVAILABLE_ERROR', async () => {
+    const error = DomainException.new({
+      code: Code.SERVICE_UNAVAILABLE_ERROR,
+      overrideMessage: 'Service unavailable',
+    });
+    const res = handleDomainException(error);
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code: number };
+    expect(body.code).toBe(503);
+  });
+
+  it('returns 500 with code for generic Error', async () => {
     const res = handleDomainException(new Error('Something failed'));
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Something failed');
+    const body = (await res.json()) as { code: number; details?: string };
+    expect(body.code).toBe(500);
+    expect(body.details).toBe('Something failed');
   });
 
-  it('returns 500 and generic message for non-Error throw', async () => {
+  it('returns 500 with code for non-Error throw', async () => {
     const res = handleDomainException('string error');
     expect(res.status).toBe(500);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('Internal server error');
+    const body = (await res.json()) as { code: number; details?: string };
+    expect(body.code).toBe(500);
+    expect(body.details).toBe('string error');
   });
 
-  it('includes data when DomainException has data', async () => {
+  it('returns 500 with code and details for RLS error', async () => {
+    const res = handleDomainException(
+      new Error(
+        'new row violates row-level security policy for table "conversations"',
+      ),
+    );
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { code: number; details?: string };
+    expect(body.code).toBe(500);
+    expect(body.details).toContain('row-level security');
+  });
+
+  it('includes params when DomainException has data', async () => {
     const error = DomainException.new({
       code: Code.NOTEBOOK_NOT_FOUND_ERROR,
       overrideMessage: 'Not found',
       data: { notebookId: '123' },
     });
     const res = handleDomainException(error);
-    const body = (await res.json()) as { error: string; data: unknown };
-    expect(body.data).toEqual({ notebookId: '123' });
+    const body = (await res.json()) as {
+      code: number;
+      params?: unknown;
+    };
+    expect(body.code).toBe(2000);
+    expect(body.params).toEqual({ notebookId: '123' });
+  });
+
+  it('strips details in production (NODE_ENV === "production")', async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const res = handleDomainException(new Error('internal message'));
+      const body = (await res.json()) as { code: number; details?: string };
+      expect(body.code).toBe(500);
+      expect(body.details).toBeUndefined();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
   });
 });

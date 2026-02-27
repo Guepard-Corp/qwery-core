@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Navigate, useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
 import { toast } from 'sonner';
 
@@ -33,8 +34,10 @@ import {
   useConversation,
   useUpdateConversation,
 } from '~/lib/mutations/use-conversation';
+import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 
 export default function NotebookPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
   const { repositories, workspace } = useWorkspace();
@@ -53,12 +56,6 @@ export default function NotebookPage() {
 
   // Store query errors by cell ID
   const [cellErrors, setCellErrors] = useState<Map<number, string>>(new Map());
-
-  // Reset execution status on page/notebook load
-  useEffect(() => {
-    setCellResults(new Map());
-    setCellErrors(new Map());
-  }, [slug]);
 
   // Track which cell is currently loading
   const [loadingCellId, setLoadingCellId] = useState<number | null>(null);
@@ -119,8 +116,7 @@ export default function NotebookPage() {
     () => {},
     (error) => {
       console.error(error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to save notebook: ${message}`);
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -135,8 +131,7 @@ export default function NotebookPage() {
     },
     (error) => {
       console.error(error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to delete notebook: ${message}`);
+      toast.error(getErrorKey(error, t));
     },
   );
 
@@ -151,8 +146,7 @@ export default function NotebookPage() {
     },
     (error) => {
       console.error(error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to create conversation: ${message}`);
+      toast.error(getErrorKey(error, t));
     },
     notebookProjectId || undefined,
   );
@@ -176,7 +170,7 @@ export default function NotebookPage() {
     (error, cellId) => {
       setCellErrors((prev) => {
         const next = new Map(prev);
-        next.set(cellId, error.message);
+        next.set(cellId, getErrorKey(error, t));
         return next;
       });
       // Clear result on error
@@ -196,7 +190,7 @@ export default function NotebookPage() {
         (ds) => ds.id === datasourceId,
       );
       if (!datasource) {
-        toast.error('Datasource not found');
+        toast.error(t(ERROR_KEYS.notFound));
         return;
       }
 
@@ -316,14 +310,10 @@ export default function NotebookPage() {
       }
       setLoadingCellId(null);
     },
-    (error, cellId, query) => {
+    (error, cellId) => {
       setCellErrors((prev) => {
         const next = new Map(prev);
-        next.set(
-          cellId,
-          `${error.message} 
-          query: ${query}`,
-        );
+        next.set(cellId, getErrorKey(error, t));
         return next;
       });
       // Clear result on error
@@ -372,10 +362,8 @@ export default function NotebookPage() {
 
       if (existingConversation) {
         conversationSlug = existingConversation.slug;
-        if (
-          datasourceId &&
-          !existingConversation.datasources?.includes(datasourceId)
-        ) {
+        // Update datasources if needed
+        if (!existingConversation.datasources?.includes(datasourceId)) {
           const updatedConversation =
             await updateConversationMutation.mutateAsync({
               id: existingConversation.id,
@@ -383,11 +371,12 @@ export default function NotebookPage() {
                 ...(existingConversation.datasources || []),
                 datasourceId,
               ],
-              updatedBy: workspace.username || workspace.userId || 'system',
+              updatedBy: workspace.userId || 'system',
             });
           conversationSlug = updatedConversation.slug;
         }
       } else {
+        // Create new conversation
         const { v4: uuidv4 } = await import('uuid');
         const notebookTitle = `Notebook - ${notebook.data.id}`;
 
@@ -395,25 +384,24 @@ export default function NotebookPage() {
           title: notebookTitle,
           projectId: notebookProjectId || '',
           taskId: uuidv4(),
-          datasources: datasourceId ? [datasourceId] : [],
+          datasources: [datasourceId],
           seedMessage: '',
           createdBy: workspace.userId || 'system',
         });
         conversationSlug = newConversation.slug;
       }
 
+      // Open sidebar and send message through chat interface for proper streaming
+      // Pass cellType and cellId so the chat API can set notebookCellType in metadata
+      // Always pass actualCellType to ensure it's never undefined
       openSidebar(conversationSlug, {
-        ...(datasourceId && { datasourceId }),
+        datasourceId,
         messageToSend: query,
-        notebookCellType: actualCellType,
+        notebookCellType: actualCellType, // Always pass cellType (either 'query' or 'prompt')
         cellId,
       });
-
-      // Loading state will be synced with chat interface streaming state
-      // Don't clear it here - it will be cleared when streaming completes
     } else {
-      // Notebook not loaded yet - show error and don't proceed
-      toast.error('Notebook not loaded yet, please wait');
+      toast.error(t(ERROR_KEYS.generic));
       setLoadingCellId(null);
     }
   };
@@ -754,7 +742,7 @@ export default function NotebookPage() {
       toast.success(`Saved "${title}" Notebook`);
     } catch (error) {
       console.error('Failed to save notebook:', error);
-      toast.error('Failed to save notebook. Please try again.');
+      toast.error(getErrorKey(error, t));
     }
   }, [normalizedNotebook, savedDatasources.data, saveNotebookMutation]);
 
@@ -810,14 +798,14 @@ export default function NotebookPage() {
 
   const handleDeleteNotebook = useCallback(() => {
     if (!normalizedNotebook) {
-      toast.error('Notebook is not ready yet');
+      toast.error(t(ERROR_KEYS.generic));
       return;
     }
 
     const projectId = normalizedNotebook.projectId || notebookProjectId;
 
     if (!projectId) {
-      toast.error('Unable to resolve project context for deletion');
+      toast.error(t(ERROR_KEYS.generic));
       return;
     }
 
@@ -1087,9 +1075,6 @@ export default function NotebookPage() {
           workspaceMode={workspace.mode}
           hasUnsavedChanges={hasUnsavedChangesState}
           isNotebookLoading={isNotebookLoading}
-          onNoDatasourceError={() =>
-            toast.error('Select a datasource first to run the prompt')
-          }
         />
       )}
     </div>

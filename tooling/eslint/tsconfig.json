@@ -1,5 +1,5 @@
 {
-  "extends": "@qwery/tsconfig/base.json",
+  "extends": "../typescript/base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },

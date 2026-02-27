@@ -4,7 +4,10 @@ import {
   GetMessagesPaginatedService,
 } from '@qwery/domain/services';
 import type { Repositories } from '@qwery/domain/repositories';
-import { handleDomainException } from '../lib/http-utils';
+import {
+  handleDomainException,
+  createValidationErrorResponse,
+} from '../lib/http-utils';
 
 export function createMessagesRoutes(
   getRepositories: () => Promise<Repositories>,
@@ -20,9 +23,8 @@ export function createMessagesRoutes(
       const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
 
       if (!conversationSlug) {
-        return c.json(
-          { error: 'conversationSlug query parameter is required' },
-          400,
+        return createValidationErrorResponse(
+          'conversationSlug query parameter is required',
         );
       }
 

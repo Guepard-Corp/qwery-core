@@ -7,7 +7,9 @@ import {
   CollapsibleTrigger,
 } from '../shadcn/collapsible';
 import { cn } from '../lib/utils';
+import { toToolError, toUserFacingError } from '../qwery/ai/user-facing-error';
 import type { ToolUIPart } from 'ai';
+import { useTranslation } from 'react-i18next';
 import { getUserFriendlyToolName } from '../qwery/ai/utils/tool-name';
 import {
   BarChart3Icon,
@@ -149,8 +151,8 @@ const getStatusConfig = (
     'output-error': {
       label: 'Failed',
       icon: <XCircleIcon className={iconSizeClass} />,
-      className: 'text-destructive',
-      bgClassName: 'bg-red-100 dark:bg-red-950',
+      className: 'text-destructive font-medium',
+      bgClassName: 'bg-destructive/10',
     },
     'output-denied': {
       label: 'Denied',
@@ -349,6 +351,7 @@ export const ToolOutput = ({
   isTestConnection = false,
   ...props
 }: ToolOutputProps) => {
+  const { t } = useTranslation('common');
   if (!(output || errorText)) {
     return null;
   }
@@ -384,6 +387,11 @@ export const ToolOutput = ({
   }
 
   if (errorText) {
+    const { message, details } = toUserFacingError(
+      toToolError(errorText),
+      (key: string, params?: Record<string, unknown>) =>
+        t(key, { defaultValue: key, ...(params ?? {}) }),
+    );
     return (
       <div
         className={cn(
@@ -398,9 +406,19 @@ export const ToolOutput = ({
             <span>Execution Error</span>
           </div>
           <div className="bg-background/80 rounded-lg p-4 backdrop-blur-sm">
-            <pre className="text-muted-foreground text-xs leading-relaxed whitespace-pre-wrap">
-              {errorText}
-            </pre>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {message}
+            </p>
+            {details && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs underline">
+                  View details
+                </summary>
+                <pre className="text-muted-foreground mt-2 text-xs leading-relaxed whitespace-pre-wrap">
+                  {details}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       </div>

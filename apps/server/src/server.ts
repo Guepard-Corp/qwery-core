@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { basicAuth } from 'hono/basic-auth';
-import { DomainException } from '@qwery/domain/exceptions';
 import { getLogger } from '@qwery/shared/logger';
 import { getRepositories } from './lib/repositories';
 import { createChatRoutes } from './routes/chat';
@@ -19,28 +18,7 @@ import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
 import { handleMcpRequest } from './lib/mcp-handler';
-
-function handleError(error: unknown): Response {
-  if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
-    return Response.json(
-      {
-        error: error.message,
-        code: error.code,
-        data: error.data,
-      },
-      { status },
-    );
-  }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
-}
+import { getCurrentTraceId, handleDomainException } from './lib/http-utils';
 
 export function createApp() {
   const app = new Hono();
@@ -49,15 +27,17 @@ export function createApp() {
 
   app.onError(async (err) => {
     const logger = await getLogger();
+    const traceId = getCurrentTraceId();
     logger.error(
       {
         err,
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
+        ...(traceId ? { traceId } : {}),
       },
       'Unhandled request error',
     );
-    return handleError(err);
+    return handleDomainException(err);
   });
 
   const password = process.env.QWERY_SERVER_PASSWORD;

@@ -85,20 +85,19 @@ import { getLastTodoPartIndex } from './ai/utils/todo-parts';
 import { ToolVariantProvider } from './ai/tool-variant-context';
 import type { NotebookCellType } from './ai/utils/notebook-cell-type';
 import type { FeedbackPayload } from './ai/feedback-types';
+import { isChatIdle, isChatActive } from './ai/utils/chat-status';
 import {
-  SuggestionBadges,
-  SuggestionBadgesSkeleton,
-} from './ai/suggestion-badges';
+  getTextContentFromMessage,
+  getContextMessages,
+} from './ai/utils/message-context';
 import {
   extractAllSuggestionMatches,
   type SuggestionMetadata,
 } from './ai/utils/suggestion-pattern';
 import {
-  getTextContentFromMessage,
-  getContextMessages,
-} from './ai/utils/message-context';
-import { isChatActive, isChatIdle } from './ai/utils/chat-status';
-
+  SuggestionBadges,
+  SuggestionBadgesSkeleton,
+} from './ai/suggestion-badges';
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
   transport: (model: string) => ChatTransport<UIMessage>;
@@ -1923,8 +1922,23 @@ function PromptInputInner({
       setTimeout(scrollToBottom, 150);
       await sendPromise;
       attachments.clear();
+      // Scroll again after message is sent to ensure we're at bottom
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 0);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 100);
+        setTimeout(() => {
+          scrollToBottomRef.current?.();
+        }, 300);
+      });
+      // Don't clear input here - it's already cleared on submit
+      // The input should only be cleared on explicit user action (submit button or Enter)
     } catch {
       toast.error('Failed to send message. Please try again.');
+      // On error, restore the input so user can retry
       if (message.text) {
         setState((prev) => ({ ...prev, input: message.text }));
       }

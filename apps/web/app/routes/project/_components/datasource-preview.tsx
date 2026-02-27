@@ -8,6 +8,7 @@ import {
   forwardRef,
   useCallback,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
 import {
   ExternalLink,
@@ -33,6 +34,7 @@ import {
 import { fetchJsonData } from '~/lib/utils/json-preview-utils';
 import { fetchParquetData, fetchCsvData } from '~/lib/utils/data-preview-utils';
 
+import { getErrorKey } from '~/lib/utils/error-key';
 import { DatasourcePublishingGuide } from './datasource-publishing-guide';
 import { JsonViewer, type JsonViewMode } from './json-viewer';
 
@@ -57,6 +59,7 @@ export const DatasourcePreview = forwardRef<
   },
   _ref,
 ) {
+  const { t } = useTranslation('common');
   const { theme, resolvedTheme } = useTheme();
   const supportsPreviewProp = extensionMeta?.supportsPreview === true;
   const previewUrl = useMemo(
@@ -192,7 +195,7 @@ export const DatasourcePreview = forwardRef<
     fetcher
       .then((result) => {
         if (result.error) {
-          setJsonError(result.error);
+          setJsonError(getErrorKey(new Error(result.error), t));
           setJsonData(null);
         } else {
           setJsonData(result.data);
@@ -232,7 +235,7 @@ export const DatasourcePreview = forwardRef<
           setJsonData(result.data);
           setExpandedPaths(new Set(['root']));
         } else if (result.error) {
-          setJsonError(result.error);
+          setJsonError(getErrorKey(new Error(result.error), t));
         }
       })
       .finally(() => {

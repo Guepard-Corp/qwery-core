@@ -1,5 +1,10 @@
 import { Hono } from 'hono';
 import { ExtensionsRegistry, ExtensionScope } from '@qwery/extensions-sdk';
+import { Code } from '@qwery/domain/common';
+import {
+  createNotFoundErrorResponse,
+  createValidationErrorResponse,
+} from '../lib/http-utils';
 
 const SCOPE_VALUES = Object.values(ExtensionScope) as string[];
 
@@ -9,12 +14,8 @@ export function createExtensionsRoutes() {
   app.get('/', (c) => {
     const scopeParam = c.req.query('scope');
     if (scopeParam && !SCOPE_VALUES.includes(scopeParam)) {
-      return c.json(
-        {
-          error: 'Invalid scope',
-          message: `scope must be one of: ${SCOPE_VALUES.join(', ')}`,
-        },
-        400,
+      return createValidationErrorResponse(
+        `Invalid scope. Expected one of: ${SCOPE_VALUES.join(', ')}`,
       );
     }
     const scope = scopeParam as ExtensionScope | undefined;
@@ -34,9 +35,9 @@ export function createExtensionsRoutes() {
     const id = c.req.param('id');
     const extension = ExtensionsRegistry.get(id);
     if (!extension) {
-      return c.json(
-        { error: 'Not found', message: `Extension ${id} not found` },
-        404,
+      return createNotFoundErrorResponse(
+        `Extension ${id} not found`,
+        Code.ENTITY_NOT_FOUND_ERROR,
       );
     }
     const serialized = {

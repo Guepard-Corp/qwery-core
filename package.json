@@ -61,7 +61,8 @@
     "syncpack:fix": "pnpm dlx syncpack fix-mismatches",
     "env:generate": "turbo gen env",
     "env:validate": "turbo gen validate-env",
-    "check": "pnpm format:fix &&pnpm format && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "check": "pnpm format:fix && pnpm format && pnpm lint && pnpm typecheck && pnpm validate:error-keys && pnpm build && pnpm test",
+    "validate:error-keys": "pnpm --filter @qwery/shared run validate:error-keys",
     "security:react": "ts-node scripts/check-react-vulns.ts",
     "security:react:audit": "ENABLE_PNPM_AUDIT=true ts-node scripts/check-react-vulns.ts",
     "server:dev": "pnpm --filter server dev",
@@ -92,6 +93,7 @@
   },
   "devDependencies": {
     "@manypkg/cli": "^0.25.1",
+    "@opentelemetry/api": "^1.9.0",
     "@qwery/prettier-config": "workspace:*",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",

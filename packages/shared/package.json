@@ -9,20 +9,22 @@
     "lint:fix": "eslint --cache --cache-location ./node_modules/.cache/eslint --fix .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "validate:error-keys": "vitest run __tests__/validate-error-i18n.test.ts"
   },
   "prettier": "@qwery/prettier-config",
   "exports": {
     "./logger": "./src/logger/index.ts",
     "./model-cost": "./src/model-cost/index.ts",
     "./utils": "./src/utils.ts",
-    "./export": "./src/export.ts",
     "./hooks": "./src/hooks/index.ts",
     "./events": "./src/events/index.tsx",
     "./registry": "./src/registry/index.ts",
     "./desktop": "./src/desktop/index.ts",
     "./message-constants": "./src/message-constants.ts",
-    "./message-role-utils": "./src/utils/message-role.ts"
+    "./message-role-utils": "./src/utils/message-role.ts",
+    "./error": "./src/error/index.ts",
+    "./export": "./src/export.ts"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",
@@ -31,6 +33,7 @@
     "@qwery/tsconfig": "workspace:*",
     "@types/papaparse": "^5.5.2",
     "@types/react": "catalog:",
+    "@vitest/coverage-istanbul": "catalog:",
     "eslint": "^9.39.0",
     "typescript": "catalog:",
     "vitest": "catalog:"

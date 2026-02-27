@@ -1,3 +1,6 @@
+import { type ApiErrorResponseBody } from '@qwery/shared/error';
+import { getLogger } from '@qwery/shared/logger';
+
 function getApiBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env) {
     const url = process.env.VITE_API_URL ?? process.env.SERVER_API_URL ?? '';
@@ -8,14 +11,61 @@ function getApiBaseUrl(): string {
 
 export class ApiError extends Error {
   constructor(
-    message: string,
     public status: number,
-    public code?: number,
-    public data?: unknown,
+    public code: number,
+    public params?: unknown,
+    public details?: string,
+    public requestId?: string,
   ) {
-    super(message);
+    super(`API Error ${code}`);
     this.name = 'ApiError';
   }
+}
+
+function isNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  if (error.name === 'AbortError') {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('fetch failed') ||
+    message.includes('network') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('enotfound') ||
+    message.includes('econnrefused') ||
+    error.name === 'TypeError' ||
+    error.name === 'NetworkError'
+  );
+}
+
+function convertToApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (error instanceof Error && error.name === 'AbortError') {
+    return new ApiError(408, 408, undefined, 'Request timeout');
+  }
+
+  if (isNetworkError(error)) {
+    return new ApiError(
+      0,
+      0,
+      undefined,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
+  return new ApiError(
+    500,
+    500,
+    undefined,
+    error instanceof Error ? error.message : String(error),
+  );
 }
 
 async function handleResponse<T>(
@@ -27,15 +77,40 @@ async function handleResponse<T>(
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({
-      error: response.statusText || 'Unknown error',
-    }));
+    let errorData: Partial<ApiErrorResponseBody> | null = null;
+    let parseFailed = false;
+
+    try {
+      errorData = (await response.json()) as Partial<ApiErrorResponseBody>;
+    } catch {
+      parseFailed = true;
+    }
+
+    const hasNumericCode =
+      errorData !== null &&
+      typeof errorData.code === 'number' &&
+      Number.isFinite(errorData.code);
+
+    if (parseFailed || !hasNumericCode) {
+      void getLogger().then((logger) =>
+        logger.warn(
+          {
+            status: response.status,
+            body: errorData ?? null,
+          },
+          'Api client: malformed error body',
+        ),
+      );
+    }
+
+    const code = hasNumericCode ? (errorData!.code as number) : 500;
 
     throw new ApiError(
-      errorData.error || errorData.message || 'Request failed',
       response.status,
-      errorData.code,
-      errorData.data,
+      code,
+      errorData?.params,
+      errorData?.details,
+      errorData?.requestId,
     );
   }
 
@@ -93,7 +168,7 @@ export async function apiGet<T>(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -126,14 +201,14 @@ export async function apiPost<T>(
 
     const result = await handleResponse<T>(response, false);
     if (result === null) {
-      throw new ApiError('Unexpected null response', response.status);
+      throw new ApiError(response.status, 500);
     }
     return result;
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -166,14 +241,14 @@ export async function apiPut<T>(
 
     const result = await handleResponse<T>(response, false);
     if (result === null) {
-      throw new ApiError('Unexpected null response', response.status);
+      throw new ApiError(response.status, 500);
     }
     return result;
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }
 
@@ -210,7 +285,7 @@ export async function driverCommand<T>(
   );
 
   if (!result.success || result.data === undefined) {
-    throw new Error(result.error || 'Driver command failed');
+    throw new ApiError(500, 500);
   }
 
   return result.data;
@@ -250,6 +325,6 @@ export async function apiDelete(
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    throw error;
+    throw convertToApiError(error);
   }
 }

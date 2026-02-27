@@ -1,25 +1,104 @@
 import { DomainException } from '@qwery/domain/exceptions';
+import { Code, type CodeDescription } from '@qwery/domain/common';
+import { SAFE_ERROR_MESSAGE } from '@qwery/shared/error';
+import { trace } from '@opentelemetry/api';
+
+function getTechnicalDetails(error: unknown): string | undefined {
+  if (error instanceof DomainException) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message !== SAFE_ERROR_MESSAGE ? error.message : undefined;
+  }
+  if (typeof error === 'string') {
+    return error !== SAFE_ERROR_MESSAGE ? error : undefined;
+  }
+  return undefined;
+}
+
+const isProduction = () =>
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+
+export function getCurrentTraceId(): string | undefined {
+  try {
+    const span = trace.getActiveSpan();
+    const context = span?.spanContext();
+    if (!context?.traceId) {
+      return undefined;
+    }
+    if (context.traceId === '00000000000000000000000000000000') {
+      return undefined;
+    }
+    return context.traceId;
+  } catch {
+    return undefined;
+  }
+}
 
 export function handleDomainException(error: unknown): Response {
+  const rawDetails = getTechnicalDetails(error);
+  const details =
+    !isProduction() && rawDetails !== undefined ? rawDetails : undefined;
+  const requestId = getCurrentTraceId();
+
   if (error instanceof DomainException) {
-    const status =
-      error.code >= 2000 && error.code < 3000
-        ? 404
-        : error.code >= 400 && error.code < 500
-          ? error.code
-          : 500;
-    return Response.json(
-      {
-        error: error.message,
-        code: error.code,
-        data: error.data,
-      },
-      { status },
-    );
+    let status: number;
+    if (error.code >= 2000 && error.code < 3000) {
+      status = 404;
+    } else if (error.code >= 400 && error.code < 500) {
+      status = error.code;
+    } else if (error.code === 502 || error.code === 503) {
+      status = error.code;
+    } else {
+      status = 500;
+    }
+
+    const body = {
+      code: error.code,
+      params: error.data,
+      ...(details !== undefined && { details }),
+      ...(requestId !== undefined && { requestId }),
+    };
+    const response = Response.json(body, { status });
+    if (requestId !== undefined) {
+      response.headers.set('X-Request-Id', requestId);
+      response.headers.set('X-Trace-Id', requestId);
+    }
+    return response;
   }
-  const errorMessage =
-    error instanceof Error ? error.message : 'Internal server error';
-  return Response.json({ error: errorMessage }, { status: 500 });
+  const body = {
+    code: 500,
+    ...(details !== undefined && { details }),
+    ...(requestId !== undefined && { requestId }),
+  };
+  const response = Response.json(body, { status: 500 });
+  if (requestId !== undefined) {
+    response.headers.set('X-Request-Id', requestId);
+    response.headers.set('X-Trace-Id', requestId);
+  }
+  return response;
+}
+
+export function createValidationErrorResponse(
+  message: string,
+  code: CodeDescription = Code.BAD_REQUEST_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
+}
+
+export function createNotFoundErrorResponse(
+  message: string,
+  code: CodeDescription = Code.ENTITY_NOT_FOUND_ERROR,
+): Response {
+  const error = DomainException.new({
+    code,
+    overrideMessage: message,
+  });
+  return handleDomainException(error);
 }
 
 export function parsePositiveInt(

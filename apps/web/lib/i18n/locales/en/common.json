@@ -28,6 +28,102 @@
   "pageNotFoundSubHeading": "Apologies, the page you were looking for was not found",
   "genericError": "Sorry, something went wrong.",
   "genericErrorSubHeading": "Apologies, an error occurred while processing your request. Please contact us if the issue persists.",
+  "errors": {
+    "permissionDenied": "You don't have permission to perform this action.",
+    "network": "Network error. Please check your connection and try again.",
+    "notFound": "The requested resource was not found.",
+    "generic": "Something went wrong. Please try again.",
+    "badRequest": "Invalid request. Please check your input.",
+    "unauthorized": "You are not authorized. Please sign in.",
+    "wrongCredentials": "Invalid credentials.",
+    "accessDenied": "You don't have permission to perform this action.",
+    "internalError": "An internal error occurred. Please try again later.",
+    "badGateway": "A downstream service returned an invalid response. Please try again.",
+    "service": {
+      "unavailable": "Service is temporarily unavailable. Please try again later."
+    },
+    "entityNotFound": "The requested entity was not found.",
+    "entityValidationError": "Validation error. Please check your input.",
+    "useCasePortValidationError": "Invalid request parameters.",
+    "valueObjectValidationError": "Invalid value provided.",
+    "entityAlreadyExists": "This entity already exists.",
+    "notebook": {
+      "notFound": "Notebook not found.",
+      "alreadyExists": "A notebook with this name already exists.",
+      "updateError": "Failed to update notebook.",
+      "deleteError": "Failed to delete notebook.",
+      "getError": "Failed to retrieve notebook.",
+      "getAllError": "Failed to retrieve notebooks.",
+      "createError": "Failed to create notebook."
+    },
+    "user": {
+      "notFound": "User not found.",
+      "alreadyExists": "A user with this information already exists.",
+      "updateError": "Failed to update user.",
+      "deleteError": "Failed to delete user.",
+      "getError": "Failed to retrieve user.",
+      "getAllError": "Failed to retrieve users.",
+      "createError": "Failed to create user."
+    },
+    "workspace": {
+      "notFound": "Workspace not found.",
+      "updateError": "Failed to update workspace.",
+      "getError": "Failed to retrieve workspace.",
+      "createError": "Failed to create workspace."
+    },
+    "organization": {
+      "notFound": "Organization not found.",
+      "updateError": "Failed to update organization.",
+      "deleteError": "Failed to delete organization.",
+      "getError": "Failed to retrieve organization.",
+      "getAllError": "Failed to retrieve organizations.",
+      "createError": "Failed to create organization."
+    },
+    "project": {
+      "notFound": "Project not found.",
+      "updateError": "Failed to update project.",
+      "deleteError": "Failed to delete project.",
+      "getError": "Failed to retrieve project.",
+      "getAllError": "Failed to retrieve projects.",
+      "createError": "Failed to create project."
+    },
+    "datasource": {
+      "notFound": "Datasource not found.",
+      "alreadyExists": "A datasource with this name already exists.",
+      "updateError": "Failed to update datasource.",
+      "deleteError": "Failed to delete datasource.",
+      "getError": "Failed to retrieve datasource.",
+      "getAllError": "Failed to retrieve datasources.",
+      "createError": "Failed to create datasource."
+    },
+    "agent": {
+      "sessionNotFound": "Agent session not found.",
+      "stateMachineNotFound": "State machine not found.",
+      "invalidStateTransition": "Invalid state transition."
+    },
+    "conversation": {
+      "notFound": "Conversation not found.",
+      "alreadyExists": "A conversation with this name already exists.",
+      "updateError": "Failed to update conversation.",
+      "deleteError": "Failed to delete conversation.",
+      "getError": "Failed to retrieve conversation.",
+      "createError": "Failed to create conversation."
+    },
+    "message": {
+      "notFound": "Message not found.",
+      "alreadyExists": "This message already exists.",
+      "updateError": "Failed to update message.",
+      "deleteError": "Failed to delete message.",
+      "getError": "Failed to retrieve message.",
+      "createError": "Failed to create message."
+    },
+    "tool": {
+      "title": "Error",
+      "description": "An error occurred while executing this operation.",
+      "viewTechnicalDetails": "View technical details",
+      "hideTechnicalDetails": "Hide technical details"
+    }
+  },
   "anonymousUser": "Anonymous",
   "tryAgain": "Try Again",
   "theme": "Theme",

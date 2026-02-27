@@ -7,6 +7,9 @@ import {
   type DatasourceExtension,
 } from '@qwery/extensions-sdk';
 import { getLogger } from '@qwery/shared/logger';
+import { DomainException } from '@qwery/domain/exceptions';
+import { Code } from '@qwery/domain/common';
+import { handleDomainException } from '../lib/http-utils';
 
 const bodySchema = z.object({
   action: z.enum(['testConnection', 'metadata', 'query']),
@@ -29,14 +32,24 @@ export function createDriverRoutes() {
       | undefined;
     if (!dsMeta) {
       logger.error({ datasourceProvider, driverId }, 'Datasource not found');
-      return c.json({ error: 'Datasource not found' }, 404);
+      return handleDomainException(
+        DomainException.new({
+          code: Code.DATASOURCE_NOT_FOUND_ERROR,
+          overrideMessage: 'Datasource not found',
+        }),
+      );
     }
 
     const driver =
       dsMeta.drivers?.find((d) => d.id === driverId) ?? dsMeta.drivers?.[0];
     if (!driver) {
       logger.error({ datasourceProvider, driverId }, 'Driver not found');
-      return c.json({ error: 'Driver not found' }, 404);
+      return handleDomainException(
+        DomainException.new({
+          code: Code.DATASOURCE_NOT_FOUND_ERROR,
+          overrideMessage: 'Driver not found',
+        }),
+      );
     }
 
     if (driver.runtime !== 'node') {
@@ -44,9 +57,11 @@ export function createDriverRoutes() {
         { datasourceProvider, driverId },
         'Driver is not node runtime for server execution',
       );
-      return c.json(
-        { error: 'Driver is not node runtime for server execution' },
-        400,
+      return handleDomainException(
+        DomainException.new({
+          code: Code.BAD_REQUEST_ERROR,
+          overrideMessage: 'Driver is not node runtime for server execution',
+        }),
       );
     }
 
@@ -71,7 +86,12 @@ export function createDriverRoutes() {
         }
         case 'query': {
           if (!sql) {
-            return c.json({ error: 'SQL is required for query action' }, 400);
+            return handleDomainException(
+              DomainException.new({
+                code: Code.BAD_REQUEST_ERROR,
+                overrideMessage: 'SQL is required for query action',
+              }),
+            );
           }
           const queryResult = await instance.query(sql);
           return c.json({
@@ -80,12 +100,21 @@ export function createDriverRoutes() {
           });
         }
         default:
-          return c.json({ error: 'Unknown action' }, 400);
+          return handleDomainException(
+            DomainException.new({
+              code: Code.BAD_REQUEST_ERROR,
+              overrideMessage: 'Unknown action',
+            }),
+          );
       }
     } catch (error) {
       logger.error({ error }, 'Error executing driver action');
-      const message = formatError(error);
-      return c.json({ error: message }, 500);
+      return handleDomainException(
+        DomainException.new({
+          code: Code.SERVICE_UNAVAILABLE_ERROR,
+          overrideMessage: formatError(error),
+        }),
+      );
     }
   });
 

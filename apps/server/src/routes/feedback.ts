@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import type { Repositories } from '@qwery/domain/repositories';
-import { handleDomainException } from '../lib/http-utils';
+import { Code } from '@qwery/domain/common';
+import {
+  handleDomainException,
+  createValidationErrorResponse,
+  createNotFoundErrorResponse,
+} from '../lib/http-utils';
 
 const FEEDBACK_TYPES = ['positive', 'negative'] as const;
 const POSITIVE_TYPES = [
@@ -72,34 +77,28 @@ export function createFeedbackRoutes(
         typeof messageId !== 'string' ||
         messageId.trim() === ''
       ) {
-        return c.json({ error: 'messageId is required' }, 400);
+        return createValidationErrorResponse('messageId is required');
       }
 
       if (!isFeedbackType(type)) {
-        return c.json({ error: 'type must be "positive" or "negative"' }, 400);
+        return createValidationErrorResponse(
+          'type must be "positive" or "negative"',
+        );
       }
 
       if (typeof comment !== 'string') {
-        return c.json({ error: 'comment is required' }, 400);
+        return createValidationErrorResponse('comment is required');
       }
 
       if (type === 'positive' && !isPositiveType(positiveType)) {
-        return c.json(
-          {
-            error:
-              'positiveType is required for positive feedback and must be one of: fastAndAccurate, goodQueryDecomposition, efficientResourceUse, helpfulVisualization, savedCredits, betterThanExpected',
-          },
-          400,
+        return createValidationErrorResponse(
+          'positiveType is required for positive feedback and must be one of: fastAndAccurate, goodQueryDecomposition, efficientResourceUse, helpfulVisualization, savedCredits, betterThanExpected',
         );
       }
 
       if (type === 'negative' && !isIssueType(issueType)) {
-        return c.json(
-          {
-            error:
-              'issueType is required for negative feedback and must be one of: uiBug, didNotFollowRequest, incorrectResult, responseIncomplete, poorQueryDecomposition, slowResponse, incorrectDataSource, inefficientQuery, creditsWasted, hallucination, other',
-          },
-          400,
+        return createValidationErrorResponse(
+          'issueType is required for negative feedback and must be one of: uiBug, didNotFollowRequest, incorrectResult, responseIncomplete, poorQueryDecomposition, slowResponse, incorrectDataSource, inefficientQuery, creditsWasted, hallucination, other',
         );
       }
 
@@ -126,7 +125,10 @@ export function createFeedbackRoutes(
       }
 
       if (!message) {
-        return c.json({ error: 'Message not found' }, 404);
+        return createNotFoundErrorResponse(
+          'Message not found',
+          Code.MESSAGE_NOT_FOUND_ERROR,
+        );
       }
 
       const feedbackPayload: FeedbackRequestBody = {
