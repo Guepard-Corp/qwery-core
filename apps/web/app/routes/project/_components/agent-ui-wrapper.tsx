@@ -315,6 +315,11 @@ export const AgentUIWrapper = forwardRef<
     }));
   }, [datasources.data]);
 
+  const convertedInitialMessages = useMemo(
+    () => convertMessages(initialMessages),
+    [initialMessages],
+  );
+
   const transport = useMemo(
     () => (model: string) => {
       return transportFactory(conversationSlug, model);
@@ -709,26 +714,6 @@ export const AgentUIWrapper = forwardRef<
   }, [isProcessing, getCellId, notifyLoadingStateChange]);
 
   return (
-<<<<<<< HEAD
-    <QweryAgentUI
-      transport={transport}
-      initialMessages={convertMessages(initialMessages)}
-      models={SUPPORTED_MODELS as { name: string; value: string }[]}
-      usage={convertUsage(usage)}
-      emitFinish={handleEmitFinish}
-      datasources={datasourceItems}
-      selectedDatasources={selectedDatasources}
-      onDatasourceSelectionChange={handleDatasourceSelectionChange}
-      pluginLogoMap={pluginLogoMap}
-      datasourcesLoading={datasources.isLoading}
-      onSendMessageReady={handleSendMessageReady}
-      onPasteToNotebook={pasteHandler || undefined}
-      onSubmitFeedback={handleSubmitFeedback}
-      notebookContext={notebookContext}
-      isLoading={isLoading}
-      conversationSlug={conversationSlug}
-    />
-=======
     <>
       <QweryAgentUI
         transport={transport}
@@ -776,6 +761,5 @@ export const AgentUIWrapper = forwardRef<
         </AlertDialogContent>
       </AlertDialog>
     </>
->>>>>>> d5c40cf6 (feat(agent-ui): no-datasource dialog, initialSuggestions, init fix)
   );
 });
