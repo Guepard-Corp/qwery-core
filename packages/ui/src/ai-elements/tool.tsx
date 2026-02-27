@@ -33,6 +33,7 @@ import {
   FileIcon,
   ListIcon,
   PlayIcon,
+  ListTodo,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { isValidElement } from 'react';
@@ -82,6 +83,7 @@ export type ToolHeaderProps = {
   executionTimeMs?: number;
   className?: string;
   variant?: ToolVariant;
+  children?: ReactNode;
 };
 
 function formatExecutionTime(executionTimeMs?: number): string | null {
@@ -173,6 +175,7 @@ const getToolIcon = (type: string, size: 'sm' | 'md' = 'md') => {
   const iconMap: Record<string, ReactNode> = {
     'tool-testConnection': <PlugIcon className={sizeClass} />,
     'tool-runQuery': <DatabaseIcon className={sizeClass} />,
+    'tool-runQueries': <ListIcon className={sizeClass} />,
     'tool-getTableSchema': <TableIcon className={sizeClass} />,
     'tool-getSchema': <FileSearchIcon className={sizeClass} />,
     'tool-generateChart': <BarChart3Icon className={sizeClass} />,
@@ -184,6 +187,8 @@ const getToolIcon = (type: string, size: 'sm' | 'md' = 'md') => {
     'tool-generateSql': <TerminalIcon className={sizeClass} />,
     'tool-startWorkflow': <WorkflowIcon className={sizeClass} />,
     'tool-viewSheet': <FileIcon className={sizeClass} />,
+    'tool-todowrite': <ListTodo className={sizeClass} />,
+    'tool-todoread': <ListTodo className={sizeClass} />,
   };
 
   return iconMap[type] ?? <TerminalIcon className={sizeClass} />;
@@ -196,6 +201,7 @@ export const ToolHeader = ({
   state,
   executionTimeMs,
   variant = 'default',
+  children,
   ...props
 }: ToolHeaderProps) => {
   const isMinimal = variant === 'minimal';
@@ -239,6 +245,7 @@ export const ToolHeader = ({
             {statusConfig.icon}
           </div>
         </div>
+        {children && <div className="flex items-center gap-2">{children}</div>}
       </CollapsibleTrigger>
     );
   }
@@ -261,28 +268,39 @@ export const ToolHeader = ({
         </span>
       </div>
 
-      <div
-        className={cn(
-          'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
-          statusConfig.bgClassName,
-          statusConfig.className,
+      <div className="flex items-center gap-3">
+        {children && (
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
         )}
-      >
-        {statusConfig.icon}
-        <span className="whitespace-nowrap">{statusConfig.label}</span>
-      </div>
 
-      {executionTimeLabel ? (
-        <Badge
-          variant="secondary"
-          className="text-muted-foreground bg-muted/70 border-border/60 rounded-full px-2 py-1 text-xs font-medium tabular-nums"
+        <div
+          className={cn(
+            'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+            statusConfig.bgClassName,
+            statusConfig.className,
+          )}
         >
-          {executionTimeLabel}
-        </Badge>
-      ) : null}
+          {statusConfig.icon}
+          <span className="whitespace-nowrap">{statusConfig.label}</span>
+        </div>
 
-      <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
-        <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+        {executionTimeLabel ? (
+          <Badge
+            variant="secondary"
+            className="text-muted-foreground bg-muted/70 border-border/60 rounded-full px-2 py-1 text-xs font-medium tabular-nums"
+          >
+            {executionTimeLabel}
+          </Badge>
+        ) : null}
+
+        <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
+          <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+        </div>
       </div>
     </CollapsibleTrigger>
   );

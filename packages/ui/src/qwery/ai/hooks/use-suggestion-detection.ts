@@ -1,27 +1,26 @@
-import { useMemo, RefObject, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import {
   isSuggestionPattern,
-  extractSuggestionText,
+  extractAllSuggestionMatches,
   validateSuggestionElement,
+} from '../utils/suggestion-pattern';
+import type {
+  SuggestionMatch,
+  SuggestionMetadata,
 } from '../utils/suggestion-pattern';
 
 export interface DetectedSuggestion {
   element: Element;
   suggestionText: string;
+  suggestionMatches?: SuggestionMatch[];
+  suggestionMetadata?: SuggestionMetadata;
+  isEndBlock?: boolean;
 }
 
 export function useSuggestionDetection(
-  containerRef: RefObject<HTMLElement | null>,
+  containerElement: HTMLElement | null,
   isReady: boolean,
 ): DetectedSuggestion[] {
-  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
-    null,
-  );
-
-  useEffect(() => {
-    setContainerElement(containerRef.current);
-  }, [containerRef]);
-
   return useMemo(() => {
     if (!containerElement || !isReady) {
       return [];
@@ -41,16 +40,57 @@ export function useSuggestionDetection(
         const elementText = element.textContent || '';
 
         if (isSuggestionPattern(elementText)) {
-          const suggestionText = extractSuggestionText(elementText);
+          const matches = extractAllSuggestionMatches(elementText);
           if (
-            suggestionText &&
-            suggestionText.length > 0 &&
-            validateSuggestionElement(element, elementText)
+            matches.length === 0 ||
+            !validateSuggestionElement(element, elementText)
           ) {
-            detected.push({ element, suggestionText });
+            return;
+          }
+          const first = matches[0];
+          if (!first) return;
+          if (matches.length === 1) {
+            detected.push({
+              element,
+              suggestionText: first.text,
+              suggestionMetadata: first.metadata,
+            });
+          } else {
+            detected.push({
+              element,
+              suggestionText: first.text,
+              suggestionMatches: matches,
+            });
           }
         }
       });
+
+      if (detected.length > 0) {
+        detected[detected.length - 1] = {
+          ...detected[detected.length - 1]!,
+          isEndBlock: true,
+        };
+      }
+
+      if (detected.length > 0) {
+        const withMeta = detected.filter(
+          (d) =>
+            d.suggestionMetadata?.requiresDatasource ||
+            (d.suggestionMatches?.some((m) => m.metadata?.requiresDatasource) ??
+              false),
+        );
+        console.log('[SuggestionFlow] detection', {
+          count: detected.length,
+          withRequiresDatasource: withMeta.length,
+          sample: detected[0]
+            ? {
+                text: detected[0].suggestionText?.slice(0, 40),
+                metadata: detected[0].suggestionMetadata,
+                hasMatches: !!detected[0].suggestionMatches?.length,
+              }
+            : null,
+        });
+      }
 
       return detected;
     } catch (error) {

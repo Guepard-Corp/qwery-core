@@ -4,6 +4,8 @@ import type { Components } from 'react-markdown';
 import { cn } from '../../lib/utils';
 import { createContext, useContext, useEffect } from 'react';
 import { MarkdownContext } from './message-parts';
+
+const QWERY_DATASOURCE_PREFIX = 'qwery-datasource:';
 import { SuggestionButton } from './suggestion-button';
 import { UIMessage } from 'ai';
 import { Sparkles, Copy, Download } from 'lucide-react';
@@ -156,28 +158,73 @@ export const createAgentMarkdownComponents = (): Components => {
       <p
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 text-base leading-7 break-words',
           className,
         )}
       />
     ),
-    a: ({ className, href, ...props }) => (
-      <a
-        {...props}
-        href={href}
-        className={cn(
-          'text-primary decoration-primary/50 hover:decoration-primary overflow-wrap-anywhere break-words underline underline-offset-2 transition',
-          className,
-        )}
-        target="_blank"
-        rel="noreferrer"
-      />
-    ),
+    a: ({ className, href, children, ...props }) => {
+      const LinkComponent = () => {
+        const markdownContext = useContext(MarkdownContext);
+        const isDatasourceLink =
+          typeof href === 'string' && href.startsWith(QWERY_DATASOURCE_PREFIX);
+        const datasourceId = isDatasourceLink
+          ? href.slice(QWERY_DATASOURCE_PREFIX.length).trim()
+          : '';
+        const name = extractTextFromChildren(children) || '';
+
+        if (
+          isDatasourceLink &&
+          datasourceId &&
+          markdownContext.onDatasourceNameClick
+        ) {
+          const { type: _type, ...restProps } = props as {
+            type?: string;
+            [k: string]: unknown;
+          };
+          const tooltip =
+            markdownContext.getDatasourceTooltip?.(datasourceId) ?? name;
+          return (
+            <button
+              type="button"
+              {...restProps}
+              title={tooltip || undefined}
+              className={cn(
+                'text-primary decoration-primary/50 hover:decoration-primary overflow-wrap-anywhere font-inherit cursor-pointer border-0 bg-transparent p-0 break-words underline underline-offset-2 transition',
+                className,
+              )}
+              onClick={(e) => {
+                e.preventDefault();
+                markdownContext.onDatasourceNameClick?.(datasourceId, name);
+              }}
+            >
+              {children}
+            </button>
+          );
+        }
+
+        return (
+          <a
+            {...props}
+            href={href}
+            className={cn(
+              'text-primary decoration-primary/50 hover:decoration-primary overflow-wrap-anywhere break-words underline underline-offset-2 transition',
+              className,
+            )}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {children}
+          </a>
+        );
+      };
+      return <LinkComponent />;
+    },
     ul: ({ className, children, ...props }) => (
       <ul
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 min-w-0 list-disc pl-6 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 min-w-0 list-disc pl-6 text-base leading-7 break-words',
           className,
         )}
       >
@@ -188,7 +235,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <ol
         {...props}
         className={cn(
-          'overflow-wrap-anywhere my-2 min-w-0 list-decimal pl-6 text-sm leading-6 break-words',
+          'overflow-wrap-anywhere my-2 min-w-0 list-decimal pl-6 text-base leading-7 break-words',
           className,
         )}
       >
@@ -237,7 +284,7 @@ export const createAgentMarkdownComponents = (): Components => {
             <li
               {...props}
               className={cn(
-                'marker:text-muted-foreground overflow-wrap-anywhere relative my-1 min-w-0 pr-6 text-sm leading-6 break-words',
+                'marker:text-muted-foreground overflow-wrap-anywhere relative my-1 min-w-0 pr-6 text-base leading-7 break-words',
                 className,
               )}
             >
@@ -251,7 +298,7 @@ export const createAgentMarkdownComponents = (): Components => {
           <li
             {...props}
             className={cn(
-              'marker:text-muted-foreground overflow-wrap-anywhere my-1 min-w-0 text-sm leading-6 break-words',
+              'marker:text-muted-foreground overflow-wrap-anywhere my-1 min-w-0 text-base leading-7 break-words',
               className,
             )}
           >
@@ -265,7 +312,7 @@ export const createAgentMarkdownComponents = (): Components => {
       <blockquote
         {...props}
         className={cn(
-          'border-border/60 text-muted-foreground overflow-wrap-anywhere my-4 border-l-2 pl-4 text-sm break-words italic',
+          'border-border/60 text-muted-foreground overflow-wrap-anywhere my-4 border-l-2 pl-4 text-base break-words italic',
           className,
         )}
       />
@@ -324,16 +371,13 @@ export const createAgentMarkdownComponents = (): Components => {
         <div
           data-code-block-container="true"
           className={cn(
-            'group relative min-w-0 overflow-hidden rounded-md',
+            'group relative min-w-0 overflow-hidden rounded-md bg-[#2f2f2f]',
             'w-full max-w-[28rem]',
             CHAT_UI_MARGINS,
           )}
         >
           <div
-            className={cn(
-              'code-block-header rounded-t-md bg-[hsl(0_0%_2%)] px-3 py-2 dark:bg-[hsl(0_0%_2%)]',
-            )}
-            style={{ backgroundColor: 'hsl(0, 0%, 2%)' }}
+            className="code-block-header rounded-t-md bg-[#2f2f2f] px-3 py-2"
             data-code-block-header="true"
           >
             <div className="flex items-center justify-between">
@@ -362,19 +406,9 @@ export const createAgentMarkdownComponents = (): Components => {
           </div>
           <pre
             className={cn(
-              'text-foreground relative my-0 w-full max-w-full overflow-x-auto rounded-t-none rounded-b-md p-4 text-base',
-              codeIsSQL
-                ? 'bg-[hsl(0_0%_2%)] dark:bg-[hsl(0_0%_2%)] [&_*]:!bg-transparent [&_code]:!bg-transparent [&_span]:!bg-transparent'
-                : 'bg-muted/80 dark:bg-muted/90',
+              'text-foreground scrollbar-hidden relative my-0 w-full max-w-full overflow-x-auto rounded-t-none rounded-b-md bg-[#2f2f2f] p-4 text-base [&_*]:!bg-transparent [&_code]:!bg-transparent [&_span]:!bg-transparent',
               className,
             )}
-            style={
-              codeIsSQL
-                ? {
-                    backgroundColor: 'hsl(0, 0%, 2%)',
-                  }
-                : undefined
-            }
           >
             <code
               {...props}
@@ -396,7 +430,7 @@ export const createAgentMarkdownComponents = (): Components => {
     },
     table: ({ className, ...props }) => (
       <div
-        className="my-4 w-full max-w-full min-w-0 overflow-x-auto"
+        className="scrollbar-hidden my-4 w-full max-w-full min-w-0 overflow-x-auto"
         style={{ maxWidth: '100%' }}
       >
         <table
