@@ -1,6 +1,20 @@
 'use client';
 
-import type { DesktopApi, FileDialogOptions } from '@qwery/shared/desktop';
+interface FileDialogOptions {
+  title?: string;
+  defaultPath?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
+
+interface DesktopApi {
+  getAppVersion: () => Promise<string>;
+  platform: string;
+  minimize: () => Promise<void>;
+  maximize: () => Promise<void>;
+  close: () => Promise<void>;
+  openFile: (options?: FileDialogOptions) => Promise<string | null>;
+  saveFile: (options?: FileDialogOptions) => Promise<string | null>;
+}
 
 export function createDesktopApi(): DesktopApi {
   const api: DesktopApi & { _platform?: string } = {
