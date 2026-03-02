@@ -94,6 +94,10 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
+    fs: {
+      // Allow serving files from the monorepo root (usually two levels up)
+      allow: ['../../'],
+    },
     port: 1420,
     strictPort: true,
     host: host || false,
@@ -119,9 +123,33 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**", "**/target/**"],
     },
   },
+  optimizeDeps: {
+    // Force a deep scan of both apps on boot
+    entries: [
+      "./app/root.tsx",
+      "../web/app/routes/**/*.{ts,tsx}",
+    ],
+    holdUntilCrawlEnd: true,
+    // Exclude heavy node/binary deps from optimization
+    exclude: [
+      "@electric-sql/pglite",
+      "@duckdb/duckdb-wasm",
+      "fsevents",
+    ],
+    // Only include packages that Vite consistently misses
+    include: [
+      "react-hook-form",
+      "zod",
+      "@radix-ui/react-context-menu",
+      "recharts",
+    ],
+  },
   build: {
     sourcemap: false,
     manifest: true,
+    worker: {
+      format: 'es',
+    },
     rollupOptions: {
       onwarn(warning, warn) {
         if (
@@ -133,32 +161,5 @@ export default defineConfig(async () => ({
         warn(warning);
       },
     },
-    optimizeDeps: {
-    exclude: [
-      'fsevents',
-      '@electric-sql/pglite',
-      '@duckdb/node-api',
-      '@duckdb/duckdb-wasm',
-      '@qwery/agent-factory-sdk',
-    ],
-    include: [
-      '@codemirror/state',
-      '@codemirror/view',
-      '@codemirror/commands',
-      '@codemirror/language',
-      '@codemirror/lang-sql',
-      '@codemirror/theme-one-dark',
-      '@uiw/react-codemirror',
-      'i18next',
-      'react-i18next',
-      'ai',
-    ],
-    entries: [
- 
-    ],
-    worker: {
-      format: 'es',
-    },
-  },
   },
 }));

@@ -26,6 +26,10 @@ pub fn run() {
                 .resolve("", tauri::path::BaseDirectory::Resource)
                 .expect("failed to resolve resource dir");
             let node_modules_path = resource_dir.join("node_modules");
+            let extensions_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("target")
+                .join("debug")
+                .join("extensions");
 
             println!("Node modules path: {}", node_modules_path.to_str().unwrap());
 
@@ -63,6 +67,10 @@ pub fn run() {
                 .args([api_server_path.to_str().expect("api-server path")])
                 .envs(std::env::vars_os())
                 .env("QWERY_STORAGE_DIR", storage_dir.to_str().expect("storage path"))
+                .env(
+                    "QWERY_EXTENSIONS_PATH",
+                    extensions_dir.to_str().expect("extensions path"),
+                )
                 .env("VITE_QWERY_RUNTIME", "DESKTOP")
                 .env("LOGGER", "pino")
                 .spawn()
