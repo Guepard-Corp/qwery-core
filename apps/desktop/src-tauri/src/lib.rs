@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use tauri::menu::{Menu, MenuItemBuilder, SubmenuBuilder};
 use tauri::Manager;
 use tauri_plugin_shell::process::CommandEvent;
 
@@ -53,11 +52,16 @@ pub fn run() {
                 .join(".qwery")
                 .join("storage");
 
+            // Load .env from app root so API server gets AZURE_* etc. (Tauri may not inherit from dotenv-cli)
+            let env_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join(".env");
+            let _ = dotenvy::from_path(env_path);
+
             let (mut rx, _child) = app
                 .shell()
                 .sidecar("bun")
                 .expect("failed to create bun command")
                 .args([api_server_path.to_str().expect("api-server path")])
+                .envs(std::env::vars_os())
                 .env("QWERY_STORAGE_DIR", storage_dir.to_str().expect("storage path"))
                 .env("VITE_QWERY_RUNTIME", "DESKTOP")
                 .env("LOGGER", "pino")

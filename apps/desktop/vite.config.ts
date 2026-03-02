@@ -154,8 +154,7 @@ export default defineConfig(async () => ({
       'ai',
     ],
     entries: [
-      './app/root.tsx',
-      './app/routes/**/*.tsx',
+ 
     ],
     worker: {
       format: 'es',
