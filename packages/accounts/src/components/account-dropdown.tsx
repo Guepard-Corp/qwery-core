@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@qwery/ui/dropdown-menu';
 import { ProfileAvatar } from '@qwery/ui/profile-avatar';
+import { SubMenuModeToggle } from '@qwery/ui/mode-toggle';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
 
@@ -135,6 +136,8 @@ export function AccountDropdown({
             </span>
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <SubMenuModeToggle />
         <DropdownMenuSeparator />
         <div className="px-2 py-1.5">
           <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">

@@ -5,7 +5,16 @@ import { useLocation, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { Search, Plus, MessageCircle, Notebook } from 'lucide-react';
 
-import { SidebarGroup, SidebarGroupContent } from '@qwery/ui/shadcn-sidebar';
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarSeparator,
+  useSidebar,
+} from '@qwery/ui/shadcn-sidebar';
+import { cn } from '@qwery/ui/utils';
 import { Input } from '@qwery/ui/input';
 import {
   DropdownMenu,
@@ -42,6 +51,8 @@ import {
 import type { NotebookOutput } from '@qwery/domain/usecases';
 
 export function ProjectChatNotebookSidebarContent() {
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
   const { t } = useTranslation('common');
   const projectContext = useProjectOptional();
   const { workspace, repositories } = useWorkspace();
@@ -251,7 +262,12 @@ export function ProjectChatNotebookSidebarContent() {
 
   return (
     <>
-      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <SidebarGroup
+        className={cn(
+          'overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed ? 'max-h-0 !py-0 opacity-0' : 'max-h-24 opacity-100',
+        )}
+      >
         <SidebarGroupContent>
           <div className="relative">
             <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
@@ -293,7 +309,48 @@ export function ProjectChatNotebookSidebarContent() {
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
-      <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+
+      {/* Collapsed-mode icon buttons for New Chat / New Notebook */}
+      <SidebarGroup
+        className={cn(
+          'overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed
+            ? 'max-h-40 opacity-100'
+            : 'pointer-events-none max-h-0 !py-0 opacity-0',
+        )}
+      >
+        <SidebarSeparator className="mb-1" />
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="New Chat"
+                onClick={onNewConversation}
+                className="justify-center"
+              >
+                <MessageCircle className="size-4" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            {!isSimpleMode && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="New Notebook"
+                  onClick={onNewNotebook}
+                  className="justify-center"
+                >
+                  <Notebook className="size-4" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <div
+        className={cn(
+          'flex flex-col overflow-hidden transition-[opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100',
+        )}
+      >
         <SidebarConversationHistory
           conversations={mappedConversations}
           isLoading={isProjectLoading || isLoadingConversations}

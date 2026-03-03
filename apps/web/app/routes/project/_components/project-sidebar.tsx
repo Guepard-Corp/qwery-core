@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { PanelRightOpen } from 'lucide-react';
 
 import {
@@ -22,21 +22,15 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
 import { ProjectChatNotebookSidebarContent } from './project-chat-notebook-sidebar-content';
 
-const EXPAND_CLICK_DURATION_MS = 150;
-
 export function ProjectSidebar() {
   const { projectSlug } = useProject();
   const { workspace } = useWorkspace();
-  const { toggleSidebar } = useSidebar();
-  const [isExpandingClick, setIsExpandingClick] = useState(false);
+  const { toggleSidebar, state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
   const isSimpleMode = workspace.mode === WorkspaceModeEnum.SIMPLE;
 
   const handleExpandClick = useCallback(() => {
-    setIsExpandingClick(true);
-    setTimeout(() => {
-      toggleSidebar();
-      setIsExpandingClick(false);
-    }, EXPAND_CLICK_DURATION_MS);
+    toggleSidebar();
   }, [toggleSidebar]);
 
   const navigationConfig = useMemo(() => {
@@ -86,15 +80,14 @@ export function ProjectSidebar() {
       >
         <div
           className={cn(
-            'flex size-9 shrink-0 items-center justify-center transition-opacity duration-200',
-            'group-data-[collapsible=icon]:group/logoarea group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:cursor-pointer',
+            'group/logoarea flex size-9 shrink-0 items-center justify-center transition-opacity duration-200',
+            'group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:cursor-pointer',
           )}
         >
           <AppLogo
             className={cn(
               'h-6 w-6 shrink-0 transition-opacity duration-200',
               'group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:z-0 group-data-[collapsible=icon]:group-hover/logoarea:opacity-0',
-              isExpandingClick && 'opacity-0',
             )}
           />
           <Button
@@ -103,7 +96,6 @@ export function ProjectSidebar() {
             className={cn(
               'hidden h-7 w-7 shrink-0 rounded-md transition-opacity duration-200',
               'group-data-[collapsible=icon]:hover:bg-sidebar-accent group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:inset-0 group-data-[collapsible=icon]:z-10 group-data-[collapsible=icon]:!flex group-data-[collapsible=icon]:size-full group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:group-hover/logoarea:opacity-100',
-              isExpandingClick && 'opacity-100',
             )}
             onClick={handleExpandClick}
             title="Expand sidebar"
@@ -115,8 +107,10 @@ export function ProjectSidebar() {
         <SidebarTrigger
           title="Collapse sidebar"
           className={cn(
-            'transition-opacity duration-200 group-data-[collapsible=icon]:hidden',
-            'group-data-[state=expanded]:animate-in group-data-[state=expanded]:fade-in group-data-[state=expanded]:duration-200',
+            'transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            isCollapsed
+              ? 'pointer-events-none -translate-x-1 opacity-0'
+              : 'translate-x-0 opacity-100',
           )}
         />
       </SidebarHeader>
@@ -126,7 +120,12 @@ export function ProjectSidebar() {
           'group-data-[collapsible=icon]:px-3 group-data-[collapsible=icon]:py-1.5',
         )}
       >
-        <div className="mt-2 group-data-[collapsible=icon]:hidden">
+        <div
+          className={cn(
+            'overflow-hidden transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            isCollapsed ? 'max-h-0 opacity-0' : 'mt-2 max-h-24 opacity-100',
+          )}
+        >
           <SidebarOrgSelector />
         </div>
         <SidebarNavigation config={navigationConfig} />

@@ -67,16 +67,20 @@ export function SidebarOrgSelector() {
         >
           <div
             className={cn(
-              'bg-sidebar-accent/50 flex size-8 shrink-0 items-center justify-center rounded-md border',
+              'bg-sidebar-accent/50 relative flex size-8 shrink-0 items-center justify-center rounded-md border',
               'group-data-[collapsible=icon]:size-7',
             )}
           >
-            <Building2 className="text-sidebar-foreground/80 size-4 group-data-[collapsible=icon]:size-3.5" />
+            <Building2 className="text-sidebar-foreground/80 size-4 transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0" />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <Plus className="text-sidebar-foreground/80 size-4 opacity-0 transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-100" />
+            </div>
           </div>
           <div
             className={cn(
               'flex min-w-0 flex-1 flex-col truncate text-left',
-              'group-data-[collapsible=icon]:hidden',
+              'transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              'group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0',
             )}
           >
             <span className="text-muted-foreground truncate text-sm font-medium">
@@ -86,7 +90,6 @@ export function SidebarOrgSelector() {
               {t('sidebar.createOrganization')}
             </span>
           </div>
-          <Plus className="text-muted-foreground size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
         </button>
         <OrganizationDialog
           open={showCreateDialog}
@@ -119,12 +122,13 @@ export function SidebarOrgSelector() {
             <Building2 className="text-sidebar-foreground/80 size-4 group-data-[collapsible=icon]:size-3.5" />
           </div>
           {organizations.isLoading ? (
-            <Skeleton className="h-5 w-24 flex-1 group-data-[collapsible=icon]:hidden" />
+            <Skeleton className="h-5 w-24 flex-1 transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[collapsible=icon]:opacity-0" />
           ) : (
             <div
               className={cn(
                 'flex min-w-0 flex-1 flex-col truncate text-left',
-                'group-data-[collapsible=icon]:hidden',
+                'transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                'group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0',
               )}
             >
               <span
@@ -141,7 +145,8 @@ export function SidebarOrgSelector() {
           <ChevronsUpDown
             className={cn(
               'text-muted-foreground size-4 shrink-0',
-              'group-data-[collapsible=icon]:hidden',
+              'transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              'group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0',
             )}
           />
         </DropdownMenuTrigger>

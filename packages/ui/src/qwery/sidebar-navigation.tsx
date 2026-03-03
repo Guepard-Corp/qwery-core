@@ -207,7 +207,12 @@ export function SidebarNavigation({
                     condition={groupState.collapsible}
                     fallback={
                       <SidebarGroupLabel
-                        className={cn('flex-1', { hidden: isCollapsed })}
+                        className={cn(
+                          'flex-1 transition-opacity duration-300',
+                          {
+                            'pointer-events-none opacity-0': isCollapsed,
+                          },
+                        )}
                       >
                         <SidebarLabelText
                           label={item.label}
@@ -217,7 +222,9 @@ export function SidebarNavigation({
                     }
                   >
                     <SidebarGroupLabel
-                      className={cn('flex-1', { hidden: isCollapsed })}
+                      className={cn('flex-1 transition-opacity duration-300', {
+                        'pointer-events-none opacity-0': isCollapsed,
+                      })}
                       asChild
                     >
                       <CollapsibleTrigger className="flex items-center gap-1">
@@ -375,9 +382,8 @@ export function SidebarNavigation({
                                       <ChevronDown
                                         className={cn(
                                           'ml-auto size-4 transition-all duration-200 group-data-[state=open]/collapsible:rotate-180',
-                                          {
-                                            'opacity-0': isCollapsed,
-                                          },
+                                          isCollapsed &&
+                                            'ml-0 !w-0 overflow-hidden opacity-0',
                                         )}
                                       />
                                     </Link>
@@ -388,9 +394,8 @@ export function SidebarNavigation({
                                       <ChevronDown
                                         className={cn(
                                           'ml-auto size-4 transition-all duration-200 group-data-[state=open]/collapsible:rotate-180',
-                                          {
-                                            'opacity-0': isCollapsed,
-                                          },
+                                          isCollapsed &&
+                                            'ml-0 !w-0 overflow-hidden opacity-0',
                                         )}
                                       />
                                     </div>

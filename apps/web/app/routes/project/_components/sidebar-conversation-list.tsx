@@ -191,14 +191,31 @@ export function SidebarConversationHistory({
   }, [filteredConversations, bookmarkedIdsSet, selectionOrder]);
 
   const MAX_SIDEBAR_CHATS = 6;
-  const limitedPinnedConversations = useMemo(
-    () => pinnedConversations.slice(0, MAX_SIDEBAR_CHATS),
-    [pinnedConversations],
-  );
-  const limitedUnpinnedConversations = useMemo(
-    () => unpinnedConversations.slice(0, MAX_SIDEBAR_CHATS),
-    [unpinnedConversations],
-  );
+  const limitedPinnedConversations = useMemo(() => {
+    const base = pinnedConversations.slice(0, MAX_SIDEBAR_CHATS);
+    if (currentConversation && bookmarkedIdsSet.has(currentConversation.id)) {
+      const alreadyIncluded = base.some(
+        (conversation) => conversation.id === currentConversation.id,
+      );
+      if (!alreadyIncluded) {
+        return [...base, currentConversation];
+      }
+    }
+    return base;
+  }, [pinnedConversations, currentConversation, bookmarkedIdsSet]);
+
+  const limitedUnpinnedConversations = useMemo(() => {
+    const base = unpinnedConversations.slice(0, MAX_SIDEBAR_CHATS);
+    if (currentConversation && !bookmarkedIdsSet.has(currentConversation.id)) {
+      const alreadyIncluded = base.some(
+        (conversation) => conversation.id === currentConversation.id,
+      );
+      if (!alreadyIncluded) {
+        return [...base, currentConversation];
+      }
+    }
+    return base;
+  }, [unpinnedConversations, currentConversation, bookmarkedIdsSet]);
 
   const handleStartEdit = (conversationId: string, currentTitle: string) => {
     setEditingId(conversationId);
@@ -443,12 +460,7 @@ export function SidebarConversationHistory({
                                         </button>
                                       </div>
                                     ) : (
-                                      <>
-                                        {bookmarkedIdsSet.has(
-                                          conversation.id,
-                                        ) && (
-                                          <Pin className="size-3 shrink-0 fill-current text-[#ffcb51]" />
-                                        )}
+                                      <div className="flex w-full min-w-0 items-center gap-2">
                                         <span
                                           className={cn(
                                             'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
@@ -461,86 +473,94 @@ export function SidebarConversationHistory({
                                             conversation.title,
                                           )}
                                         </span>
-                                        <div className="relative shrink-0">
-                                          {processingConversationSlug ===
-                                          conversation.slug ? (
-                                            <span
-                                              className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover/row:opacity-0"
-                                              aria-label={t(
-                                                'sidebar.agentProcessing',
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <div className="relative flex items-center justify-center">
+                                            {bookmarkedIdsSet.has(
+                                              conversation.id,
+                                            ) &&
+                                              !isActive && (
+                                                <Pin className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 fill-current text-[#ffcb51] transition-opacity group-hover/row:opacity-0" />
                                               )}
-                                              title={t(
-                                                'sidebar.agentProcessing',
-                                              )}
-                                            />
-                                          ) : isActive ? (
-                                            <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover/row:opacity-0" />
-                                          ) : null}
-                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <button
-                                                onClick={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover/row:opacity-100"
-                                              >
-                                                <MoreHorizontal className="size-4" />
-                                              </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleStartEdit(
-                                                    conversation.id,
-                                                    conversation.title,
-                                                  );
-                                                }}
-                                              >
-                                                <Pencil className="mr-2 size-4" />
-                                                <Trans i18nKey="common:sidebar.rename" />
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleBookmark(
-                                                    conversation.id,
-                                                  );
-                                                }}
-                                              >
-                                                <Bookmark
-                                                  className={cn(
-                                                    'mr-2 size-4',
-                                                    bookmarkedIdsSet.has(
-                                                      conversation.id,
-                                                    ) && 'fill-current',
-                                                  )}
-                                                />
-                                                {bookmarkedIdsSet.has(
-                                                  conversation.id,
-                                                ) ? (
-                                                  <Trans i18nKey="common:sidebar.unpin" />
-                                                ) : (
-                                                  <Trans i18nKey="common:sidebar.pinChat" />
+                                            {processingConversationSlug ===
+                                            conversation.slug ? (
+                                              <span
+                                                className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover/row:opacity-0"
+                                                aria-label={t(
+                                                  'sidebar.agentProcessing',
                                                 )}
-                                              </DropdownMenuItem>
-                                              <DropdownMenuSeparator />
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleDeleteClick(
+                                                title={t(
+                                                  'sidebar.agentProcessing',
+                                                )}
+                                              />
+                                            ) : isActive ? (
+                                              <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover/row:opacity-0" />
+                                            ) : null}
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <button
+                                                  onClick={(e) =>
+                                                    e.stopPropagation()
+                                                  }
+                                                  className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover/row:opacity-100"
+                                                >
+                                                  <MoreHorizontal className="size-4" />
+                                                </button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleStartEdit(
+                                                      conversation.id,
+                                                      conversation.title,
+                                                    );
+                                                  }}
+                                                >
+                                                  <Pencil className="mr-2 size-4" />
+                                                  <Trans i18nKey="common:sidebar.rename" />
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleBookmark(
+                                                      conversation.id,
+                                                    );
+                                                  }}
+                                                >
+                                                  <Bookmark
+                                                    className={cn(
+                                                      'mr-2 size-4',
+                                                      bookmarkedIdsSet.has(
+                                                        conversation.id,
+                                                      ) && 'fill-current',
+                                                    )}
+                                                  />
+                                                  {bookmarkedIdsSet.has(
                                                     conversation.id,
-                                                  );
-                                                }}
-                                                className="text-destructive focus:text-destructive"
-                                              >
-                                                <Trash2 className="mr-2 size-4" />
-                                                <Trans i18nKey="common:sidebar.delete" />
-                                              </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                          </DropdownMenu>
+                                                  ) ? (
+                                                    <Trans i18nKey="common:sidebar.unpin" />
+                                                  ) : (
+                                                    <Trans i18nKey="common:sidebar.pinChat" />
+                                                  )}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteClick(
+                                                      conversation.id,
+                                                    );
+                                                  }}
+                                                  className="text-destructive focus:text-destructive"
+                                                >
+                                                  <Trash2 className="mr-2 size-4" />
+                                                  <Trans i18nKey="common:sidebar.delete" />
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
                                         </div>
-                                      </>
+                                      </div>
                                     )}
                                   </Link>
                                 </SidebarMenuButton>
@@ -680,12 +700,7 @@ export function SidebarConversationHistory({
                                         </button>
                                       </div>
                                     ) : (
-                                      <>
-                                        {bookmarkedIdsSet.has(
-                                          conversation.id,
-                                        ) && (
-                                          <Pin className="size-3 shrink-0 fill-current text-[#ffcb51]" />
-                                        )}
+                                      <div className="flex w-full min-w-0 items-center gap-2">
                                         <span
                                           className={cn(
                                             'min-w-0 flex-1 truncate text-sm font-medium transition-all duration-300',
@@ -698,86 +713,94 @@ export function SidebarConversationHistory({
                                             conversation.title,
                                           )}
                                         </span>
-                                        <div className="relative shrink-0">
-                                          {processingConversationSlug ===
-                                          conversation.slug ? (
-                                            <span
-                                              className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover/row:opacity-0"
-                                              aria-label={t(
-                                                'sidebar.agentProcessing',
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <div className="relative flex items-center justify-center">
+                                            {bookmarkedIdsSet.has(
+                                              conversation.id,
+                                            ) &&
+                                              !isActive && (
+                                                <Pin className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 fill-current text-[#ffcb51] transition-opacity group-hover/row:opacity-0" />
                                               )}
-                                              title={t(
-                                                'sidebar.agentProcessing',
-                                              )}
-                                            />
-                                          ) : isActive ? (
-                                            <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover/row:opacity-0" />
-                                          ) : null}
-                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <button
-                                                onClick={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                                className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover/row:opacity-100"
-                                              >
-                                                <MoreHorizontal className="size-4" />
-                                              </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleStartEdit(
-                                                    conversation.id,
-                                                    conversation.title,
-                                                  );
-                                                }}
-                                              >
-                                                <Pencil className="mr-2 size-4" />
-                                                <Trans i18nKey="common:sidebar.rename" />
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleBookmark(
-                                                    conversation.id,
-                                                  );
-                                                }}
-                                              >
-                                                <Bookmark
-                                                  className={cn(
-                                                    'mr-2 size-4',
-                                                    bookmarkedIdsSet.has(
-                                                      conversation.id,
-                                                    ) && 'fill-current',
-                                                  )}
-                                                />
-                                                {bookmarkedIdsSet.has(
-                                                  conversation.id,
-                                                ) ? (
-                                                  <Trans i18nKey="common:sidebar.unpin" />
-                                                ) : (
-                                                  <Trans i18nKey="common:sidebar.pinChat" />
+                                            {processingConversationSlug ===
+                                            conversation.slug ? (
+                                              <span
+                                                className="absolute top-1/2 left-1/2 size-2 shrink-0 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 transition-opacity group-hover/row:opacity-0"
+                                                aria-label={t(
+                                                  'sidebar.agentProcessing',
                                                 )}
-                                              </DropdownMenuItem>
-                                              <DropdownMenuSeparator />
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleDeleteClick(
+                                                title={t(
+                                                  'sidebar.agentProcessing',
+                                                )}
+                                              />
+                                            ) : isActive ? (
+                                              <div className="bg-primary absolute top-1/2 left-1/2 size-1.5 shrink-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity group-hover/row:opacity-0" />
+                                            ) : null}
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <button
+                                                  onClick={(e) =>
+                                                    e.stopPropagation()
+                                                  }
+                                                  className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all group-hover/row:opacity-100"
+                                                >
+                                                  <MoreHorizontal className="size-4" />
+                                                </button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleStartEdit(
+                                                      conversation.id,
+                                                      conversation.title,
+                                                    );
+                                                  }}
+                                                >
+                                                  <Pencil className="mr-2 size-4" />
+                                                  <Trans i18nKey="common:sidebar.rename" />
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleBookmark(
+                                                      conversation.id,
+                                                    );
+                                                  }}
+                                                >
+                                                  <Bookmark
+                                                    className={cn(
+                                                      'mr-2 size-4',
+                                                      bookmarkedIdsSet.has(
+                                                        conversation.id,
+                                                      ) && 'fill-current',
+                                                    )}
+                                                  />
+                                                  {bookmarkedIdsSet.has(
                                                     conversation.id,
-                                                  );
-                                                }}
-                                                className="text-destructive focus:text-destructive"
-                                              >
-                                                <Trash2 className="mr-2 size-4" />
-                                                <Trans i18nKey="common:sidebar.delete" />
-                                              </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                          </DropdownMenu>
+                                                  ) ? (
+                                                    <Trans i18nKey="common:sidebar.unpin" />
+                                                  ) : (
+                                                    <Trans i18nKey="common:sidebar.pinChat" />
+                                                  )}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteClick(
+                                                      conversation.id,
+                                                    );
+                                                  }}
+                                                  className="text-destructive focus:text-destructive"
+                                                >
+                                                  <Trash2 className="mr-2 size-4" />
+                                                  <Trans i18nKey="common:sidebar.delete" />
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
                                         </div>
-                                      </>
+                                      </div>
                                     )}
                                   </Link>
                                 </SidebarMenuButton>
