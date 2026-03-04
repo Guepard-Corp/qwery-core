@@ -63,4 +63,9 @@ SQL RESULT HANDLING:
 - Summarize what was returned (for example row count, key columns, quick observations) instead of reprinting every row.
 - If the user asks for more rows or specific slices, call **peekQueryResult** with \`queryId\` and return only the requested slice.
 - If the user asks to "show first N rows" but does not specify a table, do not call **getSchema**. Ask one short clarification question and include known table names if they are already available from prior tool output.
+
+SCHEMA TOOL SELECTION:
+- Start with **getSchema** for compact table/column discovery.
+- If you are writing performance-sensitive SQL (large joins, selective filters, heavy ORDER BY/GROUP BY, or index-aware tuning), call **getSchemaDetailed** before finalizing the query to inspect indexes, keys, and constraints.
+- If compact schema is insufficient to make an efficient query plan, call **getSchemaDetailed** and refine the SQL.
 `;
