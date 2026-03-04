@@ -2,8 +2,6 @@
 
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
-  ArrowDown,
-  ArrowUp,
   Check,
   Database,
   ChevronsUpDown,
@@ -11,7 +9,7 @@ import {
   ChevronRight,
   XIcon,
 } from 'lucide-react';
-import { sortByModifiedAsc, sortByModifiedDesc } from '@qwery/shared/utils';
+import { sortByModifiedDesc } from '@qwery/shared/utils';
 
 import {
   Command,
@@ -65,9 +63,7 @@ export function DatasourceSelector({
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [displayOrderIds, setDisplayOrderIds] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const prevOpenRef = useRef(false);
-  const prevSortOrderRef = useRef<'asc' | 'desc'>('desc');
 
   const placeholderText =
     searchPlaceholder ||
@@ -76,8 +72,6 @@ export function DatasourceSelector({
     });
 
   const orderIdsForOpen = useMemo(() => {
-    const sortByModified =
-      sortOrder === 'desc' ? sortByModifiedDesc : sortByModifiedAsc;
     const selected = datasources.filter((ds) =>
       selectedDatasources.includes(ds.id),
     );
@@ -85,10 +79,10 @@ export function DatasourceSelector({
       (ds) => !selectedDatasources.includes(ds.id),
     );
     return [
-      ...sortByModified(selected).map((ds) => ds.id),
-      ...sortByModified(unselected).map((ds) => ds.id),
+      ...sortByModifiedDesc(selected).map((ds) => ds.id),
+      ...sortByModifiedDesc(unselected).map((ds) => ds.id),
     ];
-  }, [datasources, selectedDatasources, sortOrder]);
+  }, [datasources, selectedDatasources]);
 
   useEffect(() => {
     if (open && !prevOpenRef.current) {
@@ -98,15 +92,6 @@ export function DatasourceSelector({
     }
     prevOpenRef.current = open;
   }, [open, orderIdsForOpen]);
-
-  useEffect(() => {
-    if (open && prevSortOrderRef.current !== sortOrder) {
-      prevSortOrderRef.current = sortOrder;
-      setTimeout(() => {
-        setDisplayOrderIds(orderIdsForOpen);
-      }, 0);
-    }
-  }, [open, sortOrder, orderIdsForOpen]);
 
   const filteredAndSortedDatasources = useMemo(() => {
     let filtered = datasources;

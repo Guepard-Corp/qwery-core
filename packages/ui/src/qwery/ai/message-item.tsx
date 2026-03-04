@@ -952,17 +952,7 @@ function MessageItemComponent({
                   default:
                     if (part.type.startsWith('tool-')) {
                       const toolPart = part as ToolUIPart;
-                      const inProgressStates = new Set([
-                        'input-streaming',
-                        'input-available',
-                        'approval-requested',
-                      ]);
-                      const isToolInProgress = inProgressStates.has(
-                        toolPart.state as string,
-                      );
-
                       const toolPartKey = `${message.id}-${i}`;
-                      const isLastPart = i === message.parts.length - 1;
                       const messageDatasourcesForTool = getMessageDatasources(
                         message,
                         datasources,

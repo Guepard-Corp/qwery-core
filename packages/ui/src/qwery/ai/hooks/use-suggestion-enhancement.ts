@@ -142,8 +142,6 @@ export function useSuggestionEnhancement({
               const parent = node.parentNode;
               if (parent) {
                 parent.removeChild(node);
-              } else {
-                node.parentNode?.removeChild(node);
               }
             });
 
@@ -152,7 +150,6 @@ export function useSuggestionEnhancement({
             .forEach((wrapper) => {
               const parent = wrapper.parentNode;
               if (!parent) {
-                wrapper.parentNode?.removeChild(wrapper);
                 return;
               }
               while (wrapper.firstChild) {

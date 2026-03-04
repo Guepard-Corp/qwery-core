@@ -93,7 +93,7 @@ export function DatasourceBadge({
               <Database className="text-muted-foreground h-6 w-6" />
             )}
           </div>
-            <div className="min-w-0 flex-1 space-y-1">
+          <div className="min-w-0 flex-1 space-y-1">
             <h4 className="text-popover-foreground truncate text-sm leading-tight font-bold tracking-tight">
               {datasource.name || datasource.slug || datasource.id}
             </h4>

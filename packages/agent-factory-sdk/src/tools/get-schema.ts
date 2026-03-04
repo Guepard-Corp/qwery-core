@@ -63,73 +63,99 @@ export const GetSchemaTool = Tool.define('getSchema', {
     let nextTableId = 1;
     let nextSchemaId = 1;
 
-    const results = await Promise.all(
-      attachedDatasources.map(async (datasourceId) => {
-        let datasourceDisplayName: string | undefined;
-        try {
-          const datasource =
-            await repositories.datasource.findById(datasourceId);
-          if (!datasource) {
+    type SchemaResultSuccess = {
+      datasourceId: string;
+      datasource: {
+        id: string;
+        name?: string | null;
+        slug?: string | null;
+        datasource_provider: string;
+        config: unknown;
+      };
+      datasourceDisplayName?: string;
+      metadata: DatasourceMetadata;
+    };
+
+    type SchemaResultError = {
+      datasourceId: string;
+      datasourceDisplayName?: string;
+      error: string;
+    };
+
+    const results: Array<SchemaResultSuccess | SchemaResultError> =
+      await Promise.all(
+        attachedDatasources.map(async (datasourceId) => {
+          let datasourceDisplayName: string | undefined;
+          try {
+            const datasource =
+              await repositories.datasource.findById(datasourceId);
+            if (!datasource) {
+              return {
+                datasourceId,
+                error: 'Datasource not found',
+              };
+            }
+
+            datasourceDisplayName =
+              datasource.name || datasource.slug || datasourceId;
+
+            const extension = ExtensionsRegistry.get(
+              datasource.datasource_provider,
+            ) as DatasourceExtension | undefined;
+            if (!extension?.drivers?.length) {
+              return {
+                datasourceId,
+                datasourceDisplayName,
+                error: `No driver for provider: ${datasource.datasource_provider}`,
+              };
+            }
+
+            const nodeDriver =
+              extension.drivers.find((d) => d.runtime === 'node') ??
+              extension.drivers[0];
+            if (!nodeDriver) {
+              return {
+                datasourceId,
+                datasourceDisplayName,
+                error: `No node driver for provider: ${datasource.datasource_provider}`,
+              };
+            }
+
+            const instance = await getDriverInstance(nodeDriver, {
+              config: datasource.config,
+            });
+
+            const metadata = await instance.metadata();
+            if (typeof instance.close === 'function') {
+              const closeResult = instance.close();
+              if (
+                closeResult &&
+                typeof (closeResult as Promise<unknown>).catch === 'function'
+              ) {
+                void (closeResult as Promise<unknown>).catch(() => {});
+              }
+            }
             return {
               datasourceId,
-              error: 'Datasource not found',
+              datasource,
+              datasourceDisplayName,
+              metadata,
             };
-          }
-
-          datasourceDisplayName =
-            datasource.name || datasource.slug || datasourceId;
-
-          const extension = ExtensionsRegistry.get(
-            datasource.datasource_provider,
-          ) as DatasourceExtension | undefined;
-          if (!extension?.drivers?.length) {
+          } catch (err) {
             return {
               datasourceId,
               datasourceDisplayName,
-              error: `No driver for provider: ${datasource.datasource_provider}`,
+              error: err instanceof Error ? err.message : String(err),
             };
           }
-
-          const nodeDriver =
-            extension.drivers.find((d) => d.runtime === 'node') ??
-            extension.drivers[0];
-          if (!nodeDriver) {
-            return {
-              datasourceId,
-              datasourceDisplayName,
-              error: `No node driver for provider: ${datasource.datasource_provider}`,
-            };
-          }
-
-          const instance = await getDriverInstance(nodeDriver, {
-            config: datasource.config,
-          });
-
-          const metadata = await instance.metadata();
-          if (typeof instance.close === 'function') {
-            void instance.close().catch(() => {});
-          }
-          return {
-            datasourceId,
-            datasource,
-            datasourceDisplayName,
-            metadata,
-          };
-        } catch (err) {
-          return {
-            datasourceId,
-            datasourceDisplayName,
-            error: err instanceof Error ? err.message : String(err),
-          };
-        }
-      }),
-    );
+        }),
+      );
 
     for (const result of results) {
       if ('error' in result) {
         schemaErrors.push({
           datasourceId: result.datasourceId,
-          datasourceName: (result as any).datasourceDisplayName,
+          datasourceName: result.datasourceDisplayName,
           error: result.error!,
         });
         logger.warn(

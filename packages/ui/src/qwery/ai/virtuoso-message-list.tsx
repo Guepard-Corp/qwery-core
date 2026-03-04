@@ -423,7 +423,7 @@ export const VirtuosoMessageList = forwardRef<
     }, 150);
 
     return () => clearTimeout(t);
-  }, [conversationSlug]);
+  }, [conversationSlug, messages.length]);
 
   const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
 

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GetSchemaTool } from '../get-schema';
-import { ExtensionsRegistry } from '@qwery/extensions-sdk';
+import {
+  ExtensionsRegistry,
+  type DatasourceExtension,
+} from '@qwery/extensions-sdk';
 import * as driverLoader from '@qwery/extensions-loader';
+import type { DatasourceMetadata } from '@qwery/domain/entities';
 
 vi.mock('@qwery/shared/logger', () => ({
   getLogger: vi.fn().mockResolvedValue({
@@ -16,16 +20,39 @@ vi.mock('@qwery/extensions-loader', () => ({
   getDriverInstance: vi.fn(),
 }));
 
+type MockDatasource = {
+  id: string;
+  name: string;
+  datasource_provider: string;
+  config: { key: string };
+};
+
+type MockFindByIdFn = ReturnType<typeof vi.fn> &
+  ((id: string) => Promise<MockDatasource | null>);
+
+type MockRepositories = {
+  datasource: {
+    findById: MockFindByIdFn;
+  };
+};
+
+type MockToolContext = {
+  extra: {
+    repositories: MockRepositories;
+    attachedDatasources: string[];
+  };
+};
+
 describe('GetSchemaTool - Parallelism Verification', () => {
-  let mockRepositories: any;
-  let mockContext: any;
+  let mockRepositories: MockRepositories;
+  let mockContext: MockToolContext;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockRepositories = {
       datasource: {
-        findById: vi.fn(),
+        findById: vi.fn() as MockFindByIdFn,
       },
     };
 
@@ -37,9 +64,13 @@ describe('GetSchemaTool - Parallelism Verification', () => {
     };
 
     // Register a mock provider
-    vi.spyOn(ExtensionsRegistry, 'get').mockReturnValue({
-      drivers: [{ runtime: 'node' }],
-    } as any);
+    const mockExtension: Partial<DatasourceExtension> = {
+      drivers: [{ runtime: 'node' } as DatasourceExtension['drivers'][number]],
+    };
+
+    vi.spyOn(ExtensionsRegistry, 'get').mockReturnValue(
+      mockExtension as DatasourceExtension,
+    );
   });
 
   it('should fetch schemas in parallel', async () => {
@@ -86,16 +117,40 @@ describe('GetSchemaTool - Parallelism Verification', () => {
       close: vi.fn(),
     };
 
-    (driverLoader.getDriverInstance as any).mockImplementation(
-      (driver: any, opts: any) => {
-        if (opts.config.key === 'ds1') return Promise.resolve(mockInstance1);
-        if (opts.config.key === 'ds2') return Promise.resolve(mockInstance2);
-        return Promise.resolve(null);
+    const mockedGetDriverInstance =
+      driverLoader.getDriverInstance as unknown as {
+        mockImplementation: (
+          impl: (
+            driver: Parameters<typeof driverLoader.getDriverInstance>[0],
+            context: Parameters<typeof driverLoader.getDriverInstance>[1],
+          ) => Promise<unknown>,
+        ) => unknown;
+      };
+
+    mockedGetDriverInstance.mockImplementation(
+      async (
+        _driver: Parameters<typeof driverLoader.getDriverInstance>[0],
+        context: Parameters<typeof driverLoader.getDriverInstance>[1],
+      ) => {
+        const key = (context.config as { key?: string | undefined } | undefined)
+          ?.key;
+        if (key === 'ds1') return mockInstance1;
+        if (key === 'ds2') return mockInstance2;
+        return null;
       },
     );
 
     const startTime = Date.now();
-    const result = await (GetSchemaTool as any).execute({}, mockContext);
+    const result = (await (
+      GetSchemaTool as unknown as {
+        execute: (
+          params: unknown,
+          ctx: MockToolContext,
+        ) => Promise<{
+          schema: DatasourceMetadata;
+        }>;
+      }
+    ).execute({}, mockContext)) as { schema: DatasourceMetadata };
     const endTime = Date.now();
 
     const duration = endTime - startTime;

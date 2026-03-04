@@ -108,6 +108,7 @@ export function SchemaVisualizer({
   onDatasourceNameClick,
   onTableNameClick,
 }: SchemaVisualizerProps) {
+  const isMinimal = variant === 'minimal';
   const groupedTables = useMemo(() => {
     const groups: Record<string, TableWithColumns[]> = {};
     const filteredTables = (schema.tables ?? []).filter((t) => {
@@ -140,46 +141,6 @@ export function SchemaVisualizer({
   >({});
 
   const hasTables = (schema?.tables?.length ?? 0) > 0;
-  if (!schema || !hasTables || datasourceNames.length === 0) {
-    return (
-      <div
-        className={cn(
-          'flex flex-col items-center justify-center text-center',
-          variant === 'minimal' ? 'p-5' : 'p-10',
-          className,
-        )}
-      >
-        <Database
-          className={cn(
-            'text-muted-foreground opacity-50',
-            variant === 'minimal' ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
-          )}
-        />
-        <h3
-          className={cn(
-            'text-foreground mb-2 font-semibold',
-            variant === 'minimal' ? 'text-sm' : 'text-base',
-          )}
-        >
-          <Trans
-            i18nKey="common:schema.noSchemaDataAvailable"
-            defaults="No schema data available"
-          />
-        </h3>
-        <p
-          className={cn(
-            'text-muted-foreground',
-            variant === 'minimal' ? 'text-xs' : 'text-sm',
-          )}
-        >
-          <Trans
-            i18nKey="common:schema.schemaEmptyOrNotLoaded"
-            defaults="The schema information is empty or could not be loaded."
-          />
-        </p>
-      </div>
-    );
-  }
 
   const getViewMode = (schemaKey: string) =>
     viewModeBySchema[schemaKey] ?? 'card';
@@ -226,11 +187,8 @@ export function SchemaVisualizer({
     (provider?: string) => {
       if (!provider || !pluginLogoMap) return undefined;
       try {
-        if (typeof pluginLogoMap.get === 'function') {
-          return pluginLogoMap.get(provider);
-        }
-        return (pluginLogoMap as any)[provider];
-      } catch (e) {
+        return pluginLogoMap.get(provider);
+      } catch {
         return undefined;
       }
     },
@@ -257,37 +215,69 @@ export function SchemaVisualizer({
     return map;
   }, [datasources, getPluginIcon]);
 
-  return (
-    <div
-      className={cn(
-        'flex flex-col',
-        variant === 'minimal' ? 'gap-4' : 'gap-6',
-        className,
-      )}
-    >
-      {schemaErrors.length > 0 && (
-        <div
+  if (!schema || !hasTables || datasourceNames.length === 0) {
+    return (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center text-center',
+          isMinimal ? 'p-5' : 'p-10',
+          className,
+        )}
+      >
+        <Database
           className={cn(
-            'flex flex-col gap-2',
-            variant === 'minimal' ? 'mb-2' : 'mb-4',
+            'text-muted-foreground opacity-50',
+            isMinimal ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
+          )}
+        />
+        <h3
+          className={cn(
+            'text-foreground mb-2 font-semibold',
+            isMinimal ? 'text-sm' : 'text-base',
           )}
         >
+          <Trans
+            i18nKey="common:schema.noSchemaDataAvailable"
+            defaults="No schema data available"
+          />
+        </h3>
+        <p
+          className={cn(
+            'text-muted-foreground',
+            isMinimal ? 'text-xs' : 'text-sm',
+          )}
+        >
+          <Trans
+            i18nKey="common:schema.schemaEmptyOrNotLoaded"
+            defaults="The schema information is empty or could not be loaded."
+          />
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn('flex flex-col', isMinimal ? 'gap-4' : 'gap-6', className)}
+    >
+      {schemaErrors.length > 0 && (
+        <div className={cn('flex flex-col gap-2', isMinimal ? 'mb-2' : 'mb-4')}>
           <div
             className={cn(
               'flex items-center gap-2 py-1 select-none',
-              variant === 'minimal' ? 'px-2' : 'px-3',
+              isMinimal ? 'px-2' : 'px-3',
             )}
           >
             <AlertCircleIcon
               className={cn(
                 'text-destructive/80',
-                variant === 'minimal' ? 'h-4 w-4' : 'h-5 w-5',
+                isMinimal ? 'h-4 w-4' : 'h-5 w-5',
               )}
             />
             <span
               className={cn(
                 'text-destructive/80 font-bold tracking-widest uppercase',
-                variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+                isMinimal ? 'text-[10px]' : 'text-xs',
               )}
             >
               Unavailable
@@ -295,10 +285,7 @@ export function SchemaVisualizer({
             <div className="bg-destructive/40 h-px flex-1" />
           </div>
           <div
-            className={cn(
-              'flex flex-wrap gap-2',
-              variant === 'minimal' ? 'px-2' : 'px-3',
-            )}
+            className={cn('flex flex-wrap gap-2', isMinimal ? 'px-2' : 'px-3')}
           >
             {schemaErrors.map((e) => {
               const datasource = datasources?.find(
@@ -318,9 +305,7 @@ export function SchemaVisualizer({
               const isClickable = Boolean(onDatasourceNameClick);
               const errorCardClass = cn(
                 'bg-destructive/5 text-destructive/80 border-destructive/40 hover:bg-destructive/10 flex items-center gap-2 rounded-md border font-bold shadow-sm transition-all',
-                variant === 'minimal'
-                  ? 'px-2.5 py-1.5 text-xs'
-                  : 'px-3 py-2 text-sm',
+                isMinimal ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
               );
 
               const content = (
@@ -384,17 +369,12 @@ export function SchemaVisualizer({
         return (
           <div
             key={prefix}
-            className={cn(
-              'flex flex-col',
-              variant === 'minimal' ? 'gap-2' : 'gap-3',
-            )}
+            className={cn('flex flex-col', isMinimal ? 'gap-2' : 'gap-3')}
           >
             <div
               className={cn(
                 'group flex items-center gap-2 py-1 select-none',
-                variant === 'minimal'
-                  ? 'mt-3 px-2 first:mt-0'
-                  : 'mt-5 px-3 first:mt-0',
+                isMinimal ? 'mt-3 px-2 first:mt-0' : 'mt-5 px-3 first:mt-0',
               )}
               role="separator"
             >
@@ -422,7 +402,7 @@ export function SchemaVisualizer({
                     alt={displayInfo.name}
                     className={cn(
                       'shrink-0 object-contain',
-                      variant === 'minimal' ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                      isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
                       displayInfo.provider === 'json-online' && 'dark:invert',
                     )}
                   />
@@ -430,7 +410,7 @@ export function SchemaVisualizer({
                   <Database
                     className={cn(
                       'text-muted-foreground',
-                      variant === 'minimal' ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                      isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
                     )}
                   />
                 )}
@@ -472,7 +452,7 @@ export function SchemaVisualizer({
                   defaultOpen={TOOL_UI_CONFIG.DEFAULT_OPEN}
                   className={cn(
                     'group/schema overflow-hidden transition-all',
-                    variant === 'minimal'
+                    isMinimal
                       ? 'border-border/40 bg-muted/5 rounded-lg border'
                       : 'border-border/50 bg-muted/5 rounded-lg border shadow-xs',
                   )}
@@ -480,7 +460,7 @@ export function SchemaVisualizer({
                   <CollapsibleTrigger
                     className={cn(
                       'flex w-full items-center justify-between gap-2 transition-colors',
-                      variant === 'minimal'
+                      isMinimal
                         ? 'py-2 pr-2 pl-4'
                         : 'hover:bg-muted/50 px-4 py-3',
                     )}
@@ -488,7 +468,7 @@ export function SchemaVisualizer({
                     <span
                       className={cn(
                         'text-foreground min-w-0 truncate font-semibold',
-                        variant === 'minimal' ? 'text-sm' : 'text-base',
+                        isMinimal ? 'text-sm' : 'text-base',
                       )}
                     >
                       {schemaNameOnly(dsName)}
@@ -497,7 +477,7 @@ export function SchemaVisualizer({
                       <span
                         className={cn(
                           'text-foreground tabular-nums',
-                          variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+                          isMinimal ? 'text-[10px]' : 'text-xs',
                         )}
                       >
                         {allTables.length}{' '}
@@ -506,7 +486,7 @@ export function SchemaVisualizer({
                       <ChevronDown
                         className={cn(
                           'text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180',
-                          variant === 'minimal' ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                          isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
                         )}
                       />
                     </div>
@@ -515,9 +495,7 @@ export function SchemaVisualizer({
                   <CollapsibleContent>
                     <div
                       className={cn(
-                        variant === 'minimal'
-                          ? 'pt-1.5 pr-1 pb-2.5 pl-4'
-                          : 'border-t p-4',
+                        isMinimal ? 'pt-1.5 pr-1 pb-2.5 pl-4' : 'border-t p-4',
                       )}
                     >
                       {variant !== 'minimal' && (
@@ -562,13 +540,13 @@ export function SchemaVisualizer({
                         <div
                           className={cn(
                             'overflow-hidden rounded-lg',
-                            variant === 'minimal' ? 'bg-muted/5' : 'border',
+                            isMinimal ? 'bg-muted/5' : 'border',
                           )}
                         >
                           <table
                             className={cn(
                               'w-full text-left',
-                              variant === 'minimal' ? 'text-sm' : 'text-base',
+                              isMinimal ? 'text-sm' : 'text-base',
                             )}
                           >
                             {variant !== 'minimal' && (
@@ -634,7 +612,7 @@ export function SchemaVisualizer({
                                     <td
                                       className={cn(
                                         'font-mono',
-                                        variant === 'minimal'
+                                        isMinimal
                                           ? 'px-3 py-2 text-xs'
                                           : 'px-4 py-2.5 text-sm',
                                         isTableClickable && 'p-0',
@@ -662,7 +640,7 @@ export function SchemaVisualizer({
                                     <td
                                       className={cn(
                                         'text-muted-foreground font-mono tabular-nums',
-                                        variant === 'minimal'
+                                        isMinimal
                                           ? 'pr-3 text-right text-[10px]'
                                           : 'px-4 py-2.5 text-sm',
                                       )}
@@ -678,9 +656,7 @@ export function SchemaVisualizer({
                         </div>
                       ) : (
                         <div
-                          className={cn(
-                            variant === 'minimal' ? 'space-y-4' : 'space-y-5',
-                          )}
+                          className={cn(isMinimal ? 'space-y-4' : 'space-y-5')}
                         >
                           {tables.map((table: TableWithColumns) => {
                             const openTableCard = onTableNameClick
@@ -709,18 +685,14 @@ export function SchemaVisualizer({
                                 <div
                                   className={cn(
                                     'bg-muted/10 border-border/30 flex items-center justify-between border-b',
-                                    variant === 'minimal'
-                                      ? 'px-3 py-2'
-                                      : 'px-4 py-2.5',
+                                    isMinimal ? 'px-3 py-2' : 'px-4 py-2.5',
                                   )}
                                 >
                                   <div className="flex items-center gap-2">
                                     <Table2
                                       className={cn(
                                         'text-primary/70',
-                                        variant === 'minimal'
-                                          ? 'h-3.5 w-3.5'
-                                          : 'h-4 w-4',
+                                        isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
                                       )}
                                     />
                                     {handleCardTitleClick ? (
@@ -729,9 +701,7 @@ export function SchemaVisualizer({
                                         onClick={handleCardTitleClick}
                                         className={cn(
                                           'text-foreground/90 hover:text-primary cursor-pointer text-left font-mono font-medium transition-colors outline-none hover:underline',
-                                          variant === 'minimal'
-                                            ? 'text-sm'
-                                            : 'text-base',
+                                          isMinimal ? 'text-sm' : 'text-base',
                                         )}
                                         title={
                                           openTableCard
@@ -745,9 +715,7 @@ export function SchemaVisualizer({
                                       <h4
                                         className={cn(
                                           'text-foreground/90 font-mono font-medium',
-                                          variant === 'minimal'
-                                            ? 'text-sm'
-                                            : 'text-base',
+                                          isMinimal ? 'text-sm' : 'text-base',
                                         )}
                                         title={
                                           table.schema
@@ -762,7 +730,7 @@ export function SchemaVisualizer({
                                   <span
                                     className={cn(
                                       'bg-muted/50 text-muted-foreground rounded-full font-mono',
-                                      variant === 'minimal'
+                                      isMinimal
                                         ? 'px-2 py-0.5 text-[10px]'
                                         : 'px-2.5 py-1 text-xs',
                                     )}
@@ -776,9 +744,7 @@ export function SchemaVisualizer({
                                     <table
                                       className={cn(
                                         'w-full text-left',
-                                        variant === 'minimal'
-                                          ? 'text-sm'
-                                          : 'text-base',
+                                        isMinimal ? 'text-sm' : 'text-base',
                                       )}
                                     >
                                       <thead>
@@ -786,7 +752,7 @@ export function SchemaVisualizer({
                                           <th
                                             className={cn(
                                               'w-1/3 font-medium',
-                                              variant === 'minimal'
+                                              isMinimal
                                                 ? 'px-3 py-1.5'
                                                 : 'px-4 py-2',
                                             )}
@@ -796,7 +762,7 @@ export function SchemaVisualizer({
                                           <th
                                             className={cn(
                                               'font-medium',
-                                              variant === 'minimal'
+                                              isMinimal
                                                 ? 'px-3 py-1.5'
                                                 : 'px-4 py-2',
                                             )}
@@ -815,7 +781,7 @@ export function SchemaVisualizer({
                                               <td
                                                 className={cn(
                                                   'text-foreground/90 font-medium break-all',
-                                                  variant === 'minimal'
+                                                  isMinimal
                                                     ? 'px-3 py-1.5 text-xs'
                                                     : 'px-4 py-2 text-sm',
                                                 )}
@@ -825,7 +791,7 @@ export function SchemaVisualizer({
                                               <td
                                                 className={cn(
                                                   'text-muted-foreground font-mono',
-                                                  variant === 'minimal'
+                                                  isMinimal
                                                     ? 'px-3 py-1.5 text-[10px]'
                                                     : 'px-4 py-2 text-xs',
                                                 )}
@@ -848,13 +814,13 @@ export function SchemaVisualizer({
                         <div
                           className={cn(
                             'bg-muted/5 border-border/40 group/pagination hover:bg-muted/10 flex items-center justify-between gap-2 overflow-hidden rounded-lg border px-2 py-1.5 shadow-xs transition-all hover:shadow-md',
-                            variant === 'minimal' ? 'mt-4 h-9' : 'mt-6 h-10',
+                            isMinimal ? 'mt-4 h-9' : 'mt-6 h-10',
                           )}
                         >
                           <div
                             className={cn(
                               'text-foreground ml-2 font-medium tracking-wider uppercase select-none',
-                              variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+                              isMinimal ? 'text-[10px]' : 'text-xs',
                             )}
                           >
                             <span className="text-foreground font-semibold tabular-nums">
@@ -878,7 +844,7 @@ export function SchemaVisualizer({
                               size="icon"
                               className={cn(
                                 'hover:bg-background/80 hover:text-primary transition-all',
-                                variant === 'minimal' ? 'h-7 w-7' : 'h-8 w-8',
+                                isMinimal ? 'h-7 w-7' : 'h-8 w-8',
                               )}
                               onClick={() => {
                                 if (pageForSchema > 1)
@@ -898,9 +864,7 @@ export function SchemaVisualizer({
                             <div
                               className={cn(
                                 'text-foreground min-w-[2.5rem] text-center font-bold tabular-nums select-none',
-                                variant === 'minimal'
-                                  ? 'text-[10px]'
-                                  : 'text-xs',
+                                isMinimal ? 'text-[10px]' : 'text-xs',
                               )}
                             >
                               {pageForSchema}
@@ -914,7 +878,7 @@ export function SchemaVisualizer({
                               size="icon"
                               className={cn(
                                 'hover:bg-background/80 hover:text-primary transition-all',
-                                variant === 'minimal' ? 'h-7 w-7' : 'h-8 w-8',
+                                isMinimal ? 'h-7 w-7' : 'h-8 w-8',
                               )}
                               onClick={() => {
                                 if (pageForSchema < totalPagesForSchema)

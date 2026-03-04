@@ -1539,7 +1539,7 @@ export function ToolPart({
                         key={idx}
                         open={isOpen}
                         onOpenChange={(open) => {
-                          setOpenQueries((prev) =>
+                          setOpenQueries(() =>
                             open ? new Set([idx]) : new Set(),
                           );
                         }}

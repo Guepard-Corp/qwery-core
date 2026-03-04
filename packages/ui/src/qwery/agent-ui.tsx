@@ -115,7 +115,8 @@ export interface QweryAgentUIProps {
     messageId: string,
     content: string,
     datasourceIds?: string[],
-  ) => Promise<void>;
+    previousUpdatedAt?: string,
+  ) => Promise<{ truncatedCount: number } | void>;
   onSendMessageReady?: (
     sendMessage: ReturnType<typeof useChat>['sendMessage'],
     model: string,
@@ -577,11 +578,13 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     [],
   );
 
-  const handleEditConfirmWithWarning = useCallback(() => {
+  const handleEditConfirmWithWarning = useCallback(async () => {
     if (!editingMessageId || !editText.trim()) return;
 
     const updatedText = editText.trim();
     const messageIndex = messages.findIndex((m) => m.id === editingMessageId);
+
+    const previousMessages = messages;
 
     setMessages((prev) => {
       let updatedMessages = prev.slice(0, messageIndex + 1);
@@ -604,20 +607,48 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       return updatedMessages;
     });
 
+    if (onMessageUpdate) {
+      try {
+        const editingMessage = messages.find(
+          (m) => m.id === editingMessageId,
+        ) as UIMessage | undefined;
+        const previousUpdatedAt =
+          editingMessage &&
+          editingMessage.metadata &&
+          typeof editingMessage.metadata === 'object' &&
+          'updatedAt' in editingMessage.metadata
+            ? String(
+                (editingMessage.metadata as Record<string, unknown>).updatedAt,
+              )
+            : undefined;
+
+        const result = await onMessageUpdate(
+          editingMessageId,
+          updatedText,
+          editDatasources.length > 0 ? editDatasources : undefined,
+          previousUpdatedAt,
+        );
+        if (result && typeof result.truncatedCount === 'number') {
+          if (result.truncatedCount > 0) {
+            toast.success(
+              `Edited message. Removed ${result.truncatedCount} subsequent messages.`,
+            );
+          } else {
+            toast.success('Edited message.');
+          }
+        }
+      } catch (error) {
+        setMessages(previousMessages);
+        console.error('Failed to persist message edit:', error);
+        toast.error('Failed to save edit.');
+        return;
+      }
+    }
+
     setEditingMessageId(null);
     setEditText('');
     setEditDatasources([]);
     setEditWarningDialog({ open: false, messageId: '', messageText: '' });
-
-    if (onMessageUpdate) {
-      onMessageUpdate(
-        editingMessageId,
-        updatedText,
-        editDatasources.length > 0 ? editDatasources : undefined,
-      ).catch((error) => {
-        console.error('Failed to persist message edit:', error);
-      });
-    }
 
     regenerate();
     scrollToBottomRef.current?.();
@@ -654,6 +685,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       .filter((m) => m.role === 'assistant')
       .at(-1);
 
+    const previousMessages = messages;
+
     setMessages((prev) => {
       let updatedMessages = prev.map((msg) => {
         if (msg.id === editingMessageId) {
@@ -687,13 +720,39 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
     if (onMessageUpdate) {
       try {
-        await onMessageUpdate(
+        const editingMessage = messages.find(
+          (m) => m.id === editingMessageId,
+        ) as UIMessage | undefined;
+        const previousUpdatedAt =
+          editingMessage &&
+          editingMessage.metadata &&
+          typeof editingMessage.metadata === 'object' &&
+          'updatedAt' in editingMessage.metadata
+            ? String(
+                (editingMessage.metadata as Record<string, unknown>).updatedAt,
+              )
+            : undefined;
+
+        const result = await onMessageUpdate(
           editingMessageId,
           updatedText,
           editDatasources.length > 0 ? editDatasources : undefined,
+          previousUpdatedAt,
         );
+        if (result && typeof result.truncatedCount === 'number') {
+          if (result.truncatedCount > 0) {
+            toast.success(
+              `Edited message. Removed ${result.truncatedCount} subsequent messages.`,
+            );
+          } else {
+            toast.success('Edited message.');
+          }
+        }
       } catch (error) {
         console.error('Failed to persist message edit:', error);
+        setMessages(previousMessages);
+        toast.error('Failed to save edit.');
+        return;
       }
     }
 
@@ -1656,15 +1715,6 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                             default:
                               if (part.type.startsWith('tool-')) {
                                 const toolPart = part as ToolUIPart;
-                                const inProgressStates = new Set([
-                                  'input-streaming',
-                                  'input-available',
-                                  'approval-requested',
-                                ]);
-                                const isToolInProgress = inProgressStates.has(
-                                  toolPart.state as string,
-                                );
-
                                 const toolPartKey = `${message.id}-${i}`;
                                 const isLastPart =
                                   i === message.parts.length - 1;

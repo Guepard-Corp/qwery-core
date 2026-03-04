@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useMemo } from 'react';
 import {
   isSuggestionPattern,
   extractAllSuggestionMatches,
@@ -28,12 +28,9 @@ export function useSuggestionDetection({
   isReady,
   contentKey,
 }: UseSuggestionDetectionOptions): DetectedSuggestion[] {
-  const [detected, setDetected] = useState<DetectedSuggestion[]>([]);
-
-  useLayoutEffect(() => {
+  return useMemo<DetectedSuggestion[]>(() => {
     if (!containerElement || !isReady) {
-      setDetected([]);
-      return;
+      return [];
     }
 
     try {
@@ -102,15 +99,13 @@ export function useSuggestionDetection({
         });
       }
 
-      setDetected(nextDetected);
+      return nextDetected;
     } catch (error) {
       console.error(
         '[useSuggestionDetection] Error detecting suggestions:',
         error,
       );
-      setDetected([]);
+      return [];
     }
   }, [containerElement, isReady, contentKey]);
-
-  return detected;
 }
