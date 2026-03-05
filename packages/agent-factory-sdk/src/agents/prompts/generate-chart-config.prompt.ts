@@ -105,9 +105,9 @@ type BusinessContextForPrompt = {
 
 export const GENERATE_CHART_CONFIG_PROMPT = (
   chartType: ChartType,
-  queryResults: {
-    rows: Array<Record<string, unknown>>;
+  metadata: {
     columns: string[];
+    rowCount: number;
   },
   sqlQuery: string,
   businessContext?: BusinessContextForPrompt | null,
@@ -150,8 +150,8 @@ export const GENERATE_CHART_CONFIG_PROMPT = (
     chartDescription: chartDef.dataFormat.description,
     dataFormatExampleJson: JSON.stringify(chartDef.dataFormat.example, null, 2),
     sqlQuery,
-    columnsJson: JSON.stringify(queryResults.columns),
-    rowCount: queryResults.rows.length,
+    columnsJson: JSON.stringify(metadata.columns),
+    rowCount: metadata.rowCount,
     chartGenerationPrompt: getChartGenerationPrompt(chartType),
     axesGuidelines: getAxesLabelsPrecisionGuidelines(),
     requiredKeysList: chartDef.requirements.requiredKeys.join(', '),

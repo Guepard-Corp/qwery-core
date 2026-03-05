@@ -73,9 +73,9 @@ type BusinessContext = {
 export const SELECT_CHART_TYPE_PROMPT = (
   userInput: string,
   sqlQuery: string,
-  queryResults: {
-    rows: Array<Record<string, unknown>>;
+  metadata: {
     columns: string[];
+    rowCount: number;
   },
   businessContext?: BusinessContext | null,
 ) => {
@@ -103,8 +103,8 @@ export const SELECT_CHART_TYPE_PROMPT = (
     chartsInfo: getChartsInfoForPrompt(),
     selectionPrompts: getChartSelectionPrompts(),
     chartTypesUnion: getChartTypesUnionString(),
-    columnsJson: JSON.stringify(queryResults.columns),
-    rowCount: queryResults.rows.length,
+    columnsJson: JSON.stringify(metadata.columns),
+    rowCount: metadata.rowCount,
     businessContext: businessContextForTemplate,
     currentDate: new Date().toISOString(),
   };

@@ -3,12 +3,9 @@ import { SELECT_CHART_TYPE_PROMPT } from '../../src/agents/prompts/select-chart-
 import { GENERATE_CHART_CONFIG_PROMPT } from '../../src/agents/prompts/generate-chart-config.prompt';
 import type { ChartType } from '../../src/agents/types/chart.types';
 
-const basicQueryResults = {
+const basicMetadata = {
   columns: ['name', 'value'],
-  rows: [
-    { name: 'A', value: 1 },
-    { name: 'B', value: 2 },
-  ] as Array<Record<string, unknown>>,
+  rowCount: 2,
 };
 
 describe('chart prompts with Mustache templates', () => {
@@ -16,7 +13,7 @@ describe('chart prompts with Mustache templates', () => {
     const prompt = SELECT_CHART_TYPE_PROMPT(
       'show distribution',
       'select name, value from table',
-      basicQueryResults,
+      basicMetadata,
       null,
     );
 
@@ -34,7 +31,7 @@ describe('chart prompts with Mustache templates', () => {
     const chartType: ChartType = 'bar';
     const prompt = GENERATE_CHART_CONFIG_PROMPT(
       chartType,
-      basicQueryResults,
+      basicMetadata,
       'select name, value from table',
       null,
     );
@@ -50,21 +47,21 @@ describe('chart prompts with Mustache templates', () => {
   });
 
   it('handles empty results without embedding rows', () => {
-    const emptyResults = {
+    const emptyMetadata = {
       columns: ['name', 'value'],
-      rows: [] as Array<Record<string, unknown>>,
+      rowCount: 0,
     };
 
     const selectPrompt = SELECT_CHART_TYPE_PROMPT(
       'show distribution',
       'select name, value from table',
-      emptyResults,
+      emptyMetadata,
       null,
     );
     const chartType: ChartType = 'bar';
     const configPrompt = GENERATE_CHART_CONFIG_PROMPT(
       chartType,
-      emptyResults,
+      emptyMetadata,
       'select name, value from table',
       null,
     );
