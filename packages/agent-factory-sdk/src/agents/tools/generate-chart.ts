@@ -137,7 +137,11 @@ export async function generateChart(input: GenerateChartInput): Promise<{
     input.sqlQuery,
   );
 
-  const data = evaluateChartData(chartType, input.queryResults, template.config);
+  const data = evaluateChartData(
+    chartType,
+    input.queryResults,
+    template.config,
+  );
 
   const chartConfig = ChartConfigSchema.parse({
     chartType: template.chartType,

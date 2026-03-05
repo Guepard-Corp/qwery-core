@@ -1,6 +1,6 @@
 import Mustache from 'mustache';
 
-Mustache.escape = (value) => value;
+Mustache.escape = (value: string): string => value;
 
 export function renderTemplate<TContext extends object>(
   template: string,

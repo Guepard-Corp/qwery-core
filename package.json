@@ -97,6 +97,7 @@
     "@qwery/prettier-config": "workspace:*",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@turbo/gen": "^2.6.0",
+    "@types/mustache": "^4.2.6",
     "@types/node": "catalog:",
     "@types/semver": "^7.5.8",
     "cross-env": "^10.1.0",

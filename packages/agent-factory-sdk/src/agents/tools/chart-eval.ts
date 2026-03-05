@@ -21,7 +21,10 @@ function guessCategoryKey(columns: string[]): string | undefined {
   );
 }
 
-function guessValueKey(columns: string[], excludeKey?: string): string | undefined {
+function guessValueKey(
+  columns: string[],
+  excludeKey?: string,
+): string | undefined {
   return (
     columns.find((key) => {
       if (excludeKey && key === excludeKey) return false;
@@ -97,4 +100,3 @@ export function evaluateChartData(
 
   return [];
 }
-

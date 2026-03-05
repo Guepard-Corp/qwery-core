@@ -11,4 +11,3 @@ export function buildChartMetadata(queryResults: QueryResults): ChartMetadata {
     rowCount: queryResults.rows.length,
   };
 }
-
