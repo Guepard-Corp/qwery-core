@@ -58,31 +58,28 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos
-          path: |
-            apps/desktop/release/*.dmg
-            apps/desktop/release/*.zip
+          path: apps/desktop/src-tauri/target/release/bundle/
 
       - name: Upload release artifacts (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows
-          path: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.msi
+          path: apps/desktop/src-tauri/target/release/bundle/
 
       - name: Upload release artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux
-          path: apps/desktop/release/
+          path: apps/desktop/src-tauri/target/release/bundle/
 
   create-release:
     name: Create GitHub Release
     needs: build-and-release
     runs-on: ubuntu-latest
-    
+    if: startsWith(github.ref, 'refs/tags/')
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -102,8 +99,7 @@ jobs:
           name: Release v${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
-          files: |
-            release-artifacts/**/*
+          files: release-artifacts/**/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
