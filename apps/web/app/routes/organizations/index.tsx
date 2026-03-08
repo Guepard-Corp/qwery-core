@@ -25,12 +25,16 @@ export async function clientLoader(_args: Route.ClientLoaderArgs) {
   }
 }
 
+const PAGE_PADDING = 'px-24 py-16 lg:px-32 lg:py-20';
+
 export default function OrganizationsPage(props: Route.ComponentProps) {
   const { organizations } = props.loaderData;
 
   return (
-    <div className="h-full">
-      <ListOrganizations organizations={organizations ?? []} />
+    <div className="h-full overflow-auto">
+      <div className={`h-full ${PAGE_PADDING}`}>
+        <ListOrganizations organizations={organizations ?? []} />
+      </div>
     </div>
   );
 }

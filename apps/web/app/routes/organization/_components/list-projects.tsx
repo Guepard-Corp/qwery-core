@@ -34,7 +34,7 @@ import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
 import { Checkbox } from '@qwery/ui/checkbox';
-import { cn } from '@qwery/ui/utils';
+import { cn, truncateText, highlightSearchMatch } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai';
 import { ProjectCard } from '@qwery/ui/project';
 import {
@@ -75,6 +75,8 @@ import { BulkActionBar } from '../../_components/bulk-action-bar';
 
 const ITEMS_PER_PAGE_GRID = 12;
 const ITEMS_PER_PAGE_TABLE = 10;
+const TABLE_NAME_MAX_LENGTH = 40;
+const TABLE_DESCRIPTION_MAX_LENGTH = 50;
 
 type SortCriterion = 'date' | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -197,20 +199,6 @@ export function ListProjects({
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-
-  const highlightMatch = (text: string, query: string) => {
-    if (!query.trim()) return text;
-    const regex = new RegExp(`(${query})`, 'gi');
-    return text.split(regex).map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-[#ffcb51] text-black">
-          {part}
-        </span>
-      ) : (
-        part
-      ),
-    );
   };
 
   const handleSortClick = (criterion: SortCriterion) => {
@@ -678,13 +666,28 @@ export function ListProjects({
                                 />
                               </svg>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-semibold">
-                                {highlightMatch(project.name, searchQuery)}
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <span
+                                className="text-sm font-semibold"
+                                title={project.name}
+                              >
+                                {highlightSearchMatch(
+                                  truncateText(
+                                    project.name,
+                                    TABLE_NAME_MAX_LENGTH,
+                                  ),
+                                  searchQuery,
+                                )}
                               </span>
                               {project.description && (
-                                <span className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
-                                  {project.description}
+                                <span
+                                  className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]"
+                                  title={project.description}
+                                >
+                                  {truncateText(
+                                    project.description,
+                                    TABLE_DESCRIPTION_MAX_LENGTH,
+                                  )}
                                 </span>
                               )}
                             </div>

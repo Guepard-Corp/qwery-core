@@ -11,11 +11,11 @@ export interface LoadingSkeletonProps {
 
 const variantConfig = {
   sidebar: {
-    container: 'space-y-1',
-    item: 'flex items-center gap-2 px-2 py-1.5',
-    icon: 'size-4 shrink-0 rounded',
-    text: 'flex-1',
-    textLine: 'h-4 w-3/4',
+    container: 'flex min-w-0 flex-col gap-1',
+    item: 'flex h-8 min-w-0 items-center gap-2 rounded-md p-2',
+    icon: 'size-4 shrink-0 rounded-md',
+    text: 'min-w-0 flex-1',
+    textLine: 'h-4 w-3/4 rounded',
   },
   list: {
     container: 'space-y-2',

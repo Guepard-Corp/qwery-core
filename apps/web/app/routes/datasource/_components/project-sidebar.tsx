@@ -114,7 +114,7 @@ export function ProjectSidebar() {
       setIsBulkDeleting(false);
       setShowDeleteAllDialog(false);
     }
-  }, [deleteNotebookMutation, notebooksList, projectId]);
+  }, [deleteNotebookMutation, notebooksList, projectId, t]);
 
   const generateNotebookTitle = useCallback(() => {
     const base = 'Untitled notebook';

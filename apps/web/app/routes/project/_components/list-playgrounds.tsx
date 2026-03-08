@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@qwery/ui/tooltip';
-import { cn } from '@qwery/ui/utils';
+import { cn, truncateText } from '@qwery/ui/utils';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -209,11 +209,17 @@ export function ListPlaygrounds({
                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <div className="text-foreground truncate text-lg font-bold tracking-tight transition-colors">
-                              {playground.name}
+                            <div
+                              className="text-foreground truncate text-lg font-bold tracking-tight transition-colors"
+                              title={playground.name}
+                            >
+                              {truncateText(playground.name, 40)}
                             </div>
-                            <p className="text-muted-foreground/80 line-clamp-2 text-sm leading-relaxed">
-                              {playground.description}
+                            <p
+                              className="text-muted-foreground/80 line-clamp-2 text-sm leading-relaxed"
+                              title={playground.description}
+                            >
+                              {truncateText(playground.description ?? '', 80)}
                             </p>
                           </div>
                           <Tooltip>

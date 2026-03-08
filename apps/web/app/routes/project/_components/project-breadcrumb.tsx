@@ -9,10 +9,14 @@ import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
 } from '@qwery/ui/qwery-breadcrumb';
+import { truncateText } from '@qwery/ui/utils';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
+import { sortByModifiedDesc } from '@qwery/shared/utils';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useProject } from '~/lib/context/project-context';
+import { useGetConversationBySlug } from '~/lib/queries/use-get-conversations';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
 import {
   getProjectsByOrganizationIdKey,
@@ -24,27 +28,31 @@ import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
+import { useUpdateConversation } from '~/lib/mutations/use-conversation';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import { useTranslation } from 'react-i18next';
 import { getErrorKey } from '~/lib/utils/error-key';
 import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
 import { ProjectDialog } from '../../organization/_components/project-dialog';
 
+const BREADCRUMB_NAME_MAX_LENGTH = 40;
+
 function toBreadcrumbNodeItem<
   T extends { id: string; slug: string; name?: string; title?: string },
 >(item: T, icon?: string): BreadcrumbNodeItem {
-  const name = 'name' in item && item.name ? item.name : item.title || '';
+  const raw =
+    'name' in item && item.name ? item.name : (item.title as string) || '';
   return {
     id: item.id,
     slug: item.slug,
-    name,
+    name: truncateText(raw, BREADCRUMB_NAME_MAX_LENGTH),
     ...(icon && { icon }),
   };
 }
 
 export function ProjectBreadcrumb() {
   const { t } = useTranslation('common');
-  const { repositories } = useWorkspace();
+  const { repositories, workspace } = useWorkspace();
   const queryClient = useQueryClient();
   const {
     project,
@@ -57,8 +65,20 @@ export function ProjectBreadcrumb() {
   const location = useLocation();
   const params = useParams();
   const [_unsavedNotebookIds, setUnsavedNotebookIds] = useState<string[]>([]);
+  const [isRenamingConversation, setIsRenamingConversation] = useState(false);
+  const [conversationRenameDraft, setConversationRenameDraft] = useState('');
   const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
+
+  const isConversationRoute = location.pathname.startsWith('/c/');
+  const conversationSlug = isConversationRoute ? (params.slug as string) : '';
+  const conversation = useGetConversationBySlug(
+    repositories.conversation,
+    conversationSlug,
+  );
+  const updateConversationMutation = useUpdateConversation(
+    repositories.conversation,
+  );
 
   useEffect(() => {
     const updateUnsavedIds = () => {
@@ -80,6 +100,70 @@ export function ProjectBreadcrumb() {
       window.removeEventListener('notebook:unsaved-changed', updateUnsavedIds);
     };
   }, []);
+
+  useEffect(() => {
+    const handleStartRename = () => {
+      if (!conversation.data) return;
+      setIsRenamingConversation(true);
+      setConversationRenameDraft(conversation.data.title ?? '');
+    };
+
+    window.addEventListener(
+      'conversation-breadcrumb-rename-start',
+      handleStartRename,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'conversation-breadcrumb-rename-start',
+        handleStartRename,
+      );
+    };
+  }, [conversation.data]);
+
+  const handleConversationRenameSubmit = () => {
+    if (!conversation.data) {
+      setIsRenamingConversation(false);
+      return;
+    }
+
+    const trimmed = conversationRenameDraft.trim();
+    const existingTitle = conversation.data.title || '';
+
+    if (!trimmed || trimmed === existingTitle) {
+      setIsRenamingConversation(false);
+      setConversationRenameDraft(existingTitle);
+      return;
+    }
+
+    updateConversationMutation.mutate(
+      {
+        id: conversation.data.id,
+        title: trimmed,
+        updatedBy: workspace.userId,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Conversation renamed');
+          setIsRenamingConversation(false);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Failed to rename conversation',
+          );
+        },
+      },
+    );
+  };
+
+  const handleConversationRenameCancel = () => {
+    if (conversation.data?.title) {
+      setConversationRenameDraft(conversation.data.title);
+    }
+    setIsRenamingConversation(false);
+  };
 
   // Detect current object (datasource or notebook)
   const isDatasourceRoute = location.pathname.startsWith('/ds/');
@@ -103,6 +187,10 @@ export function ProjectBreadcrumb() {
     repositories.notebook,
     projectId,
     { enabled: isNotebookRoute && !!projectId },
+  );
+  const { data: conversationsByProject = [] } = useGetConversationsByProject(
+    repositories.conversation,
+    projectId || undefined,
   );
   const currentDatasource = useGetDatasourceBySlug(
     repositories.datasource,
@@ -164,6 +252,48 @@ export function ProjectBreadcrumb() {
     currentNotebook.data,
     pluginLogoMap,
   ]);
+
+  const conversationItemsForBreadcrumb = useMemo(() => {
+    if (!conversation.data || !isConversationRoute) {
+      return [];
+    }
+
+    const sortedByUpdated = sortByModifiedDesc(
+      conversationsByProject.map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        title: c.title,
+        createdAt:
+          c.createdAt instanceof Date ? c.createdAt : new Date(c.createdAt),
+        updatedAt:
+          c.updatedAt instanceof Date ? c.updatedAt : new Date(c.updatedAt),
+      })),
+    );
+
+    const items = sortedByUpdated.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: truncateText(c.title, BREADCRUMB_NAME_MAX_LENGTH),
+    }));
+
+    const currentId = conversation.data.id;
+    const currentIndex = items.findIndex((item) => item.id === currentId);
+
+    if (currentIndex > 0) {
+      const [currentItem] = items.splice(currentIndex, 1);
+      if (currentItem) {
+        items.unshift(currentItem);
+      }
+    } else if (currentIndex === -1) {
+      items.unshift({
+        id: conversation.data.id,
+        slug: conversation.data.slug,
+        name: truncateText(conversation.data.title, BREADCRUMB_NAME_MAX_LENGTH),
+      });
+    }
+
+    return items;
+  }, [conversation.data, conversationsByProject, isConversationRoute]);
 
   // Filter projects by current org (from URL-derived organizationId)
   const filteredProjects = useMemo(() => {
@@ -312,6 +442,28 @@ export function ProjectBreadcrumb() {
     createNotebookMutation.mutate({ projectId, title: 'New Notebook' });
   };
 
+  const handleConversationSelect = (conversationItem: BreadcrumbNodeItem) => {
+    const path = createPath(
+      pathsConfig.app.conversation,
+      conversationItem.slug,
+    );
+    navigate(path);
+  };
+
+  const handleViewAllChats = () => {
+    if (!currentProject) return;
+    navigate(
+      createPath(pathsConfig.app.projectConversation, currentProject.slug),
+    );
+  };
+
+  const handleNewChat = () => {
+    if (!currentProject) return;
+    navigate(
+      createPath(pathsConfig.app.projectConversation, currentProject.slug),
+    );
+  };
+
   // Don't show breadcrumb if no project from URL yet
   if (!projectSlug || isProjectLoading) {
     return null;
@@ -320,6 +472,7 @@ export function ProjectBreadcrumb() {
   return (
     <>
       <QweryBreadcrumb
+        hideOrganization
         organization={{
           items: organizationItemsWithCurrentFirst,
           isLoading: organizations.isLoading,
@@ -344,7 +497,10 @@ export function ProjectBreadcrumb() {
                     : (notebooks.data || []).map((nb) => ({
                         id: nb.id,
                         slug: nb.slug,
-                        name: nb.title,
+                        name: truncateText(
+                          nb.title,
+                          BREADCRUMB_NAME_MAX_LENGTH,
+                        ),
                       })),
                 isLoading:
                   currentObject.type === 'datasource'
@@ -353,7 +509,38 @@ export function ProjectBreadcrumb() {
                 current: currentObject.current,
                 type: currentObject.type,
               }
-            : undefined
+            : conversation.data && isConversationRoute
+              ? {
+                  items:
+                    conversationItemsForBreadcrumb.length > 0
+                      ? conversationItemsForBreadcrumb
+                      : [
+                          {
+                            id: conversation.data.id,
+                            slug: conversation.data.slug,
+                            name: truncateText(
+                              conversation.data.title,
+                              BREADCRUMB_NAME_MAX_LENGTH,
+                            ),
+                          },
+                        ],
+                  isLoading: conversation.isLoading,
+                  current: {
+                    id: conversation.data.id,
+                    slug: conversation.data.slug,
+                    name: truncateText(
+                      conversation.data.title,
+                      BREADCRUMB_NAME_MAX_LENGTH,
+                    ),
+                  },
+                  type: 'conversation',
+                  isEditingTitle: isRenamingConversation,
+                  editTitleValue: conversationRenameDraft,
+                  onEditTitleChange: setConversationRenameDraft,
+                  onEditTitleSubmit: handleConversationRenameSubmit,
+                  onEditTitleCancel: handleConversationRenameCancel,
+                }
+              : undefined
         }
         paths={{
           viewAllOrgs: pathsConfig.app.organizations,
@@ -374,6 +561,7 @@ export function ProjectBreadcrumb() {
         onProjectSelect={handleProjectSelect}
         onDatasourceSelect={handleDatasourceSelect}
         onNotebookSelect={handleNotebookSelect}
+        onConversationSelect={handleConversationSelect}
         onViewAllOrgs={() => navigate(pathsConfig.app.organizations)}
         onViewAllProjects={() => {
           if (currentOrg) {
@@ -399,10 +587,12 @@ export function ProjectBreadcrumb() {
             );
           }
         }}
+        onViewAllChats={handleViewAllChats}
         onNewOrg={handleNewOrg}
         onNewProject={handleNewProject}
         onNewDatasource={handleNewDatasource}
         onNewNotebook={handleNewNotebook}
+        onNewChat={handleNewChat}
         unsavedNotebookIds={_unsavedNotebookIds}
       />
       <OrganizationDialog

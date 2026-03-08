@@ -1257,9 +1257,13 @@ export function ToolPart({
         (isComplete
           ? total - succeeded
           : results.filter((r) => !r.success && r.error).length);
+      const _hasDuplicates = _distinctCount < completedCount;
       const _durationMs = (
         runQueriesOutput?.meta as { durationMs?: number } | undefined
       )?.durationMs;
+      const _successRate =
+        total > 0 ? Math.round((succeeded / total) * 100) : 0;
+
       const _formatDuration = (ms: number | undefined) => {
         if (ms == null || Number.isNaN(ms)) return null;
         if (ms < 1000) return `${Math.round(ms)} ms`;
@@ -1284,6 +1288,45 @@ export function ToolPart({
       const tableDisplayName = (fullTable: string): string => {
         const lastSegment = fullTable.split('.').pop();
         return lastSegment ?? fullTable;
+      };
+
+      const _buildRunQueriesLabel = (params: {
+        id?: string;
+        query: string | undefined;
+        index: number;
+      }): string => {
+        const fallbackId = params.id?.trim();
+        const fallback =
+          fallbackId && fallbackId.length > 0
+            ? fallbackId
+            : `Query ${params.index + 1}`;
+
+        if (!params.query || typeof params.query !== 'string') return fallback;
+        const sql = params.query.trim();
+        if (!sql) return fallback;
+
+        const table = tableFromQuery(sql);
+        const limitMatch = /limit\s+(\d+)/i.exec(sql);
+        const limit = limitMatch ? Number(limitMatch[1]) : undefined;
+
+        let description: string | undefined;
+
+        if (/select\s+count\(\s*\*\s*\)/i.test(sql)) {
+          description = table ? `Row count for ${table}` : 'Row count query';
+        } else if (limit && /select\s+\*/i.test(sql)) {
+          description = table
+            ? `Sample ${limit} rows from ${table}`
+            : `Sample ${limit} rows`;
+        } else if (/group\s+by/i.test(sql)) {
+          description = table
+            ? `Aggregated metrics from ${table}`
+            : 'Aggregation query';
+        } else if (table) {
+          description = table;
+        }
+
+        const base = description ?? fallback;
+        return base.length > 80 ? `${base.slice(0, 77)}...` : base;
       };
 
       const tableFocusedLabel = (
@@ -1323,6 +1366,20 @@ export function ToolPart({
         return match?.datasource_provider;
       };
 
+      const _renderProgressBar = () => (
+        <div className="bg-muted/30 border-border/10 h-1.5 w-full overflow-hidden rounded-full border">
+          <div
+            className={cn(
+              'h-full transition-all duration-500 ease-out',
+              isComplete ? 'bg-emerald-500' : 'bg-primary animate-pulse',
+            )}
+            style={{
+              width: `${total > 0 ? (completedCount / total) * 100 : 0}%`,
+            }}
+          />
+        </div>
+      );
+
       // Common Header Info
       const headerInfo = (
         <div className="flex items-center gap-2">
@@ -1353,65 +1410,57 @@ export function ToolPart({
 
       if (isMinimal) {
         return (
-          <>
-            <RunQueriesOpenSync
-              runQueriesAllOpen={runQueriesAllOpen}
-              runQueriesInputLength={runQueriesInput?.queries?.length}
-              resultsLength={results.length}
-              setOpenQueries={setOpenQueries}
-            />
-            <div
-              key={`${messageId}-${index}`}
-              className="border-border/40 my-1 ml-6 flex flex-col gap-2 border-l pl-3"
-            >
-              <div className="text-muted-foreground/80 flex items-center gap-2 text-[11px]">
-                <ListTodo className="h-3 w-3" />
-                <span className="font-medium">Batch Run</span>
-                {headerInfo}
-              </div>
-              <div className="flex flex-col gap-1">
-                {(!isComplete ? runQueriesInput?.queries : results)?.map(
-                  (q, idx) => {
-                    const queryText = (
-                      'query' in q
-                        ? q.query
-                        : (q as Record<string, unknown>).query
-                    ) as string | undefined;
-                    const success = 'success' in q ? q.success : undefined;
-                    const isCurrent = isInProgress && idx === completedCount;
-
-                    return (
-                      <div
-                        key={idx}
-                        className={cn(
-                          'border-border/10 flex items-center gap-2 rounded-md border px-2 py-0.5 transition-colors',
-                          isCurrent && 'bg-primary/[0.03] border-primary/20',
-                        )}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <CodeBlock
-                            code={(queryText?.split('\n')[0] ?? '').trim()}
-                            language="sql"
-                            disableHover={true}
-                            className="border-none !bg-transparent bg-transparent p-0"
-                          />
-                        </div>
-                        {success === true && (
-                          <CheckCircle2Icon className="h-2.5 w-2.5 text-emerald-500/80" />
-                        )}
-                        {success === false && (
-                          <XCircleIcon className="text-destructive/80 h-2.5 w-2.5" />
-                        )}
-                        {isCurrent && (
-                          <CircleDashedIcon className="text-primary/80 h-2.5 w-2.5 animate-spin" />
-                        )}
-                      </div>
-                    );
-                  },
-                )}
-              </div>
+          <div
+            key={`${messageId}-${index}`}
+            className="border-border/40 my-1 ml-6 flex flex-col gap-2 border-l pl-3"
+          >
+            <div className="text-muted-foreground/80 flex items-center gap-2 text-[11px]">
+              <ListTodo className="h-3 w-3" />
+              <span className="font-medium">Batch Run</span>
+              {headerInfo}
             </div>
-          </>
+            <div className="flex flex-col gap-1">
+              {(!isComplete ? runQueriesInput?.queries : results)?.map(
+                (q, idx) => {
+                  const queryText = (
+                    'query' in q
+                      ? q.query
+                      : (q as Record<string, unknown>).query
+                  ) as string | undefined;
+                  const success = 'success' in q ? q.success : undefined;
+                  const isCurrent = isInProgress && idx === completedCount;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'border-border/10 flex items-center gap-2 rounded-md border px-2 py-0.5 transition-colors',
+                        isCurrent && 'bg-primary/[0.03] border-primary/20',
+                      )}
+                    >
+                      <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+                        <CodeBlock
+                          code={(queryText ?? '').replace(/\s+/g, ' ').trim()}
+                          language="sql"
+                          disableHover={true}
+                          className="border-none !bg-transparent bg-transparent p-0"
+                        />
+                      </div>
+                      {success === true && (
+                        <CheckCircle2Icon className="h-2.5 w-2.5 text-emerald-500/80" />
+                      )}
+                      {success === false && (
+                        <XCircleIcon className="text-destructive/80 h-2.5 w-2.5" />
+                      )}
+                      {isCurrent && (
+                        <CircleDashedIcon className="text-primary/80 h-2.5 w-2.5 animate-spin" />
+                      )}
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </div>
         );
       }
 
@@ -1486,19 +1535,12 @@ export function ToolPart({
                       ? q.query
                       : (q as Record<string, unknown>).query
                   ) as string | undefined;
-                  const result =
-                    'data' in q &&
-                    q.data &&
-                    typeof q.data === 'object' &&
-                    'result' in q.data
-                      ? (q.data as { result?: unknown }).result
-                      : undefined;
+                  const data = (q as { data?: { result?: unknown } }).data;
+                  const result = data?.result;
                   const success = 'success' in q ? q.success : undefined;
                   const error =
-                    'error' in q && q.error
-                      ? typeof (q as Record<string, unknown>).error === 'string'
-                        ? ((q as Record<string, unknown>).error as string)
-                        : String((q as Record<string, unknown>).error)
+                    'error' in q
+                      ? (q as Record<string, unknown>).error
                       : undefined;
                   const rawId = (q as { id?: string }).id;
                   const rawSummary = (q as { summary?: string }).summary;
@@ -1688,26 +1730,9 @@ export function ToolPart({
                                   onPasteToNotebook={undefined}
                                   showPasteButton={false}
                                   chartExecutionOverride={false}
-                                  exportFilename={(() => {
-                                    const data = (
-                                      q as {
-                                        data?: { exportFilename?: string };
-                                      }
-                                    ).data;
-                                    if (data?.exportFilename)
-                                      return data.exportFilename;
-                                    return messages
-                                      ? generateExportFilename(
-                                          messages,
-                                          messageId,
-                                          queryText,
-                                          tableResult?.columns,
-                                        )
-                                      : undefined;
-                                  })()}
                                 />
                               </div>
-                              {error && (
+                              {error != null && (
                                 <div className="mt-2">
                                   <p className="text-destructive mb-1 pl-1 text-[10px] font-bold tracking-widest uppercase">
                                     Error Details
@@ -1884,6 +1909,7 @@ export function ToolPart({
       } | null;
       if (!part.output && part.input != null) {
         const isInputStreaming = part.state === 'input-streaming';
+
         return (
           <div className="flex w-full flex-col gap-3">
             {input?.queryResults?.sqlQuery && (
@@ -1969,6 +1995,24 @@ export function ToolPart({
     part.type !== 'tool-runQueries';
 
   const isControlled = open !== undefined;
+
+  // Minimal mode: avoid nested collapsibles for batch query runs.
+  // ToolCallsGroup already collapses the section; this keeps runQueries simple.
+  if (variant === 'minimal' && part.type === 'tool-runQueries') {
+    return (
+      <div
+        key={`${messageId}-${index}`}
+        className={cn(
+          'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
+          'max-w-[min(43.2rem,calc(100%-3rem))]',
+          'mx-4 sm:mx-6',
+        )}
+      >
+        {renderToolOutput()}
+      </div>
+    );
+  }
+
   return (
     <Tool
       key={`${messageId}-${index}`}

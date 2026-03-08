@@ -249,6 +249,7 @@ export function useSuggestionEnhancement({
     sendMessage,
     handleSuggestionClick,
     isLastAgentResponse,
+    applyOmit,
     onBeforeSuggestionSend,
   ]);
 }

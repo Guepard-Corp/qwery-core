@@ -14,6 +14,9 @@ import {
   CheckIcon,
   XIcon,
   PencilIcon,
+  MoreVertical as MoreVerticalIcon,
+  FileText as FileTextIcon,
+  Archive as ArchiveIcon,
 } from 'lucide-react';
 import { Message, MessageContent } from '../../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
@@ -51,6 +54,16 @@ import {
   type FeedbackPayload,
   getFeedbackFromMetadata,
 } from './feedback-types';
+import {
+  messagesToMarkdown,
+  downloadMarkdown,
+} from './utils/export-to-markdown';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../shadcn/dropdown-menu';
 
 export interface MessageItemProps {
   message: UIMessage;
@@ -103,6 +116,7 @@ export interface MessageItemProps {
   ) => Promise<boolean>;
   onDatasourceNameClick?: (id: string, name: string) => void;
   getDatasourceTooltip?: (id: string) => string;
+  conversationTitle?: string;
 }
 
 function getExecutionTimeMs(
@@ -159,12 +173,54 @@ function MessageItemComponent({
   onDatasourceNameClick,
   getDatasourceTooltip,
   onToolApproval,
+  conversationTitle,
 }: MessageItemProps) {
   const { t } = useTranslation('common');
+  const { t: tChat } = useTranslation('chat');
   useToolVariant();
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
+
+  const getChartSvg = (messageId: string, partIndex: number): string | null => {
+    const element = document.querySelector(
+      `[data-export-key="${messageId}-${partIndex}"] svg`,
+    );
+    if (!element) return null;
+    try {
+      return new XMLSerializer().serializeToString(element as SVGElement);
+    } catch {
+      return null;
+    }
+  };
+
+  const handleExportResponse = () => {
+    const messageIndex = messages.findIndex((m) => m.id === message.id);
+    let userMessage: (typeof messages)[0] | null = null;
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (normalizeUIRole(messages[i]?.role) === 'user') {
+        userMessage = messages[i] ?? null;
+        break;
+      }
+    }
+    const messagesToExport = userMessage ? [userMessage, message] : [message];
+
+    const md = messagesToMarkdown(messagesToExport, undefined, { getChartSvg });
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `response-${date}-${message.id.slice(0, 8)}`;
+    downloadMarkdown(md, filename);
+  };
+
+  const handleExportChat = () => {
+    const messageIndex = messages.findIndex((m) => m.id === message.id);
+    const messagesUpToThisPoint = messages.slice(0, messageIndex + 1);
+    const md = messagesToMarkdown(messagesUpToThisPoint, conversationTitle, {
+      getChartSvg,
+    });
+    const filename =
+      conversationTitle || `chat-${new Date().toISOString().slice(0, 10)}`;
+    downloadMarkdown(md, filename);
+  };
 
   const textParts = message.parts.filter((p) => p.type === 'text');
   const isLastAssistantMessage = message.id === lastAssistantMessage?.id;
@@ -665,11 +721,18 @@ function MessageItemComponent({
                                     )}
                                   </>
                                 )}
-                                {/* Actions below the bubble - only for assistant messages, visible on hover */}
-                                {isResponseComplete &&
-                                  message.role === 'assistant' && (
-                                    <div className="mt-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                      {statusConfig.showRegenerateButton &&
+                                {/* Actions below the bubble - for every assistant message */}
+                                {message.role === 'assistant' &&
+                                  isLastTextPart && (
+                                    <div
+                                      className={cn(
+                                        'text-muted-foreground mt-1 flex items-center gap-2',
+                                        !isLastAssistantMessage &&
+                                          'opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100',
+                                      )}
+                                    >
+                                      {isResponseComplete &&
+                                        statusConfig.showRegenerateButton &&
                                         !(
                                           isLastAssistantMessage &&
                                           statusConfig.hideRegenerateOnLastMessage
@@ -728,6 +791,36 @@ function MessageItemComponent({
                                           <CopyIcon className="size-3" />
                                         )}
                                       </Button>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            title="Export"
+                                          >
+                                            <MoreVerticalIcon className="size-3" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                            onClick={handleExportResponse}
+                                          >
+                                            <FileTextIcon className="mr-2 size-4" />
+                                            {tChat('export_response', {
+                                              defaultValue: 'Export response',
+                                            })}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={handleExportChat}
+                                          >
+                                            <ArchiveIcon className="mr-2 size-4" />
+                                            {tChat('export_chat', {
+                                              defaultValue: 'Export chat',
+                                            })}
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     </div>
                                   )}
                               </>
@@ -788,10 +881,16 @@ function MessageItemComponent({
                             </MessageContent>
                           </Message>
                         )}
-                        {/* Actions below the bubble - visible on hover */}
-                        {isResponseComplete && (
-                          <div className="mt-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                            {message.role === 'assistant' &&
+                        {/* Actions below the bubble - for every assistant message */}
+                        {message.role === 'assistant' && isLastTextPart && (
+                          <div
+                            className={cn(
+                              'text-muted-foreground mt-1 flex items-center gap-2',
+                              !isLastAssistantMessage &&
+                                'opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100',
+                            )}
+                          >
+                            {isResponseComplete &&
                               statusConfig.showRegenerateButton &&
                               !(
                                 isLastAssistantMessage &&
@@ -847,6 +946,36 @@ function MessageItemComponent({
                                 <CopyIcon className="size-3" />
                               )}
                             </Button>
+                            {message.role === 'assistant' && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Export"
+                                  >
+                                    <MoreVerticalIcon className="size-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={handleExportResponse}
+                                  >
+                                    <FileTextIcon className="mr-2 size-4" />
+                                    {tChat('export_response', {
+                                      defaultValue: 'Export response',
+                                    })}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={handleExportChat}>
+                                    <ArchiveIcon className="mr-2 size-4" />
+                                    {tChat('export_chat', {
+                                      defaultValue: 'Export chat',
+                                    })}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         )}
                       </div>

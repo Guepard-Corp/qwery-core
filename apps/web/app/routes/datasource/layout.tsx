@@ -1,18 +1,10 @@
 import { Outlet } from 'react-router';
 
-import {
-  Page,
-  PageFooter,
-  PageMobileNavigation,
-  PageNavigation,
-  PageTopNavigation,
-} from '@qwery/ui/page';
+import { Page, PageFooter, PageNavigation } from '@qwery/ui/page';
 import { SidebarProvider } from '@qwery/ui/shadcn-sidebar';
 import type { Route } from '~/types/app/routes/project/+types/layout';
 
 import { LayoutFooter } from '../layout/_components/layout-footer';
-import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
-import { ProjectLayoutTopBar } from '../project/_components/project-topbar';
 import { DatasourceSidebar } from './_components/datasource-sidebar';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
@@ -33,15 +25,9 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
     <ProjectProvider>
       <SidebarProvider defaultOpen={layoutState.open}>
         <Page>
-          <PageTopNavigation>
-            <ProjectLayoutTopBar />
-          </PageTopNavigation>
           <PageNavigation>
             <DatasourceSidebar />
           </PageNavigation>
-          <PageMobileNavigation className={'flex items-center justify-between'}>
-            <LayoutMobileNavigation />
-          </PageMobileNavigation>
           <PageFooter>
             <LayoutFooter />
           </PageFooter>
@@ -58,12 +44,6 @@ function SimpleModeSidebarLayout(
   return (
     <ProjectProvider>
       <Page>
-        <PageTopNavigation>
-          <ProjectLayoutTopBar />
-        </PageTopNavigation>
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <LayoutMobileNavigation />
-        </PageMobileNavigation>
         <PageFooter>
           <LayoutFooter />
         </PageFooter>

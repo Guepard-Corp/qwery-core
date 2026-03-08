@@ -29,7 +29,7 @@ import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
-import { cn } from '@qwery/ui/utils';
+import { cn, truncateText } from '@qwery/ui/utils';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -392,137 +392,59 @@ export function ListNotebooks({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-0 lg:px-16">
-        {filteredNotebooks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-foreground mb-2 text-base font-medium">
-              {t('no_notebooks', 'No notebooks found')}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {searchQuery
-                ? t(
-                    'no_notebooks_description',
-                    'Try adjusting your search query',
-                  )
-                : t('no_notebooks_empty', 'No notebooks have been created yet')}
-            </p>
-          </div>
-        ) : isGridView ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedNotebooks.map((notebook) => {
-              const hasUnsavedChanges = unsavedNotebookIds.includes(
-                notebook.id,
-              );
-              return (
-                <div
-                  key={notebook.id}
-                  className="bg-card group relative overflow-hidden rounded-xl border transition-all hover:border-[#ffcb51]/50 hover:shadow-lg"
-                >
-                  <Link
-                    to={createPath(
-                      pathsConfig.app.projectNotebook,
-                      notebook.slug,
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="h-full px-8 lg:px-16">
+          {filteredNotebooks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-foreground mb-2 text-base font-medium">
+                {t('no_notebooks', 'No notebooks found')}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {searchQuery
+                  ? t(
+                      'no_notebooks_description',
+                      'Try adjusting your search query',
+                    )
+                  : t(
+                      'no_notebooks_empty',
+                      'No notebooks have been created yet',
                     )}
-                    className="flex h-full flex-col p-6"
+              </p>
+            </div>
+          ) : isGridView ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedNotebooks.map((notebook) => {
+                const hasUnsavedChanges = unsavedNotebookIds.includes(
+                  notebook.id,
+                );
+                return (
+                  <div
+                    key={notebook.id}
+                    className="bg-card group relative overflow-hidden rounded-xl border transition-all hover:border-[#ffcb51]/50 hover:shadow-lg"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className="bg-muted/50 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border">
-                          <Notebook className="h-5 w-5" />
-                        </div>
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <div className="flex items-center gap-2">
-                            <h3 className="truncate text-sm font-semibold">
-                              {highlightMatch(notebook.title, searchQuery)}
-                            </h3>
-                            {hasUnsavedChanges && (
-                              <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
-                            )}
-                          </div>
-                          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                            <User className="h-2.5 w-2.5" />
-                            System
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-muted-foreground ml-2 flex shrink-0 items-center gap-1.5 text-xs">
-                        <Clock className="h-3.5 w-3.5" />
-                        {new Date(notebook.createdAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="bg-card overflow-hidden rounded-xl border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[40%] pl-6 font-semibold">
-                    Name
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSortClick('date')}
-                      className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
-                    >
-                      Created
-                      {sortCriterion === 'date' ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        ) : (
-                          <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                    <Link
+                      to={createPath(
+                        pathsConfig.app.projectNotebook,
+                        notebook.slug,
                       )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="pr-6 text-right font-semibold">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedNotebooks.map((notebook) => {
-                  const hasUnsavedChanges = unsavedNotebookIds.includes(
-                    notebook.id,
-                  );
-                  const date = new Date(notebook.createdAt);
-
-                  return (
-                    <TableRow
-                      key={notebook.id}
-                      className="group hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() =>
-                        navigate(
-                          createPath(
-                            pathsConfig.app.projectNotebook,
-                            notebook.slug,
-                          ),
-                        )
-                      }
+                      className="flex h-full flex-col p-6"
                     >
-                      <TableCell className="py-4 pl-6 font-medium">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className="bg-muted/50 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border">
                             <Notebook className="h-5 w-5" />
                           </div>
                           <div className="flex min-w-0 flex-1 flex-col">
                             <div className="flex items-center gap-2">
-                              <span className="truncate text-sm font-semibold">
-                                {highlightMatch(notebook.title, searchQuery)}
-                              </span>
+                              <h3
+                                className="truncate text-sm font-semibold"
+                                title={notebook.title}
+                              >
+                                {highlightMatch(
+                                  truncateText(notebook.title, 40),
+                                  searchQuery,
+                                )}
+                              </h3>
                               {hasUnsavedChanges && (
                                 <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
                               )}
@@ -533,44 +455,142 @@ export function ListNotebooks({
                             </span>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        <div className="flex items-center gap-1.5">
+                        <div className="text-muted-foreground ml-2 flex shrink-0 items-center gap-1.5 text-xs">
                           <Clock className="h-3.5 w-3.5" />
-                          {date.toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
+                          {new Date(notebook.createdAt).toLocaleString(
+                            'en-US',
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            },
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(
-                              createPath(
-                                pathsConfig.app.projectNotebook,
-                                notebook.slug,
-                              ),
-                            );
-                          }}
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+                      </div>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-card overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[40%] pl-6 font-semibold">
+                      Name
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSortClick('date')}
+                        className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
+                      >
+                        Created
+                        {sortCriterion === 'date' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedNotebooks.map((notebook) => {
+                    const hasUnsavedChanges = unsavedNotebookIds.includes(
+                      notebook.id,
+                    );
+                    const date = new Date(notebook.createdAt);
+
+                    return (
+                      <TableRow
+                        key={notebook.id}
+                        className="group hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() =>
+                          navigate(
+                            createPath(
+                              pathsConfig.app.projectNotebook,
+                              notebook.slug,
+                            ),
+                          )
+                        }
+                      >
+                        <TableCell className="py-4 pl-6 font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                              <Notebook className="h-5 w-5" />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="truncate text-sm font-semibold"
+                                  title={notebook.title}
+                                >
+                                  {highlightMatch(
+                                    truncateText(notebook.title, 40),
+                                    searchQuery,
+                                  )}
+                                </span>
+                                {hasUnsavedChanges && (
+                                  <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
+                                )}
+                              </div>
+                              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                                <User className="h-2.5 w-2.5" />
+                                System
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {date.toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                createPath(
+                                  pathsConfig.app.projectNotebook,
+                                  notebook.slug,
+                                ),
+                              );
+                            }}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </div>
 
       {totalPages > 1 && (

@@ -35,7 +35,7 @@ import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { DatasourceCard } from '@qwery/ui/qwery/datasource';
 import { Switch } from '@qwery/ui/switch';
-import { cn } from '@qwery/ui/utils';
+import { cn, truncateText } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai';
 
 import {
@@ -513,334 +513,361 @@ export function ListDatasources({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-0 lg:px-16">
-        {filteredDatasources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-foreground mb-2 text-base font-medium">
-              No datasources found
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {searchQuery
-                ? 'Try adjusting your search query'
-                : 'No datasources have been created yet'}
-            </p>
-          </div>
-        ) : groupByProvider ? (
-          <div className="space-y-8">
-            {Object.entries(groupedDatasources).map(([provider, items]) => {
-              const isCollapsed = collapsedGroups.has(provider);
-              return (
-                <div key={provider} className="space-y-4">
-                  <button
-                    onClick={() => toggleGroupCollapse(provider)}
-                    className="hover:bg-muted/50 flex w-full items-center gap-2 rounded-md p-2 transition-colors"
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="text-muted-foreground h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="text-muted-foreground h-4 w-4" />
-                    )}
-                    <div className="flex items-center gap-2">
-                      <div className="bg-muted/50 flex h-6 w-6 items-center justify-center rounded border p-1">
-                        {pluginLogoMap.has(provider) ? (
-                          <img
-                            src={pluginLogoMap.get(provider)}
-                            alt={provider}
-                            className="h-full w-full object-contain"
-                          />
-                        ) : (
-                          <div className="bg-muted-foreground/20 h-2 w-2 rounded" />
-                        )}
-                      </div>
-                      <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-                        {provider} ({items.length})
-                      </h3>
-                    </div>
-                    <div className="bg-border h-px flex-1" />
-                  </button>
-
-                  {!isCollapsed &&
-                    (isGridView ? (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {items.map((datasource) => {
-                          const logo = datasource.datasource_provider
-                            ? pluginLogoMap.get(datasource.datasource_provider)
-                            : undefined;
-
-                          return (
-                            <DatasourceCard
-                              key={datasource.id}
-                              id={datasource.id}
-                              name={datasource.name}
-                              createdAt={datasource.createdAt}
-                              createdBy={datasource.createdBy}
-                              logo={logo}
-                              provider={datasource.datasource_provider}
-                              viewButton={
-                                <Link
-                                  to={createDatasourceViewPath(datasource.slug)}
-                                  className="flex w-full items-center justify-center gap-2 px-3 py-2"
-                                >
-                                  <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
-                                    <Trans
-                                      i18nKey="datasources:card.view"
-                                      defaults="View"
-                                    />
-                                  </span>
-                                  <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
-                                </Link>
-                              }
-                              dataTest={`datasource-card-${datasource.id}`}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="bg-card overflow-hidden rounded-xl border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50 hover:bg-muted/50">
-                              <TableHead className="w-[40%] pl-6 font-semibold">
-                                Name
-                              </TableHead>
-                              <TableHead className="font-semibold">
-                                Provider
-                              </TableHead>
-                              <TableHead className="font-semibold">
-                                Created
-                              </TableHead>
-                              <TableHead className="pr-6 text-right font-semibold">
-                                Actions
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {items.map((datasource) => {
-                              const logo = datasource.datasource_provider
-                                ? pluginLogoMap.get(
-                                    datasource.datasource_provider,
-                                  )
-                                : undefined;
-                              const formattedDateTime = formatRelativeTime(
-                                new Date(datasource.createdAt),
-                              );
-
-                              return (
-                                <TableRow
-                                  key={datasource.id}
-                                  className="group hover:bg-muted/30 cursor-pointer transition-colors"
-                                  onClick={() =>
-                                    navigate(
-                                      createDatasourceViewPath(datasource.slug),
-                                    )
-                                  }
-                                >
-                                  <TableCell className="py-4 pl-6 font-medium">
-                                    <div className="flex items-center gap-3">
-                                      <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
-                                        {logo ? (
-                                          <img
-                                            src={logo}
-                                            alt={datasource.datasource_provider}
-                                            className="h-full w-full object-contain"
-                                          />
-                                        ) : (
-                                          <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
-                                        )}
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-semibold">
-                                          {highlightMatch(
-                                            datasource.name,
-                                            searchQuery,
-                                          )}
-                                        </span>
-                                        <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                                          <User className="h-2.5 w-2.5" />
-                                          {datasource.createdBy || 'System'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
-                                      {datasource.datasource_provider}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-muted-foreground text-sm">
-                                    <div className="flex items-center gap-1.5">
-                                      <Clock className="h-3.5 w-3.5" />
-                                      {formattedDateTime}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="pr-6 text-right">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(
-                                          createDatasourceViewPath(
-                                            datasource.slug,
-                                          ),
-                                        );
-                                      }}
-                                    >
-                                      <ArrowRight className="h-4 w-4" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ))}
-                </div>
-              );
-            })}
-          </div>
-        ) : isGridView ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedDatasources.map((datasource: Datasource) => {
-              const logo = datasource.datasource_provider
-                ? pluginLogoMap.get(datasource.datasource_provider)
-                : undefined;
-
-              return (
-                <DatasourceCard
-                  key={datasource.id}
-                  id={datasource.id}
-                  name={datasource.name}
-                  createdAt={datasource.createdAt}
-                  createdBy={datasource.createdBy}
-                  logo={logo}
-                  provider={datasource.datasource_provider}
-                  viewButton={
-                    <Link
-                      to={createDatasourceViewPath(datasource.slug)}
-                      className="flex w-full items-center justify-center gap-2 px-3 py-2"
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="h-full px-8 lg:px-16">
+          {filteredDatasources.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-foreground mb-2 text-base font-medium">
+                No datasources found
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {searchQuery
+                  ? 'Try adjusting your search query'
+                  : 'No datasources have been created yet'}
+              </p>
+            </div>
+          ) : groupByProvider ? (
+            <div className="space-y-8">
+              {Object.entries(groupedDatasources).map(([provider, items]) => {
+                const isCollapsed = collapsedGroups.has(provider);
+                return (
+                  <div key={provider} className="space-y-4">
+                    <button
+                      onClick={() => toggleGroupCollapse(provider)}
+                      className="hover:bg-muted/50 flex w-full items-center gap-2 rounded-md p-2 transition-colors"
                     >
-                      <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
-                        <Trans
-                          i18nKey="datasources:card.view"
-                          defaults="View"
-                        />
-                      </span>
-                      <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
-                    </Link>
-                  }
-                  data-test={`datasource-card-${datasource.id}`}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <div className="bg-card overflow-hidden rounded-xl border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[40%] pl-6 font-semibold">
-                    Name
-                  </TableHead>
-                  <TableHead className="font-semibold">Provider</TableHead>
-                  <TableHead className="font-semibold">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSortClick('date')}
-                      className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
-                    >
-                      Created
-                      {sortCriterion === 'date' ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        ) : (
-                          <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
-                        )
+                      {isCollapsed ? (
+                        <ChevronRight className="text-muted-foreground h-4 w-4" />
                       ) : (
-                        <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                        <ChevronDown className="text-muted-foreground h-4 w-4" />
                       )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="pr-6 text-right font-semibold">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedDatasources.map((datasource: Datasource) => {
-                  const logo = datasource.datasource_provider
-                    ? pluginLogoMap.get(datasource.datasource_provider)
-                    : undefined;
-                  const formattedDateTime = formatRelativeTime(
-                    new Date(datasource.createdAt),
-                  );
+                      <div className="flex items-center gap-2">
+                        <div className="bg-muted/50 flex h-6 w-6 items-center justify-center rounded border p-1">
+                          {pluginLogoMap.has(provider) ? (
+                            <img
+                              src={pluginLogoMap.get(provider)}
+                              alt={provider}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <div className="bg-muted-foreground/20 h-2 w-2 rounded" />
+                          )}
+                        </div>
+                        <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+                          {provider} ({items.length})
+                        </h3>
+                      </div>
+                      <div className="bg-border h-px flex-1" />
+                    </button>
 
-                  return (
-                    <TableRow
-                      key={datasource.id}
-                      className="group hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() =>
-                        navigate(createDatasourceViewPath(datasource.slug))
-                      }
-                    >
-                      <TableCell className="py-4 pl-6 font-medium">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
-                            {logo ? (
-                              <img
-                                src={logo}
-                                alt={datasource.datasource_provider}
-                                className="h-full w-full object-contain"
+                    {!isCollapsed &&
+                      (isGridView ? (
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                          {items.map((datasource) => {
+                            const logo = datasource.datasource_provider
+                              ? pluginLogoMap.get(
+                                  datasource.datasource_provider,
+                                )
+                              : undefined;
+
+                            return (
+                              <DatasourceCard
+                                key={datasource.id}
+                                id={datasource.id}
+                                name={datasource.name}
+                                createdAt={datasource.createdAt}
+                                createdBy={datasource.createdBy}
+                                logo={logo}
+                                provider={datasource.datasource_provider}
+                                viewButton={
+                                  <Link
+                                    to={createDatasourceViewPath(
+                                      datasource.slug,
+                                    )}
+                                    className="flex w-full items-center justify-center gap-2 px-3 py-2"
+                                  >
+                                    <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
+                                      <Trans
+                                        i18nKey="datasources:card.view"
+                                        defaults="View"
+                                      />
+                                    </span>
+                                    <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
+                                  </Link>
+                                }
+                                dataTest={`datasource-card-${datasource.id}`}
                               />
-                            ) : (
-                              <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
-                            )}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold">
-                              {highlightMatch(datasource.name, searchQuery)}
-                            </span>
-                            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                              <User className="h-2.5 w-2.5" />
-                              {datasource.createdBy || 'System'}
-                            </span>
-                          </div>
+                            );
+                          })}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
-                          {datasource.datasource_provider}
+                      ) : (
+                        <div className="bg-card overflow-hidden rounded-xl border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="w-[40%] pl-6 font-semibold">
+                                  Name
+                                </TableHead>
+                                <TableHead className="font-semibold">
+                                  Provider
+                                </TableHead>
+                                <TableHead className="font-semibold">
+                                  Created
+                                </TableHead>
+                                <TableHead className="pr-6 text-right font-semibold">
+                                  Actions
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {items.map((datasource) => {
+                                const logo = datasource.datasource_provider
+                                  ? pluginLogoMap.get(
+                                      datasource.datasource_provider,
+                                    )
+                                  : undefined;
+                                const formattedDateTime = formatRelativeTime(
+                                  new Date(datasource.createdAt),
+                                );
+
+                                return (
+                                  <TableRow
+                                    key={datasource.id}
+                                    className="group hover:bg-muted/30 cursor-pointer transition-colors"
+                                    onClick={() =>
+                                      navigate(
+                                        createDatasourceViewPath(
+                                          datasource.slug,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    <TableCell className="py-4 pl-6 font-medium">
+                                      <div className="flex items-center gap-3">
+                                        <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                                          {logo ? (
+                                            <img
+                                              src={logo}
+                                              alt={
+                                                datasource.datasource_provider
+                                              }
+                                              className="h-full w-full object-contain"
+                                            />
+                                          ) : (
+                                            <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
+                                          )}
+                                        </div>
+                                        <div className="flex min-w-0 flex-1 flex-col">
+                                          <span
+                                            className="text-sm font-semibold"
+                                            title={datasource.name}
+                                          >
+                                            {highlightMatch(
+                                              truncateText(datasource.name, 40),
+                                              searchQuery,
+                                            )}
+                                          </span>
+                                          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                                            <User className="h-2.5 w-2.5" />
+                                            {truncateText(
+                                              datasource.createdBy || 'System',
+                                              28,
+                                            )}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
+                                        {datasource.datasource_provider}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {formattedDateTime}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="pr-6 text-right">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(
+                                            createDatasourceViewPath(
+                                              datasource.slug,
+                                            ),
+                                          );
+                                        }}
+                                      >
+                                        <ArrowRight className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
+          ) : isGridView ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedDatasources.map((datasource: Datasource) => {
+                const logo = datasource.datasource_provider
+                  ? pluginLogoMap.get(datasource.datasource_provider)
+                  : undefined;
+
+                return (
+                  <DatasourceCard
+                    key={datasource.id}
+                    id={datasource.id}
+                    name={datasource.name}
+                    createdAt={datasource.createdAt}
+                    createdBy={datasource.createdBy}
+                    logo={logo}
+                    provider={datasource.datasource_provider}
+                    viewButton={
+                      <Link
+                        to={createDatasourceViewPath(datasource.slug)}
+                        className="flex w-full items-center justify-center gap-2 px-3 py-2"
+                      >
+                        <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
+                          <Trans
+                            i18nKey="datasources:card.view"
+                            defaults="View"
+                          />
                         </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formattedDateTime}
-                        </div>
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(createDatasourceViewPath(datasource.slug));
-                          }}
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+                        <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
+                      </Link>
+                    }
+                    data-test={`datasource-card-${datasource.id}`}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-card overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[40%] pl-6 font-semibold">
+                      Name
+                    </TableHead>
+                    <TableHead className="font-semibold">Provider</TableHead>
+                    <TableHead className="font-semibold">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSortClick('date')}
+                        className="hover:text-foreground group/sort -ml-3 h-8 gap-1 px-3 hover:bg-transparent"
+                      >
+                        Created
+                        {sortCriterion === 'date' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3.5 w-3.5 text-[#ffcb51]" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="text-muted-foreground/30 group-hover/sort:text-muted-foreground ml-1 h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedDatasources.map((datasource: Datasource) => {
+                    const logo = datasource.datasource_provider
+                      ? pluginLogoMap.get(datasource.datasource_provider)
+                      : undefined;
+                    const formattedDateTime = formatRelativeTime(
+                      new Date(datasource.createdAt),
+                    );
+
+                    return (
+                      <TableRow
+                        key={datasource.id}
+                        className="group hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() =>
+                          navigate(createDatasourceViewPath(datasource.slug))
+                        }
+                      >
+                        <TableCell className="py-4 pl-6 font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-muted/50 group-hover:bg-background flex h-9 w-9 items-center justify-center rounded-lg border p-1.5 transition-colors">
+                              {logo ? (
+                                <img
+                                  src={logo}
+                                  alt={datasource.datasource_provider}
+                                  className="h-full w-full object-contain"
+                                />
+                              ) : (
+                                <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
+                              )}
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <span
+                                className="text-sm font-semibold"
+                                title={datasource.name}
+                              >
+                                {highlightMatch(
+                                  truncateText(datasource.name, 40),
+                                  searchQuery,
+                                )}
+                              </span>
+                              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                                <User className="h-2.5 w-2.5" />
+                                {truncateText(
+                                  datasource.createdBy || 'System',
+                                  28,
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
+                            {datasource.datasource_provider}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formattedDateTime}
+                          </div>
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                createDatasourceViewPath(datasource.slug),
+                              );
+                            }}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </div>
 
       {totalPages > 1 && !groupByProvider && (

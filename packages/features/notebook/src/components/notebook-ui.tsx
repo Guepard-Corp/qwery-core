@@ -1390,178 +1390,180 @@ export function NotebookUI({
       )}
 
       {/* Cells container */}
-      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 mt-6 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-12 pl-16 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={cells.map((c) => c.cellId.toString())}
-            strategy={verticalListSortingStrategy}
+      <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 mt-6 min-h-0 flex-1 overflow-x-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="h-full pr-12 pl-16">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
           >
-            <div className="flex flex-col gap-4">
-              {isDuplicating &&
-                duplicateInsertIndex === 0 &&
-                activeCellHeight !== null && (
-                  <div
-                    style={{ height: activeCellHeight }}
-                    className="transition-all duration-150"
-                  />
-                )}
-              {cells.map((cell, index) => {
-                // Get error for this specific cell only - ensure strict isolation
-                let cellError: string | undefined = undefined;
-                if (externalCellErrors && externalCellErrors instanceof Map) {
-                  const error = externalCellErrors.get(cell.cellId);
-                  if (typeof error === 'string' && error.trim().length > 0) {
-                    cellError = error;
-                  }
-                }
-
-                // Get loading state for this cell
-                const isLoading =
-                  externalCellLoadingStates?.get(cell.cellId) ?? false;
-
-                return (
-                  <React.Fragment key={cell.cellId}>
-                    <SortableCell
-                      cell={cell}
-                      cellIndex={index}
-                      onQueryChange={handleQueryChange}
-                      onTitleChange={handleTitleChange}
-                      onDatasourceChange={handleDatasourceChange}
-                      onRunQuery={handleRunQuery}
-                      onRunQueryWithAgent={handleRunQueryWithAgent}
-                      datasources={allDatasources}
-                      result={cellResults.get(cell.cellId)}
-                      error={cellError}
-                      isLoading={isLoading}
-                      onMoveUp={handleMoveCellUp}
-                      onMoveDown={handleMoveCellDown}
-                      onDuplicate={handleDuplicateCell}
-                      onFormat={handleFormatCell}
-                      onDelete={handleDeleteCell}
-                      onFullView={handleFullView}
-                      isAdvancedMode={isAdvancedMode}
-                      activeAiPopup={activeAiPopup}
-                      onOpenAiPopup={handleOpenAiPopup}
-                      onCloseAiPopup={handleCloseAiPopup}
-                      totalCellCount={cells.length}
-                      isDuplicating={
-                        isDuplicating && activeId === cell.cellId.toString()
-                      }
-                      isNotebookLoading={isNotebookLoading}
-                      hasAgentResponse={promptCellsWithResponse.has(
-                        cell.cellId,
-                      )}
-                      onNoDatasourceError={onNoDatasourceError}
-                    />
-                    {index < cells.length - 1 && (
-                      <CellDivider
-                        onAddCell={(type) => handleAddCell(cell.cellId, type)}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-              {/* Add cell button at the bottom */}
-              {isDuplicating &&
-                duplicateInsertIndex === cells.length &&
-                activeCellHeight !== null && (
-                  <div
-                    style={{ height: activeCellHeight }}
-                    className="transition-all duration-150"
-                  />
-                )}
-              <div className="flex flex-col items-center gap-4 py-8">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="border-border hover:bg-accent/50 group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
-                    >
-                      <Plus className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
-                      <span className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition-colors">
-                        Add a cell
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="center" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => handleAddCell(undefined, 'query')}
-                    >
-                      <Type className="mr-2 h-4 w-4" />
-                      <span>Code Cell</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleAddCell(undefined, 'text')}
-                    >
-                      <BookText className="mr-2 h-4 w-4" />
-                      <span>Markdown Cell</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleAddCell(undefined, 'prompt')}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      <span>Prompt Cell</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </SortableContext>
-          <DragOverlay>
-            {activeId && isDuplicating
-              ? (() => {
-                  const activeCell = cells.find(
-                    (c) => c.cellId.toString() === activeId,
-                  );
-                  if (!activeCell) return null;
-                  return (
+            <SortableContext
+              items={cells.map((c) => c.cellId.toString())}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col gap-4">
+                {isDuplicating &&
+                  duplicateInsertIndex === 0 &&
+                  activeCellHeight !== null && (
                     <div
-                      className="rotate-2 overflow-hidden opacity-95 shadow-2xl"
-                      style={
-                        activeCellWidth && activeCellHeight
-                          ? {
-                              width: `${activeCellWidth}px`,
-                              height: `${activeCellHeight}px`,
-                            }
-                          : {
-                              width: 'calc(100vw - 6rem)',
-                              minWidth: '600px',
-                            }
-                      }
-                    >
-                      <NotebookCell
-                        cell={activeCell}
+                      style={{ height: activeCellHeight }}
+                      className="transition-all duration-150"
+                    />
+                  )}
+                {cells.map((cell, index) => {
+                  // Get error for this specific cell only - ensure strict isolation
+                  let cellError: string | undefined = undefined;
+                  if (externalCellErrors && externalCellErrors instanceof Map) {
+                    const error = externalCellErrors.get(cell.cellId);
+                    if (typeof error === 'string' && error.trim().length > 0) {
+                      cellError = error;
+                    }
+                  }
+
+                  // Get loading state for this cell
+                  const isLoading =
+                    externalCellLoadingStates?.get(cell.cellId) ?? false;
+
+                  return (
+                    <React.Fragment key={cell.cellId}>
+                      <SortableCell
+                        cell={cell}
+                        cellIndex={index}
+                        onQueryChange={handleQueryChange}
+                        onTitleChange={handleTitleChange}
+                        onDatasourceChange={handleDatasourceChange}
+                        onRunQuery={handleRunQuery}
+                        onRunQueryWithAgent={handleRunQueryWithAgent}
                         datasources={allDatasources}
-                        onQueryChange={() => {}}
-                        onDatasourceChange={() => {}}
-                        dragHandleProps={{}}
-                        isDragging={true}
-                        result={cellResults.get(activeCell.cellId)}
-                        error={undefined}
-                        isLoading={false}
-                        onMoveUp={() => {}}
-                        onMoveDown={() => {}}
-                        onDuplicate={() => {}}
-                        onFormat={() => {}}
-                        onDelete={() => {}}
-                        onFullView={() => {}}
+                        result={cellResults.get(cell.cellId)}
+                        error={cellError}
+                        isLoading={isLoading}
+                        onMoveUp={handleMoveCellUp}
+                        onMoveDown={handleMoveCellDown}
+                        onDuplicate={handleDuplicateCell}
+                        onFormat={handleFormatCell}
+                        onDelete={handleDeleteCell}
+                        onFullView={handleFullView}
                         isAdvancedMode={isAdvancedMode}
-                        activeAiPopup={null}
-                        onOpenAiPopup={() => {}}
-                        onCloseAiPopup={() => {}}
+                        activeAiPopup={activeAiPopup}
+                        onOpenAiPopup={handleOpenAiPopup}
+                        onCloseAiPopup={handleCloseAiPopup}
+                        totalCellCount={cells.length}
+                        isDuplicating={
+                          isDuplicating && activeId === cell.cellId.toString()
+                        }
+                        isNotebookLoading={isNotebookLoading}
+                        hasAgentResponse={promptCellsWithResponse.has(
+                          cell.cellId,
+                        )}
+                        onNoDatasourceError={onNoDatasourceError}
                       />
-                    </div>
+                      {index < cells.length - 1 && (
+                        <CellDivider
+                          onAddCell={(type) => handleAddCell(cell.cellId, type)}
+                        />
+                      )}
+                    </React.Fragment>
                   );
-                })()
-              : null}
-          </DragOverlay>
-        </DndContext>
+                })}
+                {/* Add cell button at the bottom */}
+                {isDuplicating &&
+                  duplicateInsertIndex === cells.length &&
+                  activeCellHeight !== null && (
+                    <div
+                      style={{ height: activeCellHeight }}
+                      className="transition-all duration-150"
+                    />
+                  )}
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent/50 group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed transition-all"
+                      >
+                        <Plus className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
+                        <span className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition-colors">
+                          Add a cell
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => handleAddCell(undefined, 'query')}
+                      >
+                        <Type className="mr-2 h-4 w-4" />
+                        <span>Code Cell</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleAddCell(undefined, 'text')}
+                      >
+                        <BookText className="mr-2 h-4 w-4" />
+                        <span>Markdown Cell</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleAddCell(undefined, 'prompt')}
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        <span>Prompt Cell</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </SortableContext>
+            <DragOverlay>
+              {activeId && isDuplicating
+                ? (() => {
+                    const activeCell = cells.find(
+                      (c) => c.cellId.toString() === activeId,
+                    );
+                    if (!activeCell) return null;
+                    return (
+                      <div
+                        className="rotate-2 overflow-hidden opacity-95 shadow-2xl"
+                        style={
+                          activeCellWidth && activeCellHeight
+                            ? {
+                                width: `${activeCellWidth}px`,
+                                height: `${activeCellHeight}px`,
+                              }
+                            : {
+                                width: 'calc(100vw - 6rem)',
+                                minWidth: '600px',
+                              }
+                        }
+                      >
+                        <NotebookCell
+                          cell={activeCell}
+                          datasources={allDatasources}
+                          onQueryChange={() => {}}
+                          onDatasourceChange={() => {}}
+                          dragHandleProps={{}}
+                          isDragging={true}
+                          result={cellResults.get(activeCell.cellId)}
+                          error={undefined}
+                          isLoading={false}
+                          onMoveUp={() => {}}
+                          onMoveDown={() => {}}
+                          onDuplicate={() => {}}
+                          onFormat={() => {}}
+                          onDelete={() => {}}
+                          onFullView={() => {}}
+                          isAdvancedMode={isAdvancedMode}
+                          activeAiPopup={null}
+                          onOpenAiPopup={() => {}}
+                          onCloseAiPopup={() => {}}
+                        />
+                      </div>
+                    );
+                  })()
+                : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
       </div>
       <DuplicationIndicator isVisible={isDuplicating && activeId !== null} />
 

@@ -34,12 +34,14 @@ function ProjectLayoutTopBarInner() {
   };
   return (
     <PageTopBar>
-      <div className="flex items-center space-x-4">
-        <AppLogo className="h-7 w-7" />
+      <div className="flex min-w-0 items-center space-x-4">
+        <AppLogo className="h-7 w-7 shrink-0" />
         {workspace.mode === WorkspaceModeEnum.SIMPLE ? null : (
           <SidebarTrigger className="lg:hidden" />
         )}
-        <ProjectBreadcrumb />
+        <div className="w-fit min-w-0">
+          <ProjectBreadcrumb />
+        </div>
       </div>
       <div className="flex items-center space-x-4">
         <Button asChild size="icon" variant="ghost">

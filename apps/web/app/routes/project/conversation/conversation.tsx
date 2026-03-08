@@ -8,10 +8,26 @@ import { useEffect, useRef, useMemo } from 'react';
 import type { AgentUIWrapperRef } from '../_components/agent-ui-wrapper';
 import { BotAvatar } from '@qwery/ui/bot-avatar';
 import { Button } from '@qwery/ui/button';
-import { FileText } from 'lucide-react';
+import {
+  FileText,
+  MoreHorizontal,
+  Pencil,
+  Bookmark,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import pathsConfig from '~/config/paths.config';
-import { createPath } from '~/config/paths.config';
+import pathsConfig, { createPath } from '~/config/paths.config';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@qwery/ui/dropdown-menu';
+import { useDeleteConversation } from '~/lib/mutations/use-conversation';
+import { useConversationListPrefsStore } from '~/lib/store/use-conversation-list-prefs';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@qwery/ui/utils';
 
 const GENERIC_CHAT_SUGGESTIONS = [
   'What can you help me with?',
@@ -22,7 +38,8 @@ const GENERIC_CHAT_SUGGESTIONS = [
 export default function ConversationPage() {
   const slug = useParams().slug;
   const navigate = useNavigate();
-  const { repositories } = useWorkspace();
+  const { repositories, workspace: _workspace } = useWorkspace();
+  const { t } = useTranslation('common');
   const agentRef = useRef<AgentUIWrapperRef>(null);
   const hasAutoSentRef = useRef(false);
 
@@ -35,6 +52,10 @@ export default function ConversationPage() {
   const getConversation = useGetConversationBySlug(
     repositories.conversation,
     slug as string,
+  );
+
+  const deleteConversationMutation = useDeleteConversation(
+    repositories.conversation,
   );
 
   const isLoading = getMessages.isLoading || getConversation.isLoading;
@@ -62,6 +83,55 @@ export default function ConversationPage() {
     const url = new URL(notebookPath, window.location.origin);
     url.searchParams.set('conversation', slug);
     navigate(url.pathname + url.search);
+  };
+
+  const currentConversation = getConversation.data;
+
+  const { bookmarkedIds, toggleBookmark: toggleBookmarkInStore } =
+    useConversationListPrefsStore();
+
+  const isBookmarked =
+    currentConversation && bookmarkedIds.includes(currentConversation.id);
+
+  const handleRename = () => {
+    if (!currentConversation) return;
+    window.dispatchEvent(
+      new CustomEvent('conversation-breadcrumb-rename-start'),
+    );
+  };
+
+  const handleToggleBookmark = () => {
+    if (!currentConversation) return;
+    toggleBookmarkInStore(currentConversation.id);
+  };
+
+  const handleDelete = () => {
+    if (!currentConversation) return;
+    const confirmed = window.confirm(
+      t('chat:delete_confirm', {
+        defaultValue: 'Delete this conversation? This cannot be undone.',
+      }),
+    );
+    if (!confirmed) return;
+
+    deleteConversationMutation.mutate(currentConversation.id, {
+      onSuccess: () => {
+        toast.success(
+          t('chat:delete_success', {
+            defaultValue: 'Conversation deleted',
+          }),
+        );
+        navigate(-1);
+      },
+      onError: (error) => {
+        toast.error(
+          t('chat:delete_error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            defaultValue: 'Failed to delete conversation: {{error}}',
+          }),
+        );
+      },
+    });
   };
 
   useEffect(() => {
@@ -238,6 +308,57 @@ export default function ConversationPage() {
         initialMessages={getMessages.data}
         initialSuggestions={initialSuggestions}
       />
+      {currentConversation && (
+        <div className="pointer-events-none fixed top-4 right-6 z-40 flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="pointer-events-auto h-9 w-9 rounded-full shadow-sm"
+                title={t('sidebar.chatOptions', {
+                  defaultValue: 'Chat options',
+                })}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="pointer-events-auto min-w-44"
+            >
+              <DropdownMenuItem onClick={handleRename}>
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>
+                  {t('common:sidebar.rename', { defaultValue: 'Rename' })}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleBookmark}>
+                <Bookmark
+                  className={cn('mr-2 h-4 w-4', isBookmarked && 'fill-current')}
+                />
+                <span>
+                  {isBookmarked
+                    ? t('common:sidebar.unpin', { defaultValue: 'Unpin chat' })
+                    : t('common:sidebar.pinChat', {
+                        defaultValue: 'Pin chat',
+                      })}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>
+                  {t('common:sidebar.delete', { defaultValue: 'Delete chat' })}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
       {notebookId && notebook.data?.slug && (
         <Button
           onClick={handleGoToNotebook}

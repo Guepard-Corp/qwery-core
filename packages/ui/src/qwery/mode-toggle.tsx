@@ -116,7 +116,7 @@ export function SubMenuModeToggle() {
         </span>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        className="min-w-[10rem]"
+        className="z-[999] min-w-[10rem]"
         onPointerEnter={() => setSubmenuOpen(true)}
         onPointerLeave={() => setSubmenuOpen(false)}
       >

@@ -1,4 +1,6 @@
-import { Suspense, useMemo } from 'react';
+'use client';
+
+import React, { Suspense, useMemo } from 'react';
 
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider } from 'next-themes';

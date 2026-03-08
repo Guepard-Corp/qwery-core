@@ -51,6 +51,7 @@
     "embla-carousel-react": "^8.6.0",
     "highlight.js": "^11.11.1",
     "html-to-image": "^1.11.11",
+    "immer": "^11.0.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.552.0",
     "motion": "^12.23.24",
@@ -67,7 +68,8 @@
     "streamdown": "^2.2.0",
     "tailwind-merge": "^3.3.1",
     "use-stick-to-bottom": "^1.1.1",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@qwery/eslint-config": "workspace:*",

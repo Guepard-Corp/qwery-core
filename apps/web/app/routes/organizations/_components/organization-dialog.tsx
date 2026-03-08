@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { Building2, Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import type { Organization } from '@qwery/domain/entities';
 import {
@@ -40,8 +40,13 @@ import { useWorkspace } from '../../../../lib/context/workspace-context';
 import pathsConfig, { createPath } from '../../../../config/paths.config';
 import { getErrorKey } from '~/lib/utils/error-key';
 
+const NAME_MAX_LENGTH = 255;
+
 const organizationSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(NAME_MAX_LENGTH, `Name must be ${NAME_MAX_LENGTH} characters or less`),
 });
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
@@ -128,80 +133,81 @@ export function OrganizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[540px]">
-        <DialogHeader className="space-y-4 pb-1">
-          <div className="flex items-start gap-4">
-            <div className="bg-primary/20 text-primary ring-primary/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 transition-all duration-200 group-hover:scale-105">
-              {isEditing ? (
-                <Building2 className="h-6 w-6" />
-              ) : (
-                <Sparkles className="h-6 w-6" />
-              )}
-            </div>
-            <div className="flex-1 space-y-1.5 pt-0.5">
-              <DialogTitle className="text-2xl font-semibold tracking-tight">
-                {isEditing ? (
-                  <Trans i18nKey="organizations:edit_organization" />
-                ) : (
-                  <Trans i18nKey="organizations:create_organization" />
-                )}
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
-                <Trans
-                  i18nKey={
-                    isEditing
-                      ? 'organizations:edit_organization_description'
-                      : 'organizations:create_organization_description'
-                  }
-                />
-              </DialogDescription>
-            </div>
-          </div>
+      <DialogContent className="border-border bg-background w-[95vw] max-w-md gap-0 p-0 font-sans sm:rounded-lg">
+        <DialogHeader className="gap-1 px-6 pt-6 pb-4">
+          <DialogTitle className="text-foreground text-base font-semibold">
+            {isEditing ? (
+              <Trans i18nKey="organizations:edit_organization" />
+            ) : (
+              <Trans i18nKey="organizations:create_organization" />
+            )}
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
+            <Trans
+              i18nKey={
+                isEditing
+                  ? 'organizations:edit_organization_description'
+                  : 'organizations:create_organization_description'
+              }
+            />
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 pb-6">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
-                <FormItem className="space-y-2.5">
-                  <FormLabel className="text-sm font-medium">
+                <FormItem className="space-y-1.5">
+                  <FormLabel className="text-foreground text-sm font-medium">
                     <Trans i18nKey="organizations:name" />
-                    <span className="text-destructive ml-1.5">*</span>
+                    <span className="text-destructive ml-0.5">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       placeholder={t('organizations:name_placeholder')}
                       disabled={isSubmitting}
+                      maxLength={NAME_MAX_LENGTH}
                       className={cn(
-                        'h-11 transition-all duration-200',
+                        'h-9 w-full',
                         form.formState.errors.name &&
-                          'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
+                          'border-destructive focus-visible:ring-destructive',
                       )}
                       autoFocus
                     />
                   </FormControl>
-                  <FormMessage />
+                  <div className="flex items-center justify-between gap-2">
+                    <FormMessage className="text-xs" />
+                    <span
+                      className={cn(
+                        'text-muted-foreground shrink-0 text-xs tabular-nums',
+                        (field.value?.length ?? 0) > NAME_MAX_LENGTH * 0.9 &&
+                          'text-amber-600',
+                      )}
+                    >
+                      {field.value?.length ?? 0} / {NAME_MAX_LENGTH}
+                    </span>
+                  </div>
                 </FormItem>
               )}
             />
 
-            <DialogFooter className="gap-3 pt-4 sm:gap-3">
+            <DialogFooter className="mt-6 flex gap-2 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
-                className="h-11 min-w-[100px]"
+                className="h-9 px-4"
               >
                 <Trans i18nKey="common:cancel" />
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="h-11 min-w-[120px] bg-[#ffcb51] font-semibold text-black shadow-sm transition-all duration-200 hover:bg-[#ffcb51]/90 hover:shadow-md"
+                className="h-9 px-4"
               >
                 {isSubmitting ? (
                   <>

@@ -1102,7 +1102,7 @@ function NotebookCellComponent({
                           {/* Preview on top when editing */}
                           <div
                             ref={markdownPreviewRef}
-                            className="border-border bg-muted/30 markdown-preview-scroll min-h-0 flex-1 flex-shrink-0 overflow-auto border-b px-4 py-4 pr-12"
+                            className="border-border bg-muted/30 markdown-preview-scroll min-h-0 flex-1 flex-shrink-0 overflow-auto border-b"
                             onScroll={(e) => {
                               if (isScrollingRef.current) return;
                               const editor = textareaRef.current;
@@ -1127,15 +1127,17 @@ function NotebookCellComponent({
                               }
                             }}
                           >
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                              {query.trim().length > 0 ? (
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={notebookMarkdownComponents}
-                                >
-                                  {query}
-                                </ReactMarkdown>
-                              ) : null}
+                            <div className="h-full px-4 py-4 pr-12">
+                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                                {query.trim().length > 0 ? (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={notebookMarkdownComponents}
+                                  >
+                                    {query}
+                                  </ReactMarkdown>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                           {/* Editor below - fills remaining space */}
@@ -1181,20 +1183,22 @@ function NotebookCellComponent({
                         </div>
                       ) : (
                         <div
-                          className="bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 cursor-pointer overflow-auto px-4 py-4 pr-12 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
+                          className="bg-muted/30 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 flex-1 cursor-pointer overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                           onDoubleClick={handleMarkdownDoubleClick}
                           ref={markdownPreviewRef}
                           data-test="notebook-md-preview"
                         >
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            {query.trim().length > 0 ? (
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={notebookMarkdownComponents}
-                              >
-                                {query}
-                              </ReactMarkdown>
-                            ) : null}
+                          <div className="h-full px-4 py-4 pr-12">
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                              {query.trim().length > 0 ? (
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={notebookMarkdownComponents}
+                                >
+                                  {query}
+                                </ReactMarkdown>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       )}

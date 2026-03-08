@@ -8,17 +8,20 @@ import {
   QweryBreadcrumb,
   type BreadcrumbNodeItem,
 } from '@qwery/ui/qwery-breadcrumb';
+import { truncateText } from '@qwery/ui/utils';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetOrganizations } from '~/lib/queries/use-get-organizations';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import { OrganizationDialog } from '../../organizations/_components/organization-dialog';
 
+const BREADCRUMB_NAME_MAX_LENGTH = 28;
+
 function toBreadcrumbNodeItem(org: Organization): BreadcrumbNodeItem {
   return {
     id: org.id,
     slug: org.slug,
-    name: org.name || '',
+    name: truncateText(org.name || '', BREADCRUMB_NAME_MAX_LENGTH),
   };
 }
 

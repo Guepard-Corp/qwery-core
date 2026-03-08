@@ -205,7 +205,7 @@ export const DatasourcePreview = forwardRef<
       .finally(() => {
         setIsLoadingJson(false);
       });
-  }, [debouncedPreviewUrl, refreshKey, needsDataFetching, dataFormat]);
+  }, [debouncedPreviewUrl, refreshKey, needsDataFetching, dataFormat, t]);
 
   useEffect(() => {
     if (
@@ -246,6 +246,7 @@ export const DatasourcePreview = forwardRef<
     publicationStatus,
     debouncedPreviewUrl,
     isWasmFallbackRequested,
+    t,
   ]);
 
   const handleRefresh = () => {

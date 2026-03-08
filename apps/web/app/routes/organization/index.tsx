@@ -51,27 +51,33 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 export default function OrganizationPage(props: Route.ComponentProps) {
   const { organization, projects } = props.loaderData;
 
+  const pagePadding = 'px-24 py-16 lg:px-32 lg:py-20';
+
   if (!organization) {
     return (
-      <div className="p-2 lg:p-4">
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-foreground mb-2 text-base font-medium">
-            <Trans i18nKey="organizations:organization_not_found" />
-          </p>
-          <p className="text-muted-foreground text-sm">
-            <Trans i18nKey="organizations:organization_not_found_description" />
-          </p>
+      <div className="h-full overflow-auto">
+        <div className={`h-full ${pagePadding}`}>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-foreground mb-2 text-base font-medium">
+              <Trans i18nKey="organizations:organization_not_found" />
+            </p>
+            <p className="text-muted-foreground text-sm">
+              <Trans i18nKey="organizations:organization_not_found_description" />
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full">
-      <ListProjects
-        projects={projects ?? []}
-        organizationId={organization.id}
-      />
+    <div className="h-full overflow-auto">
+      <div className={`h-full ${pagePadding}`}>
+        <ListProjects
+          projects={projects ?? []}
+          organizationId={organization.id}
+        />
+      </div>
     </div>
   );
 }

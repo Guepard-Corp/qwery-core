@@ -20,6 +20,66 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@qwery/ui/alert-dialog';
+
+export interface NoDatasourceDialogRef {
+  open: (text: string) => Promise<boolean>;
+}
+
+const NoDatasourceDialog = forwardRef<NoDatasourceDialogRef>(
+  function NoDatasourceDialog(_, ref) {
+    const [open, setOpen] = useState(false);
+    const [pendingText, setPendingText] = useState<string | null>(null);
+    const resolveRef = useRef<((value: boolean) => void) | null>(null);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        open(text: string) {
+          setPendingText(text);
+          setOpen(true);
+          return new Promise<boolean>((resolve) => {
+            resolveRef.current = resolve;
+          });
+        },
+      }),
+      [],
+    );
+
+    const handleClose = useCallback((proceed: boolean) => {
+      resolveRef.current?.(proceed);
+      resolveRef.current = null;
+      setPendingText(null);
+      setOpen(false);
+    }, []);
+
+    return (
+      <AlertDialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) handleClose(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No datasource attached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You haven&apos;t attached any datasource for this request. The
+              agent may not be able to fulfill: &quot;
+              {pendingText ?? 'this suggestion'}
+              &quot;. Do you want to proceed anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleClose(true)}>
+              Proceed anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  },
+);
 import {
   SUPPORTED_MODELS,
   transportFactory,
@@ -67,6 +127,7 @@ export interface SidebarControl {
 
 export interface AgentUIWrapperProps {
   conversationSlug: string;
+  conversationTitle?: string;
   initialMessages?: MessageOutput[];
   isMessagesLoading?: boolean;
   initialSuggestions?: string[];
@@ -141,6 +202,7 @@ export const AgentUIWrapper = forwardRef<
 >(function AgentUIWrapper(
   {
     conversationSlug,
+    conversationTitle,
     initialMessages,
     isMessagesLoading = false,
     initialSuggestions: _initialSuggestions,
@@ -208,13 +270,7 @@ export const AgentUIWrapper = forwardRef<
   // Track if we've already initialized datasource from cell to prevent overwriting user selections
   const initializedCellDatasourceRef = useRef<string | null>(null);
 
-  const [noDatasourceDialogOpen, setNoDatasourceDialogOpen] = useState(false);
-  const [pendingSuggestionText, setPendingSuggestionText] = useState<
-    string | null
-  >(null);
-  const noDatasourceResolveRef = useRef<((value: boolean) => void) | null>(
-    null,
-  );
+  const noDatasourceDialogRef = useRef<NoDatasourceDialogRef | null>(null);
 
   // Mutation to update conversation datasources
   const updateConversation = useUpdateConversation(repositories.conversation);
@@ -600,33 +656,18 @@ export const AgentUIWrapper = forwardRef<
       text: string,
       metadata?: { requiresDatasource?: boolean },
     ): Promise<boolean> => {
-      console.log('[SuggestionFlow] onBeforeSuggestionSend', {
-        text: text?.slice(0, 50),
-        metadata,
-        selectedCount: selectedDatasources?.length ?? 0,
-      });
       if (
         metadata?.requiresDatasource &&
         (!selectedDatasources || selectedDatasources.length === 0)
       ) {
-        console.log('[SuggestionFlow] showing no-datasource dialog');
-        setPendingSuggestionText(text);
-        return new Promise((resolve) => {
-          noDatasourceResolveRef.current = resolve;
-          setNoDatasourceDialogOpen(true);
-        });
+        return (
+          noDatasourceDialogRef.current?.open(text) ?? Promise.resolve(false)
+        );
       }
       return Promise.resolve(true);
     },
     [selectedDatasources],
   );
-
-  const handleNoDatasourceDialogClose = useCallback((proceed: boolean) => {
-    noDatasourceResolveRef.current?.(proceed);
-    noDatasourceResolveRef.current = null;
-    setPendingSuggestionText(null);
-    setNoDatasourceDialogOpen(false);
-  }, []);
 
   // Determine if we're loading - check if messages or conversation are loading
   // initialMessages being undefined means messages haven't loaded yet
@@ -733,33 +774,9 @@ export const AgentUIWrapper = forwardRef<
         notebookContext={notebookContext}
         isLoading={isLoading}
         conversationSlug={conversationSlug}
+        conversationTitle={conversationTitle ?? conversation?.title}
       />
-      <AlertDialog
-        open={noDatasourceDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) handleNoDatasourceDialogClose(false);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>No datasource attached</AlertDialogTitle>
-            <AlertDialogDescription>
-              You haven&apos;t attached any datasource for this request. The
-              agent may not be able to fulfill: &quot;
-              {pendingSuggestionText ?? 'this suggestion'}
-              &quot;. Do you want to proceed anyway?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleNoDatasourceDialogClose(true)}
-            >
-              Proceed anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <NoDatasourceDialog ref={noDatasourceDialogRef} />
     </>
   );
 });

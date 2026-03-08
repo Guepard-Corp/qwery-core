@@ -295,38 +295,40 @@ export function DatasourceConnectSheet({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-3 pb-6">
-              <div className="min-h-0 shrink-0">
-                <DatasourceConnectForm
-                  extensionId={extensionId}
-                  projectSlug={projectSlug}
-                  extensionMeta={extensionMeta}
-                  onSuccess={handleSuccess}
-                  onCancel={handleCancel}
-                  formId="datasource-drawer-form"
-                  showHeader={false}
-                  variant="sheet"
-                  actionsContainerRef={actionsRef}
-                  actionsContainerReady={actionsReady}
-                  datasourceName={datasourceName}
-                  onDatasourceNameChange={setDatasourceName}
-                  onFormValuesChange={setFormValues}
-                  onFormValidityChange={setIsFormValid}
-                  onTestConnectionLoadingChange={setIsTestConnectionLoading}
-                  existingDatasource={existingDatasource}
-                />
-              </div>
-              {formValues &&
-                isFormValid &&
-                extensionMetaForPreview?.supportsPreview === true && (
-                  <DatasourcePreview
-                    ref={previewRef}
-                    formValues={formValues}
-                    extensionMeta={extensionMetaForPreview}
-                    isTestConnectionLoading={isTestConnectionLoading}
-                    className="min-h-0 flex-1"
+            <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-3 pb-6">
+                <div className="min-h-0 shrink-0">
+                  <DatasourceConnectForm
+                    extensionId={extensionId}
+                    projectSlug={projectSlug}
+                    extensionMeta={extensionMeta}
+                    onSuccess={handleSuccess}
+                    onCancel={handleCancel}
+                    formId="datasource-drawer-form"
+                    showHeader={false}
+                    variant="sheet"
+                    actionsContainerRef={actionsRef}
+                    actionsContainerReady={actionsReady}
+                    datasourceName={datasourceName}
+                    onDatasourceNameChange={setDatasourceName}
+                    onFormValuesChange={setFormValues}
+                    onFormValidityChange={setIsFormValid}
+                    onTestConnectionLoadingChange={setIsTestConnectionLoading}
+                    existingDatasource={existingDatasource}
                   />
-                )}
+                </div>
+                {formValues &&
+                  isFormValid &&
+                  extensionMetaForPreview?.supportsPreview === true && (
+                    <DatasourcePreview
+                      ref={previewRef}
+                      formValues={formValues}
+                      extensionMeta={extensionMetaForPreview}
+                      isTestConnectionLoading={isTestConnectionLoading}
+                      className="min-h-0 flex-1"
+                    />
+                  )}
+              </div>
             </div>
           </div>
           <div

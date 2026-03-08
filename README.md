@@ -70,6 +70,8 @@ pnpm install
 # Start development server
 pnpm server:dev
 pnpm web:dev
+
+
 ```
 
 The web app will be available at `http://localhost:3000`

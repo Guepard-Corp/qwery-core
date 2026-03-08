@@ -136,6 +136,7 @@ export interface QweryAgentUIProps {
     datasourceId?: string;
   };
   conversationSlug?: string;
+  conversationTitle?: string;
   onSubmitFeedback?: (
     messageId: string,
     feedback: FeedbackPayload,
@@ -199,6 +200,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     onPasteToNotebook,
     notebookContext,
     conversationSlug,
+    conversationTitle,
     onSubmitFeedback,
     initialSuggestions,
     onBeforeSuggestionSend,
@@ -1017,6 +1019,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     onLoadOlder={loadOlderMessages}
                     onRetryLoadOlder={retryLoadOlder}
                     conversationSlug={conversationSlug}
+                    conversationTitle={conversationTitle}
                     scrollToBottomRef={scrollToBottomRef}
                     lastAssistantHasText={lastAssistantHasText}
                     lastMessageIsAssistant={lastMessageIsAssistant}

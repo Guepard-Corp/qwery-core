@@ -1,17 +1,10 @@
 import { Outlet } from 'react-router';
 
-import {
-  Page,
-  PageFooter,
-  PageMobileNavigation,
-  PageTopNavigation,
-} from '@qwery/ui/page';
+import { Page, PageFooter } from '@qwery/ui/page';
 import { SidebarProvider } from '@qwery/ui/shadcn-sidebar';
 import type { Route } from '~/types/app/routes/layout/+types/layout';
 
 import { LayoutFooter } from './_components/layout-footer';
-import { LayoutMobileNavigation } from './_components/layout-mobile-navigation';
-import { LayoutTopBar } from './_components/layout-topbar';
 
 export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
@@ -27,12 +20,6 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
     <SidebarProvider defaultOpen={layoutState.open}>
       <Page>
-        <PageTopNavigation>
-          <LayoutTopBar />
-        </PageTopNavigation>
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <LayoutMobileNavigation />
-        </PageMobileNavigation>
         <PageFooter>
           <LayoutFooter />
         </PageFooter>

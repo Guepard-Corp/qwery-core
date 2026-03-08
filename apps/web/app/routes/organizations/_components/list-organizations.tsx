@@ -32,7 +32,7 @@ import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { Switch } from '@qwery/ui/switch';
 import { Checkbox } from '@qwery/ui/checkbox';
-import { cn } from '@qwery/ui/utils';
+import { cn, truncateText, highlightSearchMatch } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai-utils';
 import {
   DropdownMenu,
@@ -60,6 +60,7 @@ import { BulkActionBar } from '../../_components/bulk-action-bar';
 
 const ITEMS_PER_PAGE_GRID = 9;
 const ITEMS_PER_PAGE_TABLE = 10;
+const TABLE_NAME_MAX_LENGTH = 40;
 
 type SortCriterion = 'date' | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -159,20 +160,6 @@ export function ListOrganizations({
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-
-  const highlightMatch = (text: string, query: string) => {
-    if (!query.trim()) return text;
-    const regex = new RegExp(`(${query})`, 'gi');
-    return text.split(regex).map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-[#ffcb51] text-black">
-          {part}
-        </span>
-      ) : (
-        part
-      ),
-    );
   };
 
   const handleSortClick = (criterion: SortCriterion) => {
@@ -602,9 +589,15 @@ export function ListOrganizations({
                                 />
                               </svg>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-semibold">
-                                {highlightMatch(org.name, searchQuery)}
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <span
+                                className="text-sm font-semibold"
+                                title={org.name}
+                              >
+                                {highlightSearchMatch(
+                                  truncateText(org.name, TABLE_NAME_MAX_LENGTH),
+                                  searchQuery,
+                                )}
                               </span>
                             </div>
                           </div>

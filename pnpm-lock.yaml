@@ -332,6 +332,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@dnd-kit/sortable':
+        specifier: ^10.0.0
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+      '@dnd-kit/utilities':
+        specifier: ^3.2.2
+        version: 3.2.2(react@19.2.3)
       '@duckdb/duckdb-wasm':
         specifier: 1.31.1-dev31.0
         version: 1.31.1-dev31.0
@@ -473,6 +482,9 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.3.6
+      zustand:
+        specifier: ^5.0.2
+        version: 5.0.11(@types/react@19.2.3)(immer@11.1.4)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
       '@qwery/eslint-config':
         specifier: workspace:*
@@ -2070,7 +2082,7 @@ importers:
         version: 1.2.2(@types/react@19.2.3)(react@19.2.3)
       '@xyflow/react':
         specifier: ^12.9.3
-        version: 12.9.3(@types/react@19.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 12.9.3(@types/react@19.2.3)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       ai:
         specifier: 'catalog:'
         version: 6.0.59(zod@4.3.6)
@@ -2092,6 +2104,9 @@ importers:
       html-to-image:
         specifier: ^1.11.11
         version: 1.11.13
+      immer:
+        specifier: ^11.0.2
+        version: 11.1.4
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2143,6 +2158,9 @@ importers:
       vaul:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      zustand:
+        specifier: ^5.0.2
+        version: 5.0.11(@types/react@19.2.3)(immer@11.1.4)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
       '@qwery/eslint-config':
         specifier: workspace:*
@@ -8671,6 +8689,9 @@ packages:
   image-q@4.0.0:
     resolution: {integrity: sha512-PfJGVgIfKQJuq3s0tTDOKtztksibuUEbJQIYT3by6wctQo+Rdlh7ef4evJ5NCdxY4CfMbvFkocEwbl4BF8RlJw==}
 
+  immer@11.1.4:
+    resolution: {integrity: sha512-XREFCPo6ksxVzP4E0ekD5aMdf8WMwmdNaz6vuvxgI40UaEiu6q3p8X52aU6GdyvLY3XXX/8R7JOTXStz/nBbRw==}
+
   import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
     engines: {node: '>=6'}
@@ -11995,6 +12016,24 @@ packages:
       immer:
         optional: true
       react:
+        optional: true
+
+  zustand@5.0.11:
+    resolution: {integrity: sha512-fdZY+dk7zn/vbWNCYmzZULHRrss0jx5pPFiOuMZ/5HJN6Yv3u+1Wswy/4MpZEkEGhtNH+pwxZB8OKgUBPzYAGg==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
         optional: true
 
   zwitch@2.0.4:
@@ -17179,12 +17218,15 @@ snapshots:
     optional: true
 
   '@xyflow/react@12.9.3(@types/react@19.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@xmldom/xmldom@0.8.11': {}
+
+  '@xyflow/react@12.9.3(@types/react@19.2.3)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@xyflow/system': 0.0.73
       classcat: 5.0.5
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      zustand: 4.5.7(@types/react@19.2.3)(react@19.2.3)
+      zustand: 4.5.7(@types/react@19.2.3)(immer@11.1.4)(react@19.2.3)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -19504,6 +19546,8 @@ snapshots:
   image-q@4.0.0:
     dependencies:
       '@types/node': 16.9.1
+
+  immer@11.1.4: {}
 
   import-fresh@3.3.1:
     dependencies:
@@ -23309,11 +23353,19 @@ snapshots:
 
   zod@4.3.6: {}
 
-  zustand@4.5.7(@types/react@19.2.3)(react@19.2.3):
+  zustand@4.5.7(@types/react@19.2.3)(immer@11.1.4)(react@19.2.3):
     dependencies:
       use-sync-external-store: 1.6.0(react@19.2.3)
     optionalDependencies:
       '@types/react': 19.2.3
+      immer: 11.1.4
       react: 19.2.3
+
+  zustand@5.0.11(@types/react@19.2.3)(immer@11.1.4)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)):
+    optionalDependencies:
+      '@types/react': 19.2.3
+      immer: 11.1.4
+      react: 19.2.3
+      use-sync-external-store: 1.6.0(react@19.2.3)
 
   zwitch@2.0.4: {}

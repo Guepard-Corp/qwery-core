@@ -309,7 +309,7 @@ export function ConversationList({
           {/* Current Conversation - Always on top */}
           {currentConversation && !isSearching && (
             <div className="space-y-1">
-              <div className="flex items-center gap-2 px-4 py-2">
+              <div className="bg-background sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5">
                 <div className="bg-border h-px flex-1" />
                 <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                   Now
@@ -537,7 +537,7 @@ export function ConversationList({
 
               return (
                 <div key={groupKey} className="space-y-1">
-                  <div className="flex items-center gap-2 px-4 py-2">
+                  <div className="bg-background sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5">
                     <div className="bg-border h-px flex-1" />
                     <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                       {groupKey}

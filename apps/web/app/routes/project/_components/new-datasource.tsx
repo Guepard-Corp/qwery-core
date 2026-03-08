@@ -242,158 +242,160 @@ export function NewDatasource({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6 lg:px-16 lg:py-10">
-        {filteredDatasources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="bg-muted/30 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
-              <Database className="text-muted-foreground/50 h-8 w-8" />
-            </div>
-            <h3 className="text-foreground mb-2 text-lg font-medium">
-              No datasources found
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-sm text-sm">
-              We couldn&apos;t find any datasources matching your criteria. Try
-              adjusting your filters or search.
-            </p>
-            <a
-              href="https://github.com/guepard/qwery-studio/issues/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#ffcb51] transition-colors hover:text-[#ffcb51]/80"
-            >
-              <Sparkles className="h-4 w-4" />
-              Request a new datasource
-              <ArrowRight className="h-3 w-3" />
-            </a>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {paginatedDatasources.map((datasource, index) => {
-                const hasFailed = failedLogos.has(datasource.id);
-                const showLogo = datasource.icon && !hasFailed;
-                const shouldInvert = isJsonDatasource(datasource.id);
-                const isDragging = draggingIndex === index;
-
-                return (
-                  <div
-                    key={datasource.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
-                    className={cn(
-                      'cursor-grab transition-opacity active:cursor-grabbing',
-                      isDragging && 'opacity-50',
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openDrawerFor(datasource)}
-                      className="group relative flex w-full cursor-pointer flex-col items-center rounded-xl p-5 text-left transition-all duration-200 hover:bg-[#ffcb51]/5"
-                    >
-                      <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
-                        {showLogo ? (
-                          <img
-                            src={datasource.icon}
-                            alt={datasource.name}
-                            className={cn(
-                              'h-12 w-12 object-contain',
-                              shouldInvert && 'dark:invert',
-                            )}
-                            onError={() => handleLogoError(datasource.id)}
-                          />
-                        ) : (
-                          <Database className="text-muted-foreground/60 h-9 w-9" />
-                        )}
-                      </div>
-                      <span className="text-foreground text-center text-base leading-tight font-medium">
-                        {datasource.name}
-                      </span>
-                      <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
-                        <span>Connect</span>
-                        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="border-border/40 mt-8 flex items-center justify-center border-t pt-6">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => goToPage(effectiveCurrentPage - 1)}
-                    disabled={effectiveCurrentPage === 1}
-                    className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">Previous</span>
-                  </Button>
-                  <div className="flex items-center gap-1 px-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => {
-                        const showPage =
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= effectiveCurrentPage - 1 &&
-                            page <= effectiveCurrentPage + 1);
-
-                        if (!showPage) {
-                          if (
-                            page === effectiveCurrentPage - 2 ||
-                            page === effectiveCurrentPage + 2
-                          ) {
-                            return (
-                              <span
-                                key={page}
-                                className="text-muted-foreground/40 px-1"
-                              >
-                                ...
-                              </span>
-                            );
-                          }
-                          return null;
-                        }
-
-                        return (
-                          <Button
-                            key={page}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => goToPage(page)}
-                            className={cn(
-                              'h-9 w-9 cursor-pointer p-0 font-medium',
-                              effectiveCurrentPage === page
-                                ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
-                                : 'hover:bg-muted',
-                            )}
-                          >
-                            {page}
-                          </Button>
-                        );
-                      },
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => goToPage(effectiveCurrentPage + 1)}
-                    disabled={effectiveCurrentPage === totalPages}
-                    className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
-                  >
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="h-full px-8 py-6 lg:px-16 lg:py-10">
+          {filteredDatasources.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="bg-muted/30 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
+                <Database className="text-muted-foreground/50 h-8 w-8" />
               </div>
-            )}
-          </>
-        )}
+              <h3 className="text-foreground mb-2 text-lg font-medium">
+                No datasources found
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-sm text-sm">
+                We couldn&apos;t find any datasources matching your criteria.
+                Try adjusting your filters or search.
+              </p>
+              <a
+                href="https://github.com/guepard/qwery-studio/issues/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#ffcb51] transition-colors hover:text-[#ffcb51]/80"
+              >
+                <Sparkles className="h-4 w-4" />
+                Request a new datasource
+                <ArrowRight className="h-3 w-3" />
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {paginatedDatasources.map((datasource, index) => {
+                  const hasFailed = failedLogos.has(datasource.id);
+                  const showLogo = datasource.icon && !hasFailed;
+                  const shouldInvert = isJsonDatasource(datasource.id);
+                  const isDragging = draggingIndex === index;
+
+                  return (
+                    <div
+                      key={datasource.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        'cursor-grab transition-opacity active:cursor-grabbing',
+                        isDragging && 'opacity-50',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => openDrawerFor(datasource)}
+                        className="group relative flex w-full cursor-pointer flex-col items-center rounded-xl p-5 text-left transition-all duration-200 hover:bg-[#ffcb51]/5"
+                      >
+                        <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
+                          {showLogo ? (
+                            <img
+                              src={datasource.icon}
+                              alt={datasource.name}
+                              className={cn(
+                                'h-12 w-12 object-contain',
+                                shouldInvert && 'dark:invert',
+                              )}
+                              onError={() => handleLogoError(datasource.id)}
+                            />
+                          ) : (
+                            <Database className="text-muted-foreground/60 h-9 w-9" />
+                          )}
+                        </div>
+                        <span className="text-foreground text-center text-base leading-tight font-medium">
+                          {datasource.name}
+                        </span>
+                        <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
+                          <span>Connect</span>
+                          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="border-border/40 mt-8 flex items-center justify-center border-t pt-6">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => goToPage(effectiveCurrentPage - 1)}
+                      disabled={effectiveCurrentPage === 1}
+                      className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeftIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+                    <div className="flex items-center gap-1 px-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                        (page) => {
+                          const showPage =
+                            page === 1 ||
+                            page === totalPages ||
+                            (page >= effectiveCurrentPage - 1 &&
+                              page <= effectiveCurrentPage + 1);
+
+                          if (!showPage) {
+                            if (
+                              page === effectiveCurrentPage - 2 ||
+                              page === effectiveCurrentPage + 2
+                            ) {
+                              return (
+                                <span
+                                  key={page}
+                                  className="text-muted-foreground/40 px-1"
+                                >
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          }
+
+                          return (
+                            <Button
+                              key={page}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => goToPage(page)}
+                              className={cn(
+                                'h-9 w-9 cursor-pointer p-0 font-medium',
+                                effectiveCurrentPage === page
+                                  ? 'bg-[#ffcb51] text-black hover:bg-[#ffcb51]/90'
+                                  : 'hover:bg-muted',
+                              )}
+                            >
+                              {page}
+                            </Button>
+                          );
+                        },
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => goToPage(effectiveCurrentPage + 1)}
+                      disabled={effectiveCurrentPage === totalPages}
+                      className="h-9 cursor-pointer gap-1 px-3 disabled:cursor-not-allowed"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {selectedDatasource && (

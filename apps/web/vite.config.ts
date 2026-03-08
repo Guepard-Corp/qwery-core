@@ -17,14 +17,13 @@ const gitHash = execSync('git rev-parse --short HEAD').toString().trim();
 function wasmMimeTypePlugin(): Plugin {
   return {
     name: 'wasm-mime-type',
-    enforce: 'pre', // Run before other plugins to set headers early
+    enforce: 'pre',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
 
         if (url.startsWith('/extensions/')) {
           try {
-            // Resolve public directory relative to the vite config file location
             const publicDir = path.resolve(process.cwd(), 'apps/web/public');
             const filePath = path.join(publicDir, url);
 
@@ -37,12 +36,11 @@ function wasmMimeTypePlugin(): Plugin {
             } else if (url.endsWith('.json')) {
               res.setHeader('Content-Type', 'application/json');
             }
-
             const fileContent = fs.readFileSync(filePath);
             res.end(fileContent);
             return;
           } catch {
-            // File doesn't exist, was removed, or path resolution failed - continue to next middleware
+            // If the extension asset isn't found, fall through to Vite.
           }
         }
 

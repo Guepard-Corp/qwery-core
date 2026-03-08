@@ -23,8 +23,9 @@ import { If } from './if';
 import { cn, isRouteActive } from '../lib/utils';
 import { Trans } from './trans';
 import { ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSidebarNavStore } from '../hooks/use-sidebar-nav';
 
 type CollapsibleOverride = {
   collapsible?: boolean;
@@ -126,40 +127,8 @@ export function SidebarNavigation({
     [t],
   );
 
-  const [persistedState, setPersistedState] = useState<Record<string, boolean>>(
-    {},
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem('sidebar:collapsible-state');
-      const parsed = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => setPersistedState(parsed), 0);
-    } catch {
-      setTimeout(() => setPersistedState({}), 0);
-    }
-  }, []);
-
-  const persistState = useCallback((label: string, open: boolean) => {
-    setPersistedState((prev) => {
-      const next = { ...prev, [label]: open };
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem(
-            'sidebar:collapsible-state',
-            JSON.stringify(next),
-          );
-        } catch {
-          // Ignore storage failures
-        }
-      }
-      return next;
-    });
-  }, []);
+  const { groupOpen: persistedState, setGroupOpen: persistState } =
+    useSidebarNavStore();
 
   return (
     <>
@@ -238,7 +207,12 @@ export function SidebarNavigation({
                     condition={groupState.collapsible}
                     fallback={
                       <SidebarGroupLabel
-                        className={cn('flex-1', { hidden: isCollapsed })}
+                        className={cn(
+                          'flex-1 transition-opacity duration-300',
+                          {
+                            'pointer-events-none opacity-0': isCollapsed,
+                          },
+                        )}
                       >
                         <SidebarLabelText
                           label={item.label}
@@ -248,7 +222,9 @@ export function SidebarNavigation({
                     }
                   >
                     <SidebarGroupLabel
-                      className={cn('flex-1', { hidden: isCollapsed })}
+                      className={cn('flex-1 transition-opacity duration-300', {
+                        'pointer-events-none opacity-0': isCollapsed,
+                      })}
                       asChild
                     >
                       <CollapsibleTrigger className="flex items-center gap-1">
@@ -406,9 +382,8 @@ export function SidebarNavigation({
                                       <ChevronDown
                                         className={cn(
                                           'ml-auto size-4 transition-all duration-200 group-data-[state=open]/collapsible:rotate-180',
-                                          {
-                                            'opacity-0': isCollapsed,
-                                          },
+                                          isCollapsed &&
+                                            'ml-0 !w-0 overflow-hidden opacity-0',
                                         )}
                                       />
                                     </Link>
@@ -419,9 +394,8 @@ export function SidebarNavigation({
                                       <ChevronDown
                                         className={cn(
                                           'ml-auto size-4 transition-all duration-200 group-data-[state=open]/collapsible:rotate-180',
-                                          {
-                                            'opacity-0': isCollapsed,
-                                          },
+                                          isCollapsed &&
+                                            'ml-0 !w-0 overflow-hidden opacity-0',
                                         )}
                                       />
                                     </div>

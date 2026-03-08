@@ -5,7 +5,16 @@ import { useLocation, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { Search, Plus, MessageCircle, Notebook } from 'lucide-react';
 
-import { SidebarGroup, SidebarGroupContent } from '@qwery/ui/shadcn-sidebar';
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarSeparator,
+  useSidebar,
+} from '@qwery/ui/shadcn-sidebar';
+import { cn } from '@qwery/ui/utils';
 import { Input } from '@qwery/ui/input';
 import {
   DropdownMenu,
@@ -15,6 +24,7 @@ import {
 } from '@qwery/ui/dropdown-menu';
 
 import { useWorkspace } from '~/lib/context/workspace-context';
+import { WorkspaceModeEnum } from '@qwery/domain/enums';
 import { useProjectOptional } from '~/lib/context/project-context';
 import { useGetConversationsByProject } from '~/lib/queries/use-get-conversations-by-project';
 import { Conversation } from '@qwery/domain/entities';
@@ -41,9 +51,12 @@ import {
 import type { NotebookOutput } from '@qwery/domain/usecases';
 
 export function ProjectChatNotebookSidebarContent() {
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
   const { t } = useTranslation('common');
   const projectContext = useProjectOptional();
   const { workspace, repositories } = useWorkspace();
+  const isSimpleMode = workspace.mode === WorkspaceModeEnum.SIMPLE;
   const projectId = projectContext?.projectId;
   const projectSlug = projectContext?.projectSlug ?? undefined;
   const isProjectLoading = projectContext?.isLoading ?? false;
@@ -191,10 +204,6 @@ export function ProjectChatNotebookSidebarContent() {
     }
   };
 
-  const onConversationBookmark = () => {
-    toast.info('Bookmark feature coming soon');
-  };
-
   const createNotebookMutation = useCreateNotebook(
     repositories.notebook,
     (notebook) => {
@@ -242,6 +251,7 @@ export function ProjectChatNotebookSidebarContent() {
         id: notebook.id,
         title: notebook.title,
         slug: notebook.slug,
+        createdAt: notebook.createdAt,
         updatedAt: notebook.updatedAt,
       })),
 
@@ -252,7 +262,12 @@ export function ProjectChatNotebookSidebarContent() {
 
   return (
     <>
-      <SidebarGroup>
+      <SidebarGroup
+        className={cn(
+          'overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed ? 'max-h-0 !py-0 opacity-0' : 'max-h-24 opacity-100',
+        )}
+      >
         <SidebarGroupContent>
           <div className="relative">
             <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
@@ -283,16 +298,59 @@ export function ProjectChatNotebookSidebarContent() {
                   <MessageCircle className="mr-2 size-4" />
                   New Chat
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onNewNotebook}>
-                  <Notebook className="mr-2 size-4" />
-                  New Notebook
-                </DropdownMenuItem>
+                {!isSimpleMode && (
+                  <DropdownMenuItem onClick={onNewNotebook}>
+                    <Notebook className="mr-2 size-4" />
+                    New Notebook
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
-      <div className="flex flex-col">
+
+      {/* Collapsed-mode icon buttons for New Chat / New Notebook */}
+      <SidebarGroup
+        className={cn(
+          'overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed
+            ? 'max-h-40 opacity-100'
+            : 'pointer-events-none max-h-0 !py-0 opacity-0',
+        )}
+      >
+        <SidebarSeparator className="mb-1" />
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="New Chat"
+                onClick={onNewConversation}
+                className="justify-center"
+              >
+                <MessageCircle className="size-4" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            {!isSimpleMode && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="New Notebook"
+                  onClick={onNewNotebook}
+                  className="justify-center"
+                >
+                  <Notebook className="size-4" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <div
+        className={cn(
+          'flex flex-col overflow-hidden transition-[opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100',
+        )}
+      >
         <SidebarConversationHistory
           conversations={mappedConversations}
           isLoading={isProjectLoading || isLoadingConversations}
@@ -305,17 +363,18 @@ export function ProjectChatNotebookSidebarContent() {
           onConversationDelete={onConversationDelete}
           onConversationDuplicate={onConversationDuplicate}
           onConversationShare={onConversationShare}
-          onConversationBookmark={onConversationBookmark}
         />
-        <SidebarNotebookHistory
-          notebooks={mappedNotebooks}
-          isLoading={isProjectLoading || notebooks.isLoading}
-          currentNotebookSlug={currentNotebookSlug}
-          searchQuery={searchQuery}
-          onNotebookDelete={onNotebookDelete}
-          unsavedNotebookIds={unsavedNotebookIds}
-          isProcessing={isProcessing}
-        />
+        {!isSimpleMode && (
+          <SidebarNotebookHistory
+            notebooks={mappedNotebooks}
+            isLoading={isProjectLoading || notebooks.isLoading}
+            currentNotebookSlug={currentNotebookSlug}
+            searchQuery={searchQuery}
+            onNotebookDelete={onNotebookDelete}
+            unsavedNotebookIds={unsavedNotebookIds}
+            isProcessing={isProcessing}
+          />
+        )}
       </div>
     </>
   );

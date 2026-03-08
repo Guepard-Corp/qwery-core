@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Navigate, useNavigate, useParams } from 'react-router';
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 import { useTranslation } from 'react-i18next';
 
 import { toast } from 'sonner';
@@ -39,6 +44,7 @@ import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 export default function NotebookPage() {
   const { t } = useTranslation();
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const slug = params.slug as string;
   const { repositories, workspace } = useWorkspace();
   const navigate = useNavigate();
@@ -66,30 +72,15 @@ export default function NotebookPage() {
     notebookProjectId || undefined,
   );
 
-  // Switch conversation when notebook changes
-  // Only update URL if conversation exists and is different from current
-  // Don't remove conversation param if it doesn't exist yet - let it be created on first prompt
-  // This prevents race conditions and preserves sidebar state on refresh
+  // Sync conversation param to URL when notebook conversation is known (no full navigation)
   useEffect(() => {
-    if (notebookConversation.data?.slug) {
-      // Update URL with this notebook's conversation
-      const currentUrl = new URL(window.location.href);
-      const currentConversation = currentUrl.searchParams.get('conversation');
-
-      // Only update if the conversation is different
-      // This ensures we don't cause unnecessary re-renders
-      if (currentConversation !== notebookConversation.data.slug) {
-        currentUrl.searchParams.set(
-          'conversation',
-          notebookConversation.data.slug,
-        );
-        navigate(currentUrl.pathname + currentUrl.search, { replace: true });
-      }
-    }
-    // Don't remove conversation param if notebook exists but no conversation yet
-    // The conversation will be created when first prompt is sent
-    // Removing it would cause the sidebar to close unnecessarily
-  }, [notebookConversation.data?.slug, navigate]);
+    if (!notebookConversation.data?.slug) return;
+    const current = searchParams.get('conversation');
+    if (current === notebookConversation.data.slug) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('conversation', notebookConversation.data.slug);
+    setSearchParams(next, { replace: true });
+  }, [notebookConversation.data?.slug, searchParams, setSearchParams]);
 
   const savedDatasources = useGetDatasourcesByProjectId(
     datasourceRepository,
@@ -207,7 +198,12 @@ export default function NotebookPage() {
         conversationId: notebookConversation.data?.slug, // Pass conversationSlug for DuckDB execution (Google Sheets)
       });
     },
-    [savedDatasources.data, runQueryMutation, notebookConversation.data?.slug],
+    [
+      savedDatasources.data,
+      runQueryMutation,
+      notebookConversation.data?.slug,
+      t,
+    ],
   );
 
   // Run query with agent mutation
@@ -752,7 +748,7 @@ export default function NotebookPage() {
       console.error('Failed to save notebook:', error);
       toast.error(getErrorKey(error, t));
     }
-  }, [normalizedNotebook, savedDatasources.data, saveNotebookMutation]);
+  }, [normalizedNotebook, savedDatasources.data, saveNotebookMutation, t]);
 
   const handleDiscardOnly = useCallback(() => {
     if (normalizedNotebook?.id) {

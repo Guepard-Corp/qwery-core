@@ -1,22 +1,14 @@
 import { Outlet, useSearchParams, useLocation } from 'react-router';
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-import {
-  Page,
-  PageFooter,
-  PageMobileNavigation,
-  PageNavigation,
-  PageTopNavigation,
-  AgentSidebar,
-} from '@qwery/ui/page';
+import { Page, PageFooter, PageNavigation, AgentSidebar } from '@qwery/ui/page';
 import { SidebarProvider } from '@qwery/ui/shadcn-sidebar';
 import type { Route } from '~/types/app/routes/project/+types/layout';
 import type { ResizableContentRef } from '@qwery/ui/page';
 
 import { LayoutFooter } from '../layout/_components/layout-footer';
-import { LayoutMobileNavigation } from '../layout/_components/layout-mobile-navigation';
-import { ProjectLayoutTopBar } from './_components/project-topbar';
 import { ProjectSidebar } from './_components/project-sidebar';
+import { ProjectBreadcrumb } from './_components/project-breadcrumb';
 import { AgentUIWrapper } from './_components/agent-ui-wrapper';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
@@ -28,12 +20,11 @@ import {
   useNotebookSidebar,
 } from '~/lib/context/notebook-sidebar-context';
 import { ProjectProvider } from '~/lib/context/project-context';
+import { useNotebookSidebarOpenStore } from '~/lib/store/use-notebook-sidebar-open';
 import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
-// LocalStorage key for persisting notebook sidebar open/closed state
-const NOTEBOOK_SIDEBAR_OPEN_KEY = 'notebook-sidebar-open';
 
 export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
@@ -52,6 +43,8 @@ function SidebarLayoutInner(
   const { repositories } = useWorkspace();
   const sidebarRef = useRef<ResizableContentRef>(null);
   const { registerSidebarControl } = useNotebookSidebar();
+  const { open: notebookSidebarOpen, setOpen: setNotebookSidebarOpen } =
+    useNotebookSidebarOpenStore();
   const [persistedConversationSlug, setPersistedConversationSlug] = useState<
     string | null
   >(null);
@@ -113,9 +106,8 @@ function SidebarLayoutInner(
           );
           setPersistedConversationSlug(conversationSlugFromUrl);
         } else if (!conversationSlugFromUrl && persistedConversationSlug) {
-          // Don't clear persisted conversation on URL removal - keep it for refresh
-          // Only clear if user explicitly navigates away from notebook
-          // This allows sidebar to reopen with same conversation on refresh
+          localStorage.removeItem(NOTEBOOK_SIDEBAR_CONVERSATION_KEY);
+          setPersistedConversationSlug(null);
         }
       } catch (error) {
         console.error('Failed to persist conversation slug:', error);
@@ -123,17 +115,11 @@ function SidebarLayoutInner(
     }
   }, [isNotebookPage, conversationSlugFromUrl, persistedConversationSlug]);
 
-  // Determine the conversation slug to use
-  // Priority: URL param > persisted > 'default'
   const conversationSlug = useMemo(() => {
     return conversationSlugFromUrl || persistedConversationSlug || 'default';
   }, [conversationSlugFromUrl, persistedConversationSlug]);
 
-  // Stable key for AgentUIWrapper - only changes when conversation actually changes
-  // This prevents unnecessary remounts while allowing remount when switching conversations
   const conversationKey = useMemo(() => {
-    // Use a stable key that only changes when the actual conversation slug changes
-    // 'default' is not a real conversation, so don't use it as a key
     const actualSlug = conversationSlug !== 'default' ? conversationSlug : null;
     return actualSlug || 'no-conversation';
   }, [conversationSlug]);
@@ -154,21 +140,14 @@ function SidebarLayoutInner(
     }
   }, [isNotebookPage, registerSidebarControl]);
 
-  // Track if we've already attempted to open the sidebar on this mount
-  // This prevents reopening when user manually closes it
   const hasOpenedOnMountRef = useRef(false);
 
-  // Open sidebar on mount only when conversation exists and user had it open last time
   useEffect(() => {
     if (isNotebookPage && sidebarRef.current && !hasOpenedOnMountRef.current) {
       const hasConversation =
         conversationSlugFromUrl || persistedConversationSlug;
       if (hasConversation && conversationSlug !== 'default') {
-        const persistedOpen =
-          typeof window !== 'undefined'
-            ? localStorage.getItem(NOTEBOOK_SIDEBAR_OPEN_KEY)
-            : null;
-        if (persistedOpen === 'false') {
+        if (notebookSidebarOpen === false) {
           hasOpenedOnMountRef.current = true;
           return;
         }
@@ -184,6 +163,7 @@ function SidebarLayoutInner(
     conversationSlugFromUrl,
     persistedConversationSlug,
     conversationSlug,
+    notebookSidebarOpen,
   ]);
 
   // Reset the mount flag when navigating to a different notebook
@@ -191,10 +171,6 @@ function SidebarLayoutInner(
     hasOpenedOnMountRef.current = false;
   }, [location.pathname]);
 
-  // Load messages for the conversation when slug changes (only on notebook pages)
-  // Always fetch messages when conversation slug exists, regardless of sidebar state
-  // This ensures content is available when sidebar is opened
-  // Use the resolved conversationSlug (from URL or persisted) instead of just URL param
   const messages = useGetMessagesByConversationSlug(
     repositories.conversation,
     repositories.message,
@@ -209,42 +185,18 @@ function SidebarLayoutInner(
       <LeaveConfirmationProvider>
         <SidebarProvider defaultOpen={layoutState.open}>
           <Page
-            agentSidebarOpen={undefined}
+            agentSidebarOpen={isNotebookPage ? notebookSidebarOpen : undefined}
             agentSidebarRef={isNotebookPage ? sidebarRef : undefined}
             agentSidebarOnOpenChange={
-              isNotebookPage
-                ? (open) => {
-                    try {
-                      localStorage.setItem(
-                        NOTEBOOK_SIDEBAR_OPEN_KEY,
-                        open ? 'true' : 'false',
-                      );
-                    } catch {
-                      // ignore
-                    }
-                  }
-                : undefined
+              isNotebookPage ? setNotebookSidebarOpen : undefined
             }
           >
-            <PageTopNavigation>
-              <ProjectLayoutTopBar />
-            </PageTopNavigation>
             <PageNavigation>
               <ProjectSidebar />
             </PageNavigation>
-            <PageMobileNavigation
-              className={'flex items-center justify-between'}
-            >
-              <LayoutMobileNavigation />
-            </PageMobileNavigation>
             <PageFooter>
               <LayoutFooter />
             </PageFooter>
-            {/* Always render AgentSidebar on notebook pages to keep it mounted and preserve state */}
-            {/* The ResizableContent component will handle hiding it when closed */}
-            {/* Use stable key that only changes when conversation actually changes */}
-            {/* CRITICAL: Always render when we have a conversation (from URL or persisted) */}
-            {/* This ensures content is preserved when sidebar is closed */}
             {isNotebookPage && conversationSlug !== 'default' && (
               <AgentSidebar>
                 <AgentUIWrapper
@@ -256,7 +208,12 @@ function SidebarLayoutInner(
                 />
               </AgentSidebar>
             )}
-            {props.children}
+            <div className="flex h-full flex-col">
+              <div className="bg-background w-fit px-4 pt-4 pb-3 lg:px-12 lg:pt-6">
+                <ProjectBreadcrumb />
+              </div>
+              <div className="flex-1 overflow-hidden">{props.children}</div>
+            </div>
           </Page>
         </SidebarProvider>
       </LeaveConfirmationProvider>
@@ -282,36 +239,40 @@ function SimpleModeSidebarLayout(
     <ProjectProvider>
       <ProjectPausedOverlay />
       <AgentStatusProvider>
-        <Page>
-          <PageTopNavigation>
-            <ProjectLayoutTopBar />
-          </PageTopNavigation>
-          <PageMobileNavigation className={'flex items-center justify-between'}>
-            <LayoutMobileNavigation />
-          </PageMobileNavigation>
-          <PageFooter>
-            <LayoutFooter />
-          </PageFooter>
-          <AgentSidebar>
-            <AgentTabs
-              tabs={[
-                {
-                  id: 'query-sql-results',
-                  title: 'Results',
-                  description: 'Query SQL Results',
-                  component: <div>Query SQL Results</div>,
-                },
-                {
-                  id: 'query-sql-visualisation',
-                  title: 'Visualisation',
-                  description: 'Visualisation of the query SQL results',
-                  component: <div>Query SQL Results</div>,
-                },
-              ]}
-            />
-          </AgentSidebar>
-          {props.children}
-        </Page>
+        <SidebarProvider defaultOpen={true}>
+          <Page>
+            <PageNavigation>
+              <ProjectSidebar />
+            </PageNavigation>
+            <PageFooter>
+              <LayoutFooter />
+            </PageFooter>
+            <AgentSidebar>
+              <AgentTabs
+                tabs={[
+                  {
+                    id: 'query-sql-results',
+                    title: 'Results',
+                    description: 'Query SQL Results',
+                    component: <div>Query SQL Results</div>,
+                  },
+                  {
+                    id: 'query-sql-visualisation',
+                    title: 'Visualisation',
+                    description: 'Visualisation of the query SQL results',
+                    component: <div>Query SQL Results</div>,
+                  },
+                ]}
+              />
+            </AgentSidebar>
+            <div className="flex h-full flex-col">
+              <div className="bg-background w-fit px-4 pt-4 pb-3 lg:px-12 lg:pt-6">
+                <ProjectBreadcrumb />
+              </div>
+              <div className="flex-1 overflow-hidden">{props.children}</div>
+            </div>
+          </Page>
+        </SidebarProvider>
       </AgentStatusProvider>
     </ProjectProvider>
   );
