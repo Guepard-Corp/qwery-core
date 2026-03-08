@@ -56,11 +56,11 @@ jobs:
       - name: List desktop build output (artifact locations)
         shell: bash
         run: |
-          echo "=== apps/desktop/src-tauri/target ==="
-          ls -laR apps/desktop/src-tauri/target 2>/dev/null || true
-          echo "=== apps/desktop/release (if any) ==="
-          ls -laR apps/desktop/release 2>/dev/null || true
-          echo "=== Find installers (AppImage, deb, dmg, exe, msi, zip) ==="
+          echo "=== Full apps/desktop tree (see where artifacts land) ==="
+          find apps/desktop -type f 2>/dev/null | head -200
+          echo "=== src-tauri/target (bundle dir) ==="
+          ls -la apps/desktop/src-tauri/target/release/bundle 2>/dev/null || echo "(path missing)"
+          echo "=== Installers ==="
           find apps/desktop -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.zip" \) 2>/dev/null || true
 
       - name: Upload release artifacts (macOS)
