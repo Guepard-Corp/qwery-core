@@ -47,6 +47,16 @@ html.desktop-app .desktop-content-area .page-root > div[class*="flex"][class*="m
   min-height: 0;
 }
 
+/* When OS-level visual zoom is active (Linux best-effort),
+   relax hard vh-based constraints to avoid layout glitches. */
+html.visual-zoomed.desktop-app .desktop-content-area {
+  height: auto;
+}
+html.visual-zoomed.desktop-app .desktop-content-area > * {
+  height: auto;
+  min-height: 100%;
+}
+
 /* ---------------------------------- */
 /*  Desktop Runtime Base              */
 /* ---------------------------------- */
