@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Link2Icon } from '@radix-ui/react-icons';
@@ -6,7 +6,7 @@ import { ArrowRight, NotebookPen, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
-import { LogoImage } from '~/components/app-logo';
+import { LandingHero, LandingSectionDivider } from '~/components/landing';
 
 import { PlaygroundTry } from '@qwery/playground/playground-try';
 import {
@@ -44,8 +44,6 @@ export default function WelcomePage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] =
     useState<PlaygroundSuggestion | null>(null);
-  const [brandText, setBrandText] = useState('');
-  const [showCursor, setShowCursor] = useState(true);
 
   const suggestions = useMemo(() => getRandomizedSuggestions(3), []);
 
@@ -79,58 +77,6 @@ export default function WelcomePage() {
     },
     projectId ?? undefined,
   );
-
-  useEffect(() => {
-    const targetText = 'Query';
-    const finalText = 'Qwery';
-    let currentIndex = 0;
-    let timeoutId: NodeJS.Timeout;
-
-    const typeText = (text: string, callback: () => void) => {
-      if (currentIndex < text.length) {
-        setBrandText(text.slice(0, currentIndex + 1));
-        currentIndex++;
-        timeoutId = setTimeout(() => typeText(text, callback), 100);
-      } else {
-        callback();
-      }
-    };
-
-    const deleteText = (callback: () => void) => {
-      if (currentIndex > 0) {
-        setBrandText(targetText.slice(0, currentIndex - 1));
-        currentIndex--;
-        timeoutId = setTimeout(() => deleteText(callback), 50);
-      } else {
-        callback();
-      }
-    };
-
-    const startAnimation = () => {
-      currentIndex = 0;
-      setBrandText('');
-      setShowCursor(true);
-      typeText(targetText, () => {
-        setTimeout(() => {
-          currentIndex = targetText.length;
-          deleteText(() => {
-            currentIndex = 0;
-            typeText(finalText, () => {
-              setTimeout(() => setShowCursor(false), 500);
-            });
-          });
-        }, 1000);
-      });
-    };
-
-    startAnimation();
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, []);
 
   const handleSubmit = (message: PromptInputMessage) => {
     if (!message.text?.trim() || !projectId || !workspace.userId) return;
@@ -225,26 +171,7 @@ export default function WelcomePage() {
   return (
     <div className="bg-background h-full overflow-y-auto">
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-20">
-        {/* HERO SECTION */}
-        <section className="mb-16 space-y-5 text-center">
-          {/* Qwery Logo & Brand */}
-          <div className="mb-8 flex flex-col items-center gap-4">
-            <LogoImage size="2xl" _width={256} />
-            <span className="text-foreground text-4xl font-black tracking-tighter uppercase">
-              {brandText || 'Q'}
-              {showCursor && (
-                <span className="bg-foreground ml-0.5 inline-block h-8 w-0.5 animate-pulse" />
-              )}
-            </span>
-          </div>
-
-          <h1 className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">
-            {t('heroTitle')}
-          </h1>
-          <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
-            {t('heroSubtitle')}
-          </p>
-        </section>
+        <LandingHero title={t('heroTitle')} subtitle={t('heroSubtitle')} />
 
         {/* PRIMARY CHAT INPUT */}
         <section className="mb-12">
@@ -288,17 +215,7 @@ export default function WelcomePage() {
           </div>
         </section>
 
-        {/* DIVIDER */}
-        <div className="relative my-12">
-          <div className="absolute inset-0 flex items-center">
-            <div className="border-border/40 w-full border-t"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background text-muted-foreground/70 px-3">
-              {t('quickActions')}
-            </span>
-          </div>
-        </div>
+        <LandingSectionDivider label={t('quickActions')} />
 
         {/* ACTION CARDS */}
         <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -349,17 +266,7 @@ export default function WelcomePage() {
           </Link>
         </section>
 
-        {/* DIVIDER */}
-        <div className="relative my-12">
-          <div className="absolute inset-0 flex items-center">
-            <div className="border-border/40 w-full border-t"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background text-muted-foreground/70 px-3">
-              {t('sampleData')}
-            </span>
-          </div>
-        </div>
+        <LandingSectionDivider label={t('sampleData')} />
 
         {/* PLAYGROUND SECTION */}
         <section className="space-y-4 pb-12">

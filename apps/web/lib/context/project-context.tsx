@@ -166,7 +166,9 @@ export function ProjectGuard({ children }: { children: ReactNode }) {
   if (ctx.isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <span className="text-muted-foreground text-sm">Loading project...</span>
+        <span className="text-muted-foreground text-sm">
+          Loading project...
+        </span>
       </div>
     );
   }

@@ -82,13 +82,14 @@ type RootLoaderData = {
 };
 
 export default function App(props: Route.ComponentProps) {
-  const { language, className, theme, csrfToken } =
-    (props.loaderData as RootLoaderData | undefined) ?? {
-      language: 'en',
-      className: getClassName('light'),
-      theme: 'light',
-      csrfToken: '',
-    };
+  const { language, className, theme, csrfToken } = (props.loaderData as
+    | RootLoaderData
+    | undefined) ?? {
+    language: 'en',
+    className: getClassName('light'),
+    theme: 'light',
+    csrfToken: '',
+  };
 
   return (
     <html lang={language} className={className}>
@@ -111,13 +112,14 @@ export default function App(props: Route.ComponentProps) {
 
 export function ErrorBoundary(_props: Route.ErrorBoundaryProps) {
   const error = useRouteError();
-  const loaderData =
-    (useRouteLoaderData('root') as RootLoaderData | undefined) ?? {
-      language: 'en',
-      className: getClassName('light'),
-      theme: 'light' as Theme,
-      csrfToken: '',
-    };
+  const loaderData = (useRouteLoaderData('root') as
+    | RootLoaderData
+    | undefined) ?? {
+    language: 'en',
+    className: getClassName('light'),
+    theme: 'light' as Theme,
+    csrfToken: '',
+  };
 
   const { language, className, theme, csrfToken } = loaderData;
 
@@ -142,7 +144,7 @@ export function ErrorBoundary(_props: Route.ErrorBoundaryProps) {
                 <Trans i18nKey="common:genericErrorSubHeading" />
               </p>
             </div>
-          )}  
+          )}
         </RootProviders>
         <ScrollRestoration />
         <Scripts />

@@ -255,6 +255,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     input: '',
     model: models[0]?.value ?? '',
     webSearch: false,
+    searchEngine: 'google',
   });
 
   const [showSuggestionBadges, setShowSuggestionBadges] = useState(() => {
@@ -1865,9 +1866,19 @@ function PromptInputInner({
   onShowSuggestionBadgesChange,
 }: {
   sendMessage: ReturnType<typeof useChat>['sendMessage'];
-  state: { input: string; model: string; webSearch: boolean };
+  state: {
+    input: string;
+    model: string;
+    webSearch: boolean;
+    searchEngine: string;
+  };
   setState: React.Dispatch<
-    React.SetStateAction<{ input: string; model: string; webSearch: boolean }>
+    React.SetStateAction<{
+      input: string;
+      model: string;
+      webSearch: boolean;
+      searchEngine: string;
+    }>
   >;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   status: ReturnType<typeof useChat>['status'];
@@ -1916,6 +1927,7 @@ function PromptInputInner({
           body: {
             model: state.model,
             webSearch: state.webSearch,
+            searchEngine: state.searchEngine,
             datasources: bodyDatasources,
           },
         },
@@ -1974,6 +1986,10 @@ function PromptInputInner({
       datasourcesLoading={datasourcesLoading}
       showSuggestionBadges={showSuggestionBadges}
       onShowSuggestionBadgesChange={onShowSuggestionBadgesChange}
+      searchEngine={state.searchEngine}
+      onSearchEngineChange={(searchEngine) =>
+        setState((prev) => ({ ...prev, searchEngine }))
+      }
     />
   );
 }
