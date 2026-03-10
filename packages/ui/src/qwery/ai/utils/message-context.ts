@@ -16,8 +16,8 @@ export function cleanContextMarkers(
     cleaned = cleaned.replace(
       new RegExp(
         CONTEXT_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-          '.*?' +
-          CONTEXT_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        '.*?' +
+        CONTEXT_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
         'gs',
       ),
       '',
@@ -66,15 +66,15 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
       ) {
         const rawName = toolPart.toolName.trim();
         const formatted = rawName.startsWith('tool-')
-          ? getUserFriendlyToolName(rawName)
-          : getUserFriendlyToolName(`tool-${rawName}`);
+          ? getUserFriendlyToolName(rawName, toolPart)
+          : getUserFriendlyToolName(`tool-${rawName}`, toolPart);
         if (formatted && formatted.trim()) {
           toolName = formatted;
         }
       }
 
       if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
-        const formatted = getUserFriendlyToolName(part.type);
+        const formatted = getUserFriendlyToolName(part.type, toolPart);
         if (formatted && formatted.trim()) {
           toolName = formatted;
         } else {

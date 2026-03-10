@@ -203,13 +203,8 @@ export default function ConversationIndexPage() {
   } | null>(null);
 
   return (
-<<<<<<< HEAD
     <div className="bg-background flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col">
-=======
-    <div className="bg-background flex h-full w-full flex-col overflow-hidden">
-      <div className="flex h-full flex-col">
->>>>>>> origin/main
+      <div className="flex h-full min-h-0 flex-1 flex-col">
         <section className="flex shrink-0 flex-col gap-6 px-8 py-6 lg:px-16 lg:py-10">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">{t('chat:title')}</h1>
@@ -244,35 +239,6 @@ export default function ConversationIndexPage() {
           </div>
         </section>
 
-<<<<<<< HEAD
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-8 lg:px-16">
-          {isLoading ? (
-            <div className="bg-muted/10 h-full w-full animate-pulse rounded-2xl" />
-          ) : (
-            <ConversationList
-              conversations={mappedConversations}
-              isLoading={isLoading}
-              currentConversationId={currentConversationId}
-              isProcessing={isProcessing}
-              processingConversationSlug={
-                processingConversationSlug || undefined
-              }
-              onConversationSelect={onConversationSelect}
-              onNewConversation={onNewConversation}
-              onConversationEdit={onConversationEdit}
-              onConversationDelete={onConversationDelete}
-              onConversationsDelete={onConversationsDelete}
-              showHeader={false}
-              showNewButton={false}
-              searchQuery={searchQuery}
-              onSearchQueryChange={setSearchQuery}
-              isEditMode={isEditMode}
-              onEditModeChange={setIsEditMode}
-              onLoadMoreStateChange={setLoadMoreState}
-              className="h-full"
-            />
-          )}
-=======
         <div className="min-h-0 flex-1 overflow-auto">
           <div className="h-full px-8 py-6 lg:px-16 lg:py-8">
             {isLoading ? (
@@ -297,11 +263,11 @@ export default function ConversationIndexPage() {
                 onSearchQueryChange={setSearchQuery}
                 isEditMode={isEditMode}
                 onEditModeChange={setIsEditMode}
+                onLoadMoreStateChange={setLoadMoreState}
                 className="h-full"
               />
             )}
           </div>
->>>>>>> origin/main
         </div>
 
         {loadMoreState?.hasMore && (

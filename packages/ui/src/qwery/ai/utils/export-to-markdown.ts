@@ -43,15 +43,15 @@ function formatToolPart(
   ) {
     const rawName = part.toolName.trim();
     const formatted = rawName.startsWith('tool-')
-      ? getUserFriendlyToolName(rawName)
-      : getUserFriendlyToolName(`tool-${rawName}`);
+      ? getUserFriendlyToolName(rawName, part)
+      : getUserFriendlyToolName(`tool-${rawName}`, part);
     if (formatted && formatted.trim()) {
       toolName = formatted;
     }
   }
 
   if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
-    const formatted = getUserFriendlyToolName(part.type);
+    const formatted = getUserFriendlyToolName(part.type, part);
     if (formatted && formatted.trim()) {
       toolName = formatted;
     } else {

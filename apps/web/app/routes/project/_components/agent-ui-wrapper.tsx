@@ -799,13 +799,10 @@ export const AgentUIWrapper = forwardRef<
         notebookContext={notebookContext}
         isLoading={isLoading}
         conversationSlug={conversationSlug}
-<<<<<<< HEAD
+        conversationTitle={conversationTitle ?? conversation?.title}
         onDatasourceNameClick={_handleDatasourceNameClick}
         onTableNameClick={_handleTableNameClick}
         getDatasourceTooltip={_getDatasourceTooltip}
-=======
-        conversationTitle={conversationTitle ?? conversation?.title}
->>>>>>> origin/main
       />
       <NoDatasourceDialog ref={noDatasourceDialogRef} />
     </>

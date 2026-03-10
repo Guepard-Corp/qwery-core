@@ -1,4 +1,4 @@
-export function getUserFriendlyToolName(type: string): string {
+export function getUserFriendlyToolName(type: string, context?: any): string {
   if (!type || typeof type !== 'string' || !type.trim()) {
     return 'Tool';
   }
@@ -20,7 +20,24 @@ export function getUserFriendlyToolName(type: string): string {
     'tool-listViews': 'List Views',
   };
 
-  const mappedName = nameMap[normalizedType];
+  let mappedName = nameMap[normalizedType];
+
+  // Dynamic naming logic for charts
+  const baseType = normalizedType.replace(/^tool-/, '');
+  if (
+    context &&
+    (baseType === 'generateChart' || baseType === 'selectChartType')
+  ) {
+    const chartType = context.output?.chartType || context.input?.chartType;
+    if (chartType) {
+      const formattedChartType =
+        chartType.charAt(0).toUpperCase() + chartType.slice(1).toLowerCase();
+      // If we don't have a mapped name yet, use a default one
+      const baseLabel = mappedName || (baseType === 'generateChart' ? 'Generate Chart' : 'Select Chart Type');
+      mappedName = `${baseLabel} (${formattedChartType})`;
+    }
+  }
+
   if (mappedName) {
     return mappedName;
   }

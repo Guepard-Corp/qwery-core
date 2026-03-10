@@ -288,11 +288,7 @@ export function useSuggestionEnhancement({
     sendMessage,
     handleSuggestionClick,
     isLastAgentResponse,
-<<<<<<< HEAD
     disabled,
-=======
-    applyOmit,
->>>>>>> origin/main
     onBeforeSuggestionSend,
   ]);
 }
