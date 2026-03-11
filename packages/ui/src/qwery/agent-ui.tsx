@@ -1986,10 +1986,6 @@ function PromptInputInner({
       datasourcesLoading={datasourcesLoading}
       showSuggestionBadges={showSuggestionBadges}
       onShowSuggestionBadgesChange={onShowSuggestionBadgesChange}
-      searchEngine={state.searchEngine}
-      onSearchEngineChange={(searchEngine) =>
-        setState((prev) => ({ ...prev, searchEngine }))
-      }
     />
   );
 }

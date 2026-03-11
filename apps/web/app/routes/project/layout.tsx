@@ -12,7 +12,7 @@ import { ProjectBreadcrumb } from './_components/project-breadcrumb';
 import { AgentUIWrapper } from './_components/agent-ui-wrapper';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
-import { AgentTabs, AgentStatusProvider } from '@qwery/ui/ai';
+import { AgentStatusProvider } from '@qwery/ui/ai';
 import { LeaveConfirmationProvider } from '~/lib/context/leave-confirmation-context';
 import { useGetMessagesByConversationSlug } from '~/lib/queries/use-get-messages';
 import {

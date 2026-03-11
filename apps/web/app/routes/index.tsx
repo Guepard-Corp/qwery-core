@@ -133,7 +133,7 @@ function LandingPage({
                   </p>
                 </div>
                 <Button variant="ghost" size="sm" className="shrink-0">
-                  Let's go
+                  Let&apos;s go
                   <ArrowRight className="ml-1 size-4" />
                 </Button>
               </div>

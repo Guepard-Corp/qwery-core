@@ -1,5 +1,3 @@
-import { Trans } from '@qwery/ui/trans';
-
 import {
   GetOrganizationBySlugService,
   GetProjectsByOrganizationIdService,
