@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { generateText } from 'ai';
 import type { Conversation, Message } from '@qwery/domain/entities';
 import { MessageRole } from '@qwery/domain/entities';
 import type { Repositories } from '@qwery/domain/repositories';
@@ -17,6 +18,7 @@ import {
   __test__,
   isOverflow,
   prune,
+  SessionCompaction,
 } from '../../src/agents/session-compaction';
 
 function createRepositories(): Repositories {
@@ -411,6 +413,31 @@ describe('SessionCompaction prune', () => {
     await prune({ conversationSlug: CONV_SLUG, repositories });
 
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('propagates errors from generateText in process so callers can handle failures', async () => {
+    await repositories.conversation.create(makeConversation());
+    const base = new Date(1000);
+    const userMessage = makeMessage(
+      'msg-user-1',
+      MessageRole.USER,
+      { parts: [{ type: 'text', text: 'hi' }] },
+      new Date(base.getTime()),
+    );
+
+    const generateTextMock = generateText as unknown as vi.Mock;
+    generateTextMock.mockRejectedValueOnce(new Error('compaction-fail'));
+
+    await expect(
+      SessionCompaction.process({
+        parentID: userMessage.id,
+        messages: [userMessage],
+        conversationSlug: CONV_SLUG,
+        abort: new AbortController().signal,
+        auto: true,
+        repositories,
+      }),
+    ).rejects.toThrow('compaction-fail');
   });
 });
 
