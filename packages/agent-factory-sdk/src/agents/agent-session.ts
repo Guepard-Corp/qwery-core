@@ -46,6 +46,8 @@ export type AgentSessionPromptInput = {
 };
 
 const DEFAULT_AGENT_ID = 'query';
+const OUTPUT_TOKEN_MAX = 32_000;
+const CONTEXT_SAFETY_FACTOR = 0.9;
 
 const SSE_HEADERS = {
   'Content-Type': 'text/event-stream',
@@ -83,7 +85,22 @@ function deriveState(msgs: Message[]) {
       (p): p is MessageContentPart =>
         p.type === 'compaction' || p.type === 'subtask',
     );
-  return { lastUser, compactionUser, lastAssistant, lastFinished, tasks };
+  const lastFinishedMeta = lastFinished?.metadata as
+    | {
+        summary?: boolean;
+        agent?: string;
+      }
+    | undefined;
+  const lastWasCompaction =
+    !!lastFinishedMeta?.summary && lastFinishedMeta.agent === 'compaction';
+  return {
+    lastUser,
+    compactionUser,
+    lastAssistant,
+    lastFinished,
+    tasks,
+    lastWasCompaction,
+  };
 }
 
 type ToolExecutionStat = {
@@ -189,7 +206,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
   while (true) {
     const msgs = await filterCompacted(messagesApi.stream(conversationId));
-    const { lastUser, compactionUser, lastFinished, tasks } = deriveState(msgs);
+    const { lastUser, compactionUser, lastFinished, tasks, lastWasCompaction } =
+      deriveState(msgs);
 
     const hasPendingCompactionTask = tasks.some((t) => t.type === 'compaction');
 
@@ -211,15 +229,30 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     }
 
     if (task?.type === 'compaction') {
-      const result = await SessionCompaction.process({
-        parentID: compactionUser?.id ?? lastUser?.id ?? '',
-        messages: msgs,
+      logger.info('[AgentSession] Processing compaction task', {
         conversationSlug,
-        abort: abortController.signal,
-        auto: (task as { auto: boolean }).auto,
-        repositories,
+        auto: (task as { auto?: boolean }).auto,
+        compactionUserId: compactionUser?.id,
+        lastUserId: lastUser?.id,
       });
-      if (result === 'stop') break;
+      try {
+        await SessionCompaction.process({
+          parentID: compactionUser?.id ?? lastUser?.id ?? '',
+          messages: msgs,
+          conversationSlug,
+          abort: abortController.signal,
+          auto: (task as { auto: boolean }).auto,
+          repositories,
+        });
+      } catch (error) {
+        const log = await getLogger();
+        log.warn(
+          '[AgentSession] Compaction task failed, continuing without summary',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+      // On success we created a hidden summary; on failure we just skip compaction.
+      // In both cases, re-run loop to pick up latest state or proceed to normal reply.
       continue;
     }
 
@@ -241,6 +274,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       lastFinished &&
       !lastFinishedSummary &&
       lastFinishedTokens &&
+      !lastWasCompaction &&
+      !hasPendingCompactionTask &&
       (await SessionCompaction.isOverflow({
         tokens: lastFinishedTokens,
         model,
@@ -250,10 +285,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         lastFinished,
         userMeta: lastUser?.metadata,
       });
-
-      if (hasPendingCompactionTask) {
-        continue;
-      }
 
       const userMeta = lastUser?.metadata as
         | {
@@ -266,6 +297,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         agent: userMeta?.agent ?? agentId,
         model: userMeta?.model ?? model,
         auto: true,
+        afterMessageId: lastUser?.id,
         repositories,
       });
       continue;
@@ -411,6 +443,53 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       capabilityIds.length > 0
         ? `${systemPromptForLlm}\n\nSUGGESTIONS - Capabilities: When using {{suggestion: ...}}, only suggest actions you can perform with your tools: ${capabilityIds.join(', ')}. Do not suggest CSV/PDF export, file download, or other actions you cannot perform.`
         : systemPromptForLlm;
+
+    if (!lastWasCompaction && !hasPendingCompactionTask) {
+      const encoder = new TextEncoder();
+      const contextPayload = JSON.stringify({
+        system: systemPromptWithSuggestions ?? '',
+        messages: messagesForLlm,
+      });
+      const contextTokensApprox = Math.ceil(
+        encoder.encode(contextPayload).length / 3.6,
+      );
+      const contextLimit = providerModel.limit?.context ?? 0;
+      if (contextLimit > 0) {
+        const outputLimit =
+          Math.min(providerModel.limit?.output ?? Infinity, OUTPUT_TOKEN_MAX) ||
+          OUTPUT_TOKEN_MAX;
+        const usable = providerModel.limit?.input ?? contextLimit - outputLimit;
+        const safeUsable = Math.floor(usable * CONTEXT_SAFETY_FACTOR);
+        if (contextTokensApprox > safeUsable) {
+          logger.info(
+            '[AgentSession] Context overflow detected (approximate)',
+            {
+              conversationSlug,
+              contextTokensApprox,
+              usable,
+              safeUsable,
+              contextLimit,
+            },
+          );
+
+          const userMeta = lastUser?.metadata as
+            | {
+                agent?: string;
+                model?: { providerID: string; modelID: string };
+              }
+            | undefined;
+          await SessionCompaction.create({
+            conversationSlug,
+            agent: userMeta?.agent ?? agentId,
+            model: userMeta?.model ?? model,
+            auto: true,
+            afterMessageId: lastUser?.id,
+            repositories,
+          });
+          continue;
+        }
+      }
+    }
 
     const result = await LLM.stream({
       model,

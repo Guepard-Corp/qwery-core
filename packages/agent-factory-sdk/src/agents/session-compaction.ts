@@ -52,7 +52,42 @@ const checkPrune = (part: unknown): boolean => {
 
 function estimateTokens(text: string): number {
   const MAX_TOKENS_PER_PART = 50_000;
-  return Math.min(Math.ceil((text?.length ?? 0) / 4), MAX_TOKENS_PER_PART);
+  const length = text?.length ?? 0;
+  const approx = Math.ceil(length / 3.6);
+  return Math.min(approx, MAX_TOKENS_PER_PART);
+}
+
+function truncateSummaryByTokens(text: string, maxTokens: number): string {
+  if (!text) return '';
+  const lines = text.split('\n');
+  const chunks: string[] = [];
+  let accumulated = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trimEnd();
+    if (!trimmed) {
+      if (chunks.length > 0) {
+        chunks.push('');
+      }
+      continue;
+    }
+
+    const candidates =
+      trimmed.startsWith('- ') || trimmed.startsWith('* ')
+        ? [trimmed]
+        : trimmed.split(/(?<=[.!?])\s+/);
+
+    for (const candidate of candidates) {
+      const tokenEstimate = estimateTokens(candidate);
+      if (accumulated + tokenEstimate > maxTokens) {
+        return chunks.join('\n');
+      }
+      chunks.push(candidate);
+      accumulated += tokenEstimate;
+    }
+  }
+
+  return chunks.join('\n');
 }
 
 function getPartTokenEstimate(part: {
@@ -107,13 +142,12 @@ export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
     Math.min(model.limit.output ?? Infinity, OUTPUT_TOKEN_MAX) ||
     OUTPUT_TOKEN_MAX;
   const usable = model.limit.input ?? context - outputLimit;
-  const count =
-    input.tokens.input + input.tokens.cache.read + input.tokens.output;
-  const overflow = count > usable;
+  const promptCount = input.tokens.input + input.tokens.cache.read;
+  const overflow = promptCount > usable;
   if (overflow) {
     const logger = await getLogger();
     logger.info('[SessionCompaction] Context overflow detected', {
-      count,
+      count: promptCount,
       usable,
       context,
     });
@@ -303,11 +337,9 @@ export type ProcessInput = {
 };
 
 const COMPACTION_USER_PROMPT =
-  "Provide a detailed prompt for continuing our conversation above. Focus on information that would be helpful for continuing the conversation, including what we did, what we're doing, which datasources we're using, and what we're going to do next considering the new context will not have access to our full conversation history.";
+  'Write a concise internal summary that another assistant can use to continue this conversation without access to the full history. Focus only on what was done, what is being worked on, which datasources are in use, and what should happen next. Do NOT ask questions, do NOT present choices or menus, and do NOT address the end user; this text will be used purely as internal context.';
 
-export async function process(
-  input: ProcessInput,
-): Promise<'stop' | 'continue'> {
+export async function process(input: ProcessInput): Promise<'continue'> {
   const {
     parentID,
     messages,
@@ -340,6 +372,12 @@ export async function process(
     ? Provider.getModelFromString(modelStr)
     : Provider.getDefaultModel();
 
+  logger.info('[SessionCompaction] Starting compaction', {
+    conversationSlug,
+    parentID,
+    model: { providerID: model.providerID, modelID: model.id },
+  });
+
   const modelMessages = await Messages.toModelMessages(messages, model);
   const compactionMessages = [
     ...modelMessages,
@@ -349,70 +387,76 @@ export async function process(
     },
   ];
 
-  try {
-    const result = await generateText({
-      model: await Provider.getLanguage(model),
-      messages: compactionMessages,
-      system: COMPACTION_PROMPT,
-      abortSignal: abort,
-    });
+  const result = await generateText({
+    model: await Provider.getLanguage(model),
+    messages: compactionMessages,
+    system: COMPACTION_PROMPT,
+    abortSignal: abort,
+  });
 
-    const conversation =
-      await repositories.conversation.findBySlug(conversationSlug);
-    if (!conversation) return 'stop';
-
-    const persistence = new MessagePersistenceService(
-      repositories.message,
-      repositories.conversation,
-      conversationSlug,
+  const conversation =
+    await repositories.conversation.findBySlug(conversationSlug);
+  if (!conversation) {
+    throw new Error(
+      `[SessionCompaction] Conversation not found during compaction: ${conversationSlug}`,
     );
-
-    const summaryText = result.text.trim();
-    const assistantMsg = {
-      id: uuidv4(),
-      role: 'assistant' as const,
-      parts: [{ type: 'text' as const, text: summaryText }],
-      metadata: {
-        summary: true,
-        finish: 'stop',
-        parentId: parentID,
-        tokens: {
-          input:
-            (result.usage as { inputTokens?: number; promptTokens?: number })
-              ?.inputTokens ??
-            (result.usage as { promptTokens?: number })?.promptTokens ??
-            0,
-          output:
-            (
-              result.usage as {
-                outputTokens?: number;
-                completionTokens?: number;
-              }
-            )?.outputTokens ??
-            (result.usage as { completionTokens?: number })?.completionTokens ??
-            0,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-      },
-    };
-
-    await persistence.persistMessages([assistantMsg], undefined, {
-      defaultMetadata: {
-        agent: 'compaction',
-        model: {
-          modelID: model.id,
-          providerID: model.providerID,
-        },
-      },
-    });
-  } catch (err) {
-    logger.warn(
-      '[SessionCompaction] Process failed',
-      err instanceof Error ? err.message : String(err),
-    );
-    return 'stop';
   }
+
+  const persistence = new MessagePersistenceService(
+    repositories.message,
+    repositories.conversation,
+    conversationSlug,
+  );
+
+  const rawSummaryText = result.text.trim();
+  const summaryText = truncateSummaryByTokens(rawSummaryText, 300);
+  const assistantMsg = {
+    id: uuidv4(),
+    role: 'assistant' as const,
+    parts: [{ type: 'text' as const, text: summaryText }],
+    metadata: {
+      hidden: true,
+      summary: true,
+      finish: 'stop',
+      parentId: parentID,
+      tokens: {
+        input:
+          (result.usage as { inputTokens?: number; promptTokens?: number })
+            ?.inputTokens ??
+          (result.usage as { promptTokens?: number })?.promptTokens ??
+          0,
+        output:
+          (
+            result.usage as {
+              outputTokens?: number;
+              completionTokens?: number;
+            }
+          )?.outputTokens ??
+          (result.usage as { completionTokens?: number })?.completionTokens ??
+          0,
+        reasoning: 0,
+        cache: { read: 0, write: 0 },
+      },
+    },
+  };
+
+  await persistence.persistMessages([assistantMsg], undefined, {
+    defaultMetadata: {
+      agent: 'compaction',
+      model: {
+        modelID: model.id,
+        providerID: model.providerID,
+      },
+    },
+  });
+
+  logger.info('[SessionCompaction] Compaction summary created', {
+    conversationSlug,
+    parentID,
+    summaryLength: summaryText.length,
+    summaryTokensApprox: estimateTokens(summaryText),
+  });
+
   return 'continue';
 }
 
@@ -421,11 +465,13 @@ export type CreateInput = {
   agent: string;
   model: string | { providerID: string; modelID: string };
   auto: boolean;
+  afterMessageId?: string;
   repositories: Repositories;
 };
 
 export async function create(input: CreateInput): Promise<void> {
-  const { conversationSlug, agent, model, auto, repositories } = input;
+  const { conversationSlug, agent, model, auto, afterMessageId, repositories } =
+    input;
 
   const conversation =
     await repositories.conversation.findBySlug(conversationSlug);
@@ -446,6 +492,14 @@ export async function create(input: CreateInput): Promise<void> {
         }
       : undefined;
 
+  const logger = await getLogger();
+  logger.info('[SessionCompaction] Creating compaction task', {
+    conversationSlug,
+    agent,
+    auto,
+    model: modelMeta,
+  });
+
   const useCase = new CreateMessageService(
     repositories.message,
     repositories.conversation,
@@ -456,7 +510,13 @@ export async function create(input: CreateInput): Promise<void> {
       content: {
         id: uuidv4(),
         role: 'user',
-        parts: [{ type: 'compaction', auto }],
+        parts: [
+          {
+            type: 'compaction',
+            auto,
+            ...(afterMessageId ? { afterMessageId } : {}),
+          },
+        ],
       },
       role: MessageRole.USER,
       metadata: { agent, model: modelMeta },
@@ -471,4 +531,9 @@ export const SessionCompaction = {
   prune,
   process,
   create,
+};
+
+export const __test__ = {
+  estimateTokens,
+  truncateSummaryByTokens,
 };

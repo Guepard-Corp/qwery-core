@@ -27,6 +27,7 @@ import {
 } from '../../ai-elements/message';
 import { toToolError, toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 
 const FullWidthScroller = forwardRef<
   HTMLDivElement,
@@ -106,6 +107,25 @@ export const VirtuosoMessageList = forwardRef<
     scrollerRef,
     ...messageItemProps
   } = props;
+
+  const indicatorAfterUserMessageIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    messages.forEach((m) => {
+      if (normalizeUIRole(m.role) !== 'user') return;
+
+      const compactionPart = (m.parts ?? []).find(
+        (p) => (p as { type?: string } | undefined)?.type === 'compaction',
+      ) as { afterMessageId?: unknown } | undefined;
+
+      const after = compactionPart?.afterMessageId;
+      if (typeof after === 'string' && after.trim().length > 0) {
+        ids.add(after);
+      }
+    });
+
+    return ids;
+  }, [messages]);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -190,8 +210,10 @@ export const VirtuosoMessageList = forwardRef<
         return null;
       }
 
+      const showIndicator = indicatorAfterUserMessageIds.has(message.id);
+
       return (
-        <div className={cn('pt-4 pb-4', index === 0 && 'pt-8')}>
+        <div className={cn('', index === 0 && 'pt-8')}>
           <MessageItem
             key={message.id}
             message={message}
@@ -200,10 +222,24 @@ export const VirtuosoMessageList = forwardRef<
             {...stableMessageItemProps}
             scrollToBottom={scrollToBottom}
           />
+          {showIndicator ? (
+            <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <span className="font-medium">
+                Context summary created to keep within model limits.
+              </span>
+            </div>
+          ) : null}
         </div>
       );
     },
-    [messages, status, stableMessageItemProps, scrollToBottom],
+    [
+      messages,
+      status,
+      stableMessageItemProps,
+      scrollToBottom,
+      indicatorAfterUserMessageIds,
+    ],
   );
 
   const components = useMemo(() => {

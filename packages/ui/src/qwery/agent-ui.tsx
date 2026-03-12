@@ -255,6 +255,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     input: '',
     model: models[0]?.value ?? '',
     webSearch: false,
+    searchEngine: 'google',
   });
 
   const [showSuggestionBadges, setShowSuggestionBadges] = useState(() => {
@@ -1865,9 +1866,19 @@ function PromptInputInner({
   onShowSuggestionBadgesChange,
 }: {
   sendMessage: ReturnType<typeof useChat>['sendMessage'];
-  state: { input: string; model: string; webSearch: boolean };
+  state: {
+    input: string;
+    model: string;
+    webSearch: boolean;
+    searchEngine: string;
+  };
   setState: React.Dispatch<
-    React.SetStateAction<{ input: string; model: string; webSearch: boolean }>
+    React.SetStateAction<{
+      input: string;
+      model: string;
+      webSearch: boolean;
+      searchEngine: string;
+    }>
   >;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   status: ReturnType<typeof useChat>['status'];
@@ -1901,9 +1912,6 @@ function PromptInputInner({
       return;
     }
 
-    controller.textInput.clear();
-    setState((prev) => ({ ...prev, input: '' }));
-
     try {
       const ds = getDatasourcesForSend?.() ?? selectedDatasources ?? [];
       const bodyDatasources = ds.length > 0 ? ds : undefined;
@@ -1916,10 +1924,16 @@ function PromptInputInner({
           body: {
             model: state.model,
             webSearch: state.webSearch,
+            searchEngine: state.searchEngine,
             datasources: bodyDatasources,
           },
         },
       );
+
+      // Clear input only on submit (not on streaming end).
+      controller.textInput.clear();
+      setState((prev) => ({ ...prev, input: '' }));
+
       const scrollToBottom = () => scrollToBottomRef.current?.();
       requestAnimationFrame(scrollToBottom);
       setTimeout(scrollToBottom, 150);

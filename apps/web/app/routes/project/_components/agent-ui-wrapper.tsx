@@ -106,6 +106,10 @@ import type { FeedbackPayload } from '@qwery/ui/ai';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { createDatasourceViewPath } from '~/config/project.navigation.config';
+import { useQueryClient } from '@tanstack/react-query';
+import { getConversationsKey } from '~/lib/queries/use-get-conversations';
+import { getConversationKey } from '~/lib/mutations/use-conversation';
+import { getConversationsByProjectKey } from '~/lib/queries/use-get-conversations-by-project';
 
 type SendMessageFn = (
   message: { text: string },
@@ -209,7 +213,8 @@ export const AgentUIWrapper = forwardRef<
   },
   ref,
 ) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['chat', 'common']);
+  const queryClient = useQueryClient();
   const sendMessageRef = useRef<((text: string) => Promise<void>) | null>(null);
   const internalSendMessageRef = useRef<SendMessageFn | null>(null);
   const setMessagesRef = useRef<
@@ -242,6 +247,44 @@ export const AgentUIWrapper = forwardRef<
   // Load current conversation to get existing datasources
   const { data: conversation, isLoading: isConversationLoading } =
     useGetConversationBySlug(repositories.conversation, conversationSlug);
+
+  const previousConversationTitleRef = useRef<string | undefined>(undefined);
+  const interactionCountRef = useRef(0);
+
+  const projectContext = useProjectOptional();
+  const datasourceProjectId =
+    projectContext?.projectId ?? workspace.projectId ?? '';
+
+  useEffect(() => {
+    if (!conversation) return;
+    const previousTitle = previousConversationTitleRef.current;
+    const currentTitle = conversation.title;
+
+    const didRenameFromNewToCustom =
+      previousTitle === 'New Conversation' &&
+      currentTitle !== 'New Conversation' &&
+      currentTitle !== previousTitle;
+
+    if (didRenameFromNewToCustom) {
+      toast.success(
+        t('chat:renamed_success', {
+          title: currentTitle,
+        }),
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: getConversationKey(conversation.slug),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getConversationsKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getConversationsByProjectKey(datasourceProjectId),
+      });
+    }
+
+    previousConversationTitleRef.current = currentTitle;
+  }, [conversation, queryClient, t, datasourceProjectId]);
 
   // Get cell datasource from notebook context (if opened from a cell)
   const cellDatasource = getCellDatasource();
@@ -336,9 +379,6 @@ export const AgentUIWrapper = forwardRef<
     selectedDatasourcesRef.current = selectedDatasources;
   }, [selectedDatasources]);
 
-  const projectContext = useProjectOptional();
-  const datasourceProjectId =
-    projectContext?.projectId ?? workspace.projectId ?? '';
   const datasources = useGetDatasourcesByProjectId(
     repositories.datasource,
     datasourceProjectId,
@@ -600,9 +640,31 @@ export const AgentUIWrapper = forwardRef<
     [submitFeedback],
   );
 
+  const scheduleConversationRefresh = useCallback(() => {
+    const delays = [2000, 4000, 8000];
+    delays.forEach((delay) => {
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: getConversationKey(conversationSlug),
+        });
+      }, delay);
+    });
+  }, [queryClient, conversationSlug]);
+
   const handleEmitFinish = useCallback(() => {
     invalidateUsage(conversationSlug, workspace.userId);
-  }, [invalidateUsage, conversationSlug, workspace.userId]);
+    interactionCountRef.current += 1;
+    const isFirst = interactionCountRef.current === 1;
+    const isFifth = interactionCountRef.current === 5;
+    if (isFirst || isFifth) {
+      scheduleConversationRefresh();
+    }
+  }, [
+    invalidateUsage,
+    conversationSlug,
+    workspace.userId,
+    scheduleConversationRefresh,
+  ]);
 
   // Handle datasource selection change and save to conversation
   const handleDatasourceSelectionChange = useCallback(
