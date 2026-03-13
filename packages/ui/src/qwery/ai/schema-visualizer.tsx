@@ -2,7 +2,12 @@
 
 import * as React from 'react';
 import { Database, Table2, ChevronDown } from 'lucide-react';
-import type { Column, DatasourceMetadata, Table } from '@qwery/domain/entities';
+import type {
+  Column,
+  DatasourceMetadata,
+  SimpleSchema,
+  Table,
+} from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
 import {
   Collapsible,
@@ -13,10 +18,35 @@ import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { Trans } from '../trans';
 
 export interface SchemaVisualizerProps {
-  schema: DatasourceMetadata;
+  schema: DatasourceMetadata | SimpleSchema[];
   tableName?: string;
   className?: string;
   variant?: 'default' | 'minimal';
+}
+
+type DisplayColumn = {
+  id: string;
+  name: string;
+  type: string;
+};
+
+type DisplayTable = {
+  key: string;
+  label: string;
+  columns: DisplayColumn[];
+};
+
+function matchesTableName(candidate: string, tableName?: string): boolean {
+  if (!tableName) {
+    return true;
+  }
+
+  if (candidate === tableName) {
+    return true;
+  }
+
+  const lastSegment = candidate.split('.').at(-1);
+  return lastSegment === tableName;
 }
 
 function getColumnsForTable(
@@ -32,8 +62,6 @@ function getColumnsForTable(
   );
 }
 
-type TableWithColumns = Table & { resolvedColumns: Column[] };
-
 /**
  * Specialized component for visualizing database schema information
  */
@@ -43,37 +71,82 @@ export function SchemaVisualizer({
   className,
   variant = 'default',
 }: SchemaVisualizerProps) {
-  // Group tables by schema name (datasource group)
+  // Group tables by schema-like label (datasource group)
   const groupedTables = React.useMemo(() => {
-    const groups: Record<string, TableWithColumns[]> = {};
+    const groups: Record<string, DisplayTable[]> = {};
 
-    const filteredTables = (schema.tables ?? []).filter((t) => {
-      if (!tableName) return true;
-      const fullName = t.schema ? `${t.schema}.${t.name}` : t.name;
-      return fullName === tableName || t.name === tableName;
+    if (Array.isArray(schema)) {
+      for (const simpleSchema of schema) {
+        const groupName = `${simpleSchema.databaseName}.${simpleSchema.schemaName}`;
+        const filteredTables = simpleSchema.tables.filter((table) =>
+          matchesTableName(table.tableName, tableName),
+        );
+
+        if (filteredTables.length === 0) {
+          continue;
+        }
+
+        const displayTables: DisplayTable[] = filteredTables.map((table) => ({
+          key: `${groupName}.${table.tableName}`,
+          label: table.tableName,
+          columns: table.columns.map((column) => ({
+            id: `${table.tableName}.${column.columnName}`,
+            name: column.columnName,
+            type: column.columnType,
+          })),
+        }));
+
+        const existing = groups[groupName];
+        if (existing) {
+          existing.push(...displayTables);
+        } else {
+          groups[groupName] = displayTables;
+        }
+      }
+
+      return groups;
+    }
+
+    const filteredTables = (schema.tables ?? []).filter((table) => {
+      const fullName = table.schema
+        ? `${table.schema}.${table.name}`
+        : table.name;
+      return matchesTableName(fullName, tableName);
     });
 
     for (const table of filteredTables) {
-      const resolvedColumns = getColumnsForTable(schema, table).sort(
-        (a, b) => a.ordinal_position - b.ordinal_position,
-      );
-      const tableWithColumns: TableWithColumns = {
-        ...table,
-        resolvedColumns,
+      const resolvedColumns = getColumnsForTable(schema, table)
+        .sort((a, b) => a.ordinal_position - b.ordinal_position)
+        .map((column) => ({
+          id: column.id,
+          name: column.name,
+          type: column.data_type,
+        }));
+
+      const displayTable: DisplayTable = {
+        key: `${table.schema || 'main'}.${table.name}`,
+        label: table.schema ? `${table.schema}.${table.name}` : table.name,
+        columns: resolvedColumns,
       };
+
       const groupName = table.schema || 'main';
       const existing = groups[groupName];
-      if (existing) existing.push(tableWithColumns);
-      else groups[groupName] = [tableWithColumns];
+      if (existing) {
+        existing.push(displayTable);
+      } else {
+        groups[groupName] = [displayTable];
+      }
     }
 
     return groups;
   }, [schema, tableName]);
 
-  const datasourceNames = Object.keys(groupedTables);
+  const datasourceNames = Object.keys(groupedTables).sort();
 
-  const hasTables = (schema?.tables?.length ?? 0) > 0;
-  if (!schema || !hasTables || datasourceNames.length === 0) {
+  const hasTables = datasourceNames.some(
+    (name) => (groupedTables[name]?.length ?? 0) > 0,
+  );
+  if (!hasTables || datasourceNames.length === 0) {
     return (
       <div
         className={cn(
@@ -142,24 +215,22 @@ export function SchemaVisualizer({
             <div className="space-y-4 border-t p-4">
               {groupedTables[dsName]?.map((table) => (
                 <div
-                  key={`${table.schema}.${table.name}`}
+                  key={table.key}
                   className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                 >
                   <div className="bg-muted/30 flex items-center justify-between border-b px-3 py-2">
                     <div className="flex items-center gap-2">
                       <Table2 className="text-primary/70 h-3.5 w-3.5" />
                       <h4 className="text-foreground/90 font-mono text-sm font-medium">
-                        {table.schema
-                          ? `${table.schema}.${table.name}`
-                          : table.name}
+                        {table.label}
                       </h4>
                     </div>
                     <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono text-[10px]">
-                      {table.resolvedColumns.length} columns
+                      {table.columns.length} columns
                     </span>
                   </div>
 
-                  {table.resolvedColumns.length > 0 ? (
+                  {table.columns.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
@@ -171,7 +242,7 @@ export function SchemaVisualizer({
                           </tr>
                         </thead>
                         <tbody className="divide-border/50 divide-y">
-                          {table.resolvedColumns.map((col) => (
+                          {table.columns.map((col) => (
                             <tr
                               key={col.id}
                               className="hover:bg-muted/20 transition-colors"
@@ -180,7 +251,7 @@ export function SchemaVisualizer({
                                 {col.name}
                               </td>
                               <td className="text-muted-foreground px-3 py-1.5 font-mono text-[10px]">
-                                {col.data_type}
+                                {col.type}
                               </td>
                             </tr>
                           ))}
