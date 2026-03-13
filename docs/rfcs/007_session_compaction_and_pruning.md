@@ -21,7 +21,7 @@ Without management, conversations would eventually exceed the model's context wi
 **When it triggers**: Automatically when a conversation exceeds the model's usable token limit.
 
 **How it works**:
-1. Detects overflow by checking if `input tokens + cache.read + output tokens > usable limit`
+1. Detects overflow by checking if `input tokens + cache.read + output tokens + reasoning tokens > usable limit`
 2. Creates a compaction task (user message with `type: 'compaction'` part)
 3. Generates a summary using an LLM that captures:
    - What was done
@@ -179,7 +179,6 @@ Summary messages are never scanned for pruning - they're permanent and always in
 
 ## Future Considerations
 
-- **Reasoning tokens**: Currently not included in overflow calculation - may need adjustment
+- **Reasoning tokens**: Included when the provider reports them; some providers may return 0/undefined
 - **Selective pruning**: Could prune based on recency or importance, not just token count
 - **Compression**: Could compress tool outputs instead of clearing them entirely
-
