@@ -1228,6 +1228,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     onDatasourceNameClick={onDatasourceNameClick}
                     onTableNameClick={onTableNameClick}
                     getDatasourceTooltip={getDatasourceTooltip}
+                    webSearch={state.webSearch}
                     renderScrollButton={(scrollToBottom, isAtBottom) =>
                       !isAtBottom ? (
                         <Button
@@ -2229,7 +2230,6 @@ function PromptInputInner({
           },
         },
       );
-
       const scrollToBottom = () => scrollToBottomRef.current?.();
       requestAnimationFrame(scrollToBottom);
       setTimeout(scrollToBottom, 150);

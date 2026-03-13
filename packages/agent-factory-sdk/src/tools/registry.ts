@@ -95,6 +95,7 @@ export type GetContextOptions = {
 export type ForAgentOptions = {
   mcpServerUrl?: string;
   mcpNamePrefix?: string;
+  webSearch?: boolean;
 };
 
 export type ForAgentResult = {
@@ -177,6 +178,9 @@ export const Registry = {
           : allTools;
       if (toolDenylist?.length) {
         byAgent = byAgent.filter((t) => !toolDenylist.includes(t.id));
+      }
+      if (forAgentOptions?.webSearch === false) {
+        byAgent = byAgent.filter((t) => t.id !== 'webfetch');
       }
       const byModel = byAgent.filter((t) => whenModelMatches(t, model));
 

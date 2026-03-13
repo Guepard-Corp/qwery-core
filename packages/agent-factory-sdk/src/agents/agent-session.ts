@@ -25,6 +25,7 @@ export type AgentSessionPromptInput = {
   messages: UIMessage[];
   model?: string;
   datasources?: string[];
+  webSearch?: boolean;
   repositories: Repositories;
   telemetry: TelemetryManager;
   generateTitle?: boolean;
@@ -46,11 +47,9 @@ export type AgentSessionPromptInput = {
 };
 
 const DEFAULT_AGENT_ID = 'query';
-const OUTPUT_TOKEN_MAX = 32_000;
-const CONTEXT_SAFETY_FACTOR = 0.9;
 
-const WEB_SEARCH_PROMPT_FRAGMENT = `# Web search (webfetch tool)
-When using webfetch for web search: use specific, search-friendly queries (e.g. "OpenAI CEO 2025"); build the search URL with the query in the "q" parameter (e.g. https://www.google.com/search?q=...). Only state information that appears in the fetched content. If the results do not contain the answer, say so clearly instead of guessing or inventing sources.`;
+const WEB_SEARCH_OFF_INSTRUCTION = `# Web search is disabled
+Web search is turned off for this conversation. Do not offer to search the web, look up information online, or fetch URLs. Answer only using your knowledge and any attached datasources. If the user asks for real-time or external information you cannot provide without web search, state clearly that web search is disabled and they can turn it on in settings if needed.`;
 
 const SSE_HEADERS = {
   'Content-Type': 'text/event-stream',
@@ -88,22 +87,7 @@ function deriveState(msgs: Message[]) {
       (p): p is MessageContentPart =>
         p.type === 'compaction' || p.type === 'subtask',
     );
-  const lastFinishedMeta = lastFinished?.metadata as
-    | {
-        summary?: boolean;
-        agent?: string;
-      }
-    | undefined;
-  const lastWasCompaction =
-    !!lastFinishedMeta?.summary && lastFinishedMeta.agent === 'compaction';
-  return {
-    lastUser,
-    compactionUser,
-    lastAssistant,
-    lastFinished,
-    tasks,
-    lastWasCompaction,
-  };
+  return { lastUser, compactionUser, lastAssistant, lastFinished, tasks };
 }
 
 type ToolExecutionStat = {
@@ -209,8 +193,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
 
   while (true) {
     const msgs = await filterCompacted(messagesApi.stream(conversationId));
-    const { lastUser, compactionUser, lastFinished, tasks, lastWasCompaction } =
-      deriveState(msgs);
+    const { lastUser, compactionUser, lastFinished, tasks } = deriveState(msgs);
 
     const hasPendingCompactionTask = tasks.some((t) => t.type === 'compaction');
 
@@ -232,30 +215,14 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     }
 
     if (task?.type === 'compaction') {
-      logger.info('[AgentSession] Processing compaction task', {
+      await SessionCompaction.process({
+        parentID: compactionUser?.id ?? lastUser?.id ?? '',
+        messages: msgs,
         conversationSlug,
-        auto: (task as { auto?: boolean }).auto,
-        compactionUserId: compactionUser?.id,
-        lastUserId: lastUser?.id,
+        abort: abortController.signal,
+        auto: (task as { auto: boolean }).auto,
+        repositories,
       });
-      try {
-        await SessionCompaction.process({
-          parentID: compactionUser?.id ?? lastUser?.id ?? '',
-          messages: msgs,
-          conversationSlug,
-          abort: abortController.signal,
-          auto: (task as { auto: boolean }).auto,
-          repositories,
-        });
-      } catch (error) {
-        const log = await getLogger();
-        log.warn(
-          '[AgentSession] Compaction task failed, continuing without summary',
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-      // On success we created a hidden summary; on failure we just skip compaction.
-      // In both cases, re-run loop to pick up latest state or proceed to normal reply.
       continue;
     }
 
@@ -277,8 +244,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       lastFinished &&
       !lastFinishedSummary &&
       lastFinishedTokens &&
-      !lastWasCompaction &&
-      !hasPendingCompactionTask &&
       (await SessionCompaction.isOverflow({
         tokens: lastFinishedTokens,
         model,
@@ -288,6 +253,10 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         lastFinished,
         userMeta: lastUser?.metadata,
       });
+
+      if (hasPendingCompactionTask) {
+        continue;
+      }
 
       const userMeta = lastUser?.metadata as
         | {
@@ -369,10 +338,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       })}\n\n`;
       pendingRealtimeChunks.push(encoder.encode(realtimeStatLine));
     };
-    const lastRunQueryResultRef: {
-      current: { columns: string[]; rows: unknown[] } | null;
-    } = { current: null };
-
     const getContext = (options: {
       toolCallId?: string;
       abortSignal?: AbortSignal;
@@ -386,7 +351,6 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         repositories,
         conversationId,
         attachedDatasources: input.datasources,
-        lastRunQueryResult: lastRunQueryResultRef,
       },
       messages: msgs,
       ask: async (req: AskRequest) => {
@@ -407,7 +371,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
       agentId,
       modelForRegistry,
       getContext,
-      { mcpServerUrl },
+      { mcpServerUrl, webSearch: input.webSearch },
     );
 
     const reminderContext = {
@@ -426,7 +390,7 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
         ? msgs
         : await convertToModelMessages(validated, { tools });
 
-    const systemPromptForLlm =
+    let systemPromptForLlm =
       agentInfo.systemPrompt !== undefined && agentInfo.systemPrompt !== ''
         ? [
             SystemPrompt.provider(providerModel),
@@ -437,12 +401,9 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
             .join('\n\n')
         : agentInfo.systemPrompt;
 
-    const baseSystemPrompt = [
-      systemPromptForLlm,
-      tools.webfetch != null ? WEB_SEARCH_PROMPT_FRAGMENT : null,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    if (input.webSearch === false) {
+      systemPromptForLlm = `${systemPromptForLlm}\n\n${WEB_SEARCH_OFF_INSTRUCTION}`;
+    }
 
     const metaToolIds = new Set([
       'todowrite',
@@ -456,55 +417,8 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     );
     const systemPromptWithSuggestions =
       capabilityIds.length > 0
-        ? `${baseSystemPrompt}\n\nSUGGESTIONS - Capabilities: When using {{suggestion: ...}}, only suggest actions you can perform with your tools: ${capabilityIds.join(', ')}. Do not suggest CSV/PDF export, file download, or other actions you cannot perform.`
-        : baseSystemPrompt;
-
-    if (!lastWasCompaction && !hasPendingCompactionTask) {
-      const encoder = new TextEncoder();
-      const contextPayload = JSON.stringify({
-        system: systemPromptWithSuggestions ?? '',
-        messages: messagesForLlm,
-      });
-      const contextTokensApprox = Math.ceil(
-        encoder.encode(contextPayload).length / 3.6,
-      );
-      const contextLimit = providerModel.limit?.context ?? 0;
-      if (contextLimit > 0) {
-        const outputLimit =
-          Math.min(providerModel.limit?.output ?? Infinity, OUTPUT_TOKEN_MAX) ||
-          OUTPUT_TOKEN_MAX;
-        const usable = providerModel.limit?.input ?? contextLimit - outputLimit;
-        const safeUsable = Math.floor(usable * CONTEXT_SAFETY_FACTOR);
-        if (contextTokensApprox > safeUsable) {
-          logger.info(
-            '[AgentSession] Context overflow detected (approximate)',
-            {
-              conversationSlug,
-              contextTokensApprox,
-              usable,
-              safeUsable,
-              contextLimit,
-            },
-          );
-
-          const userMeta = lastUser?.metadata as
-            | {
-                agent?: string;
-                model?: { providerID: string; modelID: string };
-              }
-            | undefined;
-          await SessionCompaction.create({
-            conversationSlug,
-            agent: userMeta?.agent ?? agentId,
-            model: userMeta?.model ?? model,
-            auto: true,
-            afterMessageId: lastUser?.id,
-            repositories,
-          });
-          continue;
-        }
-      }
-    }
+        ? `${systemPromptForLlm}\n\nSUGGESTIONS - Capabilities: When using {{suggestion: ...}}, only suggest actions you can perform with your tools: ${capabilityIds.join(', ')}. Do not suggest CSV/PDF export, file download, or other actions you cannot perform.`
+        : systemPromptForLlm;
 
     const result = await LLM.stream({
       model,

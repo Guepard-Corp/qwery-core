@@ -116,6 +116,8 @@ export interface MessageItemProps {
   openToolPartKeys?: Set<string> | null;
   onToolPartOpenChange?: (key: string, open: boolean) => void;
   scrollToBottom?: () => void;
+  scrollToMessageId?: (messageId: string) => void;
+  webSearch?: boolean;
   onBeforeSuggestionSend?: (
     text: string,
     metadata?: import('./utils/suggestion-pattern').SuggestionMetadata,
@@ -184,6 +186,8 @@ function MessageItemComponent({
   openToolPartKeys,
   onToolPartOpenChange,
   scrollToBottom,
+  scrollToMessageId,
+  webSearch,
   onBeforeSuggestionSend,
   onDatasourceNameClick,
   onTableNameClick,
@@ -502,6 +506,9 @@ function MessageItemComponent({
                                             messages={messages}
                                             datasources={messageDatasources}
                                             pluginLogoMap={pluginLogoMap}
+                                            scrollToMessageId={
+                                              scrollToMessageId
+                                            }
                                           />
                                           {isLastTextPart && (
                                             <div className="mt-1 flex items-center justify-end gap-1">
@@ -1041,6 +1048,7 @@ function MessageItemComponent({
                             datasources={datasources}
                             onDatasourceNameClick={onDatasourceNameClick}
                             onTableNameClick={onTableNameClick}
+                            webSearch={webSearch}
                           />
                         </div>
                       );
@@ -1056,75 +1064,4 @@ function MessageItemComponent({
   );
 }
 
-export const MessageItem = memo(MessageItemComponent, (prev, next) => {
-  if (prev.message.id !== next.message.id) {
-    return false;
-  }
-
-  if (prev.message.parts.length !== next.message.parts.length) {
-    return false;
-  }
-
-  if (prev.status !== next.status) {
-    return false;
-  }
-
-  if (prev.editingMessageId !== next.editingMessageId) {
-    return false;
-  }
-
-  if (prev.editText !== next.editText) {
-    return false;
-  }
-
-  if (prev.copiedMessagePartId !== next.copiedMessagePartId) {
-    return false;
-  }
-
-  // Re-render when metadata changes (e.g. feedback optimistic update)
-  if (prev.message.metadata !== next.message.metadata) {
-    return false;
-  }
-
-  const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
-  if (
-    isLastMessage &&
-    (isChatStreaming(prev.status) || isChatStreaming(next.status))
-  ) {
-    return false;
-  }
-
-  if (prev.messages.length !== next.messages.length) {
-    const messageStillExists = next.messages.some(
-      (m) => m.id === prev.message.id,
-    );
-    if (!messageStillExists) {
-      return false;
-    }
-    if (isLastMessage) {
-      return false;
-    }
-  }
-
-  if (prev.openToolPartKeys !== next.openToolPartKeys) {
-    return false;
-  }
-
-  if (prev.editDatasources !== next.editDatasources) {
-    return false;
-  }
-
-  if (prev.datasources !== next.datasources) {
-    return false;
-  }
-
-  if (prev.selectedDatasources !== next.selectedDatasources) {
-    return false;
-  }
-
-  if (prev.pluginLogoMap !== next.pluginLogoMap) {
-    return false;
-  }
-
-  return true;
-});
+export const MessageItem = memo(MessageItemComponent);

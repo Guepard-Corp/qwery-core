@@ -41,6 +41,7 @@ export function useSuggestionEnhancement({
   isLastAgentResponse = true,
   onBeforeSuggestionSend,
 }: UseSuggestionEnhancementOptions): void {
+  const applyOmit = isLastAgentResponse;
   const processedElementsRef = useRef<Set<Element>>(new Set());
   const disabledRef = useRef(disabled);
 
@@ -133,45 +134,7 @@ export function useSuggestionEnhancement({
 
     const processSuggestions = () => {
       try {
-        // Clear any previously injected suggestion UI so we can safely re-apply
-        // suggestions when content or detection results change.
-        try {
-          containerElement
-            .querySelectorAll('[data-suggestion-button]')
-            .forEach((node) => {
-              const parent = node.parentNode;
-              if (parent) {
-                parent.removeChild(node);
-              }
-            });
-
-          containerElement
-            .querySelectorAll('[data-suggestion-buttons-only]')
-            .forEach((wrapper) => {
-              const parent = wrapper.parentNode;
-              if (!parent) {
-                return;
-              }
-              while (wrapper.firstChild) {
-                parent.insertBefore(wrapper.firstChild, wrapper);
-              }
-              parent.removeChild(wrapper);
-            });
-
-          containerElement
-            .querySelectorAll('[data-suggestion-id]')
-            .forEach((el) => {
-              el.removeAttribute('data-suggestion-id');
-              el.removeAttribute('data-requires-datasource');
-            });
-        } catch (error) {
-          console.error(
-            '[useSuggestionEnhancement] Error cleaning previous suggestions:',
-            error,
-          );
-        }
-
-        if (isLastAgentResponse && !disabled) {
+        if (applyOmit) {
           const lists = containerElement.querySelectorAll('ul, ol');
           lists.forEach((list) => {
             const items = Array.from(list.querySelectorAll('li'));
@@ -221,8 +184,7 @@ export function useSuggestionEnhancement({
             const elementText = element.textContent || '';
 
             if (
-              isLastAgentResponse &&
-              !disabled &&
+              applyOmit &&
               tagName === 'P' &&
               isEntirelySuggestions(elementText)
             ) {
@@ -230,8 +192,12 @@ export function useSuggestionEnhancement({
               return;
             }
 
-            const omitText =
-              isLastAgentResponse && !disabled && tagName === 'LI';
+            if (applyOmit && tagName === 'LI') {
+              (element as HTMLElement).style.display = 'none';
+              return;
+            }
+
+            const omitText = isLastAgentResponse && tagName === 'LI';
 
             if (suggestionMatches && suggestionMatches.length > 1) {
               const { cleanup } = injectMultipleSuggestionButtons(
@@ -288,7 +254,7 @@ export function useSuggestionEnhancement({
     sendMessage,
     handleSuggestionClick,
     isLastAgentResponse,
-    disabled,
+    applyOmit,
     onBeforeSuggestionSend,
   ]);
 }

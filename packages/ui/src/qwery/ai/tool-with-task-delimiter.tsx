@@ -13,6 +13,15 @@ export function ToolWithTaskDelimiter({
   messageId,
   ...toolPartProps
 }: ToolWithTaskDelimiterProps) {
+  const part = toolPartProps.part;
+  if (
+    toolPartProps.webSearch === false &&
+    part.type === 'tool-webfetch' &&
+    (part.state === 'output-error' || part.errorText)
+  ) {
+    return null;
+  }
+
   const task = getTaskDelimiterForToolPart(parts, partIndex);
   return (
     <>

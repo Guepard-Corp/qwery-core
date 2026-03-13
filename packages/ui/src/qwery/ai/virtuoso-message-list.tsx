@@ -36,7 +36,7 @@ const FullWidthScroller = forwardRef<
   <div
     ref={ref}
     style={style}
-    className="w-full overflow-x-hidden overflow-y-auto"
+    className="qwery-chat-scroller w-full overflow-x-hidden overflow-y-auto"
     {...props}
   />
 ));
@@ -195,6 +195,7 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.onDatasourceNameClick,
       messageItemProps.onTableNameClick,
       messageItemProps.getDatasourceTooltip,
+      messageItemProps.webSearch,
     ],
   );
 
@@ -208,6 +209,20 @@ export const VirtuosoMessageList = forwardRef<
       });
     }
   }, [messages.length]);
+
+  const scrollToMessageId = useCallback(
+    (messageId: string) => {
+      const idx = messages.findIndex((m) => m?.id === messageId);
+      if (idx >= 0 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({
+          index: idx,
+          behavior: 'smooth',
+          align: 'center',
+        });
+      }
+    },
+    [messages],
+  );
 
   const itemContent = useCallback(
     (index: number, message: UIMessage) => {
@@ -227,6 +242,7 @@ export const VirtuosoMessageList = forwardRef<
             status={status}
             {...stableMessageItemProps}
             scrollToBottom={scrollToBottom}
+            scrollToMessageId={scrollToMessageId}
           />
           {showIndicator ? (
             <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
@@ -244,6 +260,7 @@ export const VirtuosoMessageList = forwardRef<
       status,
       stableMessageItemProps,
       scrollToBottom,
+      scrollToMessageId,
       indicatorAfterUserMessageIds,
     ],
   );
