@@ -9,7 +9,7 @@ import WelcomePage from './_components/welcome';
 export async function loader(args: Route.LoaderArgs) {
   const slug = args.params.slug as string;
   if (!slug) {
-    return { project: null };
+    throw new Response('Not Found', { status: 404 });
   }
 
   const repositories = await getRepositoriesForLoader(args.request);
@@ -20,7 +20,7 @@ export async function loader(args: Route.LoaderArgs) {
     return { project };
   } catch (error) {
     if (error instanceof DomainException) {
-      return { project: null };
+      throw new Response('Not Found', { status: 404 });
     }
     throw error;
   }

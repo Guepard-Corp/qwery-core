@@ -13,7 +13,7 @@ import {
   UsageRepository,
   TodoRepository,
 } from '@qwery/repository-in-memory';
-import { prune } from '../../src/agents/session-compaction';
+import { isOverflow, prune } from '../../src/agents/session-compaction';
 
 function createRepositories(): Repositories {
   return {
@@ -361,5 +361,47 @@ describe('SessionCompaction prune', () => {
     await prune({ conversationSlug: CONV_SLUG, repositories });
 
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('SessionCompaction isOverflow', () => {
+  it('includes reasoning tokens in overflow count', async () => {
+    const model = {
+      providerID: 'test',
+      id: 'model',
+      limit: { context: 100_000, output: 20_000 },
+    };
+
+    const overflow = await isOverflow({
+      model,
+      tokens: {
+        input: 40_000,
+        output: 20_000,
+        reasoning: 1,
+        cache: { read: 20_000, write: 0 },
+      },
+    });
+
+    expect(overflow).toBe(true);
+  });
+
+  it('does not overflow when total equals usable limit', async () => {
+    const model = {
+      providerID: 'test',
+      id: 'model',
+      limit: { context: 100_000, output: 20_000 },
+    };
+
+    const overflow = await isOverflow({
+      model,
+      tokens: {
+        input: 40_000,
+        output: 20_000,
+        reasoning: 0,
+        cache: { read: 20_000, write: 0 },
+      },
+    });
+
+    expect(overflow).toBe(false);
   });
 });

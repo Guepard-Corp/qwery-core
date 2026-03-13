@@ -11,7 +11,12 @@ import {
   List,
   AlertCircleIcon,
 } from 'lucide-react';
-import type { Column, DatasourceMetadata, Table } from '@qwery/domain/entities';
+import type {
+  Column,
+  DatasourceMetadata,
+  SimpleSchema,
+  Table,
+} from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
 import {
   Collapsible,
@@ -41,7 +46,7 @@ export interface SchemaSchemaError {
 }
 
 export interface SchemaVisualizerProps {
-  schema: DatasourceMetadata;
+  schema: DatasourceMetadata | SimpleSchema[];
   tableName?: string;
   className?: string;
   variant?: 'default' | 'minimal';
@@ -55,6 +60,31 @@ export interface SchemaVisualizerProps {
     schema: string,
     tableName: string,
   ) => void;
+}
+
+type DisplayColumn = {
+  id: string;
+  name: string;
+  type: string;
+};
+
+type DisplayTable = {
+  key: string;
+  label: string;
+  columns: DisplayColumn[];
+};
+
+function matchesTableName(candidate: string, tableName?: string): boolean {
+  if (!tableName) {
+    return true;
+  }
+
+  if (candidate === tableName) {
+    return true;
+  }
+
+  const lastSegment = candidate.split('.').at(-1);
+  return lastSegment === tableName;
 }
 
 function getColumnsForTable(
@@ -72,14 +102,12 @@ function getColumnsForTable(
 
 type TableWithColumns = Table & { resolvedColumns: Column[] };
 
-/** Schema key -> schema name only: "Prod__public" -> "public" */
 function schemaNameOnly(schemaKey: string): string {
   const i = schemaKey.indexOf('__');
   if (i > 0) return schemaKey.slice(i + 2);
   return schemaKey;
 }
 
-/** Schema key -> datasource prefix: "Prod__public" -> "Prod" */
 function datasourcePrefix(schemaKey: string): string {
   const i = schemaKey.indexOf('__');
   if (i > 0) return schemaKey.slice(0, i);
@@ -109,8 +137,45 @@ export function SchemaVisualizer({
   onTableNameClick,
 }: SchemaVisualizerProps) {
   const isMinimal = variant === 'minimal';
+
   const groupedTables = useMemo(() => {
     const groups: Record<string, TableWithColumns[]> = {};
+
+    if (Array.isArray(schema)) {
+      for (const simpleSchema of schema) {
+        const groupName = `${simpleSchema.databaseName}.${simpleSchema.schemaName}`;
+        const filteredTables = simpleSchema.tables.filter((table) =>
+          matchesTableName(table.tableName, tableName),
+        );
+        if (filteredTables.length === 0) continue;
+
+        const displayTables = filteredTables.map(
+          (table) =>
+            ({
+              id: 0,
+              name: table.tableName,
+              schema: groupName,
+              columns: [],
+              resolvedColumns: table.columns.map((col, i) => ({
+                id: String(i),
+                table_id: 0,
+                name: col.columnName,
+                data_type: col.columnType,
+                schema: groupName,
+                table: table.tableName,
+                ordinal_position: i,
+                is_nullable: false,
+              })),
+            }) as unknown as TableWithColumns,
+        );
+
+        const existing = groups[groupName];
+        if (existing) existing.push(...displayTables);
+        else groups[groupName] = displayTables;
+      }
+      return groups;
+    }
+
     const filteredTables = (schema.tables ?? []).filter((t) => {
       if (!tableName) return true;
       const fullName = t.schema ? `${t.schema}.${t.name}` : t.name;
@@ -118,29 +183,27 @@ export function SchemaVisualizer({
     });
 
     for (const table of filteredTables) {
-      const resolvedColumns = getColumnsForTable(schema, table).sort(
-        (a, b) => a.ordinal_position - b.ordinal_position,
-      );
-      const tableWithColumns: TableWithColumns = {
-        ...table,
-        resolvedColumns,
-      };
+      const resolvedColumns = getColumnsForTable(schema, table);
+      const tbl: TableWithColumns = { ...table, resolvedColumns };
       const groupName = table.schema || 'main';
       const existing = groups[groupName];
-      if (existing) existing.push(tableWithColumns);
-      else groups[groupName] = [tableWithColumns];
+      if (existing) existing.push(tbl);
+      else groups[groupName] = [tbl];
     }
+
     return groups;
   }, [schema, tableName]);
 
-  const datasourceNames = Object.keys(groupedTables);
+  const datasourceNames = Object.keys(groupedTables).sort();
 
   const [pageBySchema, setPageBySchema] = useState<Record<string, number>>({});
   const [viewModeBySchema, setViewModeBySchema] = useState<
     Record<string, SchemaViewMode>
   >({});
 
-  const hasTables = (schema?.tables?.length ?? 0) > 0;
+  const hasTables = datasourceNames.some(
+    (name) => (groupedTables[name]?.length ?? 0) > 0,
+  );
 
   const getViewMode = (schemaKey: string) =>
     viewModeBySchema[schemaKey] ?? 'card';
@@ -182,7 +245,6 @@ export function SchemaVisualizer({
     return order;
   }, [datasourceNames]);
 
-  /** Helper to safely get icon from pluginLogoMap (handles both Map and plain Object) */
   const getPluginIcon = useCallback(
     (provider?: string) => {
       if (!provider || !pluginLogoMap) return undefined;
@@ -207,7 +269,6 @@ export function SchemaVisualizer({
       const icon = getPluginIcon(ds.datasource_provider);
       const info = { id: ds.id, name, provider: ds.datasource_provider, icon };
 
-      // Index by all possible identifier versions to ensure a match
       if (ds.id) map[slugifyForPrefix(ds.id)] = info;
       if (ds.slug) map[slugifyForPrefix(ds.slug)] = info;
       if (ds.name) map[slugifyForPrefix(ds.name)] = info;
@@ -215,7 +276,7 @@ export function SchemaVisualizer({
     return map;
   }, [datasources, getPluginIcon]);
 
-  if (!schema || !hasTables || datasourceNames.length === 0) {
+  if (!hasTables || datasourceNames.length === 0) {
     return (
       <div
         className={cn(

@@ -14,6 +14,7 @@ import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { getDefaultModel } from '@qwery/agent-factory-sdk';
 import { apiPost, driverCommand } from '~/lib/repositories/api-client';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
+import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
 import {
   getDatasourceKey,
   getDatasourceByIdQueryFn,
@@ -90,11 +91,7 @@ export function AgentsProvider({
         throw new Error('Datasource metadata not found');
       }
 
-      const driver =
-        dsMeta.drivers.find(
-          (d) =>
-            d.id === (datasource.config as { driverId?: string })?.driverId,
-        ) ?? dsMeta.drivers[0];
+      const driver = resolveDatasourceDriver(dsMeta, datasource);
 
       if (!driver) {
         throw new Error('Driver not found');

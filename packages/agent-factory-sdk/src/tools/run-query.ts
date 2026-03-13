@@ -89,12 +89,25 @@ export const RunQueryTool = Tool.define('runQuery', {
         rows: result.rows,
       };
 
+      const extra = ctx.extra as {
+        repositories: Repositories;
+        attachedDatasources: string[];
+        lastRunQueryResult?: {
+          current: { columns: string[]; rows: unknown[] } | null;
+        };
+      };
+
+      if (extra.lastRunQueryResult) {
+        extra.lastRunQueryResult.current = fullResult;
+      }
+
       const payload = {
         result: fullResult,
         sqlQuery: query,
         executed: true,
         ...(exportFilename && { exportFilename }),
       };
+
       return RunQueryResultSchema.parse(payload);
     } finally {
       if (typeof instance.close === 'function') {

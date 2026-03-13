@@ -27,7 +27,7 @@ import {
 import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { generateExportFilename } from './utils/generate-export-filename';
 
-import type { DatasourceMetadata } from '@qwery/domain/entities';
+import type { DatasourceMetadata, SimpleSchema } from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
 import {
   SchemaVisualizer,
@@ -1010,21 +1010,21 @@ export function ToolPart({
       );
     }
 
-    // Handle getSchema errors - show view names above error
+    // Handle getSchema errors - show requested detail level above error
     if (
       part.type === 'tool-getSchema' &&
       part.state === 'output-error' &&
       part.errorText
     ) {
-      const input = part.input as { viewNames?: string[] } | null;
+      const input = part.input as { detailLevel?: 'simple' | 'full' } | null;
       return (
         <div className="space-y-3">
-          {input?.viewNames && input.viewNames.length > 0 && (
+          {input?.detailLevel && (
             <div className="bg-muted/50 rounded-md p-3">
               <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                Requested Views
+                Detail Level
               </p>
-              <p className="text-sm">{input.viewNames.join(', ')}</p>
+              <p className="text-sm">{input.detailLevel}</p>
             </div>
           )}
           <ToolErrorVisualizer errorText={part.errorText} />
@@ -1985,17 +1985,17 @@ export function ToolPart({
 
     // Handle getSchema - streaming/loading, then schema when output
     if (part.type === 'tool-getSchema') {
-      const input = part.input as { viewNames?: string[] } | null;
+      const input = part.input as { detailLevel?: 'simple' | 'full' } | null;
       if (!part.output && part.input != null) {
         const isInputStreaming = part.state === 'input-streaming';
         return (
           <div className="flex w-full flex-col gap-3">
-            {input?.viewNames && input.viewNames.length > 0 && (
+            {input?.detailLevel && (
               <div className="bg-muted/50 rounded-md p-3">
                 <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                  Requested Views
+                  Detail Level
                 </p>
-                <p className="text-sm">{input.viewNames.join(', ')}</p>
+                <p className="text-sm">{input.detailLevel}</p>
                 {isInputStreaming && (
                   <span
                     className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
@@ -2011,14 +2011,23 @@ export function ToolPart({
     }
     if (part.type === 'tool-getSchema' && part.output) {
       const output = part.output as {
+        detailLevel?: 'simple' | 'full';
         schema?: DatasourceMetadata;
+        datasources?: Array<{
+          datasourceId: string;
+          datasourceName?: string;
+          schema: SimpleSchema[];
+        }>;
         schemaErrors?: Array<{
           datasourceId: string;
           datasourceName?: string;
           error: string;
         }>;
       } | null;
-      if (output?.schema) {
+      const hasSchema =
+        output?.schema != null ||
+        (output?.detailLevel === 'simple' && output?.datasources != null);
+      if (hasSchema) {
         const schemaDatasources: SchemaVisualizerDatasourceItem[] | undefined =
           messageDatasources?.map((d) => ({
             id: d.id,
@@ -2026,12 +2035,16 @@ export function ToolPart({
             slug: d.slug,
             datasource_provider: d.datasource_provider,
           }));
+        const schemaData =
+          output?.detailLevel === 'simple' && output?.datasources
+            ? output.datasources.flatMap((d) => d.schema)
+            : output?.schema;
         return (
           <SchemaVisualizer
-            schema={output.schema}
+            schema={schemaData}
             variant={variant}
             datasources={schemaDatasources}
-            schemaErrors={output.schemaErrors}
+            schemaErrors={output?.schemaErrors}
             pluginLogoMap={pluginLogoMap}
             onDatasourceNameClick={onDatasourceNameClick}
             onTableNameClick={onTableNameClick}

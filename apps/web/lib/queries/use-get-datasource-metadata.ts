@@ -7,15 +7,11 @@ import {
 } from '@qwery/extensions-sdk';
 import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import { datasourceMetadataKeys } from './datasource-metadata-keys';
 import { useGetDatasourceExtensions } from './use-get-extension';
 
-export function getDatasourceMetadataKey(
-  datasourceProvider: string,
-  driverId: string,
-  datasourceId?: string,
-) {
-  return ['datasource-metadata', datasourceProvider, driverId, datasourceId];
-}
+export const getDatasourceMetadataKey = datasourceMetadataKeys.detail;
 
 export function useGetDatasourceMetadata(
   datasource: Datasource | null | undefined,
@@ -24,7 +20,7 @@ export function useGetDatasourceMetadata(
   const { data: extensions = [] } = useGetDatasourceExtensions();
 
   return useQuery({
-    queryKey: getDatasourceMetadataKey(
+    queryKey: datasourceMetadataKeys.detail(
       datasource?.datasource_provider || '',
       datasource?.datasource_driver || '',
       datasource?.id,
@@ -43,11 +39,7 @@ export function useGetDatasourceMetadata(
         throw new Error('Datasource metadata not found');
       }
 
-      const driver =
-        dsMeta.drivers.find(
-          (d) =>
-            d.id === (datasource.config as { driverId?: string })?.driverId,
-        ) ?? dsMeta.drivers[0];
+      const driver = resolveDatasourceDriver(dsMeta, datasource);
 
       if (!driver) {
         throw new Error('Driver not found');

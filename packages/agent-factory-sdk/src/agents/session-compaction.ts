@@ -108,7 +108,10 @@ export async function isOverflow(input: IsOverflowInput): Promise<boolean> {
     OUTPUT_TOKEN_MAX;
   const usable = model.limit.input ?? context - outputLimit;
   const count =
-    input.tokens.input + input.tokens.cache.read + input.tokens.output;
+    input.tokens.input +
+    input.tokens.cache.read +
+    input.tokens.output +
+    input.tokens.reasoning;
   const overflow = count > usable;
   if (overflow) {
     const logger = await getLogger();

@@ -52,7 +52,7 @@ export function getUserFriendlyToolName(
     'tool-runQuery': 'Run Query',
     'tool-runQueries': 'Run Multiple Queries',
     'tool-selectChartType': 'Select Chart Type',
-    'tool-generateChart': 'Generate Chart',
+    'tool-generateChart': 'Create Chart',
     'tool-deleteSheet': 'Delete Sheet',
     'tool-readLinkData': 'Read Link Data',
     'tool-api_call': 'API Call',

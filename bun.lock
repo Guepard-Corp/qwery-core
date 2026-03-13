@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "qwery-core",
@@ -326,6 +327,7 @@
         "ai-sdk-ollama": "^3.3.0",
         "gray-matter": "^4.0.3",
         "i": "^0.3.7",
+        "mustache": "^4.2.0",
         "nanoid": "^5.1.6",
         "npm": "^11.6.4",
         "turndown": "^7.2.2",

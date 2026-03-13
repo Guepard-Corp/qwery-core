@@ -4,6 +4,7 @@ import type {
   Table,
   Column,
   Schema,
+  SimpleSchema,
 } from '@qwery/domain/entities';
 import { Tool } from './tool';
 import {
@@ -13,9 +14,15 @@ import {
 import { getDriverInstance } from '@qwery/extensions-loader';
 import { getLogger } from '@qwery/shared/logger';
 import { Repositories } from '@qwery/domain/repositories';
+import { TransformMetadataToSimpleSchemaService } from '@qwery/domain/services';
 
 const DESCRIPTION = `Get schema information (columns, data types) for attached datasource(s) using their native drivers.
-Returns column names and types for all tables/views. When multiple datasources are attached, returns merged schema for all.`;
+Use detailLevel="simple" (default) to return only tables and column types (token efficient).
+Use detailLevel="full" only when you need complete driver metadata. When multiple datasources are attached, returns merged schema for all.`;
+
+const GetSchemaDetailLevelSchema = z.enum(['simple', 'full']).default('simple');
+const transformMetadataToSimpleSchemaService =
+  new TransformMetadataToSimpleSchemaService();
 
 function schemaPrefix(datasource: {
   name?: string | null;
@@ -30,10 +37,37 @@ function schemaPrefix(datasource: {
   );
 }
 
+function inferDatasourceDatabaseName(metadata: DatasourceMetadata): string {
+  for (const column of metadata.columns) {
+    const catalog = (column as { database?: string }).database;
+    if (!catalog || catalog === 'memory') {
+      continue;
+    }
+
+    if (catalog !== 'main') {
+      return catalog;
+    }
+  }
+
+  return 'main';
+}
+
+function toSortedSimpleSchemaArray(
+  schemaMap: Map<string, SimpleSchema>,
+): SimpleSchema[] {
+  return Array.from(schemaMap.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, schema]) => schema);
+}
+
 export const GetSchemaTool = Tool.define('getSchema', {
   description: DESCRIPTION,
-  parameters: z.object({}),
-  async execute(_params, ctx) {
+  parameters: z.object({
+    detailLevel: GetSchemaDetailLevelSchema.describe(
+      'Schema verbosity: "simple" for table/column names only, "full" for complete metadata',
+    ),
+  }),
+  async execute(params, ctx) {
     const logger = await getLogger();
     const { repositories, attachedDatasources } = ctx.extra as {
       repositories: Repositories;
@@ -46,22 +80,11 @@ export const GetSchemaTool = Tool.define('getSchema', {
 
     logger.debug('[GetSchemaTool] Tool execution:', { attachedDatasources });
 
-    const merged: DatasourceMetadata = {
-      version: '',
-      driver: '',
-      schemas: [],
-      tables: [],
-      columns: [],
-    };
-
     const schemaErrors: Array<{
       datasourceId: string;
       datasourceName?: string;
       error: string;
     }> = [];
-
-    let nextTableId = 1;
-    let nextSchemaId = 1;
 
     type SchemaResultSuccess = {
       datasourceId: string;
@@ -90,10 +113,7 @@ export const GetSchemaTool = Tool.define('getSchema', {
             const datasource =
               await repositories.datasource.findById(datasourceId);
             if (!datasource) {
-              return {
-                datasourceId,
-                error: 'Datasource not found',
-              };
+              return { datasourceId, error: 'Datasource not found' };
             }
 
             datasourceDisplayName =
@@ -135,12 +155,7 @@ export const GetSchemaTool = Tool.define('getSchema', {
                 void (closeResult as Promise<unknown>).catch(() => {});
               }
             }
-            return {
-              datasourceId,
-              datasource,
-              datasourceDisplayName,
-              metadata,
-            };
+            return { datasourceId, datasource, datasourceDisplayName, metadata };
           } catch (err) {
             return {
               datasourceId,
@@ -156,16 +171,90 @@ export const GetSchemaTool = Tool.define('getSchema', {
         schemaErrors.push({
           datasourceId: result.datasourceId,
           datasourceName: result.datasourceDisplayName,
-          error: result.error!,
+          error: result.error,
         });
         logger.warn(
           `[GetSchemaTool] Failed to fetch schema for ${result.datasourceId}: ${result.error}`,
         );
-        continue;
+      }
+    }
+
+    if (params.detailLevel === 'simple') {
+      const successResults = results.filter(
+        (r): r is SchemaResultSuccess => !('error' in r),
+      );
+
+      if (successResults.length === 0) {
+        const errorSummary =
+          schemaErrors.length > 0
+            ? schemaErrors
+                .map((e) => `${e.datasourceName ?? e.datasourceId}: ${e.error}`)
+                .join('; ')
+            : 'Check that datasources exist and have a supported driver.';
+        throw new Error(
+          `Could not load schema for any attached datasource. ${errorSummary}`,
+        );
       }
 
-      const { datasource, metadata, datasourceDisplayName } = result;
+      const datasources = await Promise.all(
+        successResults.map(async (result) => {
+          const { datasource, metadata } = result;
+          const inferredDatabaseName = inferDatasourceDatabaseName(metadata);
+          const datasourceDatabaseMap = new Map<string, string>([
+            [datasource.id, inferredDatabaseName],
+          ]);
+          const datasourceProviderMap = new Map<string, string>([
+            [datasource.id, datasource.datasource_provider],
+          ]);
 
+          const simpleSchemaMap =
+            await transformMetadataToSimpleSchemaService.execute({
+              metadata,
+              datasourceDatabaseMap,
+              datasourceProviderMap,
+            });
+
+          const schema = toSortedSimpleSchemaArray(simpleSchemaMap);
+          const tableCount = schema.reduce(
+            (count, s) => count + s.tables.length,
+            0,
+          );
+
+          logger.debug(
+            `[GetSchemaTool] Fetched simple schema for datasource ${datasource.id}: ${tableCount} table(s) in ${schema.length} schema group(s)`,
+          );
+
+          return {
+            datasourceId: datasource.id,
+            datasourceName: result.datasourceDisplayName,
+            schema,
+          };
+        }),
+      );
+
+      return {
+        detailLevel: 'simple' as const,
+        datasources,
+        ...(schemaErrors.length > 0 && { schemaErrors }),
+      };
+    }
+
+    // full mode: merge all datasources with prefix
+    const merged: DatasourceMetadata = {
+      version: '',
+      driver: '',
+      schemas: [],
+      tables: [],
+      columns: [],
+    };
+
+    let nextTableId = 1;
+    let nextSchemaId = 1;
+
+    for (const result of results) {
+      if ('error' in result) continue;
+
+      const { datasource, metadata, datasourceDisplayName } = result;
       const prefix = schemaPrefix(datasource);
       const tableIdMap = new Map<number, number>();
 
@@ -223,6 +312,7 @@ export const GetSchemaTool = Tool.define('getSchema', {
     }
 
     return {
+      detailLevel: 'full' as const,
       schema: merged,
       ...(schemaErrors.length > 0 && { schemaErrors }),
     };

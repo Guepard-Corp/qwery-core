@@ -56,6 +56,7 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
 import {
   getProjectBySlugKey,
   getProjectBySlugQueryFn,
@@ -713,10 +714,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       toast.error(<Trans i18nKey="datasources:notFoundError" />);
       return;
     }
-    const driver =
-      dsMeta.drivers.find(
-        (d) => d.id === (config as { driverId?: string })?.driverId,
-      ) ?? dsMeta.drivers[0];
+    const driver = resolveDatasourceDriver(dsMeta, { config });
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
@@ -726,7 +724,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       name: datasourceName.trim() || generateRandomName(),
       description: extension.data.description || '',
       datasource_provider: extension.data.id || '',
-      datasource_driver: extension.data.id || '',
+      datasource_driver: driver?.id || '',
       datasource_kind: datasourceKind as string,
       config,
       createdBy: userId,
@@ -749,10 +747,24 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
 
     const normalizedConfig = normalizeProviderConfig(formValues);
 
+    const dsMeta = extension.data as DatasourceExtension | undefined;
+    if (!dsMeta) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
+
+    const driver = resolveDatasourceDriver(dsMeta, {
+      config: normalizedConfig,
+    });
+    const datasourceKind =
+      (driver?.runtime ?? 'browser') === 'browser'
+        ? DatasourceKind.EMBEDDED
+        : DatasourceKind.REMOTE;
+
     const testDatasource: Partial<Datasource> = {
       datasource_provider: extension.data.id,
-      datasource_driver: extension.data.id,
-      datasource_kind: DatasourceKind.EMBEDDED,
+      datasource_driver: driver?.id ?? '',
+      datasource_kind: datasourceKind,
       name: datasourceName || 'Test Connection',
       config: normalizedConfig,
     };

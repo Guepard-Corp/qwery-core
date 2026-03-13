@@ -40,6 +40,7 @@ import {
   getUrlForValidation,
   validateDatasourceUrl,
 } from '~/lib/utils/datasource-utils';
+import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
 import { DatasourceDocsLink } from './datasource-docs-link';
 import {
   ERROR_KEYS,
@@ -259,10 +260,27 @@ export function DatasourceConnectForm({
       return;
     }
     const validData = parsed.data as Record<string, unknown>;
+    const dsMeta = extension.data as DatasourceExtension | undefined;
+    if (!dsMeta) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
+
+    const driver = resolveDatasourceDriver(dsMeta, { config: validData });
+    if (!driver) {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
+
+    const datasourceKind =
+      (driver.runtime ?? 'browser') === 'browser'
+        ? DatasourceKind.EMBEDDED
+        : DatasourceKind.REMOTE;
+
     const testDatasource: Partial<Datasource> = {
       datasource_provider: extension.data.id,
-      datasource_driver: extension.data.id,
-      datasource_kind: DatasourceKind.EMBEDDED,
+      datasource_driver: driver.id,
+      datasource_kind: datasourceKind,
       name: datasourceName || 'Test Connection',
       config: validData,
     };
@@ -325,11 +343,7 @@ export function DatasourceConnectForm({
       toast.error(<Trans i18nKey="datasources:notFoundError" />);
       return;
     }
-    const driver =
-      dsMeta.drivers.find(
-        (d: { id: string }) =>
-          d.id === (validData as { driverId?: string })?.driverId,
-      ) ?? dsMeta.drivers[0];
+    const driver = resolveDatasourceDriver(dsMeta, { config: validData });
     const runtime = driver?.runtime ?? 'browser';
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
@@ -341,7 +355,7 @@ export function DatasourceConnectForm({
       name: datasourceName.trim() || generateRandomName(),
       description: extension.data.description || '',
       datasource_provider: extension.data.id || '',
-      datasource_driver: extension.data.id || '',
+      datasource_driver: driver?.id || '',
       datasource_kind: datasourceKind as string,
       config: validData,
       createdBy: userId,
@@ -360,8 +374,8 @@ export function DatasourceConnectForm({
   ]);
 
   const handleUpdate = useCallback(async () => {
-    const ext = extension?.data;
-    if (!existingDatasource || !ext) {
+    const dsMeta = extension?.data as DatasourceExtension | undefined;
+    if (!existingDatasource || !dsMeta) {
       toast.error(<Trans i18nKey="datasources:notFoundError" />);
       return;
     }
@@ -378,9 +392,16 @@ export function DatasourceConnectForm({
       return;
     }
     const validData = parsed.data as Record<string, unknown>;
+    const driver = resolveDatasourceDriver(dsMeta, { config: validData });
+    const runtime = driver?.runtime ?? 'browser';
+    const datasourceKind =
+      runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
+
     updateDatasourceMutation.mutate({
       id: existingDatasource.id,
       name: datasourceName.trim() || existingDatasource.name,
+      datasource_driver: driver?.id,
+      datasource_kind: datasourceKind,
       config: validData,
       updatedBy: workspace.userId ?? 'system',
     });

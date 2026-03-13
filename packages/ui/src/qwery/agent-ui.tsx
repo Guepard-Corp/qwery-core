@@ -2179,9 +2179,19 @@ function PromptInputInner({
   onPreferredSearchEngineChange,
 }: {
   sendMessage: ReturnType<typeof useChat>['sendMessage'];
-  state: { input: string; model: string; webSearch: boolean };
+  state: {
+    input: string;
+    model: string;
+    webSearch: boolean;
+    searchEngine: string;
+  };
   setState: React.Dispatch<
-    React.SetStateAction<{ input: string; model: string; webSearch: boolean }>
+    React.SetStateAction<{
+      input: string;
+      model: string;
+      webSearch: boolean;
+      searchEngine: string;
+    }>
   >;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   status: ReturnType<typeof useChat>['status'];
@@ -2232,6 +2242,7 @@ function PromptInputInner({
           body: {
             model: state.model,
             webSearch: state.webSearch,
+            searchEngine: state.searchEngine,
             datasources: bodyDatasources,
           },
         },

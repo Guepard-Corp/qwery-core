@@ -12,14 +12,14 @@ import { ProjectBreadcrumb } from './_components/project-breadcrumb';
 import { AgentUIWrapper } from './_components/agent-ui-wrapper';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
-import { AgentTabs, AgentStatusProvider } from '@qwery/ui/ai';
+import { AgentStatusProvider } from '@qwery/ui/ai';
 import { LeaveConfirmationProvider } from '~/lib/context/leave-confirmation-context';
 import { useGetMessagesByConversationSlug } from '~/lib/queries/use-get-messages';
 import {
   NotebookSidebarProvider,
   useNotebookSidebar,
 } from '~/lib/context/notebook-sidebar-context';
-import { ProjectProvider } from '~/lib/context/project-context';
+import { ProjectProvider, ProjectGuard } from '~/lib/context/project-context';
 import { useNotebookSidebarOpenStore } from '~/lib/store/use-notebook-sidebar-open';
 import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 
@@ -224,10 +224,12 @@ function SidebarLayoutInner(
 function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
   return (
     <ProjectProvider>
-      <ProjectPausedOverlay />
-      <NotebookSidebarProvider>
-        <SidebarLayoutInner {...props} />
-      </NotebookSidebarProvider>
+      <ProjectGuard>
+        <ProjectPausedOverlay />
+        <NotebookSidebarProvider>
+          <SidebarLayoutInner {...props} />
+        </NotebookSidebarProvider>
+      </ProjectGuard>
     </ProjectProvider>
   );
 }
@@ -237,43 +239,27 @@ function SimpleModeSidebarLayout(
 ) {
   return (
     <ProjectProvider>
-      <ProjectPausedOverlay />
-      <AgentStatusProvider>
-        <SidebarProvider defaultOpen={true}>
-          <Page>
-            <PageNavigation>
-              <ProjectSidebar />
-            </PageNavigation>
-            <PageFooter>
-              <LayoutFooter />
-            </PageFooter>
-            <AgentSidebar>
-              <AgentTabs
-                tabs={[
-                  {
-                    id: 'query-sql-results',
-                    title: 'Results',
-                    description: 'Query SQL Results',
-                    component: <div>Query SQL Results</div>,
-                  },
-                  {
-                    id: 'query-sql-visualisation',
-                    title: 'Visualisation',
-                    description: 'Visualisation of the query SQL results',
-                    component: <div>Query SQL Results</div>,
-                  },
-                ]}
-              />
-            </AgentSidebar>
-            <div className="flex h-full flex-col">
-              <div className="bg-background w-fit px-4 pt-4 pb-3 lg:px-12 lg:pt-6">
-                <ProjectBreadcrumb />
+      <ProjectGuard>
+        <ProjectPausedOverlay />
+        <AgentStatusProvider>
+          <SidebarProvider defaultOpen={true}>
+            <Page>
+              <PageNavigation>
+                <ProjectSidebar />
+              </PageNavigation>
+              <PageFooter>
+                <LayoutFooter />
+              </PageFooter>
+              <div className="flex h-full flex-col">
+                <div className="bg-background w-fit px-4 pt-4 pb-3 lg:px-12 lg:pt-6">
+                  <ProjectBreadcrumb />
+                </div>
+                <div className="flex-1 overflow-hidden">{props.children}</div>
               </div>
-              <div className="flex-1 overflow-hidden">{props.children}</div>
-            </div>
-          </Page>
-        </SidebarProvider>
-      </AgentStatusProvider>
+            </Page>
+          </SidebarProvider>
+        </AgentStatusProvider>
+      </ProjectGuard>
     </ProjectProvider>
   );
 }

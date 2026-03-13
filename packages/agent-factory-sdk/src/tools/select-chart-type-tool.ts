@@ -7,7 +7,7 @@ const DESCRIPTION = `Analyzes query results to determine the best chart type (ba
   Use this before generating a chart to select the most appropriate visualization type.`;
 
 const queryResultsSchema = z.object({
-  rows: z.array(z.record(z.string(), z.unknown())),
+  rows: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   columns: z.array(z.string()),
 });
 
@@ -24,7 +24,7 @@ export const SelectChartTypeTool = Tool.define('selectChartType', {
     sqlQuery: z.string().optional(),
     userInput: z.string().optional(),
   }),
-  async execute(params, _ctx) {
+  async execute(params, ctx) {
     const logger = await getLogger();
     logger.debug('[SelectChartTypeTool] Tool execution:', {
       queryId: params.queryId,
@@ -32,10 +32,26 @@ export const SelectChartTypeTool = Tool.define('selectChartType', {
       sqlQuery: params.sqlQuery,
       userInput: params.userInput,
     });
-    const fullQueryResults = params.queryResults;
+    let fullQueryResults = params.queryResults;
 
-    if (!fullQueryResults) {
-      throw new Error('Either queryId or queryResults must be provided');
+    if (!fullQueryResults || (fullQueryResults.rows?.length ?? 0) === 0) {
+      const extra = ctx.extra as {
+        lastRunQueryResult?: {
+          current: { columns: string[]; rows: unknown[] } | null;
+        };
+      };
+      const lastResult = extra?.lastRunQueryResult?.current;
+      if (lastResult && lastResult.rows.length > 0) {
+        fullQueryResults = {
+          columns: lastResult.columns,
+          rows: lastResult.rows as Array<Record<string, unknown>>,
+        };
+      } else if (!fullQueryResults) {
+        logger.warn(
+          '[SelectChartTypeTool] No queryResults and no last runQuery result; using empty results.',
+        );
+        fullQueryResults = { rows: [], columns: [] };
+      }
     }
 
     const result = await selectChartType(

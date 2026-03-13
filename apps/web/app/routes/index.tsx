@@ -1,179 +1,144 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
-import { useNavigate } from 'react-router';
-import { Skeleton } from '@qwery/ui/skeleton';
-import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
+import { Link, useNavigate } from 'react-router';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-} from '@qwery/ui/shadcn-sidebar';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@qwery/ui/collapsible';
-import { ChevronRight } from 'lucide-react';
-import { LogoImage } from '~/components/app-logo';
+  ArrowRight,
+  Database,
+  MessageSquareText,
+  NotebookPen,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 
+import {
+  LandingFeatureCard,
+  LandingHero,
+  LandingSectionDivider,
+} from '~/components/landing';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetProjectById } from '~/lib/queries/use-get-projects';
+import pathsConfig from '~/config/paths.config';
+import { Button } from '@qwery/ui/button';
 
-function SidebarSkeleton() {
+const FEATURE_CARDS = [
+  {
+    icon: MessageSquareText,
+    title: 'AI-Powered Chat',
+    description:
+      'Ask questions about your data in natural language and get instant SQL queries, visualizations, and insights.',
+  },
+  {
+    icon: Database,
+    title: 'Multi-Source Connectivity',
+    description:
+      'Connect to PostgreSQL, MySQL, ClickHouse, Google Sheets, CSV files, and 100+ more data sources.',
+  },
+  {
+    icon: NotebookPen,
+    title: 'SQL Notebooks',
+    description:
+      'Build interactive notebooks to query, analyze, and visualize data. Organize workflows into cells.',
+  },
+  {
+    icon: Zap,
+    title: 'Instant Playground',
+    description:
+      'Try Qwery instantly with built-in sample databases. No setup needed — start exploring in seconds.',
+  },
+];
+
+function LandingPage({
+  username,
+  isAnonymous,
+}: {
+  username?: string;
+  isAnonymous: boolean;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const greeting = useMemo(() => {
+    if (isAnonymous || !username) return null;
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, [isAnonymous, username]);
+
+  const title =
+    greeting && username ? (
+      <span data-test="welcome-message">
+        {greeting}, {username}
+      </span>
+    ) : (
+      <span data-test="hero-title">Your data, one question away</span>
+    );
+
+  const subtitle = isAnonymous
+    ? 'Connect a workspace to unlock the full power of Qwery — AI-driven data analytics, notebooks, and more.'
+    : 'Create or select a project to start exploring your data with AI-powered analytics.';
+
   return (
-    <Sidebar
-      collapsible="none"
-      className="w-(--sidebar-width,18rem) max-w-(--sidebar-width,18rem) min-w-0 border-r"
-    >
-      <SidebarContent className="overflow-hidden px-3">
-        <div className="mt-2">
-          <Skeleton className="h-10 w-full rounded-md" />
-        </div>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <div className="flex min-w-0 flex-col gap-1">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton
-                  key={i}
-                  className="h-8 w-full rounded-md"
-                  data-sidebar="menu-skeleton"
-                />
-              ))}
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+    <div className="bg-background h-full overflow-y-auto">
+      <main
+        className={`mx-auto max-w-4xl px-4 py-12 transition-all duration-700 ease-out sm:px-6 sm:py-20 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+      >
+        <LandingHero title={title} subtitle={subtitle} />
 
-        <SidebarGroup className="min-w-0 overflow-hidden py-0">
-          <SidebarGroupContent>
-            <Skeleton className="h-9 w-full rounded-md" />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="min-w-0 overflow-hidden py-0">
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
-                <div className="flex w-full items-center justify-between">
-                  <span>Recent chats</span>
-                  <ChevronRight className="size-4 transition-transform duration-200" />
-                </div>
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
-              <SidebarGroupContent className="min-h-0">
-                <LoadingSkeleton variant="sidebar" count={3} />
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
-
-        <SidebarGroup className="min-w-0 overflow-hidden py-0">
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="hover:bg-sidebar-accent -mx-2 cursor-pointer rounded-md px-2 py-1">
-                <div className="flex w-full items-center justify-between">
-                  <span>Recent notebooks</span>
-                  <ChevronRight className="size-4 transition-transform duration-200" />
-                </div>
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden data-[state=closed]:duration-200 data-[state=open]:duration-200">
-              <SidebarGroupContent className="min-h-0">
-                <LoadingSkeleton variant="sidebar" count={3} />
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="bg-background flex h-full min-w-0 flex-1 justify-center overflow-y-auto">
-      <main className="w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-20">
-        {/* HERO SECTION */}
-        <section className="mb-16 space-y-5 text-center">
-          {/* Qwery Logo & Brand */}
-          <div className="mb-8 flex flex-col items-center gap-4">
-            <LogoImage size="2xl" _width={256} />
-            <Skeleton className="h-10 w-32" />
-          </div>
-
-          <Skeleton className="mx-auto mb-4 h-12 w-96" />
-          <Skeleton className="mx-auto h-6 w-80" />
+        <section className="mb-12 flex flex-col items-center gap-4">
+          <Link to={pathsConfig.app.organizations}>
+            <Button
+              className="h-12 cursor-pointer bg-[#ffcb51] px-8 text-base font-bold text-black shadow-md transition-all hover:bg-[#ffcb51]/90 hover:shadow-lg"
+              data-test="get-started-button"
+            >
+              <Sparkles className="mr-2 size-5" />
+              {isAnonymous ? 'Get Started' : 'Go to Organizations'}
+            </Button>
+          </Link>
+          <p className="text-muted-foreground/60 text-xs">
+            {isAnonymous
+              ? 'No credit card required · Free playground included'
+              : 'Select or create an organization to begin'}
+          </p>
         </section>
 
-        {/* PRIMARY CHAT INPUT */}
-        <section className="mb-12">
-          <div className="bg-card border-border/60 rounded-lg border p-4 shadow-sm">
-            <Skeleton className="mb-3 h-32 w-full" />
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-9 w-20" />
-            </div>
-          </div>
+        <LandingSectionDivider label="What you can do" />
 
-          {/* Example prompts skeleton */}
-          <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-            <Skeleton className="h-8 w-32 rounded-md" />
-            <Skeleton className="h-8 w-40 rounded-md" />
-            <Skeleton className="h-8 w-36 rounded-md" />
-          </div>
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {FEATURE_CARDS.map((card) => (
+            <LandingFeatureCard
+              key={card.title}
+              icon={card.icon}
+              title={card.title}
+              description={card.description}
+            />
+          ))}
         </section>
 
-        {/* DIVIDER */}
-        <div className="relative my-12">
-          <div className="absolute inset-0 flex items-center">
-            <div className="border-border/40 w-full border-t"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background text-muted-foreground/70 px-3">
-              Quick Actions
-            </span>
-          </div>
-        </div>
+        <LandingSectionDivider label="Get started now" />
 
-        {/* ACTION CARDS */}
-        <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="bg-card rounded-2xl border p-8">
-            <div className="mb-3 flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <Skeleton className="h-6 w-40" />
-            </div>
-            <Skeleton className="mb-6 h-16 w-full" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <div className="bg-card rounded-2xl border p-8">
-            <div className="mb-3 flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <Skeleton className="h-6 w-40" />
-            </div>
-            <Skeleton className="mb-6 h-16 w-full" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </section>
-
-        {/* DIVIDER */}
-        <div className="relative my-12">
-          <div className="absolute inset-0 flex items-center">
-            <div className="border-border/40 w-full border-t"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background text-muted-foreground/70 px-3">
-              Sample Data
-            </span>
-          </div>
-        </div>
-
-        {/* PLAYGROUND SECTION */}
         <section className="space-y-4 pb-12">
-          <div className="bg-card overflow-hidden rounded-lg border p-8">
-            <Skeleton className="h-24 w-full" />
-          </div>
+          <Link to={pathsConfig.app.organizations} className="block">
+            <div className="[background:linear-gradient(45deg,theme(colors.background),theme(colors.card)_50%,theme(colors.background))_padding-box,conic-gradient(from_var(--border-angle),theme(colors.muted/.48)_80%,theme(colors.primary)_86%,theme(colors.primary/.80)_90%,theme(colors.primary)_94%,theme(colors.muted/.48))_border-box] w-full max-w-full [animation:border_4s_linear_infinite] cursor-pointer rounded-2xl border border-transparent p-6 transition-shadow hover:shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="size-5 text-[#ffcb51]" />
+                  <p className="text-foreground text-lg font-medium">
+                    {isAnonymous
+                      ? 'Start your data journey with Qwery'
+                      : 'Continue to your organizations'}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" className="shrink-0">
+                  Let&apos;s go
+                  <ArrowRight className="ml-1 size-4" />
+                </Button>
+              </div>
+            </div>
+          </Link>
         </section>
       </main>
     </div>
@@ -182,47 +147,33 @@ function DashboardSkeleton() {
 
 export default function IndexPage() {
   const navigate = useNavigate();
-  const { workspace, repositories } = useWorkspace();
-
-  const project = useGetProjectById(
-    repositories.project,
-    workspace.projectId || '',
-  );
+  const { workspace } = useWorkspace();
 
   useEffect(() => {
-    if (project.data?.slug) {
-      navigate(`/prj/${project.data.slug}`, { replace: true });
-    } else if (!workspace.projectId) {
-      // If no project yet, redirect to organizations page
-      navigate('/organizations', { replace: true });
-    }
-  }, [project.data?.slug, workspace.projectId, navigate]);
+    if (typeof window === 'undefined') return;
 
-  // Show skeleton while loading or if we have a project but haven't navigated yet
-  if (project.isLoading || (workspace.projectId && project.data?.slug)) {
-    return (
-      <div className="flex h-full min-h-0 flex-1 overflow-hidden overflow-x-hidden">
-        <SidebarSkeleton />
-        <DashboardSkeleton />
-      </div>
-    );
-  }
+    try {
+      const slug = localStorage.getItem('qwery:last-project-slug');
+      const lastUsedRaw = localStorage.getItem('qwery:last-project-used-at');
+
+      if (!slug || !lastUsedRaw) return;
+
+      const lastUsed = Number.parseInt(lastUsedRaw, 10);
+      if (Number.isNaN(lastUsed)) return;
+
+      const RECENT_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
+      if (Date.now() - lastUsed <= RECENT_THRESHOLD_MS) {
+        navigate(`/prj/${slug}`, { replace: true });
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }, [navigate]);
 
   return (
-    <div className="p-8">
-      {workspace.isAnonymous === true && (
-        <h1
-          className="mb-4 text-2xl font-bold"
-          data-test="anon-workspace-message"
-        >
-          Unlock all the potential of Qwery Platform with a connected workspace.
-        </h1>
-      )}
-      {workspace.isAnonymous === false && workspace.username && (
-        <h1 className="mb-4 text-2xl font-bold" data-test="welcome-message">
-          Welcome back, {workspace.username}!
-        </h1>
-      )}
-    </div>
+    <LandingPage
+      username={workspace.username}
+      isAnonymous={workspace.isAnonymous === true}
+    />
   );
 }

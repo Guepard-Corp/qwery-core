@@ -20,7 +20,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 export async function loader(args: Route.LoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
-    return { datasource: null };
+    throw new Response('Not Found', { status: 404 });
   }
 
   const repositories = await getRepositoriesForLoader(args.request);
@@ -33,7 +33,7 @@ export async function loader(args: Route.LoaderArgs) {
     return { datasource };
   } catch (error) {
     if (error instanceof DomainException) {
-      return { datasource: null };
+      throw new Response('Not Found', { status: 404 });
     }
     throw error;
   }
@@ -88,15 +88,7 @@ export default function TablesPage(props: Route.ComponentProps) {
   };
 
   if (!datasource) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground text-sm">
-          {t('datasource.tables.error', {
-            defaultValue: 'Datasource not found',
-          })}
-        </p>
-      </div>
-    );
+    throw new Response('Not Found', { status: 404 });
   }
 
   if (isLoading) {

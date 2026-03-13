@@ -5,7 +5,7 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
 
-global.fetch = vi.fn();
+global.fetch = vi.fn() as unknown as typeof fetch;
 
 if (typeof ResizeObserver === 'undefined') {
   global.ResizeObserver = class ResizeObserver {

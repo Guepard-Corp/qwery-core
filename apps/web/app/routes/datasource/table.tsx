@@ -15,7 +15,9 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 export async function loader(args: Route.LoaderArgs) {
   const slug = args.params.slug;
-  if (!slug) return { datasource: null };
+  if (!slug) {
+    throw new Response('Not Found', { status: 404 });
+  }
 
   const repositories = await getRepositoriesForLoader(args.request);
   const getDatasourceService = new GetDatasourceBySlugService(
@@ -26,7 +28,9 @@ export async function loader(args: Route.LoaderArgs) {
     const datasource = await getDatasourceService.execute(slug);
     return { datasource };
   } catch (error) {
-    if (error instanceof DomainException) return { datasource: null };
+    if (error instanceof DomainException) {
+      throw new Response('Not Found', { status: 404 });
+    }
     throw error;
   }
 }

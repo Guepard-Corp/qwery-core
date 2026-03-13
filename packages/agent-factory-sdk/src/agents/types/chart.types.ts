@@ -40,3 +40,18 @@ export const ChartConfigSchema = z.object({
 });
 
 export type ChartConfig = z.infer<typeof ChartConfigSchema>;
+
+export const ChartConfigTemplateSchema = z.object({
+  chartType: ChartTypeSchema,
+  title: z.string().optional(),
+  config: z.object({
+    colors: z.array(z.string()),
+    labels: z.record(z.string(), z.string()).optional(),
+    xKey: z.string().optional(),
+    yKey: z.string().optional(),
+    nameKey: z.string().optional(),
+    valueKey: z.string().optional(),
+  }),
+});
+
+export type ChartConfigTemplate = z.infer<typeof ChartConfigTemplateSchema>;
