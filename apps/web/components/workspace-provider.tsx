@@ -95,9 +95,12 @@ export function WorkspaceProvider(props: React.PropsWithChildren) {
         const runtime = await workspaceService.execute();
 
         const currentStored = getWorkspaceFromLocalStorage();
+        const nextUserId = currentStored.userId || uuidv4();
+        const nextWorkspaceId = currentStored.id || uuidv4();
+
         const workspaceData: Workspace = {
-          id: currentStored.id || uuidv4(),
-          userId: currentStored.userId || uuidv4(),
+          id: nextWorkspaceId,
+          userId: nextUserId,
           username: currentStored.username,
           organizationId: currentStored.organizationId,
           projectId: currentStored.projectId,

@@ -27,6 +27,7 @@ import {
 } from '../../ai-elements/message';
 import { toToolError, toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 
 const FullWidthScroller = forwardRef<
   HTMLDivElement,
@@ -107,6 +108,25 @@ export const VirtuosoMessageList = forwardRef<
     ...messageItemProps
   } = props;
 
+  const indicatorAfterUserMessageIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    messages.forEach((m) => {
+      if (normalizeUIRole(m.role) !== 'user') return;
+
+      const compactionPart = (m.parts ?? []).find(
+        (p) => (p as { type?: string } | undefined)?.type === 'compaction',
+      ) as { afterMessageId?: unknown } | undefined;
+
+      const after = compactionPart?.afterMessageId;
+      if (typeof after === 'string' && after.trim().length > 0) {
+        ids.add(after);
+      }
+    });
+
+    return ids;
+  }, [messages]);
+
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldFollowOutput, setShouldFollowOutput] = useState(true);
@@ -149,6 +169,9 @@ export const VirtuosoMessageList = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       messageItemProps.lastAssistantMessage,
+      messageItemProps.model,
+      messageItemProps.setModel,
+      messageItemProps.models,
       messageItemProps.editingMessageId,
       messageItemProps.editText,
       messageItemProps.editDatasources,
@@ -169,6 +192,9 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.onSubmitFeedback,
       messageItemProps.openToolPartKeys,
       messageItemProps.onToolPartOpenChange,
+      messageItemProps.onDatasourceNameClick,
+      messageItemProps.onTableNameClick,
+      messageItemProps.getDatasourceTooltip,
     ],
   );
 
@@ -190,8 +216,10 @@ export const VirtuosoMessageList = forwardRef<
         return null;
       }
 
+      const showIndicator = indicatorAfterUserMessageIds.has(message.id);
+
       return (
-        <div className={cn('pt-4 pb-4', index === 0 && 'pt-8')}>
+        <div className={cn('', index === 0 && 'pt-8')}>
           <MessageItem
             key={message.id}
             message={message}
@@ -200,10 +228,24 @@ export const VirtuosoMessageList = forwardRef<
             {...stableMessageItemProps}
             scrollToBottom={scrollToBottom}
           />
+          {showIndicator ? (
+            <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <span className="font-medium">
+                Context summary created to keep within model limits.
+              </span>
+            </div>
+          ) : null}
         </div>
       );
     },
-    [messages, status, stableMessageItemProps, scrollToBottom],
+    [
+      messages,
+      status,
+      stableMessageItemProps,
+      scrollToBottom,
+      indicatorAfterUserMessageIds,
+    ],
   );
 
   const components = useMemo(() => {
@@ -343,7 +385,7 @@ export const VirtuosoMessageList = forwardRef<
                       className="w-full max-w-full min-w-0"
                     >
                       <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                        <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                        <div className="overflow-wrap-anywhere flex min-w-0 flex-wrap items-baseline gap-x-0.5 gap-y-1 break-words">
                           <MessageResponse></MessageResponse>
                         </div>
                       </MessageContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { FileText, Download, FileJson, Copy } from 'lucide-react';
+import { FileText, Download, FileJson, Copy, Database } from 'lucide-react';
 import { CodeBlock, CodeBlockCopyButton } from '../../ai-elements/code-block';
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
@@ -53,14 +53,23 @@ export function SQLQueryVisualizer({
     ? `${exportFilename}-query`
     : 'query-results';
   const tableTitle = exportFilename
-    ? filenameToDisplayTitle(downloadFilename)
+    ? filenameToDisplayTitle(exportFilename)
     : 'Results';
+
+  const hasResult = Boolean(result?.result);
+  const rowCount = result?.result?.rows?.length ?? 0;
+  const hasRows = hasResult && rowCount > 0;
 
   return (
     <div className={cn('flex w-full flex-col gap-3', className)}>
       {query && (
         <div className="relative flex w-full items-start gap-1">
-          <CodeBlock code={query} language="sql" className="w-full min-w-0">
+          <CodeBlock
+            code={query}
+            language="sql"
+            wrap
+            className="w-full min-w-0"
+          >
             <CodeBlockCopyButton className="text-muted-foreground hover:text-foreground h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100" />
             {showPasteButton && onPasteToNotebook && (
               <Button
@@ -82,11 +91,11 @@ export function SQLQueryVisualizer({
         </div>
       )}
 
-      {result?.result && (
+      {hasResult && hasRows && (
         <div className="border-border/50 overflow-hidden rounded-lg border">
           <div className="border-border/50 flex w-full items-center justify-between gap-2 border-b px-3 py-2 text-left text-sm font-medium">
             <span>
-              {tableTitle} ({result.result.rows?.length ?? 0} rows)
+              {tableTitle} ({rowCount} rows)
             </span>
             <div className="flex items-center gap-1">
               <Button
@@ -96,8 +105,8 @@ export function SQLQueryVisualizer({
                 onClick={(e) => {
                   e.stopPropagation();
                   const csv = tableToCSVString({
-                    columns: result.result.columns,
-                    rows: result.result.rows,
+                    columns: result!.result.columns,
+                    rows: result!.result.rows,
                   });
                   navigator.clipboard.writeText(csv);
                 }}
@@ -123,8 +132,8 @@ export function SQLQueryVisualizer({
                       e.stopPropagation();
                       exportTableToCSV(
                         {
-                          columns: result.result.columns,
-                          rows: result.result.rows,
+                          columns: result!.result.columns,
+                          rows: result!.result.rows,
                         },
                         downloadFilename,
                       );
@@ -139,8 +148,8 @@ export function SQLQueryVisualizer({
                       e.stopPropagation();
                       exportTableToJSON(
                         {
-                          columns: result.result.columns,
-                          rows: result.result.rows,
+                          columns: result!.result.columns,
+                          rows: result!.result.rows,
                         },
                         downloadFilename,
                         true,
@@ -156,11 +165,21 @@ export function SQLQueryVisualizer({
             </div>
           </div>
           <DataGrid
-            columns={result.result.columns}
-            rows={result.result.rows}
+            columns={result!.result.columns}
+            rows={result!.result.rows}
             pageSize={10}
             className="rounded-none border-0 shadow-none"
           />
+        </div>
+      )}
+
+      {hasResult && !hasRows && (
+        <div className="border-border/50 flex flex-col items-center justify-center gap-2 rounded-lg border px-6 py-8 text-center">
+          <Database className="text-muted-foreground mb-1 h-8 w-8 opacity-60" />
+          <h3 className="text-foreground text-sm font-semibold">No results</h3>
+          <p className="text-muted-foreground text-xs">
+            This query ran successfully but returned no rows.
+          </p>
         </div>
       )}
     </div>

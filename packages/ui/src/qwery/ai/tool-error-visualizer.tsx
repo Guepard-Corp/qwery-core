@@ -1,4 +1,9 @@
-import { AlertCircleIcon, ChevronDownIcon } from 'lucide-react';
+import {
+  AlertCircleIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  CheckIcon,
+} from 'lucide-react';
 import { Button } from '../../shadcn/button';
 import {
   Collapsible,
@@ -9,6 +14,30 @@ import { cn } from '../../lib/utils';
 import { toToolError, toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
+
+const MAX_ERROR_DETAILS_CHARS = 4000;
+
+function formatErrorDetails(details: string): string {
+  try {
+    const parsed = JSON.parse(details);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return details;
+  }
+}
+
+function truncateErrorDetails(details: string): string {
+  if (details.length <= MAX_ERROR_DETAILS_CHARS) {
+    return details;
+  }
+
+  const omittedChars = details.length - MAX_ERROR_DETAILS_CHARS;
+
+  return `${details.slice(
+    0,
+    MAX_ERROR_DETAILS_CHARS,
+  )}\n\n… (truncated, ${omittedChars} more characters)`;
+}
 
 export interface ToolErrorVisualizerProps {
   errorText: string;
@@ -25,6 +54,7 @@ export function ToolErrorVisualizer(props: ToolErrorVisualizerProps) {
   const { errorText, children, title } = props;
   const { t } = useTranslation('common');
   const [showDetails, setShowDetails] = useState(false);
+  const [copiedDetails, setCopiedDetails] = useState(false);
   const { message, details, key, code } = toUserFacingError(
     toToolError(errorText),
     (key: string, params?: Record<string, unknown>) =>
@@ -34,6 +64,27 @@ export function ToolErrorVisualizer(props: ToolErrorVisualizerProps) {
   const resolvedTitle =
     (typeof title === 'string' ? title : undefined) ??
     t('errors.tool.title', { defaultValue: 'Error' });
+
+  const hasDetails = typeof details === 'string' && details.length > 0;
+  const formattedDetails = hasDetails ? formatErrorDetails(details) : '';
+  const displayDetails = hasDetails
+    ? truncateErrorDetails(formattedDetails)
+    : '';
+
+  const handleCopyDetails = async () => {
+    if (!hasDetails) return;
+    if (typeof window === 'undefined' || !navigator?.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(formattedDetails);
+      setCopiedDetails(true);
+      setTimeout(() => setCopiedDetails(false), 1500);
+    } catch {
+      // ignore copy errors
+    }
+  };
 
   return (
     <div className="py-1">
@@ -58,7 +109,7 @@ export function ToolErrorVisualizer(props: ToolErrorVisualizerProps) {
             )}
           </div>
 
-          {(details || children) && (
+          {(hasDetails || children) && (
             <CollapsibleTrigger asChild>
               <Button
                 variant="link"
@@ -85,10 +136,28 @@ export function ToolErrorVisualizer(props: ToolErrorVisualizerProps) {
 
         {children && <div className="text-foreground mt-2">{children}</div>}
 
-        {details && (
+        {hasDetails && (
           <CollapsibleContent>
             <div className="text-foreground border-destructive/10 mt-2.5 overflow-auto rounded border-t pt-2.5 font-mono text-[11px] leading-relaxed">
-              <pre className="break-all whitespace-pre-wrap">{details}</pre>
+              <div className="mb-1 flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground/80 hover:text-foreground size-6"
+                  onClick={handleCopyDetails}
+                >
+                  {copiedDetails ? (
+                    <CheckIcon className="size-3 text-green-600" />
+                  ) : (
+                    <CopyIcon className="size-3" />
+                  )}
+                  <span className="sr-only">Copy error details</span>
+                </Button>
+              </div>
+              <pre className="break-all whitespace-pre-wrap">
+                {displayDetails}
+              </pre>
             </div>
           </CollapsibleContent>
         )}

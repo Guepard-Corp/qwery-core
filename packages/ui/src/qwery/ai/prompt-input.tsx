@@ -5,11 +5,6 @@ import {
   PromptInputBody,
   PromptInputHeader,
   type PromptInputMessage,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputFooter,
@@ -25,12 +20,16 @@ import { Switch } from '../../shadcn/switch';
 import {
   ArrowUp,
   ImageIcon,
-  PaperclipIcon,
   PlusIcon,
+  PaperclipIcon,
   SlidersHorizontalIcon,
   SquareIcon,
   XIcon,
 } from 'lucide-react';
+import { ModelsManagerSheet } from './models-manager-sheet';
+import { ModelSelector } from './model-selector';
+import { type SearchEngine, isSearchEngine } from './web-fetch-visualizer';
+import { SubMenuSearchEngineSelect } from '../search-engine-select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +37,9 @@ import {
   DropdownMenuTrigger,
 } from '../../shadcn/dropdown-menu';
 import { PromptInputButton } from '../../ai-elements/prompt-input';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+type ModelOption = { name: string; shortName?: string; value: string };
 
 export interface QweryPromptInputProps {
   onSubmit: (message: PromptInputMessage) => void;
@@ -45,7 +47,9 @@ export interface QweryPromptInputProps {
   setInput: (input: string) => void;
   model: string;
   setModel: (model: string) => void;
-  models: { name: string; value: string }[];
+  models: ModelOption[];
+  allModels?: ModelOption[];
+  onModelsChange?: (enabledModels: ModelOption[]) => void;
   status: ChatStatus | undefined;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   onStop?: () => void;
@@ -60,6 +64,10 @@ export interface QweryPromptInputProps {
   datasourcesLoading?: boolean;
   showSuggestionBadges?: boolean;
   onShowSuggestionBadgesChange?: (value: boolean) => void;
+  webSearch?: boolean;
+  onWebSearchChange?: (value: boolean) => void;
+  preferredSearchEngine?: SearchEngine;
+  onPreferredSearchEngineChange?: (engine: SearchEngine) => void;
 }
 
 /* eslint-disable react-hooks/refs -- React Compiler false positive: props are not refs */
@@ -67,6 +75,72 @@ function PromptInputContent(props: QweryPromptInputProps) {
   const attachments = usePromptInputAttachments();
   const attachmentsCount = props.attachmentsCount ?? attachments.files.length;
   const { variant, setVariant } = useToolVariant();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const WEB_SEARCH_KEY = 'qwery-web-search-enabled';
+  const [localWebSearch, setLocalWebSearch] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(WEB_SEARCH_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const webSearch = props.webSearch ?? localWebSearch;
+  const setWebSearch = props.onWebSearchChange ?? setLocalWebSearch;
+  useEffect(() => {
+    if (props.onWebSearchChange != null) return;
+    try {
+      localStorage.setItem(WEB_SEARCH_KEY, String(localWebSearch));
+    } catch {
+      /* ignore */
+    }
+  }, [localWebSearch, props.onWebSearchChange]);
+
+  const PREFERRED_SEARCH_ENGINE_KEY = 'qwery-preferred-search-engine';
+  const [localSearchEngine, setLocalSearchEngine] = useState<SearchEngine>(
+    () => {
+      if (typeof window === 'undefined') return 'google';
+      const stored = localStorage.getItem(PREFERRED_SEARCH_ENGINE_KEY);
+      return stored && isSearchEngine(stored) ? stored : 'google';
+    },
+  );
+  const preferredSearchEngine =
+    props.preferredSearchEngine ?? localSearchEngine;
+  const setPreferredSearchEngine =
+    props.onPreferredSearchEngineChange ?? setLocalSearchEngine;
+
+  useEffect(() => {
+    if (props.onPreferredSearchEngineChange != null) return;
+    try {
+      localStorage.setItem(PREFERRED_SEARCH_ENGINE_KEY, localSearchEngine);
+    } catch {
+      /* ignore */
+    }
+  }, [localSearchEngine, props.onPreferredSearchEngineChange]);
+
+  const handleSearchEngineChange = useCallback(
+    (value: string) => {
+      if (isSearchEngine(value)) setPreferredSearchEngine(value);
+    },
+    [setPreferredSearchEngine],
+  );
+
+  const canManageModels =
+    props.allModels != null && props.onModelsChange != null;
+  const enabledModelIds = useMemo(
+    () => new Set(props.models.map((m) => m.value)),
+    [props.models],
+  );
+
+  const handleModelsChange = useCallback(
+    (next: Set<string>) => {
+      if (!props.allModels || !props.onModelsChange) return;
+      const enabled = props.allModels.filter((m) => next.has(m.value));
+      props.onModelsChange(enabled);
+    },
+    [props.allModels, props.onModelsChange],
+  );
 
   return (
     <>
@@ -162,6 +236,19 @@ function PromptInputContent(props: QweryPromptInputProps) {
                   />
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="flex cursor-default items-center justify-between gap-3 py-2"
+              >
+                <span className="text-sm">Web search</span>
+                <Switch checked={webSearch} onCheckedChange={setWebSearch} />
+              </DropdownMenuItem>
+              {webSearch && (
+                <SubMenuSearchEngineSelect
+                  value={preferredSearchEngine}
+                  onValueChange={handleSearchEngineChange}
+                />
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {props.datasources &&
@@ -175,23 +262,25 @@ function PromptInputContent(props: QweryPromptInputProps) {
                 isLoading={props.datasourcesLoading}
               />
             )}
-          <PromptInputSelect
-            onValueChange={(value) => {
-              props.setModel(value);
-            }}
+          <ModelSelector
+            models={props.models}
             value={props.model}
-          >
-            <PromptInputSelectTrigger>
-              <PromptInputSelectValue />
-            </PromptInputSelectTrigger>
-            <PromptInputSelectContent>
-              {props.models.map((model) => (
-                <PromptInputSelectItem key={model.value} value={model.value}>
-                  {model.name}
-                </PromptInputSelectItem>
-              ))}
-            </PromptInputSelectContent>
-          </PromptInputSelect>
+            onValueChange={props.setModel}
+            searchPlaceholder="Search models..."
+            onOpenManageSheet={
+              canManageModels ? () => setSheetOpen(true) : undefined
+            }
+          />
+
+          {canManageModels && props.allModels && (
+            <ModelsManagerSheet
+              open={sheetOpen}
+              onOpenChange={setSheetOpen}
+              allModels={props.allModels}
+              enabledModelIds={enabledModelIds}
+              onModelsChange={handleModelsChange}
+            />
+          )}
         </PromptInputTools>
         <div className="flex shrink-0 items-center gap-1">
           <QweryContext
@@ -250,8 +339,18 @@ function PromptInputContent(props: QweryPromptInputProps) {
 }
 
 export default function QweryPromptInput(props: QweryPromptInputProps) {
+  const { onSubmit, setInput } = props;
+
+  const handleSubmit = useCallback(
+    (message: PromptInputMessage) => {
+      onSubmit(message);
+      setInput('');
+    },
+    [onSubmit, setInput],
+  );
+
   return (
-    <PromptInput onSubmit={props.onSubmit} globalDrop multiple>
+    <PromptInput onSubmit={handleSubmit} globalDrop multiple>
       <PromptInputContent {...props} />
     </PromptInput>
   );

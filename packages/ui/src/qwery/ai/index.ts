@@ -17,6 +17,7 @@ export {
   type TaskUIPart,
   type StartedStepIndicatorProps,
 } from './message-parts';
+export { ToolWithTaskDelimiter } from './tool-with-task-delimiter';
 
 export {
   Queue,
@@ -126,3 +127,12 @@ export {
   ConfirmDeleteDialog,
   type ConfirmDeleteDialogProps,
 } from '../confirm-delete-dialog';
+
+// Search engine (for prompt input settings)
+export type { SearchEngine } from './web-fetch-visualizer';
+export {
+  SEARCH_ENGINES,
+  SEARCH_ENGINE_IDS,
+  isSearchEngine,
+  SearchEngineIcon,
+} from './web-fetch-visualizer';

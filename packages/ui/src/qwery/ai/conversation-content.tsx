@@ -16,6 +16,14 @@ export interface ConversationContentProps {
   sendMessage?: ReturnType<
     typeof import('@ai-sdk/react').useChat
   >['sendMessage'];
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  onTableNameClick?: (
+    datasourceId: string,
+    datasourceName: string,
+    schema: string,
+    tableName: string,
+  ) => void;
+  getDatasourceTooltip?: (id: string) => string;
 }
 
 export function QweryConversationContent({
@@ -23,6 +31,9 @@ export function QweryConversationContent({
   status,
   onRegenerate,
   sendMessage,
+  onDatasourceNameClick,
+  onTableNameClick,
+  getDatasourceTooltip,
 }: ConversationContentProps) {
   return (
     <Conversation>
@@ -35,6 +46,9 @@ export function QweryConversationContent({
             status={status}
             onRegenerate={onRegenerate}
             sendMessage={sendMessage}
+            onDatasourceNameClick={onDatasourceNameClick}
+            onTableNameClick={onTableNameClick}
+            getDatasourceTooltip={getDatasourceTooltip}
           />
         ))}
         {isChatSubmitted(status) && <Loader />}

@@ -38,7 +38,7 @@ const projectLayout = layout('routes/project/layout.tsx', [
 const datasourceLayout = layout('routes/datasource/layout.tsx', [
   route('ds/:slug', 'routes/datasource/index.tsx'),
   route('ds/:slug/tables', 'routes/datasource/tables.tsx'),
-  route('ds/:slug/tables/:id', 'routes/datasource/table.tsx'),
+  route('ds/:slug/tables/:schema/:tableName', 'routes/datasource/table.tsx'),
   route('ds/:slug/schema', 'routes/datasource/schema.tsx'),
   route('ds/:slug/settings', 'routes/datasource/settings.tsx'),
 ]);

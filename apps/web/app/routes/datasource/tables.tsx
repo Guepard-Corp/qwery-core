@@ -20,7 +20,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
   if (!slug) {
-    return { datasource: null };
+    throw new Response('Not Found', { status: 404 });
   }
 
   const repositories = await getRepositoriesForLoader(args.request);
@@ -33,7 +33,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     return { datasource };
   } catch (error) {
     if (error instanceof DomainException) {
-      return { datasource: null };
+      throw new Response('Not Found', { status: 404 });
     }
     throw error;
   }
@@ -82,31 +82,19 @@ export default function TablesPage(props: Route.ComponentProps) {
   const handleTableClick = (table: TableListItem) => {
     const tableData = filteredTables.find((t) => t.name === table.tableName);
     if (!tableData) return;
-
-    const tablePath = `/ds/${slug}/tables/${tableData.id}`;
-    navigate(tablePath);
+    const schema = encodeURIComponent(tableData.schema ?? 'main');
+    const tableName = encodeURIComponent(tableData.name);
+    navigate(`/ds/${slug}/tables/${schema}/${tableName}`);
   };
 
   if (!datasource) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground text-sm">
-          {t('datasource.tables.error', {
-            defaultValue: 'Datasource not found',
-          })}
-        </p>
-      </div>
-    );
+    throw new Response('Not Found', { status: 404 });
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground text-sm">
-          {t('datasource.tables.loading', {
-            defaultValue: 'Loading tables...',
-          })}
-        </p>
+        <div className="bg-muted h-6 w-24 animate-pulse rounded" />
       </div>
     );
   }

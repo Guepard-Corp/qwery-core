@@ -27,22 +27,33 @@ import {
 import { SQLQueryVisualizer } from './sql-query-visualizer';
 import { generateExportFilename } from './utils/generate-export-filename';
 
-import type { DatasourceMetadata } from '@qwery/domain/entities';
+import type { DatasourceMetadata, SimpleSchema } from '@qwery/domain/entities';
 import { cn } from '../../lib/utils';
-import { SchemaVisualizer } from './schema-visualizer';
+import {
+  SchemaVisualizer,
+  type SchemaVisualizerDatasourceItem,
+} from './schema-visualizer';
 import { Trans } from '../trans';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
+import { parseTodosFromPart } from './utils/todo-logic';
+import { toast } from 'sonner';
+import { scrollToTodoDelimiter } from './utils/scroll-utils';
 
 import { ViewSheetVisualizer } from './sheets/view-sheet-visualizer';
 
 import { ViewSheetError } from './sheets/view-sheet-error';
+import {
+  WebFetchVisualizer,
+  getUrlMetadata,
+  SearchEngineIcon,
+} from './web-fetch-visualizer';
 import {
   Source,
   Sources,
   SourcesContent,
   SourcesTrigger,
 } from '../../ai-elements/sources';
-import { useState, createContext, useMemo, useEffect } from 'react';
+import { useState, createContext, useMemo, useEffect, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 function RunQueriesOpenSync({
@@ -81,6 +92,9 @@ import {
   XCircleIcon,
   ArrowRightIcon,
   ChevronsUpDown,
+  GlobeIcon,
+  Loader2Icon,
+  ChevronRightIcon,
 } from 'lucide-react';
 import { ToolUIPart, UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
@@ -514,32 +528,6 @@ function getTodoStatusMeta(
   );
 }
 
-function parseTodosFromPart(
-  part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
-): TodoItemUI[] {
-  if (part.type === 'tool-todowrite') {
-    const input = part.input as { todos?: TodoItemUI[] } | null;
-    const todos = input?.todos;
-    return Array.isArray(todos) ? todos : [];
-  }
-  const output = part.output;
-  if (output == null) return [];
-  if (Array.isArray(output)) return output as TodoItemUI[];
-  if (typeof output === 'string') {
-    try {
-      const parsed = JSON.parse(output) as TodoItemUI[] | unknown;
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  if (typeof output === 'object' && output !== null && 'todos' in output) {
-    const todos = (output as { todos: TodoItemUI[] }).todos;
-    return Array.isArray(todos) ? todos : [];
-  }
-  return [];
-}
-
 function todoPartTitle(
   part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' },
   todos: TodoItemUI[],
@@ -559,22 +547,175 @@ function todoPartSubtitle(todos: TodoItemUI[]): string | null {
   return `${completed} of ${todos.length} To-dos`;
 }
 
+function sameTodo(a: TodoItemUI, b: TodoItemUI): boolean {
+  return (
+    a.id === b.id &&
+    a.status === b.status &&
+    (a.content ?? '').trim() === (b.content ?? '').trim() &&
+    (a.priority ?? '').trim() === (b.priority ?? '').trim()
+  );
+}
+
+const TodoRow = memo(
+  function TodoRow({
+    todo,
+    variant,
+    messageId,
+  }: {
+    todo: TodoItemUI;
+    variant: ToolVariant;
+    messageId: string;
+  }) {
+    const meta = getTodoStatusMeta(todo.status);
+    const StatusIcon = meta.Icon ?? CircleDashedIcon;
+    const isCompleted = todo.status === 'completed';
+    const isCancelled = todo.status === 'cancelled';
+    const isInProgress = todo.status === 'in_progress';
+
+    const handleClick = () => {
+      if (todo.status === 'pending') {
+        toast.info('Task not started yet');
+        return;
+      }
+      if (todo.status === 'cancelled') {
+        toast.info('Task was cancelled');
+        return;
+      }
+      const found = scrollToTodoDelimiter(todo.id, {
+        behavior: 'smooth',
+        block: 'center',
+        scopeMessageId: messageId,
+      });
+      if (!found) {
+        toast.info('Task output not found yet');
+      }
+    };
+
+    return (
+      <li
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        className={cn(
+          'flex cursor-pointer items-center gap-3 rounded-lg py-2 transition-all duration-200',
+          variant === 'default' && 'hover:bg-accent/30 -mx-2 px-2',
+        )}
+        data-status={todo.status}
+        data-todo-task-id={todo.id}
+      >
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-full p-1.5 shadow-sm transition-colors duration-200',
+            meta.badgeClass,
+            variant === 'minimal' ? 'size-5' : 'size-6',
+          )}
+        >
+          <StatusIcon
+            className={cn(
+              variant === 'minimal' ? 'size-2.5' : 'size-3',
+              isInProgress && 'animate-pulse',
+            )}
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span
+            className={cn(
+              'text-sm leading-tight transition-all duration-200',
+              (isCompleted || isCancelled) &&
+                'text-muted-foreground line-through opacity-70',
+              isInProgress && 'text-foreground font-medium',
+            )}
+          >
+            {todo.content}
+          </span>
+          {todo.priority && variant === 'default' && (
+            <div className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'text-[10px] font-bold tracking-wider uppercase opacity-50',
+                )}
+              >
+                Priority: {todo.priority}
+              </span>
+            </div>
+          )}
+        </div>
+      </li>
+    );
+  },
+  (prev, next) =>
+    prev.variant === next.variant &&
+    prev.messageId === next.messageId &&
+    sameTodo(prev.todo, next.todo),
+);
+
 export type TodoPartProps = {
   part: ToolUIPart & { type: 'tool-todowrite' | 'tool-todoread' };
   messageId: string;
   index: number;
 };
 
-export function TodoPart({ part, messageId, index }: TodoPartProps) {
+export function TodoPart({ part, messageId, index: _index }: TodoPartProps) {
   const { variant } = useToolVariant();
-  const todos = parseTodosFromPart(part);
-  const title = todoPartTitle(part, todos);
-  const subtitle = todoPartSubtitle(todos);
+  const newTodos = parseTodosFromPart(part);
+  const [prevStable, setPrevStable] = useState<TodoItemUI[]>([]);
+
+  const stableTodos = useMemo(() => {
+    const prev = prevStable;
+    const prevById = new Map(prev.map((t) => [t.id, t] as const));
+
+    let effectiveTodos: TodoItemUI[];
+    if (
+      part.state === 'input-streaming' &&
+      newTodos.length < prev.length &&
+      prev.length > 0
+    ) {
+      effectiveTodos = prev.map((p) => {
+        const n = newTodos.find((t) => t.id === p.id);
+        return n ? (sameTodo(p, n) ? p : n) : p;
+      });
+      const prevIds = new Set(prev.map((t) => t.id));
+      for (const n of newTodos) {
+        if (!prevIds.has(n.id)) effectiveTodos.push(n);
+      }
+    } else {
+      effectiveTodos = newTodos;
+    }
+
+    if (
+      effectiveTodos.length === prev.length &&
+      effectiveTodos.every(
+        (n, i) => prev[i] && n.id === prev[i]!.id && sameTodo(prev[i]!, n),
+      )
+    ) {
+      return prev;
+    }
+
+    const stable = effectiveTodos.map((newT) => {
+      const p = prevById.get(newT.id);
+      if (p && sameTodo(p, newT)) return p;
+      return newT;
+    });
+    return stable;
+  }, [newTodos, part.state, prevStable]);
+
+  useEffect(() => {
+    setPrevStable(stableTodos);
+  }, [stableTodos]);
+
+  const title = todoPartTitle(part, stableTodos);
+  const subtitle = todoPartSubtitle(stableTodos);
   const displayTitle = subtitle ?? title;
 
   return (
     <Tool
-      key={`${messageId}-todo-${index}`}
+      key={`${messageId}-todo`}
       state={part.state}
       variant={variant}
       defaultOpen={true}
@@ -592,68 +733,20 @@ export function TodoPart({ part, messageId, index }: TodoPartProps) {
             variant === 'default' ? 'px-5 py-4' : 'py-2',
           )}
         >
-          {todos.length === 0 ? (
+          {stableTodos.length === 0 ? (
             <p className="text-muted-foreground text-xs italic">
               No tasks planned yet...
             </p>
           ) : (
             <ul className="flex flex-col gap-1.5" data-component="todos">
-              {todos.map((todo) => {
-                const meta = getTodoStatusMeta(todo.status);
-                const StatusIcon = meta.Icon ?? CircleDashedIcon;
-                const isCompleted = todo.status === 'completed';
-                const isCancelled = todo.status === 'cancelled';
-                const isInProgress = todo.status === 'in_progress';
-
-                return (
-                  <li
-                    key={todo.id}
-                    className={cn(
-                      'flex items-start gap-3 rounded-lg py-2 transition-all duration-200',
-                      variant === 'default' && 'hover:bg-accent/30 -mx-2 px-2',
-                    )}
-                    data-status={todo.status}
-                  >
-                    <div
-                      className={cn(
-                        'mt-0.5 flex shrink-0 items-center justify-center rounded-full p-1.5 shadow-sm transition-colors duration-200',
-                        meta.badgeClass,
-                        variant === 'minimal' ? 'size-5' : 'size-6',
-                      )}
-                    >
-                      <StatusIcon
-                        className={cn(
-                          variant === 'minimal' ? 'size-2.5' : 'size-3',
-                          isInProgress && 'animate-pulse',
-                        )}
-                      />
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span
-                        className={cn(
-                          'text-sm leading-tight transition-all duration-200',
-                          (isCompleted || isCancelled) &&
-                            'text-muted-foreground line-through opacity-70',
-                          isInProgress && 'text-foreground font-medium',
-                        )}
-                      >
-                        {todo.content}
-                      </span>
-                      {todo.priority && variant === 'default' && (
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={cn(
-                              'text-[10px] font-bold tracking-wider uppercase opacity-50',
-                            )}
-                          >
-                            Priority: {todo.priority}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
+              {stableTodos.map((todo) => (
+                <TodoRow
+                  key={todo.id}
+                  todo={todo}
+                  variant={variant}
+                  messageId={messageId}
+                />
+              ))}
             </ul>
           )}
         </div>
@@ -693,6 +786,19 @@ export interface ToolPartProps {
   }>;
   onToolApproval?: (approvalId: string, approved: boolean) => void;
   messages?: UIMessage[];
+  onDatasourceNameClick?: (id: string, name: string) => void;
+  onTableNameClick?: (
+    datasourceId: string,
+    datasourceName: string,
+    schema: string,
+    tableName: string,
+  ) => void;
+  datasources?: Array<{
+    id: string;
+    name?: string;
+    slug?: string;
+    datasource_provider?: string;
+  }>;
 }
 
 function getExecutionTimeMs(
@@ -765,6 +871,9 @@ export function ToolPart({
   pluginLogoMap,
   selectedDatasourceItems,
   messages,
+  datasources: messageDatasources,
+  onDatasourceNameClick,
+  onTableNameClick,
 }: ToolPartProps) {
   const { variant } = useToolVariant();
   const [runQueriesAllOpen, setRunQueriesAllOpen] = useState<boolean | null>(
@@ -784,6 +893,22 @@ export function ToolPart({
       : getUserFriendlyToolName(`tool-${rawName}`);
   } else {
     toolName = getUserFriendlyToolName(part.type);
+  }
+
+  if (part.type === 'tool-getSchema') {
+    const inputDetailLevel = (
+      (part.input as { detailLevel?: 'simple' | 'full' } | null) ?? null
+    )?.detailLevel;
+    const outputDetailLevel = (
+      (part.output as { detailLevel?: 'simple' | 'full' } | null) ?? null
+    )?.detailLevel;
+    const detailLevel = inputDetailLevel ?? outputDetailLevel;
+
+    if (detailLevel === 'simple') {
+      toolName = `${toolName} (simple)`;
+    } else if (detailLevel === 'full') {
+      toolName = `${toolName} (full)`;
+    }
   }
   // Render specialized visualizers based on tool type
   const renderToolOutput = () => {
@@ -901,21 +1026,21 @@ export function ToolPart({
       );
     }
 
-    // Handle getSchema errors - show view names above error
+    // Handle getSchema errors - show requested detail level above error
     if (
       part.type === 'tool-getSchema' &&
       part.state === 'output-error' &&
       part.errorText
     ) {
-      const input = part.input as { viewNames?: string[] } | null;
+      const input = part.input as { detailLevel?: 'simple' | 'full' } | null;
       return (
         <div className="space-y-3">
-          {input?.viewNames && input.viewNames.length > 0 && (
+          {input?.detailLevel && (
             <div className="bg-muted/50 rounded-md p-3">
               <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                Requested Views
+                Detail Level
               </p>
-              <p className="text-sm">{input.viewNames.join(', ')}</p>
+              <p className="text-sm">{input.detailLevel}</p>
             </div>
           )}
           <ToolErrorVisualizer errorText={part.errorText} />
@@ -1009,19 +1134,22 @@ export function ToolPart({
     // Handle runQuery tool - show SQL query during streaming (from input) and results when available (from output)
     if (part.type === 'tool-runQuery') {
       const input = part.input as { query?: string } | null;
-      const output = part.output as
-        | {
-            result?: {
-              rows?: unknown[];
-              columns?: unknown[];
-              query?: string;
-            };
-            sqlQuery?: string;
-            shouldPaste?: boolean;
-            chartExecutionOverride?: boolean;
-          }
-        | null
-        | undefined;
+      const rawOutput = part.output;
+      const output =
+        typeof rawOutput === 'object' && rawOutput !== null
+          ? (rawOutput as {
+              result?: {
+                rows?: unknown[];
+                columns?: unknown[];
+                query?: string;
+              };
+              sqlQuery?: string;
+              shouldPaste?: boolean;
+              chartExecutionOverride?: boolean;
+              executed?: boolean;
+              exportFilename?: string;
+            })
+          : null;
 
       // No output yet: show SQL streaming (cursor) or loading results
       if (!part.output && input?.query) {
@@ -1068,7 +1196,7 @@ export function ToolPart({
       let chartExecutionOverride: boolean = false;
 
       // Check top-level output first (expected structure)
-      if (output) {
+      if (output && typeof output === 'object') {
         if ('sqlQuery' in output && typeof output.sqlQuery === 'string') {
           sqlQuery = output.sqlQuery;
         }
@@ -1098,6 +1226,7 @@ export function ToolPart({
 
       const executedFlag =
         output &&
+        typeof output === 'object' &&
         'executed' in output &&
         typeof (output as Record<string, unknown>).executed === 'boolean'
           ? (output as Record<string, unknown>).executed
@@ -1135,6 +1264,7 @@ export function ToolPart({
 
       const exportFilename =
         (output &&
+        typeof output === 'object' &&
         'exportFilename' in output &&
         typeof output.exportFilename === 'string'
           ? output.exportFilename
@@ -1208,7 +1338,7 @@ export function ToolPart({
 
       const totalQueries = runQueriesInput?.queries?.length ?? 0;
       const results = runQueriesOutput?.results ?? [];
-      const completedCount = results.length;
+      const hasBatchOutput = Boolean(runQueriesOutput);
       const isComplete =
         part.state === 'output-available' || part.state === 'output-error';
       const isInProgress = !isComplete && totalQueries > 0;
@@ -1247,17 +1377,26 @@ export function ToolPart({
         };
       });
 
-      const _distinctCount = keyToBaseIndex.size || results.length;
-      const total = runQueriesOutput?.meta?.total ?? totalQueries;
+      const distinctCompletedCount = keyToBaseIndex.size || results.length || 0;
+      const meta = runQueriesOutput?.meta;
+      const total =
+        (meta && typeof meta.total === 'number' && meta.total > 0
+          ? meta.total
+          : distinctCompletedCount || totalQueries) || 0;
       const succeeded =
-        runQueriesOutput?.meta?.succeeded ??
-        results.filter((r) => r.success).length;
+        (meta && typeof meta.succeeded === 'number'
+          ? meta.succeeded
+          : results.filter((r) => r.success).length) || 0;
       const failed =
-        runQueriesOutput?.meta?.failed ??
-        (isComplete
-          ? total - succeeded
-          : results.filter((r) => !r.success && r.error).length);
-      const _hasDuplicates = _distinctCount < completedCount;
+        (meta && typeof meta.failed === 'number'
+          ? meta.failed
+          : isComplete
+            ? Math.max(total - succeeded, 0)
+            : results.filter((r) => !r.success && r.error).length) || 0;
+      const completedCount = Math.min(
+        total,
+        succeeded + failed || distinctCompletedCount,
+      );
       const _durationMs = (
         runQueriesOutput?.meta as { durationMs?: number } | undefined
       )?.durationMs;
@@ -1387,7 +1526,7 @@ export function ToolPart({
             <div className="bg-primary/10 text-primary animate-in fade-in zoom-in flex items-center gap-1.5 rounded-full px-2 py-0.5 duration-300">
               <CircleDashedIcon className="h-3 w-3 animate-spin" />
               <span className="text-[10px] font-bold tracking-wider uppercase">
-                {completedCount}/{total}
+                {completedCount}/{total || totalQueries || completedCount || 0}
               </span>
             </div>
           )}
@@ -1410,57 +1549,149 @@ export function ToolPart({
 
       if (isMinimal) {
         return (
-          <div
-            key={`${messageId}-${index}`}
-            className="border-border/40 my-1 ml-6 flex flex-col gap-2 border-l pl-3"
-          >
-            <div className="text-muted-foreground/80 flex items-center gap-2 text-[11px]">
-              <ListTodo className="h-3 w-3" />
-              <span className="font-medium">Batch Run</span>
-              {headerInfo}
-            </div>
-            <div className="flex flex-col gap-1">
-              {(!isComplete ? runQueriesInput?.queries : results)?.map(
-                (q, idx) => {
-                  const queryText = (
-                    'query' in q
-                      ? q.query
-                      : (q as Record<string, unknown>).query
-                  ) as string | undefined;
-                  const success = 'success' in q ? q.success : undefined;
-                  const isCurrent = isInProgress && idx === completedCount;
+          <>
+            <RunQueriesOpenSync
+              runQueriesAllOpen={runQueriesAllOpen}
+              runQueriesInputLength={runQueriesInput?.queries?.length}
+              resultsLength={results.length}
+              setOpenQueries={setOpenQueries}
+            />
+            <div
+              key={`${messageId}-${index}`}
+              className="border-border/40 my-1 ml-6 flex flex-col gap-2 border-l pl-3"
+            >
+              <div className="text-muted-foreground/80 flex items-center gap-2 text-[11px]">
+                <ListTodo className="h-3 w-3" />
+                <span className="font-medium">Batch Run</span>
+                {headerInfo}
+              </div>
+              <div className="flex flex-col gap-1">
+                {(!isComplete ? runQueriesInput?.queries : results)?.map(
+                  (q, idx) => {
+                    const queryText = (
+                      'query' in q
+                        ? q.query
+                        : (q as Record<string, unknown>).query
+                    ) as string | undefined;
+                    const success = 'success' in q ? q.success : undefined;
+                    const isCurrent = isInProgress && idx === completedCount;
+                    const summary =
+                      'summary' in q && typeof q.summary === 'string'
+                        ? q.summary
+                        : undefined;
+                    const compactLabel =
+                      summary && summary.trim().length > 0
+                        ? summary.trim()
+                        : (queryText?.split('\n')[0] ?? '').trim();
+                    const result =
+                      'data' in q &&
+                      q.data &&
+                      typeof q.data === 'object' &&
+                      'result' in q.data
+                        ? (q.data as { result?: unknown }).result
+                        : undefined;
+                    const hasTableData =
+                      result &&
+                      typeof result === 'object' &&
+                      'columns' in result &&
+                      'rows' in result &&
+                      Array.isArray(result.columns) &&
+                      Array.isArray(result.rows);
+                    const tableResult =
+                      hasTableData && result
+                        ? {
+                            columns: (result as { columns: unknown[] })
+                              .columns as string[],
+                            rows: (result as { rows: unknown[] }).rows as Array<
+                              Record<string, unknown>
+                            >,
+                          }
+                        : null;
+                    const error =
+                      'error' in q && q.error
+                        ? typeof (q as Record<string, unknown>).error ===
+                          'string'
+                          ? ((q as Record<string, unknown>).error as string)
+                          : String((q as Record<string, unknown>).error)
+                        : undefined;
+                    const isOpen = openQueries.has(idx);
 
-                  return (
-                    <div
-                      key={idx}
-                      className={cn(
-                        'border-border/10 flex items-center gap-2 rounded-md border px-2 py-0.5 transition-colors',
-                        isCurrent && 'bg-primary/[0.03] border-primary/20',
-                      )}
-                    >
-                      <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-                        <CodeBlock
-                          code={(queryText ?? '').replace(/\s+/g, ' ').trim()}
-                          language="sql"
-                          disableHover={true}
-                          className="border-none !bg-transparent bg-transparent p-0"
-                        />
-                      </div>
-                      {success === true && (
-                        <CheckCircle2Icon className="h-2.5 w-2.5 text-emerald-500/80" />
-                      )}
-                      {success === false && (
-                        <XCircleIcon className="text-destructive/80 h-2.5 w-2.5" />
-                      )}
-                      {isCurrent && (
-                        <CircleDashedIcon className="text-primary/80 h-2.5 w-2.5 animate-spin" />
-                      )}
-                    </div>
-                  );
-                },
-              )}
+                    return (
+                      <Collapsible
+                        key={idx}
+                        open={isOpen}
+                        onOpenChange={(open) => {
+                          setOpenQueries(() =>
+                            open ? new Set([idx]) : new Set(),
+                          );
+                        }}
+                        className={cn(
+                          'group border-border/50 overflow-hidden rounded-md border transition-colors',
+                          isCurrent && 'bg-primary/[0.03] border-primary/40',
+                        )}
+                      >
+                        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 px-2 py-0.5 text-left">
+                          <div className="scrollbar-hover-visible min-w-0 flex-1 overflow-x-auto">
+                            {hasBatchOutput ? (
+                              <CodeBlock
+                                code={(queryText?.split('\n')[0] ?? '').trim()}
+                                language="sql"
+                                disableHover={true}
+                                noInternalScroll
+                                preClassName="[&>pre]:!bg-[#1d1d1c]"
+                                className="w-max min-w-0 !overflow-visible border-none !bg-[#1d1d1c] p-0"
+                              />
+                            ) : (
+                              <span className="text-muted-foreground text-[11px] whitespace-nowrap">
+                                {compactLabel}
+                              </span>
+                            )}
+                          </div>
+                          {success === true && (
+                            <CheckCircle2Icon className="h-2.5 w-2.5 shrink-0 text-emerald-500/80" />
+                          )}
+                          {success === false && (
+                            <XCircleIcon className="text-destructive/80 h-2.5 w-2.5 shrink-0" />
+                          )}
+                          {isCurrent && (
+                            <CircleDashedIcon className="text-primary/80 h-2.5 w-2.5 shrink-0 animate-spin" />
+                          )}
+                          <ChevronDownIcon
+                            className={cn(
+                              'h-3 w-3 shrink-0 transition-transform',
+                              isOpen && 'rotate-180',
+                            )}
+                          />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="border-border/10 space-y-2 border-t px-2 py-2">
+                            <SQLQueryVisualizer
+                              query={queryText ?? ''}
+                              result={
+                                tableResult
+                                  ? { result: tableResult }
+                                  : undefined
+                              }
+                              showPasteButton={false}
+                            />
+                            {error && (
+                              <ToolErrorVisualizer
+                                errorText={
+                                  typeof error === 'string'
+                                    ? error
+                                    : String(error)
+                                }
+                              />
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  },
+                )}
+              </div>
             </div>
-          </div>
+          </>
         );
       }
 
@@ -1543,17 +1774,6 @@ export function ToolPart({
                       ? (q as Record<string, unknown>).error
                       : undefined;
                   const rawId = (q as { id?: string }).id;
-                  const rawSummary = (q as { summary?: string }).summary;
-                  const genAISummary =
-                    typeof rawSummary === 'string' &&
-                    rawSummary.trim().length > 0
-                      ? rawSummary.trim()
-                      : undefined;
-                  const fallbackLabel =
-                    typeof rawId === 'string' && rawId.trim().length > 0
-                      ? rawId.trim()
-                      : `Query ${idx + 1}`;
-                  const displayLabel = genAISummary ?? fallbackLabel;
                   const fullTable = tableFromQuery(queryText);
                   const tableLabel = tableFocusedLabel(
                     queryText,
@@ -1624,7 +1844,7 @@ export function ToolPart({
                           'border-destructive/30 bg-destructive/[0.02]',
                       )}
                     >
-                      <CollapsibleTrigger className="group/item hover:bg-muted/40 flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                      <CollapsibleTrigger className="group/item hover:bg-muted/40 flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <div className="flex-shrink-0">
                             {isExecuting ? (
@@ -1645,7 +1865,7 @@ export function ToolPart({
                               </div>
                             )}
                           </div>
-                          <div className="flex min-w-0 flex-1 flex-col">
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                             {isLoading && !isOpen ? (
                               <div className="space-y-1.5">
                                 <div className="bg-muted/60 h-3 w-24 animate-pulse rounded" />
@@ -1653,9 +1873,22 @@ export function ToolPart({
                               </div>
                             ) : (
                               <>
-                                <span className="mb-1 truncate text-xs leading-none font-bold">
-                                  {displayLabel}
-                                </span>
+                                {queryText && (
+                                  <div
+                                    className="min-w-0 flex-1 overflow-hidden"
+                                    title={queryText}
+                                  >
+                                    <CodeBlock
+                                      code={(
+                                        queryText.split('\n')[0] ?? ''
+                                      ).trim()}
+                                      language="sql"
+                                      disableHover={true}
+                                      preClassName="[&>pre]:!bg-[#1d1d1c]"
+                                      className="border-none !bg-[#1d1d1c] p-0 text-[10px] [&_pre]:!truncate [&_pre]:!py-1.5 [&_pre]:!text-[10px]"
+                                    />
+                                  </div>
+                                )}
                                 {meta.isDuplicate && (
                                   <span className="text-muted-foreground text-[10px] font-medium opacity-70">
                                     Retry #{meta.attemptIndex}
@@ -1709,6 +1942,14 @@ export function ToolPart({
                                 <p className="text-muted-foreground pl-1 text-[10px] font-bold tracking-widest uppercase">
                                   SQL Query
                                 </p>
+                                <SQLQueryVisualizer
+                                  query={queryText ?? ''}
+                                  result={undefined}
+                                  onPasteToNotebook={undefined}
+                                  showPasteButton={false}
+                                  chartExecutionOverride={false}
+                                  isStreaming={!isComplete}
+                                />
                                 <TableResultsSkeleton />
                               </div>
                             </div>
@@ -1762,74 +2003,120 @@ export function ToolPart({
 
     // Handle getSchema - streaming/loading, then schema when output
     if (part.type === 'tool-getSchema') {
-      const input = part.input as { viewNames?: string[] } | null;
       if (!part.output && part.input != null) {
         const isInputStreaming = part.state === 'input-streaming';
         return (
           <div className="flex w-full flex-col gap-3">
-            {input?.viewNames && input.viewNames.length > 0 && (
-              <div className="bg-muted/50 rounded-md p-3">
-                <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                  Requested Views
-                </p>
-                <p className="text-sm">{input.viewNames.join(', ')}</p>
-                {isInputStreaming && (
-                  <span
-                    className="text-foreground mt-1 inline-block h-4 w-0.5 shrink-0 animate-pulse rounded-sm bg-current align-middle"
-                    aria-hidden
-                  />
-                )}
-              </div>
-            )}
             {!isInputStreaming && <SchemaSkeleton />}
           </div>
         );
       }
     }
     if (part.type === 'tool-getSchema' && part.output) {
-      const output = part.output as { schema?: DatasourceMetadata } | null;
-      if (output?.schema) {
-        return <SchemaVisualizer schema={output.schema} variant={variant} />;
-      } else {
-        // Empty state when no schema data
-        return (
-          <div
+      const output = part.output as {
+        detailLevel?: 'simple' | 'full';
+        schema?: DatasourceMetadata;
+        datasources?: Array<{
+          datasourceId: string;
+          datasourceName?: string;
+          schema: SimpleSchema[];
+        }>;
+        schemaErrors?: Array<{
+          datasourceId: string;
+          datasourceName?: string;
+          error: string;
+        }>;
+      } | null;
+      const hasSchema =
+        output?.schema != null ||
+        (output?.detailLevel === 'simple' &&
+          (output?.datasources?.length ?? 0) > 0);
+      if (hasSchema) {
+        const schemaDatasources: SchemaVisualizerDatasourceItem[] | undefined =
+          messageDatasources?.map((d) => ({
+            id: d.id,
+            name: d.name,
+            slug: d.slug,
+            datasource_provider: d.datasource_provider,
+          }));
+        const schemaData: DatasourceMetadata | SimpleSchema[] | null =
+          output?.detailLevel === 'simple' && output?.datasources
+            ? output.datasources.flatMap((d) => {
+                const matched = schemaDatasources?.find(
+                  (sd) => sd.id === d.datasourceId,
+                );
+                const raw =
+                  matched?.slug ||
+                  matched?.name ||
+                  d.datasourceName ||
+                  d.datasourceId;
+                const prefix =
+                  String(raw)
+                    .replace(/\s+/g, '_')
+                    .replace(/[^a-zA-Z0-9_-]/g, '') || d.datasourceId;
+                return (d.schema as SimpleSchema[]).map((s) => ({
+                  ...s,
+                  databaseName: `${prefix}__${s.databaseName}`,
+                }));
+              })
+            : (output?.schema ?? null);
+
+        if (
+          schemaData &&
+          (!Array.isArray(schemaData) || schemaData.length > 0)
+        ) {
+          return (
+            <SchemaVisualizer
+              schema={schemaData}
+              variant={variant}
+              datasources={schemaDatasources}
+              schemaErrors={output?.schemaErrors}
+              pluginLogoMap={pluginLogoMap}
+              onDatasourceNameClick={onDatasourceNameClick}
+              onTableNameClick={onTableNameClick}
+            />
+          );
+        }
+      }
+
+      // Empty state when no schema data
+      return (
+        <div
+          className={cn(
+            'flex flex-col items-center justify-center p-8 text-center',
+            variant === 'minimal' && 'p-4',
+          )}
+        >
+          <Database
             className={cn(
-              'flex flex-col items-center justify-center p-8 text-center',
-              variant === 'minimal' && 'p-4',
+              'text-muted-foreground mb-4 opacity-50',
+              variant === 'minimal' ? 'mb-2 h-8 w-8' : 'h-12 w-12',
+            )}
+          />
+          <h3
+            className={cn(
+              'text-foreground mb-2 font-semibold',
+              variant === 'minimal' ? 'text-xs' : 'text-sm',
             )}
           >
-            <Database
-              className={cn(
-                'text-muted-foreground mb-4 opacity-50',
-                variant === 'minimal' ? 'mb-2 h-8 w-8' : 'h-12 w-12',
-              )}
+            <Trans
+              i18nKey="common:schema.noSchemaDataAvailable"
+              defaults="No schema data available"
             />
-            <h3
-              className={cn(
-                'text-foreground mb-2 font-semibold',
-                variant === 'minimal' ? 'text-xs' : 'text-sm',
-              )}
-            >
-              <Trans
-                i18nKey="common:schema.noSchemaDataAvailable"
-                defaults="No schema data available"
-              />
-            </h3>
-            <p
-              className={cn(
-                'text-muted-foreground',
-                variant === 'minimal' ? 'text-[10px]' : 'text-xs',
-              )}
-            >
-              <Trans
-                i18nKey="common:schema.schemaEmptyOrNotLoaded"
-                defaults="The schema information is empty or could not be loaded."
-              />
-            </p>
-          </div>
-        );
-      }
+          </h3>
+          <p
+            className={cn(
+              'text-muted-foreground',
+              variant === 'minimal' ? 'text-[10px]' : 'text-xs',
+            )}
+          >
+            <Trans
+              i18nKey="common:schema.schemaEmptyOrNotLoaded"
+              defaults="The schema information is empty or could not be loaded."
+            />
+          </p>
+        </div>
+      );
     }
 
     // Handle viewSheet - streaming/loading, then sheet when output
@@ -1969,6 +2256,30 @@ export function ToolPart({
       }
     }
 
+    // Handle webfetch - show URL card/link (streaming or result)
+    if (part.type === 'tool-webfetch') {
+      const input = part.input as {
+        url?: string;
+        format?: 'text' | 'markdown' | 'html';
+      } | null;
+      const url = input?.url ?? '';
+      if (url) {
+        const isStreaming =
+          part.state === 'input-streaming' || part.state === 'input-available';
+        return (
+          <WebFetchVisualizer
+            url={url}
+            format={input?.format}
+            variant={variant}
+            isStreaming={isStreaming}
+          />
+        );
+      }
+      if (!part.output && part.input != null) {
+        return <GenericToolSkeleton />;
+      }
+    }
+
     // Generic: no output yet but have input - show streaming/loading
     if (!part.output && part.input != null) {
       const isInputStreaming = part.state === 'input-streaming';
@@ -1988,13 +2299,89 @@ export function ToolPart({
     return <ToolOutput output={part.output} errorText={part.errorText} />;
   };
 
-  // Hide input section for runQuery (we show SQL in SQLQueryVisualizer)
+  // Hide input section for runQuery / runQueries / webfetch (we show in visualizer)
   const showInput =
     part.input != null &&
     part.type !== 'tool-runQuery' &&
-    part.type !== 'tool-runQueries';
+    part.type !== 'tool-runQueries' &&
+    part.type !== 'tool-webfetch';
 
   const isControlled = open !== undefined;
+
+  // Minimal webfetch: single non-collapsible line (tool name + search keywords + duration), clickable to open URL
+  if (variant === 'minimal' && part.type === 'tool-webfetch') {
+    const input = part.input as { url?: string } | null;
+    const url = input?.url ?? '';
+    const metadata = url ? getUrlMetadata(url) : null;
+    const searchKeywords = metadata?.searchQuery ?? metadata?.host ?? null;
+    const execMs = getExecutionTimeMs(part, executionTimeMs);
+    const executionTimeLabel =
+      execMs != null && Number.isFinite(execMs) && execMs >= 0
+        ? execMs < 1000
+          ? `${Math.round(execMs)}ms`
+          : `${(execMs / 1000).toFixed(2)}s`
+        : null;
+    const state = part.state;
+    const statusIcon =
+      state === 'output-available' || state === 'approval-responded' ? (
+        <CheckCircle2Icon className="size-3 text-emerald-600 dark:text-emerald-400" />
+      ) : state === 'output-error' ? (
+        <XCircleIcon className="text-destructive size-3" />
+      ) : state === 'input-streaming' || state === 'input-available' ? (
+        <Loader2Icon className="size-3 animate-spin text-[#ffcb51]" />
+      ) : (
+        <CircleDashedIcon className="text-muted-foreground size-3" />
+      );
+
+    return (
+      <div
+        key={`${messageId}-${index}`}
+        className={cn(
+          'group/tool not-prose mb-1 flex w-full min-w-0 flex-col overflow-hidden transition-all',
+          'animate-in fade-in slide-in-from-bottom-2 duration-300 ease-in-out',
+          'max-w-[min(43.2rem,calc(100%-3rem))]',
+          'mx-4 sm:mx-6',
+        )}
+      >
+        <div className="group/header flex w-full items-center gap-2 py-1.5 text-left">
+          <div className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
+            <ChevronRightIcon className="size-3.5" aria-hidden />
+          </div>
+          <div className="text-primary flex size-4 shrink-0 items-center justify-center">
+            <GlobeIcon className="size-4" />
+          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {metadata?.engine ? (
+              <SearchEngineIcon engine={metadata.engine} className="size-3.5" />
+            ) : null}
+            <span className="text-muted-foreground truncate text-sm">
+              {toolName}
+            </span>
+            {searchKeywords && url ? (
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground hover:text-foreground truncate text-sm underline-offset-2 hover:underline"
+              >
+                · {searchKeywords}
+              </a>
+            ) : searchKeywords ? (
+              <span className="text-muted-foreground truncate text-sm">
+                · {searchKeywords}
+              </span>
+            ) : null}
+            {executionTimeLabel ? (
+              <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                {executionTimeLabel}
+              </span>
+            ) : null}
+            <div className="flex shrink-0 items-center">{statusIcon}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Minimal mode: avoid nested collapsibles for batch query runs.
   // ToolCallsGroup already collapses the section; this keeps runQueries simple.

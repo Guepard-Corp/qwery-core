@@ -91,6 +91,7 @@ const CompactionPartSchema = z
   .object({
     type: z.literal('compaction'),
     auto: z.boolean(),
+    afterMessageId: z.string().optional(),
   })
   .loose();
 

@@ -58,6 +58,28 @@ interface UseInfiniteMessagesReturn {
   mergeMessages: (newMessages: UIMessage[]) => void;
 }
 
+function isSummaryOrHidden(message: MessageOutput): boolean {
+  const rootMeta =
+    message.metadata && typeof message.metadata === 'object'
+      ? (message.metadata as Record<string, unknown>)
+      : {};
+  const contentMeta =
+    typeof message.content === 'object' &&
+    message.content !== null &&
+    'metadata' in message.content &&
+    message.content.metadata &&
+    typeof message.content.metadata === 'object'
+      ? (message.content.metadata as Record<string, unknown>)
+      : {};
+  const hidden =
+    (rootMeta.hidden as boolean | undefined) ??
+    (contentMeta.hidden as boolean | undefined);
+  const summary =
+    (rootMeta.summary as boolean | undefined) ??
+    (contentMeta.summary as boolean | undefined);
+  return !!(hidden || summary);
+}
+
 /**
  * Converts MessageOutput[] to UIMessage[]
  * This is a simplified version of the conversion logic
@@ -376,7 +398,9 @@ export function useInfiniteMessages(
       if (olderMessages.length === 0) {
         setHasMoreOlder(false);
       } else {
-        const messageOutputs = olderMessages as MessageOutput[];
+        const messageOutputs = (olderMessages as MessageOutput[]).filter(
+          (m) => !isSummaryOrHidden(m),
+        );
         const convertedMessages = messageOutputs
           .map((output) => {
             try {

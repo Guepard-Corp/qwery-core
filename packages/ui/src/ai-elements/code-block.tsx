@@ -19,6 +19,10 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   language: BundledLanguage;
   showLineNumbers?: boolean;
   disableHover?: boolean;
+  preClassName?: string;
+  wrap?: boolean;
+  scrollbarOnHover?: boolean;
+  noInternalScroll?: boolean;
 };
 
 type CodeBlockContextType = {
@@ -73,11 +77,25 @@ export async function highlightCode(
   ]);
 }
 
+const preBaseClasses =
+  '[&>pre]:text-foreground! [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed';
+
+const preOverflowClasses = (wrap: boolean, noInternalScroll: boolean) =>
+  noInternalScroll
+    ? '[&>pre]:whitespace-nowrap'
+    : wrap
+      ? '[&>pre]:whitespace-pre-wrap [&>pre]:break-words'
+      : '[&>pre]:overflow-x-auto';
+
 export const CodeBlock = ({
   code,
   language,
   showLineNumbers = false,
   disableHover = false,
+  preClassName,
+  wrap = false,
+  scrollbarOnHover = false,
+  noInternalScroll = false,
   className,
   children,
   ...props
@@ -113,8 +131,9 @@ export const CodeBlock = ({
       >
         <div
           className={cn(
-            'relative max-w-full min-w-0 overflow-x-auto',
-            !disableHover && 'scrollbar-hover-visible',
+            'relative max-w-full min-w-0',
+            !noInternalScroll && 'overflow-x-auto',
+            (!disableHover || scrollbarOnHover) && 'scrollbar-hover-visible',
           )}
         >
           <style>{`
@@ -135,16 +154,24 @@ export const CodeBlock = ({
           `}</style>
           <div
             className={cn(
-              '[&>pre]:text-foreground! dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed',
-              isSQL ? '[&>pre]:bg-muted/50!' : '[&>pre]:bg-muted/30!',
+              preBaseClasses,
+              preOverflowClasses(wrap, noInternalScroll),
+              'dark:hidden',
+              !preClassName &&
+                (isSQL ? '[&>pre]:bg-muted/50!' : '[&>pre]:bg-muted/30!'),
+              preClassName,
             )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
             className={cn(
-              '[&>pre]:text-foreground! hidden dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:min-w-0 [&>pre]:overflow-x-auto [&>pre]:px-4 [&>pre]:py-3 [&>pre]:text-sm [&>pre]:leading-relaxed',
-              isSQL ? '[&>pre]:bg-muted/40!' : '[&>pre]:bg-muted/20!',
+              preBaseClasses,
+              preOverflowClasses(wrap, noInternalScroll),
+              'hidden dark:block',
+              !preClassName &&
+                (isSQL ? '[&>pre]:bg-muted/40!' : '[&>pre]:bg-muted/20!'),
+              preClassName,
             )}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: darkHtml }}

@@ -3,19 +3,28 @@ import { Tool } from './tool';
 import TurndownService from 'turndown';
 
 const DESCRIPTION = `
-- Fetches content from a specified URL
-- Takes a URL and optional format as input
-- Fetches the URL content, converts to requested format (markdown by default)
-- Returns the content in the specified format
-- Use this tool when you need to retrieve and analyze web content
+Fetches content from a specified URL. Use for: (1) retrieving a known URL, or (2) web search by building a search-engine URL and fetching the results page.
 
-Usage notes:
-  - IMPORTANT: if another tool is present that offers better web fetching capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.
-  - The URL must be a fully-formed valid URL
-  - HTTP URLs will be automatically upgraded to HTTPS
-  - Format options: "markdown" (default), "text", or "html"
-  - This tool is read-only and does not modify any files
-  - Results may be summarized if the content is very large
+## When to use for web search
+- User asks for current, recent, or real-time information (news, prices, events, "latest", "today").
+- User explicitly asks to "search the web", "look up", or "find online".
+- The answer requires information beyond your training cutoff or from a specific site.
+
+## How to perform web search
+1. Formulate a search query: be specific and use terms that would appear on relevant pages (e.g. "OpenAI CEO 2025" not "who runs OpenAI"). Add 2–3 words of context to improve results. Avoid vague queries like "latest developments" without a topic.
+2. Build a search URL using the query parameter "q" (encode the query for the URL):
+   - Google: https://www.google.com/search?q=ENCODED_QUERY
+   - DuckDuckGo: https://duckduckgo.com/?q=ENCODED_QUERY
+   - Bing: https://www.bing.com/search?q=ENCODED_QUERY
+   Use one of these engines. Prefer a single, focused query per fetch.
+3. Call this tool with that URL. Use format "text" or "markdown" for easier parsing of result snippets.
+4. From the returned content, extract only what is actually present. If the page does not contain the answer, say so clearly (e.g. "The search results didn't include that information") and do not invent or guess. Do not fabricate URLs or sources.
+5. For critical facts, you may call the tool again with a rephrased query to verify.
+
+## General usage
+- URL must be a fully-formed valid URL (http:// or https://). HTTP is upgraded to HTTPS.
+- Format options: "markdown" (default), "text", or "html". This tool is read-only. Results may be summarized if very large.
+- If another tool is present that offers better or more targeted web capabilities, prefer it over this one.
 `;
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024; // 5MB

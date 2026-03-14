@@ -17,11 +17,18 @@ export interface DetectedSuggestion {
   isEndBlock?: boolean;
 }
 
-export function useSuggestionDetection(
-  containerElement: HTMLElement | null,
-  isReady: boolean,
-): DetectedSuggestion[] {
-  return useMemo(() => {
+export interface UseSuggestionDetectionOptions {
+  containerElement: HTMLElement | null;
+  isReady: boolean;
+  contentKey?: unknown;
+}
+
+export function useSuggestionDetection({
+  containerElement,
+  isReady,
+  contentKey,
+}: UseSuggestionDetectionOptions): DetectedSuggestion[] {
+  return useMemo<DetectedSuggestion[]>(() => {
     if (!containerElement || !isReady) {
       return [];
     }
@@ -30,7 +37,7 @@ export function useSuggestionDetection(
       const allElements = Array.from(
         containerElement.querySelectorAll('li, p'),
       );
-      const detected: DetectedSuggestion[] = [];
+      const nextDetected: DetectedSuggestion[] = [];
 
       allElements.forEach((element) => {
         if (element.querySelector('[data-suggestion-button]')) {
@@ -50,13 +57,13 @@ export function useSuggestionDetection(
           const first = matches[0];
           if (!first) return;
           if (matches.length === 1) {
-            detected.push({
+            nextDetected.push({
               element,
               suggestionText: first.text,
               suggestionMetadata: first.metadata,
             });
           } else {
-            detected.push({
+            nextDetected.push({
               element,
               suggestionText: first.text,
               suggestionMatches: matches,
@@ -65,34 +72,36 @@ export function useSuggestionDetection(
         }
       });
 
-      if (detected.length > 0) {
-        detected[detected.length - 1] = {
-          ...detected[detected.length - 1]!,
+      if (nextDetected.length > 0) {
+        nextDetected[nextDetected.length - 1] = {
+          ...nextDetected[nextDetected.length - 1]!,
           isEndBlock: true,
         };
       }
 
-      if (detected.length > 0) {
-        const withMeta = detected.filter(
+      if (nextDetected.length > 0) {
+        const withMeta = nextDetected.filter(
           (d) =>
             d.suggestionMetadata?.requiresDatasource ||
             (d.suggestionMatches?.some((m) => m.metadata?.requiresDatasource) ??
               false),
         );
         console.log('[SuggestionFlow] detection', {
-          count: detected.length,
+          count: nextDetected.length,
           withRequiresDatasource: withMeta.length,
-          sample: detected[0]
+          sample: nextDetected[0]
             ? {
-                text: detected[0].suggestionText?.slice(0, 40),
-                metadata: detected[0].suggestionMetadata,
-                hasMatches: !!detected[0].suggestionMatches?.length,
+                text: nextDetected[0].suggestionText?.slice(0, 40),
+                metadata: nextDetected[0].suggestionMetadata,
+                hasMatches: !!nextDetected[0].suggestionMatches?.length,
               }
             : null,
         });
       }
 
-      return detected;
+      const key = contentKey;
+      void key;
+      return nextDetected;
     } catch (error) {
       console.error(
         '[useSuggestionDetection] Error detecting suggestions:',
@@ -100,5 +109,5 @@ export function useSuggestionDetection(
       );
       return [];
     }
-  }, [containerElement, isReady]);
+  }, [containerElement, isReady, contentKey]);
 }

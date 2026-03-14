@@ -372,18 +372,6 @@ export const DatasourcePreview = forwardRef<
                   <div className="bg-muted/30 dark:bg-muted/20 flex h-full w-full items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="border-muted-foreground/20 border-t-muted-foreground size-8 animate-spin rounded-full border-2" />
-                      <div className="text-foreground text-center text-sm font-medium">
-                        {usesParquetFormat
-                          ? 'Preparing Parquet Preview...'
-                          : usesCsvFormat
-                            ? 'Preparing Data Preview...'
-                            : 'Loading JSON Preview...'}
-                      </div>
-                      <div className="text-muted-foreground px-4 text-center text-xs">
-                        {usesParquetFormat || usesCsvFormat
-                          ? 'Preparing data view'
-                          : 'Fetching data from URL'}
-                      </div>
                     </div>
                   </div>
                 ) : jsonError && !needsPublicationCheck ? (
@@ -487,9 +475,6 @@ export const DatasourcePreview = forwardRef<
                   <div className="bg-background/80 absolute inset-0 z-10 flex items-center justify-center backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-3">
                       <div className="border-muted-foreground/20 border-t-muted-foreground size-6 animate-spin rounded-full border-2" />
-                      <div className="text-muted-foreground text-xs">
-                        Loading preview...
-                      </div>
                     </div>
                   </div>
                 )}

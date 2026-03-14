@@ -5,7 +5,7 @@ export const defaultTransport = (api: string) =>
   new DefaultChatTransport({
     api,
     prepareSendMessagesRequest: (request) => {
-      const { messages, body = {} } = request;
+      const { messages, body = {}, trigger } = request;
       const lastUserMessageIndex = messages.findLastIndex(
         (m) => normalizeUIRole(m.role) === 'user',
       );
@@ -15,6 +15,7 @@ export const defaultTransport = (api: string) =>
         body: {
           ...body,
           messages: lastUserMessage ? [lastUserMessage] : [],
+          ...(trigger ? { trigger } : {}),
         },
       };
     },

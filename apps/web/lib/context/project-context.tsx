@@ -20,6 +20,7 @@ import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { updateWorkspaceProjectInLocalStorage } from '~/lib/workspace/workspace-helper';
 
 const STORAGE_KEY = 'qwery:last-project-slug';
+const LAST_USED_KEY = 'qwery:last-project-used-at';
 
 type ProjectContextValue = {
   project: Project | null;
@@ -39,6 +40,7 @@ function getStoredSlug(): string | null {
 function setStoredSlug(slug: string) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, slug);
+  localStorage.setItem(LAST_USED_KEY, Date.now().toString());
 }
 
 const noopSubscribe = () => () => {};
@@ -156,4 +158,18 @@ export function useProject(): ProjectContextValue {
 
 export function useProjectOptional(): ProjectContextValue | null {
   return useContext(ProjectContext);
+}
+
+export function ProjectGuard({ children }: { children: ReactNode }) {
+  const ctx = useProject();
+
+  if (ctx.isLoading) {
+    return <div className="flex h-full items-center justify-center" />;
+  }
+
+  if (!ctx.project || !ctx.organizationId) {
+    throw new Response('Not Found', { status: 404 });
+  }
+
+  return children;
 }

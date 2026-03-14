@@ -11,6 +11,7 @@ import {
   getDatasourcesByProjectIdKey,
   getDatasourcesKey,
 } from '~/lib/queries/use-get-datasources';
+import { datasourceMetadataKeys } from '~/lib/queries/datasource-metadata-keys';
 
 export function useUpdateDatasource(
   datasourceRepository: IDatasourceRepository,
@@ -36,6 +37,10 @@ export function useUpdateDatasource(
               ),
             })
           : Promise.resolve(),
+        queryClient.removeQueries({
+          predicate: ({ queryKey }) =>
+            datasourceMetadataKeys.isDetailOf(queryKey, datasourceOutput.id),
+        }),
       ]);
       onSuccess(datasourceOutput as unknown as Datasource);
     },

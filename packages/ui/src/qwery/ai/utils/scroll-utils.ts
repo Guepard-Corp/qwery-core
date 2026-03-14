@@ -2,6 +2,132 @@
  * Utility functions for smooth scrolling within scrollable containers
  */
 
+type ScrollHighlightOptions = {
+  behavior?: ScrollBehavior;
+  block?: ScrollLogicalPosition;
+  highlightDuration?: number;
+};
+
+function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
+  if (!element) return null;
+  let parent = element.parentElement;
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    const overflowY = style.overflowY;
+    const overflow = style.overflow;
+    if (
+      (overflowY === 'auto' ||
+        overflowY === 'scroll' ||
+        overflow === 'auto' ||
+        overflow === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
+/**
+ * Runs a highlight callback after scroll completes.
+ * Uses scrollend event if available, else polls scroll position.
+ */
+function runHighlightAfterScroll(
+  element: HTMLElement,
+  options: { behavior?: ScrollBehavior },
+  triggerHighlight: () => void,
+): void {
+  const scrollContainer = findScrollableParent(element);
+  const isSmoothScroll = (options.behavior ?? 'smooth') === 'smooth';
+  let hasTriggered = false;
+
+  const run = () => {
+    if (hasTriggered) return;
+    hasTriggered = true;
+    setTimeout(triggerHighlight, 150);
+  };
+
+  if (isSmoothScroll && scrollContainer) {
+    if ('onscrollend' in scrollContainer) {
+      scrollContainer.addEventListener('scrollend', run, { once: true });
+      setTimeout(run, 1200);
+    } else {
+      let lastScrollTop = (scrollContainer as HTMLElement).scrollTop;
+      let scrollCheckInterval: ReturnType<typeof setInterval> | null = null;
+      let scrollCheckTriggered = false;
+
+      const checkScrollStop = () => {
+        if (scrollCheckTriggered) return;
+        const current = (scrollContainer as HTMLElement).scrollTop;
+        if (Math.abs(current - lastScrollTop) < 1) {
+          if (scrollCheckInterval) {
+            clearInterval(scrollCheckInterval);
+            scrollCheckInterval = null;
+          }
+          scrollCheckTriggered = true;
+          run();
+        } else {
+          lastScrollTop = current;
+        }
+      };
+
+      setTimeout(() => {
+        if (!scrollCheckTriggered) {
+          scrollCheckInterval = setInterval(checkScrollStop, 50);
+          setTimeout(() => {
+            if (scrollCheckInterval) clearInterval(scrollCheckInterval);
+            if (!scrollCheckTriggered) {
+              scrollCheckTriggered = true;
+              run();
+            }
+          }, 1100);
+        }
+      }, 100);
+    }
+  } else {
+    run();
+  }
+}
+
+/**
+ * Scrolls to element with retry, then runs callback on success.
+ * When scopeRoot is provided, search is limited to that subtree.
+ */
+function scrollToWithRetry(
+  selector: string,
+  scrollOptions: Parameters<typeof scrollToElement>[1] & { offset?: number },
+  onSuccess: (element: HTMLElement) => void,
+  maxRetries = 3,
+  scopeRoot?: Element | null,
+): boolean {
+  let retryCount = 0;
+  const root = scopeRoot ?? document;
+
+  const attempt = (): boolean => {
+    const element = root.querySelector(selector) as HTMLElement | null;
+    if (!element) {
+      if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(attempt, 200);
+        return false;
+      }
+      return false;
+    }
+
+    scrollToElement(element, {
+      behavior: scrollOptions.behavior ?? 'smooth',
+      block: scrollOptions.block ?? 'center',
+      inline: scrollOptions.inline ?? 'nearest',
+      offset: scrollOptions.offset,
+    });
+    onSuccess(element);
+    return true;
+  };
+
+  return attempt();
+}
+
 // Track if styles have been injected
 let stylesInjected = false;
 
@@ -174,6 +300,132 @@ function injectHighlightStyles(): void {
   stylesInjected = true;
 }
 
+type TodoHighlightConfig = {
+  dataAttr: string;
+  baseClass: string;
+  styleId: string;
+  borderRadius: string;
+  darkMode?: boolean;
+};
+
+function createTodoHighlightHandler(config: TodoHighlightConfig) {
+  let injected = false;
+  let activeTimeout: ReturnType<typeof setTimeout> | null = null;
+  let activeElement: HTMLElement | null = null;
+
+  const selector = `[${config.dataAttr}]`;
+  const fadeInClass = `${config.baseClass}-fade-in`;
+  const fadeOutClass = `${config.baseClass}-fade-out`;
+
+  function inject(): void {
+    if (injected || typeof document === 'undefined') return;
+    if (document.getElementById(config.styleId)) {
+      injected = true;
+      return;
+    }
+    const darkCss = config.darkMode
+      ? `
+    .dark ${selector}.${config.baseClass} {
+      background: linear-gradient(to bottom, rgba(255, 203, 81, 0.15), rgba(255, 203, 81, 0.25), rgba(255, 203, 81, 0.15)) !important;
+    }`
+      : '';
+    const style = document.createElement('style');
+    style.id = config.styleId;
+    style.textContent = `
+    ${selector}.${config.baseClass} {
+      position: relative !important;
+      background: linear-gradient(to bottom, rgba(255, 203, 81, 0.2), rgba(255, 203, 81, 0.3), rgba(255, 203, 81, 0.2)) !important;
+      border-radius: ${config.borderRadius} !important;
+      box-shadow: inset 0 0 0 1px rgba(255, 203, 81, 0.4) !important;
+      transition: background 0.3s, box-shadow 0.3s !important;
+    }
+    ${selector}.${fadeInClass} {
+      animation: ${config.baseClass}-fade-in 0.4s ease-out forwards !important;
+    }
+    @keyframes ${config.baseClass}-fade-in {
+      0% { background: transparent !important; box-shadow: none !important; }
+      100% { background: linear-gradient(to bottom, rgba(255, 203, 81, 0.2), rgba(255, 203, 81, 0.3), rgba(255, 203, 81, 0.2)) !important; box-shadow: inset 0 0 0 1px rgba(255, 203, 81, 0.4) !important; }
+    }
+    ${selector}.${fadeOutClass} {
+      animation: ${config.baseClass}-fade-out 0.5s ease-in forwards !important;
+    }
+    @keyframes ${config.baseClass}-fade-out {
+      0% { background: linear-gradient(to bottom, rgba(255, 203, 81, 0.2), rgba(255, 203, 81, 0.3), rgba(255, 203, 81, 0.2)) !important; box-shadow: inset 0 0 0 1px rgba(255, 203, 81, 0.4) !important; }
+      100% { background: transparent !important; box-shadow: none !important; }
+    }
+    ${darkCss}
+    `;
+    document.head.appendChild(style);
+    injected = true;
+  }
+
+  function remove(): void {
+    if (activeTimeout) {
+      clearTimeout(activeTimeout);
+      activeTimeout = null;
+    }
+    if (activeElement) {
+      activeElement.classList.remove(
+        config.baseClass,
+        fadeInClass,
+        fadeOutClass,
+      );
+      activeElement = null;
+    }
+    document
+      .querySelectorAll(
+        `${selector}.${config.baseClass}, ${selector}.${fadeInClass}, ${selector}.${fadeOutClass}`,
+      )
+      .forEach((el) =>
+        el.classList.remove(config.baseClass, fadeInClass, fadeOutClass),
+      );
+  }
+
+  function add(element: HTMLElement, duration = 2000): void {
+    remove();
+    inject();
+    if (!element.hasAttribute(config.dataAttr)) return;
+
+    element.classList.add(fadeInClass, config.baseClass);
+    activeElement = element;
+    void element.offsetHeight;
+
+    setTimeout(() => {
+      if (element?.classList.contains(fadeInClass))
+        element.classList.remove(fadeInClass);
+    }, 400);
+
+    activeTimeout = setTimeout(() => {
+      if (element?.classList.contains(config.baseClass)) {
+        element.classList.add(fadeOutClass);
+        element.classList.remove(config.baseClass);
+        setTimeout(() => {
+          element?.classList.remove(fadeOutClass);
+          if (activeElement === element) activeElement = null;
+        }, 500);
+      }
+      activeTimeout = null;
+    }, duration);
+  }
+
+  return { inject, remove, add };
+}
+
+const todoTaskHighlight = createTodoHighlightHandler({
+  dataAttr: 'data-todo-task-id',
+  baseClass: 'todo-task-highlight',
+  styleId: 'qwery-todo-task-highlight-styles',
+  borderRadius: '0.5rem',
+  darkMode: true,
+});
+
+const todoDelimiterHighlight = createTodoHighlightHandler({
+  dataAttr: 'data-todo-delimiter-task-id',
+  baseClass: 'todo-delimiter-highlight',
+  styleId: 'qwery-todo-delimiter-highlight-styles',
+  borderRadius: '0.375rem',
+});
+
 // Track active highlight timeout for cleanup
 let activeHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 let activeHighlightElement: HTMLElement | null = null;
@@ -233,15 +485,7 @@ function addHighlight(element: HTMLElement, duration: number = 2500): void {
   element.classList.add('suggestion-highlight-fade-in', 'suggestion-highlight');
   activeHighlightElement = element;
 
-  // Force a reflow to ensure styles are applied
   void element.offsetHeight;
-
-  // Debug log
-  console.log('[ScrollHighlight] Added highlight to element:', {
-    selector: `[data-suggestion-id="${element.getAttribute('data-suggestion-id')}"]`,
-    hasClass: element.classList.contains('suggestion-highlight'),
-    computedStyle: window.getComputedStyle(element).border,
-  });
 
   // Remove fade-in class after animation completes
   setTimeout(() => {
@@ -271,33 +515,87 @@ function addHighlight(element: HTMLElement, duration: number = 2500): void {
 }
 
 /**
- * Finds the scrollable parent container of an element
+ * Scrolls to a todo task row in the todo list and highlights it briefly.
+ * When scopeMessageId is provided, search is limited to that message container.
+ * If [data-message-id] is not found, falls back to document-wide search.
  */
-function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
-  if (!element) return null;
+export function scrollToTodoTaskAndHighlight(
+  taskId: string,
+  options: ScrollHighlightOptions & {
+    maxRetries?: number;
+    scopeMessageId?: string;
+  } = {},
+): boolean {
+  const selector = `[data-todo-task-id="${taskId}"]`;
+  const highlightDuration = options.highlightDuration ?? 2000;
+  const scopeRoot = options.scopeMessageId
+    ? (document.querySelector(
+        `[data-message-id="${options.scopeMessageId}"]`,
+      ) as HTMLElement | null)
+    : undefined;
 
-  let parent = element.parentElement;
-  while (parent) {
-    const style = window.getComputedStyle(parent);
-    const overflowY = style.overflowY;
-    const overflow = style.overflow;
+  return scrollToWithRetry(
+    selector,
+    {
+      behavior: options.behavior ?? 'smooth',
+      block: options.block ?? 'center',
+      inline: 'nearest',
+      offset: options.block === 'start' ? -20 : 0,
+    },
+    (element) => {
+      runHighlightAfterScroll(element, { behavior: options.behavior }, () => {
+        const searchRoot = scopeRoot ?? document;
+        const current = searchRoot.querySelector(
+          selector,
+        ) as HTMLElement | null;
+        if (current) todoTaskHighlight.add(current, highlightDuration);
+      });
+    },
+    options.maxRetries ?? 3,
+    scopeRoot ?? undefined,
+  );
+}
 
-    // Check if this element is scrollable
-    if (
-      (overflowY === 'auto' ||
-        overflowY === 'scroll' ||
-        overflow === 'auto' ||
-        overflow === 'scroll') &&
-      parent.scrollHeight > parent.clientHeight
-    ) {
-      return parent;
-    }
+/**
+ * Scrolls down from todo list to the task delimiter and highlights it briefly.
+ * When scopeMessageId is provided, search is limited to that message container
+ * so we don't scroll to a delimiter from another agent response.
+ * If [data-message-id] is not found, falls back to document-wide search.
+ */
+export function scrollToTodoDelimiter(
+  taskId: string,
+  options: ScrollHighlightOptions & {
+    maxRetries?: number;
+    scopeMessageId?: string;
+  } = {},
+): boolean {
+  const selector = `[data-todo-delimiter-task-id="${taskId}"]`;
+  const highlightDuration = options.highlightDuration ?? 2000;
+  const scopeRoot = options.scopeMessageId
+    ? (document.querySelector(
+        `[data-message-id="${options.scopeMessageId}"]`,
+      ) as HTMLElement | null)
+    : undefined;
 
-    parent = parent.parentElement;
-  }
-
-  // Fallback to window if no scrollable parent found
-  return null;
+  return scrollToWithRetry(
+    selector,
+    {
+      behavior: options.behavior ?? 'smooth',
+      block: options.block ?? 'center',
+      inline: 'nearest',
+    },
+    (element) => {
+      runHighlightAfterScroll(element, { behavior: options.behavior }, () => {
+        const searchRoot = scopeRoot ?? document;
+        const current = searchRoot.querySelector(
+          selector,
+        ) as HTMLElement | null;
+        if (current) todoDelimiterHighlight.add(current, highlightDuration);
+      });
+    },
+    options.maxRetries ?? 3,
+    scopeRoot ?? undefined,
+  );
 }
 
 /**
@@ -410,82 +708,12 @@ export function scrollToElementBySelector(
       offset: options.offset,
     });
 
-    // Add highlight after scroll completes (wait for smooth scroll animation)
     if (enableHighlight) {
-      const scrollContainer = findScrollableParent(element);
-      const isSmoothScroll = options.behavior === 'smooth';
-
-      const triggerHighlight = () => {
-        // Small delay after scroll ends to ensure element is fully visible and animation can start smoothly
-        setTimeout(() => {
-          const currentElement = document.querySelector(
-            selector,
-          ) as HTMLElement | null;
-          if (currentElement) {
-            addHighlight(currentElement, highlightDuration);
-          } else {
-            console.warn(
-              '[ScrollHighlight] Element not found for highlighting:',
-              selector,
-            );
-          }
-        }, 150);
-      };
-
-      if (isSmoothScroll && scrollContainer) {
-        // Try to use scrollend event if available (modern browsers)
-        if ('onscrollend' in scrollContainer) {
-          scrollContainer.addEventListener('scrollend', triggerHighlight, {
-            once: true,
-          });
-          // Fallback timeout in case scrollend doesn't fire (max 1.2s wait)
-          setTimeout(triggerHighlight, 1200);
-        } else {
-          // Fallback: monitor scroll position to detect when scrolling stops
-          let lastScrollTop = (scrollContainer as HTMLElement).scrollTop;
-          let scrollCheckInterval: ReturnType<typeof setInterval> | null = null;
-          let hasTriggered = false;
-
-          const checkScrollStop = () => {
-            if (hasTriggered) return;
-
-            const currentScrollTop = (scrollContainer as HTMLElement).scrollTop;
-
-            if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
-              // Scrolling has stopped (within 1px tolerance)
-              if (scrollCheckInterval) {
-                clearInterval(scrollCheckInterval);
-                scrollCheckInterval = null;
-              }
-              hasTriggered = true;
-              triggerHighlight();
-            } else {
-              lastScrollTop = currentScrollTop;
-            }
-          };
-
-          // Start checking after scroll begins (100ms delay)
-          setTimeout(() => {
-            if (!hasTriggered) {
-              scrollCheckInterval = setInterval(checkScrollStop, 50);
-              // Maximum wait time fallback (1.2s total)
-              setTimeout(() => {
-                if (scrollCheckInterval) {
-                  clearInterval(scrollCheckInterval);
-                  scrollCheckInterval = null;
-                }
-                if (!hasTriggered) {
-                  hasTriggered = true;
-                  triggerHighlight();
-                }
-              }, 1100);
-            }
-          }, 100);
-        }
-      } else {
-        // Instant scroll or no container - highlight with small delay
-        triggerHighlight();
-      }
+      runHighlightAfterScroll(element, { behavior: options.behavior }, () => {
+        const current = document.querySelector(selector) as HTMLElement | null;
+        if (current) addHighlight(current, highlightDuration);
+        else console.warn('[ScrollHighlight] Element not found:', selector);
+      });
     }
 
     return true;

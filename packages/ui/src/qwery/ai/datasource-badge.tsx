@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Database,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  ExternalLink,
+} from 'lucide-react';
 import {
   HoverCard,
   HoverCardContent,
@@ -29,74 +35,78 @@ export function DatasourceBadge({
   const displayName = datasource.name || datasource.slug || datasource.id;
 
   return (
-    <HoverCard>
+    <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>
-        <div
+        <a
+          href={`/ds/${datasource.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className={cn(
-            'group border-border bg-muted/50 hover:bg-muted flex h-6 max-w-full min-w-0 cursor-default items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+            'group border-border bg-background/50 ring-offset-background hover:bg-background relative flex h-7 max-w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-xs backdrop-blur-sm transition-all hover:shadow-sm',
             className,
           )}
         >
-          {iconUrl ? (
-            <img
-              src={iconUrl}
-              alt={displayName}
-              className={cn(
-                'h-3.5 w-3.5 shrink-0 object-contain',
-                datasource.datasource_provider === 'json-online' &&
-                  'dark:invert',
-              )}
-            />
-          ) : (
-            <Database className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-          )}
-          <span className="min-w-0 truncate text-xs font-medium">
+          <div className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-sm">
+            {iconUrl ? (
+              <img
+                src={iconUrl}
+                alt={displayName}
+                className={cn(
+                  'h-3.5 w-3.5 object-contain transition-transform group-hover:scale-105',
+                  datasource.datasource_provider === 'json-online' &&
+                    'dark:invert',
+                )}
+              />
+            ) : (
+              <Database className="text-muted-foreground group-hover:text-foreground h-3 w-3 transition-colors" />
+            )}
+          </div>
+          <span className="text-foreground/70 group-hover:text-foreground min-w-0 truncate font-semibold tracking-tight">
             {displayName}
           </span>
-        </div>
+        </a>
       </HoverCardTrigger>
       <HoverCardContent
-        className="w-72 max-w-[calc(100vw-2rem)] p-4"
+        className="border-border bg-popover z-[100] w-72 overflow-hidden rounded-lg border p-4 shadow-xl"
         side="top"
         align="end"
-        sideOffset={8}
+        sideOffset={12}
       >
-        <div className="flex max-w-full min-w-0 gap-4">
-          {/* Header with icon and name */}
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-              {iconUrl ? (
-                <img
-                  src={iconUrl}
-                  alt={datasource.name || datasource.slug || datasource.id}
-                  className={cn(
-                    'h-6 w-6 object-contain',
-                    datasource.datasource_provider === 'json-online' &&
-                      'dark:invert',
-                  )}
-                />
-              ) : (
-                <Database className="text-muted-foreground h-5 w-5" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="truncate text-sm leading-tight font-semibold">
-                {datasource.name || datasource.slug || datasource.id}
-              </h4>
-            </div>
+        <a
+          href={`/ds/${datasource.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-4 transition-opacity hover:opacity-90"
+        >
+          <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-lg shadow-inner">
+            {iconUrl ? (
+              <img
+                src={iconUrl}
+                alt={datasource.name || datasource.slug || datasource.id}
+                className={cn(
+                  'h-7 w-7 object-contain',
+                  datasource.datasource_provider === 'json-online' &&
+                    'dark:invert',
+                )}
+              />
+            ) : (
+              <Database className="text-muted-foreground h-6 w-6" />
+            )}
           </div>
-
-          {/* Details */}
-          {datasource.datasource_provider && (
-            <div>
-              <div className="bg-muted/50 border-border inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5">
-                <span className="text-xs font-medium capitalize">
+          <div className="min-w-0 flex-1 space-y-1">
+            <h4 className="text-popover-foreground truncate text-sm leading-tight font-bold tracking-tight">
+              {datasource.name || datasource.slug || datasource.id}
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {datasource.datasource_provider && (
+                <span className="bg-accent text-accent-foreground inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
                   {datasource.datasource_provider.replace(/_/g, ' ')}
                 </span>
-              </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+          <ExternalLink className="text-muted-foreground h-4 w-4 shrink-0" />
+        </a>
       </HoverCardContent>
     </HoverCard>
   );
@@ -166,116 +176,159 @@ function DatasourceBadgesHover({
 
   const handlePrevious = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     setCurrentPage((prev) => Math.max(0, prev - 1));
   };
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
   };
 
+  // Get first 3 unique icons for the stack
+  const stackIcons = datasources.slice(0, 3).map((ds) => ({
+    url: pluginLogoMap?.get(ds.datasource_provider),
+    provider: ds.datasource_provider,
+  }));
+
   return (
-    <HoverCard open={isOpen} onOpenChange={handleOpenChange}>
+    <HoverCard
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      openDelay={200}
+      closeDelay={100}
+    >
       <HoverCardTrigger asChild>
-        <div className="group border-border bg-muted/50 hover:bg-muted flex h-6 max-w-full min-w-0 cursor-default items-center gap-1.5 rounded-md border px-2 text-xs transition-colors">
-          <Database className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-          <span className="min-w-0 truncate text-xs font-medium">
+        <div className="group border-border bg-background/50 ring-offset-background hover:bg-background relative flex h-7 cursor-pointer items-center gap-2 rounded-md border pr-3 pl-1.5 text-xs backdrop-blur-sm transition-all hover:shadow-sm">
+          <div className="flex -space-x-2">
+            {stackIcons.map((icon, i) => (
+              <div
+                key={i}
+                className="border-background/50 bg-muted flex h-5 w-5 items-center justify-center rounded border-2"
+                style={{ zIndex: stackIcons.length - i }}
+              >
+                {icon.url ? (
+                  <img
+                    src={icon.url}
+                    alt=""
+                    className={cn(
+                      'h-3 w-3 object-contain',
+                      icon.provider === 'json-online' && 'dark:invert',
+                    )}
+                  />
+                ) : (
+                  <Database className="text-muted-foreground h-2.5 w-2.5" />
+                )}
+              </div>
+            ))}
+            {datasources.length > 3 && (
+              <div className="border-background/50 bg-muted z-0 flex h-5 w-5 items-center justify-center rounded border-2 text-[8px] font-bold">
+                +{datasources.length - 3}
+              </div>
+            )}
+          </div>
+          <span className="text-foreground/70 group-hover:text-foreground font-bold tracking-tight">
             {datasources.length} datasources
           </span>
         </div>
       </HoverCardTrigger>
       <HoverCardContent
-        className="w-72 max-w-[calc(100vw-2rem)] p-4"
+        className="border-border bg-popover z-[100] w-72 overflow-hidden rounded-lg border p-0 shadow-xl"
         side="top"
         align="end"
-        sideOffset={8}
+        sideOffset={12}
       >
-        <div className="max-w-full min-w-0 space-y-4">
+        <div className="overflow-hidden">
           {/* Header */}
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">
-                Selected Datasources
-              </p>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                {datasources.length}{' '}
-                {datasources.length === 1 ? 'datasource' : 'datasources'}
-              </p>
+          <div className="border-border/40 bg-muted/30 flex items-center justify-between border-b px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="bg-accent/40 flex h-7 w-7 items-center justify-center rounded">
+                <Layers className="text-accent-foreground h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-popover-foreground text-xs font-bold tracking-tight">
+                  Active Context
+                </p>
+                <p className="text-muted-foreground text-[9px] font-medium tracking-widest uppercase">
+                  {datasources.length} selected
+                </p>
+              </div>
             </div>
             {totalPages > 1 && (
-              <div className="bg-muted/50 border-border flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
-                <span className="text-muted-foreground text-xs font-medium whitespace-nowrap">
-                  {currentPage + 1}/{totalPages}
-                </span>
+              <div className="bg-muted/50 text-muted-foreground flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold">
+                {currentPage + 1} / {totalPages}
               </div>
             )}
           </div>
 
-          {/* Divider */}
-          <div className="bg-border h-px" />
-
-          {/* Datasources List */}
-          <div className="max-w-full min-w-0 space-y-1.5">
+          {/* List */}
+          <div className="max-h-[260px] space-y-0.5 overflow-y-auto p-1.5">
             {currentItems.map((datasource) => {
               const iconUrl = pluginLogoMap?.get(
                 datasource.datasource_provider,
               );
-              // Use semantic name (name field) instead of technical identifier
               const displayName =
                 datasource.name || datasource.slug || datasource.id;
               return (
-                <div
+                <a
                   key={datasource.id}
-                  className="bg-muted/50 border-border hover:bg-muted flex max-w-full min-w-0 items-center gap-2 rounded-md border p-2 transition-colors"
+                  href={`/ds/${datasource.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group hover:bg-muted relative flex items-center gap-2.5 rounded p-1.5 transition-all"
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+                  <div className="bg-muted group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner transition-colors">
                     {iconUrl ? (
                       <img
                         src={iconUrl}
-                        alt={displayName}
+                        alt=""
                         className={cn(
-                          'h-5 w-5 object-contain',
+                          'h-4 w-4 object-contain',
                           datasource.datasource_provider === 'json-online' &&
                             'dark:invert',
                         )}
                       />
                     ) : (
-                      <Database className="text-muted-foreground h-4 w-4" />
+                      <Database className="text-muted-foreground h-3 w-3" />
                     )}
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className="min-w-0 truncate text-xs font-medium break-words">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center">
+                    <p className="text-popover-foreground truncate text-[11px] font-bold tracking-tight">
                       {displayName}
                     </p>
-                    {datasource.datasource_provider && (
-                      <span className="bg-muted text-muted-foreground inline-flex w-fit shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium capitalize">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      <span className="text-muted-foreground truncate text-[9px] font-medium tracking-widest uppercase">
                         {datasource.datasource_provider.replace(/_/g, ' ')}
                       </span>
-                    )}
+                    </div>
                   </div>
-                </div>
+                  <ExternalLink className="text-muted-foreground h-3 w-3 shrink-0 opacity-30 transition-opacity group-hover:opacity-100" />
+                </a>
               );
             })}
           </div>
+
+          {/* Paging Footer */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-2 border-t pt-2">
+            <div className="border-border/40 bg-muted/20 flex items-center justify-between border-t px-2 py-1.5">
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-7 px-2"
+                size="icon"
+                className="h-7 w-7 p-0"
                 onClick={handlePrevious}
                 disabled={currentPage === 0}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
-              <span className="text-muted-foreground flex-1 text-center text-xs">
-                {startIndex + 1}-{Math.min(endIndex, datasources.length)} of{' '}
+              <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
+                {startIndex + 1} - {Math.min(endIndex, datasources.length)} of{' '}
                 {datasources.length}
               </span>
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-7 px-2"
+                size="icon"
+                className="h-7 w-7 p-0"
                 onClick={handleNext}
                 disabled={currentPage >= totalPages - 1}
               >

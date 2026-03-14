@@ -1,3 +1,36 @@
+/* Scrollbar visible on hover - overrides base scrollbar styles */
+.scrollbar-hover-visible {
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-hover-visible:hover,
+.group:hover .scrollbar-hover-visible {
+  scrollbar-color: rgba(155, 155, 155, 0.3) transparent;
+}
+.dark .scrollbar-hover-visible:hover,
+.dark .group:hover .scrollbar-hover-visible {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.scrollbar-hover-visible::-webkit-scrollbar {
+  height: 5px !important;
+  width: 5px !important;
+  background: transparent !important;
+}
+.scrollbar-hover-visible::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.scrollbar-hover-visible::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 10px;
+}
+.scrollbar-hover-visible:hover::-webkit-scrollbar-thumb,
+.group:hover .scrollbar-hover-visible::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 155, 0.3) !important;
+}
+.dark .scrollbar-hover-visible:hover::-webkit-scrollbar-thumb,
+.dark .group:hover .scrollbar-hover-visible::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
 [data-radix-popper-content-wrapper] {
     @apply w-full md:w-auto;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Command,
   CommandEmpty,
@@ -49,6 +49,16 @@ export interface ConversationListProps {
   onSearchQueryChange?: (query: string) => void;
   isEditMode?: boolean;
   onEditModeChange?: (isEditMode: boolean) => void;
+  renderLoadMoreFooter?: (props: {
+    hasMore: boolean;
+    onLoadMore: () => void;
+    isLoading: boolean;
+  }) => React.ReactNode;
+  onLoadMoreStateChange?: (state: {
+    hasMore: boolean;
+    onLoadMore: () => void;
+    isLoading: boolean;
+  }) => void;
 }
 
 export function ConversationList({
@@ -70,6 +80,8 @@ export function ConversationList({
   onSearchQueryChange,
   isEditMode: externalEditMode,
   onEditModeChange,
+  renderLoadMoreFooter,
+  onLoadMoreStateChange,
 }: ConversationListProps) {
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const searchQuery =
@@ -88,7 +100,7 @@ export function ConversationList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
-  const [_isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
 
@@ -122,7 +134,7 @@ export function ConversationList({
     return sortTimeGroups(groupedConversations);
   }, [groupedConversations]);
 
-  const _hasMore = allConversations.length > visibleCount;
+  const hasMore = allConversations.length > visibleCount;
 
   const handleConversationSelect = (conversationSlug: string) => {
     if (!isEditMode) {
@@ -238,19 +250,33 @@ export function ConversationList({
     });
   }, [conversations]);
 
-  const _handleLoadMore = () => {
+  const isSearching = searchQuery.trim().length > 0;
+
+  const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));
       setIsLoadingMore(false);
     }, 100);
-  };
+  }, [allConversations.length]);
 
-  const isSearching = searchQuery.trim().length > 0;
+  useEffect(() => {
+    onLoadMoreStateChange?.({
+      hasMore: !isSearching && hasMore,
+      onLoadMore: handleLoadMore,
+      isLoading: isLoadingMore,
+    });
+  }, [
+    onLoadMoreStateChange,
+    isSearching,
+    hasMore,
+    isLoadingMore,
+    handleLoadMore,
+  ]);
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
-      <Command className="h-full rounded-none border-none bg-transparent">
+    <div className={cn('flex h-full min-h-0 flex-col', className)}>
+      <Command className="min-h-0 flex-1 rounded-none border-none bg-transparent">
         {showHeader && (
           <div className="shrink-0 border-b px-4 py-3">
             <div className="flex items-center gap-2">
@@ -291,7 +317,7 @@ export function ConversationList({
             </div>
           </div>
         )}
-        <CommandList className="max-h-none flex-1 overflow-y-auto">
+        <CommandList className="max-h-none min-h-0 flex-1 overflow-y-auto">
           <CommandEmpty>
             <div className="flex flex-col items-center gap-3 py-8">
               <div className="bg-muted flex size-12 items-center justify-center rounded-full">
@@ -714,6 +740,30 @@ export function ConversationList({
           )}
         </CommandList>
       </Command>
+
+      {!isSearching &&
+        hasMore &&
+        !onLoadMoreStateChange &&
+        (renderLoadMoreFooter ? (
+          renderLoadMoreFooter({
+            hasMore,
+            onLoadMore: handleLoadMore,
+            isLoading: isLoadingMore,
+          })
+        ) : (
+          <div className="border-border bg-background shrink-0 border-t px-4 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className="text-muted-foreground hover:text-foreground border-border h-9 w-full border"
+              data-test="conversation-load-more"
+            >
+              {isLoadingMore ? 'Loading...' : 'Load more'}
+            </Button>
+          </div>
+        ))}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

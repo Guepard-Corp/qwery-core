@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowUpLeft } from 'lucide-react';
-import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import { Message, MessageContent } from '../../ai-elements/message';
 import { scrollToElementBySelector } from './utils/scroll-utils';
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
+import { DatasourceSelector } from './datasource-selector';
 import { cleanContextMarkers } from './utils/message-context';
+import { cleanSuggestionsForDisplay } from './utils/suggestion-pattern';
 import {
   HoverCard,
   HoverCardContent,
@@ -34,7 +34,11 @@ export interface UserMessageBubbleProps {
   }>; // Messages array to find user question
   className?: string;
   datasources?: DatasourceItem[];
+  allDatasources?: DatasourceItem[];
   pluginLogoMap?: Map<string, string>;
+  onEditStart?: (text: string, datasourceIds: string[]) => void;
+  isLastUserMessage?: boolean;
+  timestamp?: Date | string;
 }
 
 /**
@@ -262,27 +266,8 @@ function getPreviewText(
   response: string,
   suggestionText: string,
 ): { preview: React.ReactNode; fullText: string } {
-  // Always show the suggestion text in bold (mandatory)
-  // Try to find and spotlight the suggestion within the response
-  const spotlight = findSuggestionInResponse(response, suggestionText);
-
-  if (spotlight) {
-    const { before, suggestion, after } = spotlight;
-
-    const preview = (
-      <>
-        {before && <span>{before} </span>}
-        <span className="font-bold">{suggestion}</span>
-        {after && <span> {after}</span>}
-      </>
-    );
-
-    return { preview, fullText: response };
-  }
-
-  // Fallback: if suggestion not found in response, show the suggestion text itself in bold
-  // Then show surrounding text from response
-  const cleanResponse = response
+  const fullText = cleanSuggestionsForDisplay(response);
+  const cleanedResponse = fullText
     .replace(/#{1,6}\s+/g, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
@@ -292,14 +277,45 @@ function getPreviewText(
     .replace(/\n+/g, ' ')
     .trim();
 
+  const spotlight = findSuggestionInResponse(cleanedResponse, suggestionText);
+
+  const CONTEXT_CHARS = 60;
+
+  if (spotlight) {
+    const { before, suggestion, after } = spotlight;
+    const truncBefore =
+      before.length > CONTEXT_CHARS
+        ? `…${before.slice(-CONTEXT_CHARS)}`
+        : before;
+    const truncAfter =
+      after.length > CONTEXT_CHARS
+        ? `${after.slice(0, CONTEXT_CHARS)}…`
+        : after;
+
+    const preview = (
+      <>
+        {truncBefore && <span>{truncBefore} </span>}
+        <span className="font-bold">{suggestion}</span>
+        {truncAfter && <span> {truncAfter}</span>}
+      </>
+    );
+
+    return { preview, fullText };
+  }
+
+  const truncatedResponse =
+    cleanedResponse.length > CONTEXT_CHARS * 2
+      ? `${cleanedResponse.slice(0, CONTEXT_CHARS * 2)}…`
+      : cleanedResponse;
+
   const preview = (
     <>
       <span className="font-bold">{suggestionText}</span>
-      {cleanResponse && <span> {cleanResponse}</span>}
+      {truncatedResponse && <span> {truncatedResponse}</span>}
     </>
   );
 
-  return { preview, fullText: response };
+  return { preview, fullText };
 }
 
 function getUserQuestionFromParentId(
@@ -377,6 +393,24 @@ function getUserQuestionFromParentId(
   return undefined;
 }
 
+export function formatMessageTime(value: Date | string): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return d.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+export function formatMessageDateTime(value: Date | string): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return d.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    hour12: true,
+  });
+}
+
 export function UserMessageBubble({
   text,
   context,
@@ -384,7 +418,11 @@ export function UserMessageBubble({
   messageId,
   className,
   datasources,
+  allDatasources,
   pluginLogoMap,
+  onEditStart: _onEditStart,
+  isLastUserMessage = false,
+  timestamp: _timestamp,
 }: UserMessageBubbleProps) {
   const hasContext = context && context.lastAssistantResponse;
   const hasSourceSuggestion = context?.sourceSuggestionId;
@@ -442,40 +480,72 @@ export function UserMessageBubble({
     messageId,
   );
 
+  const showDatasourceSelectorOnHover =
+    hasSourceSuggestion &&
+    allDatasources &&
+    pluginLogoMap &&
+    allDatasources.length > 0;
+
+  const badgeVisibilityClass = isLastUserMessage
+    ? 'opacity-100'
+    : 'opacity-0 transition-opacity group-hover/msg:opacity-100';
+
   return (
     <div className="flex flex-col items-end gap-1.5">
-      {/* Datasources displayed above the message bubble */}
       {datasources && datasources.length > 0 && (
-        <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
-          <DatasourceBadges
-            datasources={datasources}
-            pluginLogoMap={pluginLogoMap}
-          />
+        <div
+          className={cn(
+            'group/ds relative flex min-h-6 w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden',
+            badgeVisibilityClass,
+          )}
+        >
+          {showDatasourceSelectorOnHover ? (
+            <>
+              <div className="opacity-100 transition-opacity group-hover/ds:opacity-0">
+                <DatasourceBadges
+                  datasources={datasources}
+                  pluginLogoMap={pluginLogoMap}
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-0 flex justify-end opacity-0 transition-opacity group-hover/ds:opacity-100">
+                <DatasourceSelector
+                  selectedDatasources={datasources.map((d) => d.id)}
+                  onSelectionChange={() => {}}
+                  datasources={allDatasources}
+                  pluginLogoMap={pluginLogoMap}
+                  variant="badge"
+                  readOnly
+                />
+              </div>
+            </>
+          ) : (
+            <DatasourceBadges
+              datasources={datasources}
+              pluginLogoMap={pluginLogoMap}
+            />
+          )}
         </div>
       )}
-      {/* Horizontal layout: go to suggestion button - previous response preview - message bubble */}
-      <div className="flex w-full max-w-full min-w-0 items-center gap-2 overflow-x-hidden">
-        {/* Go to suggestion button - on the very left */}
-        {hasSourceSuggestion && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0 opacity-60 hover:opacity-100"
-            onClick={scrollToSourceSuggestion}
-            title="Scroll to original suggestion"
-          >
-            <ArrowUpLeft className="size-4" />
-          </Button>
-        )}
-        {/* Previous response preview - fills available space */}
+      {/* Horizontal layout: previous response preview - message bubble */}
+      <div className="flex w-full max-w-full min-w-0 items-stretch gap-1 overflow-x-hidden">
+        {/* Previous response preview - height capped to bubble height via stretch */}
         {previewData && (
           <HoverCard open={isHoverCardOpen} onOpenChange={setIsHoverCardOpen}>
             <HoverCardTrigger asChild>
-              <div className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 cursor-pointer items-center text-xs leading-relaxed transition-colors">
-                <span className="line-clamp-2 break-words">
-                  {previewData.preview}
-                </span>
-              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground relative flex max-w-[65%] min-w-0 cursor-pointer items-start justify-end self-stretch overflow-hidden border-0 bg-transparent [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] p-0 text-right text-xs leading-relaxed transition-colors"
+                onClick={
+                  hasSourceSuggestion ? scrollToSourceSuggestion : undefined
+                }
+                title={
+                  hasSourceSuggestion
+                    ? 'Scroll to original suggestion'
+                    : undefined
+                }
+              >
+                <span className="pr-4 break-words">{previewData.preview}</span>
+              </button>
             </HoverCardTrigger>
             <HoverCardContent
               ref={hoverCardContentRef}
@@ -504,7 +574,7 @@ export function UserMessageBubble({
                   <div className="mt-1 shrink-0">
                     <BotAvatar size={6} isLoading={false} />
                   </div>
-                  <div className="prose prose-base dark:prose-invert [&_li]:text-foreground [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:list-inside [&_ul]:list-disc [&_ul]:pl-6">
+                  <div className="prose prose-base dark:prose-invert [&_li]:text-foreground [&_li]:marker:text-foreground/90 [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:ml-4 [&_ul]:list-outside [&_ul]:list-disc [&_ul]:pl-6">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={agentMarkdownComponents}
@@ -517,10 +587,10 @@ export function UserMessageBubble({
             </HoverCardContent>
           </HoverCard>
         )}
-        {/* Message bubble - fills remaining space */}
+        {/* Message bubble - right-aligned, sits next to preview */}
         <Message
           from="user"
-          className={cn('flex !w-auto min-w-0 flex-1', className)}
+          className={cn('flex !w-auto max-w-[80%] min-w-0 shrink-0', className)}
         >
           <MessageContent
             className="overflow-wrap-anywhere max-w-full min-w-0 break-words"
