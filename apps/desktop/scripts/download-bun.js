@@ -2,7 +2,9 @@
 /**
  * Downloads Bun binary for the current platform to src-tauri/binaries/ for Tauri sidecar.
  * Run from apps/desktop: node scripts/download-bun.js
+ * Verifies download with SHA-256 from release SHASUMS256.txt before writing to disk.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,6 +72,25 @@ async function downloadBun() {
 
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+
+  const baseUrl = `https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}`;
+  const sumsRes = await fetch(`${baseUrl}/SHASUMS256.txt`);
+  if (!sumsRes.ok) {
+    console.error('❌ Failed to fetch checksums');
+    process.exit(1);
+  }
+  const sumsText = await sumsRes.text();
+  const expectedLine = sumsText.split('\n').find((l) => l.endsWith(zipName));
+  if (!expectedLine) {
+    console.error(`❌ No checksum for ${zipName} in SHASUMS256.txt`);
+    process.exit(1);
+  }
+  const expectedHash = expectedLine.slice(0, 64);
+  const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
+  if (actualHash !== expectedHash) {
+    console.error(`❌ Checksum mismatch for ${zipName}`);
+    process.exit(1);
+  }
 
   const tmpZip = path.join(BINARIES_DIR, `bun-tmp-${Date.now()}.zip`);
   const tmpDir = path.join(BINARIES_DIR, `bun-tmp-${Date.now()}`);

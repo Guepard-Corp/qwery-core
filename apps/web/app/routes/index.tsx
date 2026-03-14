@@ -8,11 +8,24 @@ export const clientLoader = async (_args: Route.LoaderArgs) => {
 };
 import { Skeleton } from '@qwery/ui/skeleton';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@qwery/ui/collapsible';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from '@qwery/ui/shadcn-sidebar';
 import { useEffect, useState, useMemo } from 'react';
 
 import { Link, useNavigate } from 'react-router';
 import {
   ArrowRight,
+  ChevronRight,
   Database,
   MessageSquareText,
   NotebookPen,
@@ -90,14 +103,12 @@ function _SidebarSkeleton() {
   );
 }
 
-function _DashboardSkeleton() {
 import {
   LandingFeatureCard,
   LandingHero,
   LandingSectionDivider,
 } from '~/components/landing';
 import { useWorkspace } from '~/lib/context/workspace-context';
-import pathsConfig from '~/config/paths.config';
 import { Button } from '@qwery/ui/button';
 
 const FEATURE_CARDS = [

@@ -3,7 +3,6 @@ import { defineConfig, type Plugin } from 'vite';
 import tailwindCssVitePlugin from '@qwery/tailwind-config/vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';

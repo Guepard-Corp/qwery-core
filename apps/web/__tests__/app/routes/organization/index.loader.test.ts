@@ -7,16 +7,16 @@ import {
 } from '@qwery/domain/services';
 
 import * as CreateRepositories from '~/lib/loaders/create-repositories';
-import { loader } from '../../../../app/routes/organization/index';
+import { clientLoader as loader } from '../../../../app/routes/organization/index';
 
 vi.mock('~/lib/loaders/create-repositories');
 
-function createArgs(slug?: string): Route.LoaderArgs {
+function createArgs(slug?: string): Route.ClientLoaderArgs {
   return {
-    params: { slug },
+    params: { slug: slug ?? '' },
     request: new Request('https://example.test/org'),
-    context: {},
-  } as Route.LoaderArgs;
+    context: {} as Route.ClientLoaderArgs['context'],
+  } as Route.ClientLoaderArgs;
 }
 
 describe('organization/index loader', () => {
