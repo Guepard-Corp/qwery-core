@@ -36,6 +36,49 @@ export function extractAllSuggestionTexts(text: string): string[] {
   return extractAllSuggestionMatches(text).map((m) => m.text);
 }
 
+const SUGGESTION_WITH_OPTIONAL_BULLET =
+  /(?:^|\n)(\s*[-*•]\s*)?\{\{suggestion:\s*((?:(?!\}\})[\s\S])+)\}\}/g;
+
+const ORPHANED_BULLET_BEFORE_SUGGESTION =
+  /(^|\n)(\s*[-*•]\s*)(\n+)(\s*\{\{suggestion:\s*((?:(?!\}\})[\s\S])+)\}\})/gm;
+
+const EMPTY_BULLET_AFTER_SUGGESTION =
+  /(\{\{suggestion:\s*(?:(?!\}\})[\s\S])+\}\})\s*\n\s*[-*•]\s*(?=\s*\n|$)/g;
+
+/**
+ * Preprocesses content before markdown rendering to avoid "bullet + suggestion then empty bullet".
+ * 1. Merges orphaned bullet lines with the following {{suggestion: X}} onto one line.
+ * 2. Removes empty bullet lines that follow a suggestion.
+ */
+export function preprocessSuggestionsForRendering(text: string): string {
+  return text
+    .replace(
+      ORPHANED_BULLET_BEFORE_SUGGESTION,
+      (_, lineStart, _bullet, _newlines, fullSuggestion) =>
+        `${lineStart}- ${fullSuggestion.trim()}`,
+    )
+    .replace(EMPTY_BULLET_AFTER_SUGGESTION, '$1\n');
+}
+
+/**
+ * Replaces {{suggestion: X}} with markdown list items for display (e.g. hover preview).
+ * Consumes preceding list markers to avoid "bullet + suggestion then empty bullet" pattern.
+ */
+export function cleanSuggestionsForDisplay(text: string): string {
+  return text
+    .replace(
+      SUGGESTION_WITH_OPTIONAL_BULLET,
+      (_, _bullet, inner) =>
+        `\n- ${parseSuggestionWithMetadata(inner).text.trim()}`,
+    )
+    .replace(
+      SUGGESTION_REGEX,
+      (_, inner) => `\n- ${parseSuggestionWithMetadata(inner).text.trim()}`,
+    )
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export interface SuggestionMetadata {
   requiresDatasource?: boolean;
 }

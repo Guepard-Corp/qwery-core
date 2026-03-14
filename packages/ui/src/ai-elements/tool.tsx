@@ -36,6 +36,7 @@ import {
   ListIcon,
   PlayIcon,
   ListTodo,
+  GlobeIcon,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { isValidElement } from 'react';
@@ -79,7 +80,7 @@ export const Tool = ({
 };
 
 export type ToolHeaderProps = {
-  title?: string;
+  title?: ReactNode;
   type: ToolUIPart['type'];
   state: ToolUIPart['state'];
   executionTimeMs?: number;
@@ -175,24 +176,15 @@ const getStatusConfig = (
 const getToolIcon = (type: string, size: 'sm' | 'md' = 'md') => {
   const sizeClass = size === 'sm' ? 'size-4' : 'size-5';
   const iconMap: Record<string, ReactNode> = {
-    'tool-testConnection': <PlugIcon className={sizeClass} />,
     'tool-runQuery': <DatabaseIcon className={sizeClass} />,
     'tool-runQueries': <ListIcon className={sizeClass} />,
-    'tool-getTableSchema': <TableIcon className={sizeClass} />,
     'tool-getSchema': <FileSearchIcon className={sizeClass} />,
     'tool-generateChart': <BarChart3Icon className={sizeClass} />,
     'tool-selectChartType': <PieChartIcon className={sizeClass} />,
-    'tool-deleteSheet': <Trash2Icon className={sizeClass} />,
-    'tool-readLinkData': <LinkIcon className={sizeClass} />,
-    'tool-api_call': <Code2Icon className={sizeClass} />,
-    'tool-listViews': <ListIcon className={sizeClass} />,
-    'tool-generateSql': <TerminalIcon className={sizeClass} />,
-    'tool-startWorkflow': <WorkflowIcon className={sizeClass} />,
-    'tool-viewSheet': <FileIcon className={sizeClass} />,
     'tool-todowrite': <ListTodo className={sizeClass} />,
     'tool-todoread': <ListTodo className={sizeClass} />,
+    'tool-webfetch': <GlobeIcon className={sizeClass} />,
   };
-
   return iconMap[type] ?? <TerminalIcon className={sizeClass} />;
 };
 
@@ -209,7 +201,7 @@ export const ToolHeader = ({
   const isMinimal = variant === 'minimal';
   const statusConfig = getStatusConfig(state, isMinimal ? 'sm' : 'md');
   const toolIcon = getToolIcon(type, isMinimal ? 'sm' : 'md');
-  const toolName = title ?? getUserFriendlyToolName(type);
+  const toolName = title ?? (getUserFriendlyToolName(type) as ReactNode);
   const executionTimeLabel = formatExecutionTime(executionTimeMs);
 
   if (isMinimal) {
@@ -264,44 +256,45 @@ export const ToolHeader = ({
         {toolIcon}
       </div>
 
-      <div className="flex min-w-0 flex-1">
-        <span className="truncate text-base font-semibold tracking-tight">
-          {toolName}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-3">
-        {children && (
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-base font-semibold tracking-tight">
+            {toolName}
+          </span>
           <div
-            className="flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+              statusConfig.bgClassName,
+              statusConfig.className,
+            )}
           >
-            {children}
+            {statusConfig.icon}
+            <span className="whitespace-nowrap">{statusConfig.label}</span>
           </div>
-        )}
-
-        <div
-          className={cn(
-            'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
-            statusConfig.bgClassName,
-            statusConfig.className,
-          )}
-        >
-          {statusConfig.icon}
-          <span className="whitespace-nowrap">{statusConfig.label}</span>
         </div>
 
-        {executionTimeLabel ? (
-          <Badge
-            variant="secondary"
-            className="text-muted-foreground bg-muted/70 border-border/60 rounded-full px-2 py-1 text-xs font-medium tabular-nums"
-          >
-            {executionTimeLabel}
-          </Badge>
-        ) : null}
+        <div className="ml-auto flex items-center gap-3">
+          {children && (
+            <div
+              className="flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {children}
+            </div>
+          )}
 
-        <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
-          <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+          {executionTimeLabel ? (
+            <Badge
+              variant="secondary"
+              className="text-muted-foreground bg-muted/70 border-border/60 rounded-full px-2 py-1 text-xs font-medium tabular-nums"
+            >
+              {executionTimeLabel}
+            </Badge>
+          ) : null}
+
+          <div className="bg-muted/50 group-hover/header:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
+            <ChevronDownIcon className="text-muted-foreground size-4 transition-transform duration-300 ease-out group-data-[state=open]/tool:rotate-180" />
+          </div>
         </div>
       </div>
     </CollapsibleTrigger>
@@ -323,7 +316,7 @@ export const ToolContent = ({
     <CollapsibleContent
       className={cn(
         'data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden',
-        isMinimal && 'border-border/50 ml-6 border-l pl-2 text-sm',
+        isMinimal && 'ml-6 pl-2 text-sm',
         className,
       )}
       {...props}

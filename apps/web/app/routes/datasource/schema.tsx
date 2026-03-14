@@ -10,7 +10,9 @@ import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
-  if (!slug) return { datasource: null };
+  if (!slug) {
+    throw new Response('Not Found', { status: 404 });
+  }
 
   const repositories = await getRepositoriesForLoader(args.request);
   const getDatasourceService = new GetDatasourceBySlugService(
@@ -21,7 +23,9 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     const datasource = await getDatasourceService.execute(slug);
     return { datasource };
   } catch (error) {
-    if (error instanceof DomainException) return { datasource: null };
+    if (error instanceof DomainException) {
+      throw new Response('Not Found', { status: 404 });
+    }
     throw error;
   }
 }
@@ -44,17 +48,13 @@ export default function Schema(props: Route.ComponentProps) {
   if (isLoadingMetadata) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading schema...</p>
+        <div className="bg-muted h-6 w-24 animate-pulse rounded" />
       </div>
     );
   }
 
   if (!datasource) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <p className="text-muted-foreground text-sm">Datasource not found.</p>
-      </div>
-    );
+    throw new Response('Not Found', { status: 404 });
   }
 
   if (isError || !metadata) {

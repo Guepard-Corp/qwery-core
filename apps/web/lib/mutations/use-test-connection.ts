@@ -6,6 +6,7 @@ import {
 } from '@qwery/extensions-sdk';
 import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
+import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 type TestConnectionResult = {
@@ -30,10 +31,9 @@ export function useTestConnection(
         (ext) => ext.id === payload.datasource_provider,
       ) as DatasourceExtension | undefined;
 
-      const driver =
-        dsMeta?.drivers.find(
-          (d) => d.id === (payload.config as { driverId?: string })?.driverId,
-        ) ?? dsMeta?.drivers[0];
+      const driver = dsMeta
+        ? resolveDatasourceDriver(dsMeta, payload)
+        : undefined;
 
       const runtime = driver?.runtime ?? 'browser';
 

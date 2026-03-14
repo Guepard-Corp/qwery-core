@@ -19,14 +19,16 @@ import {
 } from './ai/message-parts';
 import { StreamdownWithSuggestions } from './ai/streamdown-with-suggestions';
 import {
+  formatMessageDateTime,
+  formatMessageTime,
   UserMessageBubble,
   parseMessageWithContext,
 } from './ai/user-message-bubble';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../shadcn/tooltip';
 import {
   type PromptInputMessage,
   usePromptInputAttachments,
   PromptInputProvider,
-  usePromptInputController,
 } from '../ai-elements/prompt-input';
 import {
   useState,
@@ -73,7 +75,7 @@ import { Sparkles } from 'lucide-react';
 import {
   QweryPromptInput,
   type DatasourceItem,
-  ToolPart,
+  ToolWithTaskDelimiter,
   TodoPart,
   useInfiniteMessages,
   VirtuosoMessageList,
@@ -98,10 +100,14 @@ import {
   SuggestionBadges,
   SuggestionBadgesSkeleton,
 } from './ai/suggestion-badges';
+import { isSearchEngine } from './ai/web-fetch-visualizer';
+import type { SearchEngine } from './ai/web-fetch-visualizer';
 export interface QweryAgentUIProps {
   initialMessages?: UIMessage[];
   transport: (model: string) => ChatTransport<UIMessage>;
   models: { name: string; value: string }[];
+  allModels?: { name: string; value: string }[];
+  onModelsChange?: (enabledModels: { name: string; value: string }[]) => void;
   onOpen?: () => void;
   usage?: QweryContextProps;
   emitFinish?: () => void;
@@ -115,13 +121,20 @@ export interface QweryAgentUIProps {
     messageId: string,
     content: string,
     datasourceIds?: string[],
-  ) => Promise<void>;
+    previousUpdatedAt?: string,
+  ) => Promise<{ truncatedCount: number } | void>;
   onSendMessageReady?: (
     sendMessage: ReturnType<typeof useChat>['sendMessage'],
     model: string,
   ) => void;
   onMessagesChange?: (messages: UIMessage[]) => void;
   onDatasourceNameClick?: (id: string, name: string) => void;
+  onTableNameClick?: (
+    datasourceId: string,
+    datasourceName: string,
+    schema: string,
+    tableName: string,
+  ) => void;
   getDatasourceTooltip?: (id: string) => string;
   isLoading?: boolean;
   onPasteToNotebook?: (
@@ -146,6 +159,8 @@ export interface QweryAgentUIProps {
     text: string,
     metadata?: import('./ai/utils/suggestion-pattern').SuggestionMetadata,
   ) => Promise<boolean>;
+  preferredSearchEngine?: SearchEngine;
+  onPreferredSearchEngineChange?: (engine: SearchEngine) => void;
 }
 
 type UseChatTransport = NonNullable<
@@ -184,6 +199,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     initialMessages,
     transport,
     models,
+    allModels,
+    onModelsChange,
     onOpen,
     usage,
     emitFinish,
@@ -205,7 +222,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     initialSuggestions,
     onBeforeSuggestionSend,
     onDatasourceNameClick,
+    onTableNameClick,
     getDatasourceTooltip,
+    preferredSearchEngine: preferredSearchEngineProp,
+    onPreferredSearchEngineChange,
   } = props;
 
   const notebookContextRef = useRef(notebookContext);
@@ -251,11 +271,27 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
   }, [onOpen]);
 
-  const [state, setState] = useState({
-    input: '',
-    model: models[0]?.value ?? '',
-    webSearch: false,
+  const [state, setState] = useState(() => {
+    let webSearch = false;
+    if (typeof window !== 'undefined') {
+      try {
+        webSearch = localStorage.getItem('qwery-web-search-enabled') === 'true';
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      input: '',
+      model: models[0]?.value ?? '',
+      webSearch,
+    };
   });
+
+  const modelIds = useMemo(() => new Set(models.map((m) => m.value)), [models]);
+  const effectiveModel = useMemo(() => {
+    if (models.length === 0) return state.model;
+    return modelIds.has(state.model) ? state.model : models[0]!.value;
+  }, [modelIds, models, state.model]);
 
   const [showSuggestionBadges, setShowSuggestionBadges] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -279,9 +315,41 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
   }, [showSuggestionBadges]);
 
+  const [preferredSearchEngine, setPreferredSearchEngine] =
+    useState<SearchEngine>(() => {
+      if (typeof window === 'undefined') return 'google';
+      try {
+        const v = localStorage.getItem('qwery-preferred-search-engine');
+        return v && isSearchEngine(v) ? v : 'google';
+      } catch {
+        return 'google';
+      }
+    });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(
+        'qwery-preferred-search-engine',
+        preferredSearchEngine,
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [preferredSearchEngine]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('qwery-web-search-enabled', String(state.webSearch));
+    } catch {
+      /* ignore */
+    }
+  }, [state.webSearch]);
+
   const transportInstance = useMemo(
-    () => transport(state.model),
-    [transport, state.model],
+    () => transport(effectiveModel),
+    [transport, effectiveModel],
   );
 
   const {
@@ -347,10 +415,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
         wrappedSendMessage as typeof sendMessage & {
           setMessages: typeof setMessages;
         },
-        state.model,
+        effectiveModel,
       );
     }
-  }, [sendMessage, setMessages, state.model, onSendMessageReady]);
+  }, [sendMessage, setMessages, effectiveModel, onSendMessageReady]);
 
   const { setIsProcessing } = useAgentStatus();
 
@@ -572,11 +640,13 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     [],
   );
 
-  const handleEditConfirmWithWarning = useCallback(() => {
+  const handleEditConfirmWithWarning = useCallback(async () => {
     if (!editingMessageId || !editText.trim()) return;
 
     const updatedText = editText.trim();
     const messageIndex = messages.findIndex((m) => m.id === editingMessageId);
+
+    const previousMessages = messages;
 
     setMessages((prev) => {
       let updatedMessages = prev.slice(0, messageIndex + 1);
@@ -599,20 +669,48 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       return updatedMessages;
     });
 
+    if (onMessageUpdate) {
+      try {
+        const editingMessage = messages.find(
+          (m) => m.id === editingMessageId,
+        ) as UIMessage | undefined;
+        const previousUpdatedAt =
+          editingMessage &&
+          editingMessage.metadata &&
+          typeof editingMessage.metadata === 'object' &&
+          'updatedAt' in editingMessage.metadata
+            ? String(
+                (editingMessage.metadata as Record<string, unknown>).updatedAt,
+              )
+            : undefined;
+
+        const result = await onMessageUpdate(
+          editingMessageId,
+          updatedText,
+          editDatasources.length > 0 ? editDatasources : undefined,
+          previousUpdatedAt,
+        );
+        if (result && typeof result.truncatedCount === 'number') {
+          if (result.truncatedCount > 0) {
+            toast.success(
+              `Edited message. Removed ${result.truncatedCount} subsequent messages.`,
+            );
+          } else {
+            toast.success('Edited message.');
+          }
+        }
+      } catch (error) {
+        setMessages(previousMessages);
+        console.error('Failed to persist message edit:', error);
+        toast.error('Failed to save edit.');
+        return;
+      }
+    }
+
     setEditingMessageId(null);
     setEditText('');
     setEditDatasources([]);
     setEditWarningDialog({ open: false, messageId: '', messageText: '' });
-
-    if (onMessageUpdate) {
-      onMessageUpdate(
-        editingMessageId,
-        updatedText,
-        editDatasources.length > 0 ? editDatasources : undefined,
-      ).catch((error) => {
-        console.error('Failed to persist message edit:', error);
-      });
-    }
 
     regenerate();
     scrollToBottomRef.current?.();
@@ -649,6 +747,8 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       .filter((m) => m.role === 'assistant')
       .at(-1);
 
+    const previousMessages = messages;
+
     setMessages((prev) => {
       let updatedMessages = prev.map((msg) => {
         if (msg.id === editingMessageId) {
@@ -682,18 +782,46 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
 
     if (onMessageUpdate) {
       try {
-        await onMessageUpdate(
+        const editingMessage = messages.find(
+          (m) => m.id === editingMessageId,
+        ) as UIMessage | undefined;
+        const previousUpdatedAt =
+          editingMessage &&
+          editingMessage.metadata &&
+          typeof editingMessage.metadata === 'object' &&
+          'updatedAt' in editingMessage.metadata
+            ? String(
+                (editingMessage.metadata as Record<string, unknown>).updatedAt,
+              )
+            : undefined;
+
+        const result = await onMessageUpdate(
           editingMessageId,
           updatedText,
           editDatasources.length > 0 ? editDatasources : undefined,
+          previousUpdatedAt,
         );
+        if (result && typeof result.truncatedCount === 'number') {
+          if (result.truncatedCount > 0) {
+            toast.success(
+              `Edited message. Removed ${result.truncatedCount} subsequent messages.`,
+            );
+          } else {
+            toast.success('Edited message.');
+          }
+        }
       } catch (error) {
         console.error('Failed to persist message edit:', error);
+        setMessages(previousMessages);
+        toast.error('Failed to save edit.');
+        return;
       }
     }
 
-    regenerate();
-    scrollToBottomRef.current?.();
+    setTimeout(() => {
+      regenerate();
+      scrollToBottomRef.current?.();
+    }, 0);
   }, [
     editingMessageId,
     editText,
@@ -705,7 +833,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     scrollToBottomRef,
   ]);
 
-  const handleRegenerate = useCallback(async () => {
+  const handleRegenerate = useCallback(() => {
     const lastAssistantMessage = messages
       .filter((m) => m.role === 'assistant')
       .at(-1);
@@ -755,8 +883,10 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
       }
     }
 
-    regenerate();
-    scrollToBottomRef.current?.();
+    setTimeout(() => {
+      regenerate();
+      scrollToBottomRef.current?.();
+    }, 0);
   }, [
     messages,
     regenerate,
@@ -864,10 +994,9 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
   const showBadgeSlotVisible =
     showBadges ||
     (messages.length === 0 &&
-      ((isLoading && initialSuggestions?.length) ||
-        (badgeSuggestions.length > 0 &&
-          initialSuggestions?.length &&
-          !badgesVisibleAfterDelay)));
+      badgeSuggestions.length > 0 &&
+      initialSuggestions?.length &&
+      !badgesVisibleAfterDelay);
 
   useEffect(() => {
     const ids: ReturnType<typeof setTimeout>[] = [];
@@ -992,21 +1121,66 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
               {isLoading ? (
                 <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
                   <BotAvatar size={12} isLoading={true} />
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium">
-                      Loading conversation...
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      Please wait while we load your messages
-                    </p>
-                  </div>
                 </div>
               ) : messages.length === 0 ? (
-                <ConversationEmptyState
-                  title="Start a conversation"
-                  description="Ask me anything and I'll help you out. You can ask questions or get explanations."
-                  icon={<Sparkles className="text-muted-foreground size-12" />}
-                />
+                <div className="flex min-h-full min-w-0 flex-1 flex-col items-center justify-center gap-8 py-8 sm:min-h-[70vh]">
+                  <ConversationEmptyState
+                    title="Start a conversation"
+                    description="Ask me anything and I'll help you out. You can ask questions or get explanations."
+                    icon={
+                      <Sparkles className="text-muted-foreground size-12" />
+                    }
+                  />
+                  <div className="mx-auto w-full max-w-4xl shrink-0 self-center px-6">
+                    <PromptInputInner
+                      sendMessage={sendMessage}
+                      state={state}
+                      setState={setState}
+                      textareaRef={textareaRef}
+                      status={status}
+                      stop={stop}
+                      setMessages={setMessages}
+                      messages={messages}
+                      models={models}
+                      allModels={allModels}
+                      onModelsChange={onModelsChange}
+                      usage={usage}
+                      datasources={datasources}
+                      selectedDatasources={selectedDatasources}
+                      onDatasourceSelectionChange={onDatasourceSelectionChange}
+                      getDatasourcesForSend={getDatasourcesForSend}
+                      pluginLogoMap={pluginLogoMap}
+                      datasourcesLoading={datasourcesLoading}
+                      scrollToBottomRef={scrollToBottomRef}
+                      showSuggestionBadges={showSuggestionBadges}
+                      onShowSuggestionBadgesChange={setShowSuggestionBadges}
+                      webSearch={state.webSearch}
+                      onWebSearchChange={(v) =>
+                        setState((prev) => ({ ...prev, webSearch: v }))
+                      }
+                      preferredSearchEngine={
+                        preferredSearchEngineProp ?? preferredSearchEngine
+                      }
+                      onPreferredSearchEngineChange={(engine) => {
+                        setPreferredSearchEngine(engine);
+                        onPreferredSearchEngineChange?.(engine);
+                      }}
+                    />
+                  </div>
+                  {badgeSuggestions.length > 0 ? (
+                    <div className="flex justify-center">
+                      {isLoading && !badgesFadingOut ? (
+                        <SuggestionBadgesSkeleton />
+                      ) : badgeSuggestions.length > 0 ? (
+                        <SuggestionBadges
+                          suggestions={badgeSuggestions}
+                          onSuggestionClick={handleBadgeSuggestionClick}
+                          disabled={badgesFadingOut || !showSuggestionBadges}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <>
                   <VirtuosoMessageList
@@ -1052,6 +1226,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     scrollerRef={scrollContainerRef}
                     onBeforeSuggestionSend={onBeforeSuggestionSend}
                     onDatasourceNameClick={onDatasourceNameClick}
+                    onTableNameClick={onTableNameClick}
                     getDatasourceTooltip={getDatasourceTooltip}
                     renderScrollButton={(scrollToBottom, isAtBottom) =>
                       !isAtBottom ? (
@@ -1079,23 +1254,68 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                 {isLoading ? (
                   <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
                     <BotAvatar size={12} isLoading={true} />
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium">
-                        Loading conversation...
-                      </h3>
-                      <p className="text-muted-foreground text-sm">
-                        Please wait while we load your messages
-                      </p>
-                    </div>
                   </div>
                 ) : messages.length === 0 ? (
-                  <ConversationEmptyState
-                    title="Start a conversation"
-                    description="Ask me anything and I'll help you out. You can ask questions or get explanations."
-                    icon={
-                      <Sparkles className="text-muted-foreground size-12" />
-                    }
-                  />
+                  <div className="flex min-h-full min-w-0 flex-1 flex-col items-center justify-center gap-8 py-8 sm:min-h-[70vh]">
+                    <ConversationEmptyState
+                      title="Start a conversation"
+                      description="Ask me anything and I'll help you out. You can ask questions or get explanations."
+                      icon={
+                        <Sparkles className="text-muted-foreground size-12" />
+                      }
+                    />
+                    <div className="mx-auto w-full max-w-4xl shrink-0 self-center px-6">
+                      <PromptInputInner
+                        sendMessage={sendMessage}
+                        state={state}
+                        setState={setState}
+                        textareaRef={textareaRef}
+                        status={status}
+                        stop={stop}
+                        setMessages={setMessages}
+                        messages={messages}
+                        models={models}
+                        allModels={allModels}
+                        onModelsChange={onModelsChange}
+                        usage={usage}
+                        datasources={datasources}
+                        selectedDatasources={selectedDatasources}
+                        onDatasourceSelectionChange={
+                          onDatasourceSelectionChange
+                        }
+                        getDatasourcesForSend={getDatasourcesForSend}
+                        pluginLogoMap={pluginLogoMap}
+                        datasourcesLoading={datasourcesLoading}
+                        scrollToBottomRef={scrollToBottomRef}
+                        showSuggestionBadges={showSuggestionBadges}
+                        onShowSuggestionBadgesChange={setShowSuggestionBadges}
+                        webSearch={state.webSearch}
+                        onWebSearchChange={(v) =>
+                          setState((prev) => ({ ...prev, webSearch: v }))
+                        }
+                        preferredSearchEngine={
+                          preferredSearchEngineProp ?? preferredSearchEngine
+                        }
+                        onPreferredSearchEngineChange={(engine) => {
+                          setPreferredSearchEngine(engine);
+                          onPreferredSearchEngineChange?.(engine);
+                        }}
+                      />
+                    </div>
+                    {badgeSuggestions.length > 0 ? (
+                      <div className="flex justify-center">
+                        {isLoading && !badgesFadingOut ? (
+                          <SuggestionBadgesSkeleton />
+                        ) : badgeSuggestions.length > 0 ? (
+                          <SuggestionBadges
+                            suggestions={badgeSuggestions}
+                            onSuggestionClick={handleBadgeSuggestionClick}
+                            disabled={badgesFadingOut || !showSuggestionBadges}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 ) : (
                   messages.map((message) => {
                     const sourceParts = message.parts.filter(
@@ -1116,6 +1336,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                     return (
                       <div
                         key={message.id}
+                        data-message-id={message.id}
                         className="max-w-full min-w-0 overflow-x-hidden"
                       >
                         {message.role === 'assistant' &&
@@ -1238,11 +1459,17 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                     })()
                                   : undefined;
 
+                              const lastUserMessage = [...messages]
+                                .reverse()
+                                .find((msg) => msg.role === 'user');
+                              const isLastUserMessage =
+                                lastUserMessage?.id === message.id;
+
                               return (
                                 <div
                                   key={`${message.id}-${i}`}
                                   className={cn(
-                                    'flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
+                                    'group/msg flex max-w-full min-w-0 items-start gap-3 overflow-x-hidden',
                                     normalizeUIRole(message.role) === 'user' &&
                                       'justify-end',
                                     normalizeUIRole(message.role) ===
@@ -1386,27 +1613,72 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                               );
 
                                             if (context) {
+                                              const createdAt = (
+                                                message.metadata as
+                                                  | Record<string, unknown>
+                                                  | undefined
+                                              )?.createdAt as
+                                                | Date
+                                                | string
+                                                | undefined;
                                               return (
-                                                <UserMessageBubble
-                                                  key={`${message.id}-${i}`}
-                                                  text={text}
-                                                  context={context}
-                                                  messageId={message.id}
-                                                  messages={messages}
-                                                  datasources={
-                                                    messageDatasources
-                                                  }
-                                                  pluginLogoMap={pluginLogoMap}
-                                                />
+                                                <div className="group/msg w-full max-w-full min-w-0">
+                                                  <UserMessageBubble
+                                                    key={`${message.id}-${i}`}
+                                                    text={text}
+                                                    context={context}
+                                                    messageId={message.id}
+                                                    messages={messages}
+                                                    datasources={
+                                                      messageDatasources
+                                                    }
+                                                    allDatasources={datasources}
+                                                    pluginLogoMap={
+                                                      pluginLogoMap
+                                                    }
+                                                    isLastUserMessage={
+                                                      isLastUserMessage
+                                                    }
+                                                    timestamp={createdAt}
+                                                  />
+                                                  {createdAt != null &&
+                                                    isLastTextPart && (
+                                                      <div className="mt-1 flex justify-end opacity-0 transition-opacity group-hover/msg:opacity-100">
+                                                        <Tooltip>
+                                                          <TooltipTrigger
+                                                            asChild
+                                                          >
+                                                            <span className="text-muted-foreground cursor-default text-xs">
+                                                              {formatMessageTime(
+                                                                createdAt,
+                                                              )}
+                                                            </span>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent side="top">
+                                                            {formatMessageDateTime(
+                                                              createdAt,
+                                                            )}
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      </div>
+                                                    )}
+                                                </div>
                                               );
                                             }
 
                                             return (
-                                              <div className="flex flex-col items-end gap-1.5">
+                                              <div className="group/msg flex flex-col items-end gap-1.5">
                                                 {messageDatasources &&
                                                   messageDatasources.length >
                                                     0 && (
-                                                    <div className="flex w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden">
+                                                    <div
+                                                      className={cn(
+                                                        'flex min-h-6 w-full max-w-[80%] min-w-0 justify-end overflow-x-hidden transition-opacity',
+                                                        isLastUserMessage
+                                                          ? 'opacity-100'
+                                                          : 'opacity-0 group-hover/msg:opacity-100',
+                                                      )}
+                                                    >
                                                       <DatasourceBadges
                                                         datasources={
                                                           messageDatasources
@@ -1440,7 +1712,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 className="w-full max-w-full min-w-0"
                                               >
                                                 <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                  <div className="overflow-wrap-anywhere wrap-break-words inline-flex min-w-0 items-baseline gap-0.5">
+                                                  <div className="overflow-wrap-anywhere wrap-break-words flex min-w-0 flex-wrap items-baseline gap-x-0.5 gap-y-1">
                                                     <StreamdownWithSuggestions
                                                       sendMessage={sendMessage}
                                                       messages={messages}
@@ -1475,7 +1747,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 className="w-full max-w-full min-w-0"
                                               >
                                                 <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                                                  <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                                                  <div className="overflow-wrap-anywhere flex min-w-0 flex-wrap items-baseline gap-x-0.5 gap-y-1 break-words">
                                                     <StreamdownWithSuggestions
                                                       sendMessage={sendMessage}
                                                       messages={messages}
@@ -1518,6 +1790,42 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                                 'user' && 'justify-end',
                                             )}
                                           >
+                                            {normalizeUIRole(message.role) ===
+                                              'user' &&
+                                              (
+                                                message.metadata as
+                                                  | Record<string, unknown>
+                                                  | undefined
+                                              )?.createdAt != null && (
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <span className="text-muted-foreground text-xs opacity-0 transition-opacity group-hover/msg:opacity-100">
+                                                      {formatMessageTime(
+                                                        (
+                                                          message.metadata as Record<
+                                                            string,
+                                                            unknown
+                                                          >
+                                                        ).createdAt as
+                                                          | Date
+                                                          | string,
+                                                      )}
+                                                    </span>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top">
+                                                    {formatMessageDateTime(
+                                                      (
+                                                        message.metadata as Record<
+                                                          string,
+                                                          unknown
+                                                        >
+                                                      ).createdAt as
+                                                        | Date
+                                                        | string,
+                                                    )}
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              )}
                                             {message.role === 'assistant' && (
                                               <Button
                                                 variant="ghost"
@@ -1625,47 +1933,15 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                             default:
                               if (part.type.startsWith('tool-')) {
                                 const toolPart = part as ToolUIPart;
-                                const inProgressStates = new Set([
-                                  'input-streaming',
-                                  'input-available',
-                                  'approval-requested',
-                                ]);
-                                const isToolInProgress = inProgressStates.has(
-                                  toolPart.state as string,
-                                );
-
                                 const toolPartKey = `${message.id}-${i}`;
                                 const isLastPart =
                                   i === message.parts.length - 1;
 
-                                if (isToolInProgress) {
-                                  return (
-                                    <ToolPart
-                                      key={toolPartKey}
-                                      part={toolPart}
-                                      messageId={message.id}
-                                      index={i}
-                                      executionTimeMs={getExecutionTimeMs(
-                                        toolPart,
-                                        message,
-                                      )}
-                                      open={openToolPartKeys.has(toolPartKey)}
-                                      onOpenChange={(open) =>
-                                        handleToolPartOpenChange(
-                                          toolPartKey,
-                                          open,
-                                        )
-                                      }
-                                      defaultOpenWhenUncontrolled={isLastPart}
-                                      onPasteToNotebook={onPasteToNotebook}
-                                      notebookContext={currentNotebookContext}
-                                    />
-                                  );
-                                }
-
                                 return (
-                                  <ToolPart
+                                  <ToolWithTaskDelimiter
                                     key={toolPartKey}
+                                    parts={message.parts}
+                                    partIndex={i}
                                     part={toolPart}
                                     messageId={message.id}
                                     index={i}
@@ -1680,8 +1956,13 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                         open,
                                       )
                                     }
+                                    defaultOpenWhenUncontrolled={isLastPart}
                                     onPasteToNotebook={onPasteToNotebook}
                                     notebookContext={currentNotebookContext}
+                                    onDatasourceNameClick={
+                                      onDatasourceNameClick
+                                    }
+                                    onTableNameClick={onTableNameClick}
                                   />
                                 );
                               }
@@ -1708,7 +1989,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                           className="w-full max-w-full min-w-0"
                         >
                           <MessageContent className="max-w-full min-w-0 overflow-x-hidden">
-                            <div className="overflow-wrap-anywhere inline-flex min-w-0 items-baseline gap-0.5 break-words">
+                            <div className="overflow-wrap-anywhere flex min-w-0 flex-wrap items-baseline gap-x-0.5 gap-y-1 break-words">
                               <MessageResponse></MessageResponse>
                             </div>
                           </MessageContent>
@@ -1726,65 +2007,76 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
           )}
         </div>
 
-        <div className="bg-background border-border/10 relative z-40 shrink-0 border-t">
-          {(messages.length === 0 &&
-            ((isLoading && initialSuggestions?.length) ||
-              badgeSuggestions.length > 0)) ||
-          lastMessageHasSuggestions ||
-          badgesFadingOut ? (
-            <div
-              className={cn(
-                'absolute right-0 bottom-full left-0 z-50 flex justify-center pb-3 transition-all duration-300 ease-out',
-                badgesRevealing &&
-                  'animate-in fade-in slide-in-from-bottom-4 duration-300',
-                badgesFadingOut
-                  ? badgesFadeToZero
-                    ? 'pointer-events-none translate-y-0 opacity-0'
-                    : 'translate-y-0 opacity-100'
-                  : showBadgeSlotVisible
-                    ? 'translate-y-0 opacity-100'
-                    : 'pointer-events-none invisible translate-y-4 opacity-0',
-                !showSuggestionBadges &&
-                  'pointer-events-none translate-y-2 opacity-0',
-              )}
-              data-test="suggestion-badges-container"
-            >
-              {isLoading && !badgesFadingOut ? (
-                <SuggestionBadgesSkeleton />
-              ) : (showBadges || badgesFadingOut) &&
-                badgeSuggestions.length > 0 ? (
-                <SuggestionBadges
-                  suggestions={badgeSuggestions}
-                  onSuggestionClick={handleBadgeSuggestionClick}
-                  disabled={badgesFadingOut || !showSuggestionBadges}
-                />
-              ) : null}
+        {messages.length > 0 && (
+          <div className="bg-background border-border/10 relative z-40 shrink-0 border-t">
+            {lastMessageHasSuggestions || badgesFadingOut ? (
+              <div
+                className={cn(
+                  'absolute right-0 bottom-full left-0 z-50 flex justify-center pb-3 transition-all duration-300 ease-out',
+                  badgesRevealing &&
+                    'animate-in fade-in slide-in-from-bottom-4 duration-300',
+                  badgesFadingOut
+                    ? badgesFadeToZero
+                      ? 'pointer-events-none translate-y-0 opacity-0'
+                      : 'translate-y-0 opacity-100'
+                    : showBadgeSlotVisible
+                      ? 'translate-y-0 opacity-100'
+                      : 'pointer-events-none invisible translate-y-4 opacity-0',
+                  !showSuggestionBadges &&
+                    'pointer-events-none translate-y-2 opacity-0',
+                )}
+                data-test="suggestion-badges-container"
+              >
+                {isLoading && !badgesFadingOut ? (
+                  <SuggestionBadgesSkeleton />
+                ) : (showBadges || badgesFadingOut) &&
+                  badgeSuggestions.length > 0 ? (
+                  <SuggestionBadges
+                    suggestions={badgeSuggestions}
+                    onSuggestionClick={handleBadgeSuggestionClick}
+                    disabled={badgesFadingOut || !showSuggestionBadges}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            <div className="mx-auto w-full max-w-4xl px-6 pb-6">
+              <PromptInputInner
+                sendMessage={sendMessage}
+                state={state}
+                setState={setState}
+                textareaRef={textareaRef}
+                status={status}
+                stop={stop}
+                setMessages={setMessages}
+                messages={messages}
+                models={models}
+                allModels={allModels}
+                onModelsChange={onModelsChange}
+                usage={usage}
+                datasources={datasources}
+                selectedDatasources={selectedDatasources}
+                onDatasourceSelectionChange={onDatasourceSelectionChange}
+                getDatasourcesForSend={getDatasourcesForSend}
+                pluginLogoMap={pluginLogoMap}
+                datasourcesLoading={datasourcesLoading}
+                scrollToBottomRef={scrollToBottomRef}
+                showSuggestionBadges={showSuggestionBadges}
+                onShowSuggestionBadgesChange={setShowSuggestionBadges}
+                webSearch={state.webSearch}
+                onWebSearchChange={(v) =>
+                  setState((prev) => ({ ...prev, webSearch: v }))
+                }
+                preferredSearchEngine={
+                  preferredSearchEngineProp ?? preferredSearchEngine
+                }
+                onPreferredSearchEngineChange={(engine) => {
+                  setPreferredSearchEngine(engine);
+                  onPreferredSearchEngineChange?.(engine);
+                }}
+              />
             </div>
-          ) : null}
-          <div className="mx-auto w-full max-w-4xl px-6 pb-6">
-            <PromptInputInner
-              sendMessage={sendMessage}
-              state={state}
-              setState={setState}
-              textareaRef={textareaRef}
-              status={status}
-              stop={stop}
-              setMessages={setMessages}
-              messages={messages}
-              models={models}
-              usage={usage}
-              datasources={datasources}
-              selectedDatasources={selectedDatasources}
-              onDatasourceSelectionChange={onDatasourceSelectionChange}
-              getDatasourcesForSend={getDatasourcesForSend}
-              pluginLogoMap={pluginLogoMap}
-              datasourcesLoading={datasourcesLoading}
-              scrollToBottomRef={scrollToBottomRef}
-              showSuggestionBadges={showSuggestionBadges}
-              onShowSuggestionBadgesChange={setShowSuggestionBadges}
-            />
           </div>
-        </div>
+        )}
       </div>
 
       <AlertDialog
@@ -1853,6 +2145,8 @@ function PromptInputInner({
   setMessages: _setMessages,
   messages: _messages,
   models,
+  allModels = models,
+  onModelsChange,
   usage,
   datasources,
   selectedDatasources,
@@ -1863,11 +2157,23 @@ function PromptInputInner({
   scrollToBottomRef,
   showSuggestionBadges,
   onShowSuggestionBadgesChange,
+  webSearch,
+  onWebSearchChange,
+  preferredSearchEngine,
+  onPreferredSearchEngineChange,
 }: {
   sendMessage: ReturnType<typeof useChat>['sendMessage'];
-  state: { input: string; model: string; webSearch: boolean };
+  state: {
+    input: string;
+    model: string;
+    webSearch: boolean;
+  };
   setState: React.Dispatch<
-    React.SetStateAction<{ input: string; model: string; webSearch: boolean }>
+    React.SetStateAction<{
+      input: string;
+      model: string;
+      webSearch: boolean;
+    }>
   >;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   status: ReturnType<typeof useChat>['status'];
@@ -1875,6 +2181,8 @@ function PromptInputInner({
   setMessages: ReturnType<typeof useChat>['setMessages'];
   messages: ReturnType<typeof useChat>['messages'];
   models: { name: string; value: string }[];
+  allModels?: { name: string; value: string }[];
+  onModelsChange?: (enabledModels: { name: string; value: string }[]) => void;
   usage?: QweryContextProps;
   datasources?: DatasourceItem[];
   selectedDatasources?: string[];
@@ -1885,9 +2193,12 @@ function PromptInputInner({
   scrollToBottomRef: React.RefObject<(() => void) | null>;
   showSuggestionBadges?: boolean;
   onShowSuggestionBadgesChange?: (value: boolean) => void;
+  webSearch?: boolean;
+  onWebSearchChange?: (value: boolean) => void;
+  preferredSearchEngine?: SearchEngine;
+  onPreferredSearchEngineChange?: (engine: SearchEngine) => void;
 }) {
   const attachments = usePromptInputAttachments();
-  const controller = usePromptInputController();
 
   const handleSubmit = async (message: PromptInputMessage) => {
     if (status === 'streaming' || status === 'submitted') {
@@ -1901,9 +2212,6 @@ function PromptInputInner({
       return;
     }
 
-    controller.textInput.clear();
-    setState((prev) => ({ ...prev, input: '' }));
-
     try {
       const ds = getDatasourcesForSend?.() ?? selectedDatasources ?? [];
       const bodyDatasources = ds.length > 0 ? ds : undefined;
@@ -1916,10 +2224,12 @@ function PromptInputInner({
           body: {
             model: state.model,
             webSearch: state.webSearch,
+            searchEngine: preferredSearchEngine,
             datasources: bodyDatasources,
           },
         },
       );
+
       const scrollToBottom = () => scrollToBottomRef.current?.();
       requestAnimationFrame(scrollToBottom);
       setTimeout(scrollToBottom, 150);
@@ -1961,6 +2271,8 @@ function PromptInputInner({
       model={state.model}
       setModel={(model) => setState((prev) => ({ ...prev, model }))}
       models={models}
+      allModels={allModels}
+      onModelsChange={onModelsChange}
       status={status}
       textareaRef={textareaRef}
       onStop={handleStop}
@@ -1974,6 +2286,10 @@ function PromptInputInner({
       datasourcesLoading={datasourcesLoading}
       showSuggestionBadges={showSuggestionBadges}
       onShowSuggestionBadgesChange={onShowSuggestionBadgesChange}
+      webSearch={webSearch}
+      onWebSearchChange={onWebSearchChange}
+      preferredSearchEngine={preferredSearchEngine}
+      onPreferredSearchEngineChange={onPreferredSearchEngineChange}
     />
   );
 }

@@ -4,10 +4,12 @@ import { Link } from 'react-router';
 
 import {
   ChevronsUpDown,
+  Code2,
+  FileText,
   Home,
   MessageCircleQuestion,
+  User,
   Zap,
-  Code2,
 } from 'lucide-react';
 
 import {
@@ -19,19 +21,25 @@ import {
 } from '@qwery/ui/dropdown-menu';
 import { ProfileAvatar } from '@qwery/ui/profile-avatar';
 import { SubMenuModeToggle } from '@qwery/ui/mode-toggle';
+import { SubMenuSearchEngineSelect } from '@qwery/ui/search-engine-select';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
+import type { SearchEngine } from '@qwery/ui/ai';
 
 export function AccountDropdown({
   paths,
   workspaceMode,
   onWorkspaceModeChange,
+  preferredSearchEngine = 'google',
+  onPreferredSearchEngineChange,
 }: {
   paths: {
     home: string;
   };
   workspaceMode?: 'simple' | 'advanced';
   onWorkspaceModeChange?: (mode: 'simple' | 'advanced') => void;
+  preferredSearchEngine?: SearchEngine;
+  onPreferredSearchEngineChange?: (engine: SearchEngine) => void;
 }) {
   const displayName = 'Guepard';
   const signedInAsLabel = 'Anonymous User';
@@ -82,7 +90,10 @@ export function AccountDropdown({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className={'xl:!min-w-[15rem]'}>
-        <DropdownMenuItem className={'!h-10 rounded-none'}>
+        <DropdownMenuItem
+          className={'flex !h-10 items-start gap-2 rounded-none'}
+        >
+          <User className={'text-muted-foreground mt-0.5 h-5 shrink-0'} />
           <div
             className={'flex flex-col justify-start truncate text-left text-xs'}
           >
@@ -129,7 +140,7 @@ export function AccountDropdown({
             to={'https://guepard.featurebase.app/changelog'}
             target={'_blank'}
           >
-            <MessageCircleQuestion className={'h-5'} />
+            <FileText className={'h-5'} />
 
             <span>
               <Trans i18nKey={'common:changelog'} />
@@ -138,6 +149,10 @@ export function AccountDropdown({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <SubMenuModeToggle />
+        <SubMenuSearchEngineSelect
+          value={preferredSearchEngine}
+          onValueChange={(engine) => onPreferredSearchEngineChange?.(engine)}
+        />
         <DropdownMenuSeparator />
         <div className="px-2 py-1.5">
           <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">

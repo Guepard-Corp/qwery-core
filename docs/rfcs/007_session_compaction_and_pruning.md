@@ -21,7 +21,7 @@ Without management, conversations would eventually exceed the model's context wi
 **When it triggers**: Automatically when a conversation exceeds the model's usable token limit.
 
 **How it works**:
-1. Detects overflow by checking if `input tokens + cache.read + output tokens > usable limit`
+1. Detects overflow by checking if `promptCount = input tokens + cache.read > usable limit`
 2. Creates a compaction task (user message with `type: 'compaction'` part)
 3. Generates a summary using an LLM that captures:
    - What was done
@@ -98,7 +98,6 @@ flowchart TD
 
 Some tools are never pruned:
 - **`skill`** tool - Protected by name
-- Tools with `type` starting with `'tool-'` prefix - Protected by prefix
 - Parts already marked with `compactedAt` - Protected by marker
 
 ### Prunable States
@@ -113,10 +112,49 @@ Tool parts are only pruned if they're in a completed state:
 Token estimation uses a simple formula:
 
 ```
-tokens = min(ceil(text.length / 4), 50_000)
+tokens = min(ceil(text.length / 3.6), 50_000)
 ```
 
-The `/4` ratio approximates tokens (most tokens are ~4 characters). The 50k cap prevents wild over-estimation when large objects are JSON-stringified.
+The `/3.6` ratio approximates tokens (based on empirical averages across providers). The 50k cap prevents wild over-estimation when large objects are JSON-stringified.
+
+## Context Window Budget Calculation
+
+The `isOverflow()` function computes the usable input budget and compares it
+against the accumulated prompt tokens before each agent turn.
+
+### Budget formula
+
+```text
+outputLimit = min(model.limit.output, OUTPUT_TOKEN_MAX = 32_000)
+
+usable = model.limit.input                    — explicit input cap (if provided)
+       ?? model.limit.context - outputLimit   — fallback: full context minus output reserve
+```
+
+### Overflow condition
+
+```text
+promptCount = tokens.input + tokens.cache.read   >   usable   →   compaction triggered
+```
+
+### Why `tokens.output` and `tokens.reasoning` are excluded
+
+**`tokens.output`** — the Vercel AI SDK accumulates all previous turns' output
+into the next turn's `tokens.input`. Counting `tokens.output` separately would
+double-count the last assistant response.
+
+**`tokens.reasoning`** — all supported providers discard reasoning / thinking
+tokens before the next API call. They never consume input budget on the
+following turn. This is verified across all providers the platform supports:
+
+| Provider      | Behaviour                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| OpenAI / Azure | _\"reasoning tokens are discarded after each response\"_ — OpenAI Reasoning guide                                |
+| Anthropic     | _\"previous thinking blocks are automatically stripped by the Claude API\"_ — Anthropic Context Windows docs     |
+| Ollama        | `thinking` field is not replayed into subsequent messages by the Vercel AI SDK                                  |
+
+Both fields remain in `IsOverflowInput` for telemetry and logging — they are
+never used in the overflow gate.
 
 ## Message Filtering
 
@@ -179,7 +217,6 @@ Summary messages are never scanned for pruning - they're permanent and always in
 
 ## Future Considerations
 
-- **Reasoning tokens**: Currently not included in overflow calculation - may need adjustment
+- **Reasoning tokens**: Always excluded from overflow detection. All supported providers discard reasoning / thinking tokens between turns, so they never consume input budget on the following turn. This RFC should be kept in sync with provider docs if that behavior ever changes.
 - **Selective pruning**: Could prune based on recency or importance, not just token count
 - **Compression**: Could compress tool outputs instead of clearing them entirely
-

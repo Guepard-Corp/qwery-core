@@ -208,7 +208,7 @@ const LoadingComponent = () => {
         pluginLogoMap={new Map()}
         isLoading={true}
       />
-      <div className="text-muted-foreground text-sm">Loading state...</div>
+      <div className="text-muted-foreground text-sm">In-progress state…</div>
     </div>
   );
 };

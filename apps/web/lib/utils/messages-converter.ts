@@ -17,63 +17,86 @@ export function convertMessages(
     return undefined;
   }
 
-  return messages.map((message) => {
-    const createdAt =
-      message.createdAt instanceof Date
-        ? message.createdAt.toISOString()
-        : new Date(message.createdAt).toISOString();
-
-    if (
-      typeof message.content === 'object' &&
-      message.content !== null &&
-      'parts' in message.content &&
-      Array.isArray(message.content.parts) &&
-      'role' in message.content
-    ) {
+  return messages
+    .filter((message) => {
+      const rootMeta =
+        message.metadata && typeof message.metadata === 'object'
+          ? (message.metadata as Record<string, unknown>)
+          : {};
       const contentMeta =
+        typeof message.content === 'object' &&
+        message.content !== null &&
         'metadata' in message.content &&
         message.content.metadata &&
         typeof message.content.metadata === 'object'
           ? (message.content.metadata as Record<string, unknown>)
           : {};
-      const rootMeta =
-        message.metadata && typeof message.metadata === 'object'
-          ? (message.metadata as Record<string, unknown>)
-          : {};
+
+      const hidden =
+        (rootMeta.hidden as boolean | undefined) ??
+        (contentMeta.hidden as boolean | undefined);
+      const summary =
+        (rootMeta.summary as boolean | undefined) ??
+        (contentMeta.summary as boolean | undefined);
+
+      return !(hidden || summary);
+    })
+    .map((message) => {
+      const createdAt =
+        message.createdAt instanceof Date
+          ? message.createdAt.toISOString()
+          : new Date(message.createdAt).toISOString();
+
+      if (
+        typeof message.content === 'object' &&
+        message.content !== null &&
+        'parts' in message.content &&
+        Array.isArray(message.content.parts) &&
+        'role' in message.content
+      ) {
+        const contentMeta =
+          'metadata' in message.content &&
+          message.content.metadata &&
+          typeof message.content.metadata === 'object'
+            ? (message.content.metadata as Record<string, unknown>)
+            : {};
+        const rootMeta =
+          message.metadata && typeof message.metadata === 'object'
+            ? (message.metadata as Record<string, unknown>)
+            : {};
+
+        return {
+          id: message.id,
+          role: normalizeUIRole(message.content.role),
+          metadata: {
+            ...contentMeta,
+            ...rootMeta,
+            createdAt,
+          },
+          parts: message.content.parts as UIMessage['parts'],
+        };
+      }
+
+      const role: UIMessageRole = messageRoleToUIRole(message.role);
+
+      const text =
+        typeof message.content === 'object' &&
+        message.content !== null &&
+        'text' in message.content
+          ? String(message.content.text)
+          : typeof message.content === 'string'
+            ? message.content
+            : JSON.stringify(message.content);
 
       return {
         id: message.id,
-        role: normalizeUIRole(message.content.role),
+        role,
         metadata: {
-          ...contentMeta,
-          ...rootMeta,
           createdAt,
         },
-        parts: message.content.parts as UIMessage['parts'],
+        parts: [{ type: 'text', text }],
       };
-    }
-
-    // Fallback: Legacy format - reconstruct from MessageRole and content
-    const role: UIMessageRole = messageRoleToUIRole(message.role);
-
-    const text =
-      typeof message.content === 'object' &&
-      message.content !== null &&
-      'text' in message.content
-        ? String(message.content.text)
-        : typeof message.content === 'string'
-          ? message.content
-          : JSON.stringify(message.content);
-
-    return {
-      id: message.id,
-      role,
-      metadata: {
-        createdAt,
-      },
-      parts: [{ type: 'text', text }],
-    };
-  });
+    });
 }
 
 /**

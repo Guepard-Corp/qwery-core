@@ -7,12 +7,12 @@ import {
   TaskPart,
   TextPart,
   ReasoningPart,
-  ToolPart,
   TodoPart,
   SourcesPart,
   TaskUIPart,
   getExecutionTimeMsFromMessageParts,
 } from './message-parts';
+import { ToolWithTaskDelimiter } from './tool-with-task-delimiter';
 import { ToolUIPart as AIToolUIPart } from 'ai';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 
@@ -43,6 +43,12 @@ export interface MessageRendererProps {
     typeof import('@ai-sdk/react').useChat
   >['sendMessage'];
   onDatasourceNameClick?: (id: string, name: string) => void;
+  onTableNameClick?: (
+    datasourceId: string,
+    datasourceName: string,
+    schema: string,
+    tableName: string,
+  ) => void;
   getDatasourceTooltip?: (id: string) => string;
 }
 
@@ -53,6 +59,7 @@ function MessageRendererComponent({
   onRegenerate,
   sendMessage,
   onDatasourceNameClick,
+  onTableNameClick,
   getDatasourceTooltip,
 }: MessageRendererProps) {
   const isLastMessage = message.id === messages.at(-1)?.id;
@@ -68,7 +75,7 @@ function MessageRendererComponent({
   const lastTodoIndex = getLastTodoPartIndex(message.parts);
 
   return (
-    <div key={message.id}>
+    <div key={message.id} data-message-id={message.id}>
       {hasSources && <SourcesPart parts={sourceParts} messageId={message.id} />}
       {lastTodoIndex !== null && (
         <TodoPart
@@ -137,12 +144,16 @@ function MessageRendererComponent({
             if (part.type.startsWith('tool-')) {
               const toolPart = part as AIToolUIPart;
               return (
-                <ToolPart
+                <ToolWithTaskDelimiter
                   key={`${message.id}-${i}`}
+                  parts={message.parts}
+                  partIndex={i}
                   part={toolPart}
                   messageId={message.id}
                   index={i}
                   executionTimeMs={getExecutionTimeMs(toolPart, message)}
+                  onDatasourceNameClick={onDatasourceNameClick}
+                  onTableNameClick={onTableNameClick}
                 />
               );
             }
@@ -184,6 +195,18 @@ export const MessageRenderer = memo(MessageRendererComponent, (prev, next) => {
     if (isLastMessage) {
       return false;
     }
+  }
+
+  if (prev.onDatasourceNameClick !== next.onDatasourceNameClick) {
+    return false;
+  }
+
+  if (prev.onTableNameClick !== next.onTableNameClick) {
+    return false;
+  }
+
+  if (prev.getDatasourceTooltip !== next.getDatasourceTooltip) {
+    return false;
   }
 
   return true;

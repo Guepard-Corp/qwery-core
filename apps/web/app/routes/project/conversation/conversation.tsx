@@ -36,7 +36,10 @@ const GENERIC_CHAT_SUGGESTIONS = [
 ];
 
 export default function ConversationPage() {
-  const slug = useParams().slug;
+  const { slug } = useParams();
+  if (!slug) {
+    throw new Response('Not Found', { status: 404 });
+  }
   const navigate = useNavigate();
   const { repositories, workspace: _workspace } = useWorkspace();
   const { t } = useTranslation('common');
@@ -46,12 +49,12 @@ export default function ConversationPage() {
   const getMessages = useGetMessagesByConversationSlug(
     repositories.conversation,
     repositories.message,
-    slug as string,
+    slug,
   );
 
   const getConversation = useGetConversationBySlug(
     repositories.conversation,
-    slug as string,
+    slug,
   );
 
   const deleteConversationMutation = useDeleteConversation(
@@ -59,6 +62,10 @@ export default function ConversationPage() {
   );
 
   const isLoading = getMessages.isLoading || getConversation.isLoading;
+
+  if (!isLoading && !getConversation.data) {
+    throw new Response('Not Found', { status: 404 });
+  }
 
   const notebookId = useMemo(() => {
     const conversation = getConversation.data;
@@ -269,12 +276,6 @@ export default function ConversationPage() {
     return (
       <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
         <BotAvatar size={12} isLoading={true} />
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium">Loading conversation...</h3>
-          <p className="text-muted-foreground text-sm">
-            Please wait while we load your messages
-          </p>
-        </div>
       </div>
     );
   }

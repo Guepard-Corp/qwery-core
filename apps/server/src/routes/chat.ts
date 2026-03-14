@@ -11,6 +11,7 @@ import {
   type UIMessage,
 } from '@qwery/agent-factory-sdk';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
+import { MessageRole } from '@qwery/domain/entities';
 import type { Repositories } from '@qwery/domain/repositories';
 import { createRepositories } from '../lib/repositories';
 import { getTelemetry } from '../lib/telemetry';
@@ -52,6 +53,17 @@ export function createChatRoutes() {
         const model = body.model ?? getDefaultModel();
 
         const repositories = await getRepositories();
+        if (body.trigger === 'regenerate-message') {
+          const conversation = await repositories.conversation.findBySlug(slug);
+          if (conversation) {
+            const convMessages =
+              await repositories.message.findByConversationId(conversation.id);
+            const lastMessage = convMessages.at(-1);
+            if (lastMessage && lastMessage.role === MessageRole.ASSISTANT) {
+              await repositories.message.delete(lastMessage.id);
+            }
+          }
+        }
         const datasources = await resolveChatDatasources({
           bodyDatasources: body.datasources,
           messages,

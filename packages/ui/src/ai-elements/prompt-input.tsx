@@ -718,9 +718,6 @@ export const PromptInput = ({
           result
             .then(() => {
               clear();
-              if (usingProvider) {
-                controller.textInput.clear();
-              }
             })
             .catch(() => {
               // Don't clear on error - user may want to retry
@@ -728,9 +725,6 @@ export const PromptInput = ({
         } else {
           // Sync function completed without throwing, clear attachments
           clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
         }
       } catch (error) {
         // Don't clear on error - user may want to retry

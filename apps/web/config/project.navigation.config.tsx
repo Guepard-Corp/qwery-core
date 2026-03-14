@@ -66,3 +66,15 @@ export function createDatasourcePath(slug: string, name: string) {
 export function createDatasourceViewPath(slug: string) {
   return createPath(pathsConfig.app.projectDatasourceView, slug);
 }
+
+/** Build path to a specific table: /ds/{slug}/tables/{schema}/{tableName} */
+export function createDatasourceTableViewPath(
+  slug: string,
+  schema: string,
+  tableName: string,
+) {
+  const base = createPath(pathsConfig.app.datasourceTables, slug);
+  const encodedSchema = encodeURIComponent(schema || 'main');
+  const encodedTableName = encodeURIComponent(tableName);
+  return `${base}/${encodedSchema}/${encodedTableName}`;
+}

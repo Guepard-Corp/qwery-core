@@ -73,7 +73,7 @@ export function SchemaSkeleton({ className }: { className?: string }) {
         <Skeleton className="h-4 w-4 rounded" />
         <Skeleton className="h-4 w-36" />
       </div>
-      {[1, 2, 3].map((t) => (
+      {[1, 2].map((t) => (
         <div
           key={t}
           className="border-border/50 overflow-hidden rounded-lg border"

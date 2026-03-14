@@ -1,4 +1,13 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { generateText } from 'ai';
+
+vi.mock('ai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ai')>();
+  return {
+    ...actual,
+    generateText: vi.fn(),
+  };
+});
 import type { Conversation, Message } from '@qwery/domain/entities';
 import { MessageRole } from '@qwery/domain/entities';
 import type { Repositories } from '@qwery/domain/repositories';
@@ -13,7 +22,12 @@ import {
   UsageRepository,
   TodoRepository,
 } from '@qwery/repository-in-memory';
-import { prune } from '../../src/agents/session-compaction';
+import {
+  __test__,
+  isOverflow,
+  prune,
+  SessionCompaction,
+} from '../../src/agents/session-compaction';
 
 function createRepositories(): Repositories {
   return {
@@ -361,5 +375,177 @@ describe('SessionCompaction prune', () => {
     await prune({ conversationSlug: CONV_SLUG, repositories });
 
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips pruning when total prunable tokens are below minimum threshold', async () => {
+    await repositories.conversation.create(makeConversation());
+    const base = new Date(1000);
+    const smallOutput = 'x'.repeat(50_000);
+    await repositories.message.create(
+      makeMessage(
+        'msg-user-0',
+        MessageRole.USER,
+        { parts: [{ type: 'text', text: 'zeroth' }] },
+        new Date(base.getTime()),
+      ),
+    );
+    await repositories.message.create(
+      makeMessage(
+        'msg-asst-0',
+        MessageRole.ASSISTANT,
+        {
+          parts: [
+            { type: 'step-start' },
+            {
+              type: 'tool-runQuery',
+              state: 'output-available',
+              output: { result: smallOutput },
+            },
+          ],
+        },
+        new Date(base.getTime() + 1),
+      ),
+    );
+    await repositories.message.create(
+      makeMessage(
+        'msg-user-1',
+        MessageRole.USER,
+        { parts: [{ type: 'text', text: 'first' }] },
+        new Date(base.getTime() + 2),
+      ),
+    );
+
+    const updateSpy = vi.spyOn(repositories.message, 'update');
+    await prune({ conversationSlug: CONV_SLUG, repositories });
+
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('propagates errors from generateText in process so callers can handle failures', async () => {
+    await repositories.conversation.create(makeConversation());
+    const base = new Date(1000);
+    const userMessage = makeMessage(
+      'msg-user-1',
+      MessageRole.USER,
+      { parts: [{ type: 'text', text: 'hi' }] },
+      new Date(base.getTime()),
+    );
+
+    const generateTextMock = vi.mocked(generateText);
+    generateTextMock.mockRejectedValueOnce(new Error('compaction-fail'));
+
+    await expect(
+      SessionCompaction.process({
+        parentID: userMessage.id,
+        messages: [userMessage],
+        conversationSlug: CONV_SLUG,
+        abort: new AbortController().signal,
+        auto: true,
+        repositories,
+      }),
+    ).rejects.toThrow('compaction-fail');
+  });
+});
+
+describe('SessionCompaction helpers', () => {
+  it('estimateTokens approximates length with 3.6 divisor and caps at 50k', () => {
+    const { estimateTokens } = __test__;
+    expect(estimateTokens('')).toBe(0);
+    expect(estimateTokens('abcd')).toBeGreaterThanOrEqual(1);
+    const longText = 'x'.repeat(400_000);
+    expect(estimateTokens(longText)).toBe(50_000);
+  });
+
+  it('truncateSummaryByTokens respects max token budget and stops on boundaries', () => {
+    const { estimateTokens, truncateSummaryByTokens } = __test__;
+    const sentences = [
+      'Sentence one. ',
+      'Sentence two with more words. ',
+      'Sentence three is even longer than the previous ones. ',
+      'Sentence four should be cut off when tokens exceed the limit. ',
+    ];
+    const full = sentences.join('\n');
+    const maxTokens = 10;
+    const truncated = truncateSummaryByTokens(full, maxTokens);
+    const truncatedTokens = estimateTokens(truncated);
+    const fullTokens = estimateTokens(full);
+    expect(truncatedTokens).toBeLessThanOrEqual(maxTokens);
+    expect(fullTokens).toBeGreaterThan(maxTokens);
+    expect(truncated.length).toBeGreaterThan(0);
+  });
+
+  it('isOverflow returns true only when token count exceeds usable budget', async () => {
+    const model = {
+      providerID: 'test',
+      id: 'test-model',
+      limit: { context: 100, output: 20 },
+    } as const;
+    const below = await isOverflow({
+      tokens: {
+        input: 40,
+        output: 10,
+        reasoning: 0,
+        cache: { read: 10, write: 0 },
+      },
+      model,
+    });
+    // usable = context - output = 80, promptCount = input(40) + cache.read(10) = 50
+    expect(below).toBe(false);
+
+    const above = await isOverflow({
+      tokens: {
+        input: 71,
+        output: 0,
+        reasoning: 0,
+        cache: { read: 10, write: 0 },
+      },
+      model,
+    });
+    // usable = 80, promptCount = 81
+    expect(above).toBe(true);
+  });
+});
+
+describe('SessionCompaction isOverflow', () => {
+  it('excludes reasoning and output tokens from overflow count (they are stripped between turns)', async () => {
+    const model = {
+      providerID: 'test',
+      id: 'model',
+      limit: { context: 100_000, output: 20_000 },
+    };
+
+    // usable = 80_000. promptCount = input(40k) + cache.read(20k) = 60k < 80k → no overflow
+    // reasoning(1) and output(20k) are excluded: APIs strip them before the next turn
+    const overflow = await isOverflow({
+      model,
+      tokens: {
+        input: 40_000,
+        output: 20_000,
+        reasoning: 1,
+        cache: { read: 20_000, write: 0 },
+      },
+    });
+
+    expect(overflow).toBe(false);
+  });
+
+  it('does not overflow when total equals usable limit', async () => {
+    const model = {
+      providerID: 'test',
+      id: 'model',
+      limit: { context: 100_000, output: 20_000 },
+    };
+
+    const overflow = await isOverflow({
+      model,
+      tokens: {
+        input: 40_000,
+        output: 20_000,
+        reasoning: 0,
+        cache: { read: 20_000, write: 0 },
+      },
+    });
+
+    expect(overflow).toBe(false);
   });
 });

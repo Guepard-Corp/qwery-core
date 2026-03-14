@@ -14,7 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../../../shadcn/chart';
-import { getColorsForBarLine, resolveChartKeys } from './chart-utils';
+import { getColorsForBarLine } from './chart-utils';
 import { validateChartData } from './chart-data-validator';
 import { ChartContext } from './chart-wrapper';
 
@@ -40,17 +40,50 @@ export function BarChart({ chartConfig }: BarChartProps) {
 
   const { valid } = validateChartData(data);
 
-  const resolvedKeys = useMemo(
-    () =>
-      resolveChartKeys(data, { xKey, yKey }, 'bar') as {
-        xKey: string;
-        yKey: string;
-      },
-    [data, xKey, yKey],
-  );
+  // Prefer configured keys; only guess when keys are missing
+  const { actualXKey, actualYKey } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return { actualXKey: xKey, actualYKey: yKey };
+    }
 
-  const actualXKey = resolvedKeys.xKey;
-  const actualYKey = resolvedKeys.yKey;
+    const firstItem = data[0];
+    if (firstItem && typeof firstItem === 'object') {
+      const hasXKey = xKey in firstItem;
+      const hasYKey = yKey in firstItem;
+
+      if (hasXKey && hasYKey) {
+        return { actualXKey: xKey, actualYKey: yKey };
+      }
+
+      if (!xKey || !yKey) {
+        const availableKeys = Object.keys(firstItem);
+
+        const altXKey =
+          availableKeys.find(
+            (k) =>
+              k.toLowerCase().includes('name') ||
+              k.toLowerCase().includes('category') ||
+              k.toLowerCase().includes('label'),
+          ) || availableKeys[0];
+
+        const altYKey =
+          availableKeys.find(
+            (k) =>
+              k.toLowerCase().includes('value') ||
+              k.toLowerCase().includes('count') ||
+              k.toLowerCase().includes('amount'),
+          ) ||
+          availableKeys[1] ||
+          availableKeys[0];
+
+        if (altXKey && altYKey && altXKey !== altYKey) {
+          return { actualXKey: altXKey, actualYKey: altYKey };
+        }
+      }
+    }
+
+    return { actualXKey: xKey, actualYKey: yKey };
+  }, [data, xKey, yKey]);
 
   const chartColors = useMemo(() => {
     const colorsArray = getColorsForBarLine(colors);

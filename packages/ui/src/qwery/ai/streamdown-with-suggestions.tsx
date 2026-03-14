@@ -10,7 +10,10 @@ import { useStreamdownReady } from './hooks/use-streamdown-ready';
 import { useDebouncedValue } from './hooks/use-debounced-value';
 import { useSuggestionDetection } from './hooks/use-suggestion-detection';
 import { useSuggestionEnhancement } from './hooks/use-suggestion-enhancement';
-import type { SuggestionMetadata } from './utils/suggestion-pattern';
+import {
+  preprocessSuggestionsForRendering,
+  type SuggestionMetadata,
+} from './utils/suggestion-pattern';
 
 const QWERY_DATASOURCE_PREFIX = 'qwery-datasource:';
 const BLOCKED_TITLE_PREFIX = 'Blocked URL: ';
@@ -96,12 +99,13 @@ export const StreamdownWithSuggestions = memo(
     );
 
     const isStreamdownReady = useStreamdownReady(containerRef);
-    const _debouncedChildren = useDebouncedValue(children, 150);
+    const debouncedChildren = useDebouncedValue(children, 150);
 
-    const detectedSuggestions = useSuggestionDetection(
-      containerEl,
-      isStreamdownReady,
-    );
+    const detectedSuggestions = useSuggestionDetection({
+      containerElement: containerEl,
+      isReady: isStreamdownReady,
+      contentKey: debouncedChildren,
+    });
 
     useSuggestionEnhancement({
       detectedSuggestions,
@@ -168,6 +172,8 @@ export const StreamdownWithSuggestions = memo(
       [onDatasourceNameClick],
     );
 
+    const preprocessedContent = preprocessSuggestionsForRendering(children);
+
     return (
       <div
         ref={setContainerRef}
@@ -175,7 +181,7 @@ export const StreamdownWithSuggestions = memo(
         style={{ maxWidth: '100%' }}
         onClick={handleContainerClick}
       >
-        <MessageResponse>{children}</MessageResponse>
+        <MessageResponse>{preprocessedContent}</MessageResponse>
       </div>
     );
   },

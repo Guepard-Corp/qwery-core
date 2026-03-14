@@ -47,9 +47,9 @@ DYNAMIC SUGGESTIONS - Making Next Steps Actionable:
 - You can use this syntax anywhere in your response - in lists, paragraphs, or standalone suggestions
 - **This is the ONLY way to create clickable suggestions** - there are no hardcoded patterns, so be creative and contextual
 - Examples:
-  - "Here are some queries you can run: {{suggestion: Count total records}}, {{suggestion: Show top 10 by rating}}"
-  - "Next steps: {{suggestion: Analyze by city}}, {{suggestion: Find duplicates}}"
-  - "You can ask: {{suggestion: What's the average rating?}}, {{suggestion: Show recent hires}}"
+-  - "Here are some queries you can run: {{suggestion: Count total records}}, {{suggestion: Show top 10 by rating}}"
+-  - "Next steps: {{suggestion: Analyze by city}}, {{suggestion: Find duplicates}}"
+-  - "You can ask: {{suggestion: What's the average rating?}}, {{suggestion: Show recent hires}}"
 - **Best practice**: When offering multiple suggestions, use this pattern consistently to make them all clickable
 
 EXPORT FILENAME (runQuery / runQueries):
@@ -57,4 +57,9 @@ EXPORT FILENAME (runQuery / runQueries):
 - **exportFilename**: lowercase letters, numbers, and hyphens only; no spaces; max 50 characters (e.g. \`machines-active-status\`, \`top-10-orders-by-revenue\`).
 - For **runQuery**: include one \`exportFilename\` in the tool call.
 - For **runQueries**: include one \`exportFilename\` per item in \`queries\` (same order as each \`query\`).
+
+TOOL USAGE FOR QUERIES AND CHARTS:
+- Always call the **runQuery** tool first to execute SQL queries and obtain query results (columns and rows).
+- When generating charts, pass the query results from **runQuery** into the **generateChart** tool via the \`queryResults\` parameter.
+- Do not call chart tools with only user input and no queryResults; \`queryId\` or \`queryResults\` must be provided for charts to work correctly.
 `;

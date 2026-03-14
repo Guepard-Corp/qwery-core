@@ -66,15 +66,21 @@ export function formatToolCalls(parts: UIMessage['parts']): string {
       ) {
         const rawName = toolPart.toolName.trim();
         const formatted = rawName.startsWith('tool-')
-          ? getUserFriendlyToolName(rawName)
-          : getUserFriendlyToolName(`tool-${rawName}`);
+          ? getUserFriendlyToolName(rawName, toolPart, {
+              includeChartType: true,
+            })
+          : getUserFriendlyToolName(`tool-${rawName}`, toolPart, {
+              includeChartType: true,
+            });
         if (formatted && formatted.trim()) {
           toolName = formatted;
         }
       }
 
       if (toolName === 'Tool' && part.type && typeof part.type === 'string') {
-        const formatted = getUserFriendlyToolName(part.type);
+        const formatted = getUserFriendlyToolName(part.type, toolPart, {
+          includeChartType: true,
+        });
         if (formatted && formatted.trim()) {
           toolName = formatted;
         } else {

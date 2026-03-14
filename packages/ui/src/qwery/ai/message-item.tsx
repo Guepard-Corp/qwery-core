@@ -7,7 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { BotAvatar } from '../bot-avatar';
 import { Button } from '../../shadcn/button';
-import { Textarea } from '../../shadcn/textarea';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupTextarea,
+} from '../../shadcn/input-group';
 import {
   CopyIcon,
   RefreshCcwIcon,
@@ -17,6 +21,7 @@ import {
   MoreVertical as MoreVerticalIcon,
   FileText as FileTextIcon,
   Archive as ArchiveIcon,
+  ArrowUp,
 } from 'lucide-react';
 import { Message, MessageContent } from '../../ai-elements/message';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
@@ -26,6 +31,7 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from '../../ai-elements/sources';
+import { ModelSelector } from './model-selector';
 import { ReasoningPart } from './message-parts';
 import { StreamdownWithSuggestions } from './streamdown-with-suggestions';
 import {
@@ -35,11 +41,8 @@ import {
 import { DatasourceBadges, type DatasourceItem } from './datasource-badge';
 import { DatasourceSelector } from './datasource-selector';
 import { ToolUIPart } from 'ai';
-import {
-  ToolPart,
-  TodoPart,
-  getExecutionTimeMsFromMessageParts,
-} from './message-parts';
+import { TodoPart, getExecutionTimeMsFromMessageParts } from './message-parts';
+import { ToolWithTaskDelimiter } from './tool-with-task-delimiter';
 import { getLastTodoPartIndex } from './utils/todo-parts';
 import {
   isChatStreaming,
@@ -70,6 +73,9 @@ export interface MessageItemProps {
   messages: UIMessage[];
   status: ChatStatus | undefined;
   lastAssistantMessage: UIMessage | undefined;
+  model?: string;
+  setModel?: (model: string) => void;
+  models?: { name: string; value: string }[];
   editingMessageId: string | null;
   editText: string;
   editDatasources: string[];
@@ -115,6 +121,12 @@ export interface MessageItemProps {
     metadata?: import('./utils/suggestion-pattern').SuggestionMetadata,
   ) => Promise<boolean>;
   onDatasourceNameClick?: (id: string, name: string) => void;
+  onTableNameClick?: (
+    datasourceId: string,
+    datasourceName: string,
+    schema: string,
+    tableName: string,
+  ) => void;
   getDatasourceTooltip?: (id: string) => string;
   conversationTitle?: string;
 }
@@ -148,6 +160,9 @@ function MessageItemComponent({
   messages,
   status,
   lastAssistantMessage,
+  model,
+  setModel,
+  models,
   editingMessageId,
   editText,
   editDatasources,
@@ -171,6 +186,7 @@ function MessageItemComponent({
   scrollToBottom,
   onBeforeSuggestionSend,
   onDatasourceNameClick,
+  onTableNameClick,
   getDatasourceTooltip,
   onToolApproval,
   conversationTitle,
@@ -394,93 +410,77 @@ function MessageItemComponent({
                             {isEditing &&
                             normalizeUIRole(message.role) === 'user' ? (
                               (() => {
-                                const { text: _cleanText, context } =
-                                  parseMessageWithContext(part.text);
-                                const hasContext =
-                                  context?.lastAssistantResponse;
-
                                 return (
                                   <>
-                                    {(hasContext ||
-                                      (datasources && pluginLogoMap)) && (
-                                      <div className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 overflow-x-hidden">
-                                        {hasContext ? (
-                                          <div className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-xs">
-                                            <span className="font-medium">
-                                              Context:{' '}
-                                            </span>
-                                            {context.lastAssistantResponse?.substring(
-                                              0,
-                                              100,
-                                            )}
-                                            {(context.lastAssistantResponse
-                                              ?.length ?? 0) > 100 && '...'}
-                                          </div>
-                                        ) : (
-                                          <div className="flex-1" />
-                                        )}
-                                        {datasources && pluginLogoMap && (
-                                          <DatasourceSelector
-                                            selectedDatasources={
-                                              editDatasources
-                                            }
-                                            onSelectionChange={
-                                              onEditDatasourcesChange
-                                            }
-                                            datasources={datasources}
-                                            pluginLogoMap={pluginLogoMap}
-                                            variant="badge"
-                                          />
-                                        )}
+                                    {datasources && pluginLogoMap && (
+                                      <div className="mb-2 flex w-full min-w-0 justify-end overflow-x-hidden">
+                                        <DatasourceSelector
+                                          selectedDatasources={editDatasources}
+                                          onSelectionChange={
+                                            onEditDatasourcesChange
+                                          }
+                                          datasources={datasources}
+                                          pluginLogoMap={pluginLogoMap}
+                                          variant="badge"
+                                        />
                                       </div>
                                     )}
-                                    <div className="group w-full max-w-full min-w-0">
-                                      <Message
-                                        from={message.role}
-                                        className="w-full max-w-full min-w-0"
+                                    <InputGroup className="overflow-hidden">
+                                      <InputGroupTextarea
+                                        value={editText}
+                                        onChange={(e) =>
+                                          onEditTextChange(e.target.value)
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (
+                                            e.key === 'Enter' &&
+                                            (e.metaKey || e.ctrlKey)
+                                          ) {
+                                            e.preventDefault();
+                                            onEditSubmit();
+                                          } else if (e.key === 'Escape') {
+                                            e.preventDefault();
+                                            onEditCancel();
+                                          }
+                                        }}
+                                        className="field-sizing-content max-h-64 min-h-16 px-3"
+                                        autoFocus
+                                      />
+                                      <InputGroupAddon
+                                        align="block-end"
+                                        className="flex min-w-0 justify-between gap-1"
                                       >
-                                        <Textarea
-                                          value={editText}
-                                          onChange={(e) => {
-                                            onEditTextChange(e.target.value);
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (
-                                              e.key === 'Enter' &&
-                                              (e.metaKey || e.ctrlKey)
-                                            ) {
-                                              e.preventDefault();
-                                              onEditSubmit();
-                                            } else if (e.key === 'Escape') {
-                                              e.preventDefault();
-                                              onEditCancel();
-                                            }
-                                          }}
-                                          className="bg-muted/50 text-foreground border-primary/30 focus:border-primary min-h-[60px] w-full resize-none rounded-lg border-2 px-4 py-3 text-sm focus:outline-none"
-                                          autoFocus
-                                        />
-                                      </Message>
-                                      <div className="mt-2 flex items-center justify-end gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={onEditCancel}
-                                          className="h-8 px-3"
-                                        >
-                                          <XIcon className="mr-1 size-3" />
-                                          Cancel
-                                        </Button>
-                                        <Button
-                                          variant="default"
-                                          size="sm"
-                                          onClick={onEditSubmit}
-                                          className="h-8 px-3"
-                                        >
-                                          <CheckIcon className="mr-1 size-3" />
-                                          Save & Regenerate
-                                        </Button>
-                                      </div>
-                                    </div>
+                                        <div className="flex min-w-0 flex-1 items-center gap-1">
+                                          {models && setModel && model && (
+                                            <ModelSelector
+                                              models={models}
+                                              value={model}
+                                              onValueChange={setModel}
+                                            />
+                                          )}
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={onEditCancel}
+                                            className="h-8 w-8"
+                                            aria-label="Cancel edit"
+                                          >
+                                            <XIcon className="size-4" />
+                                          </Button>
+                                          <Button
+                                            variant="default"
+                                            size="icon"
+                                            onClick={onEditSubmit}
+                                            className="h-8 w-8"
+                                            aria-label="Save and regenerate"
+                                          >
+                                            <ArrowUp className="size-4" />
+                                          </Button>
+                                        </div>
+                                      </InputGroupAddon>
+                                    </InputGroup>
                                   </>
                                 );
                               })()
@@ -493,7 +493,7 @@ function MessageItemComponent({
 
                                     if (context) {
                                       return (
-                                        <div className="group w-full max-w-full min-w-0">
+                                        <div className="group/msg w-full max-w-full min-w-0">
                                           <UserMessageBubble
                                             key={`${message.id}-${i}`}
                                             text={text}
@@ -518,7 +518,7 @@ function MessageItemComponent({
                                                       ) ?? [],
                                                     )
                                                   }
-                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover/msg:opacity-100"
                                                   title={t('sidebar.edit')}
                                                 >
                                                   <PencilIcon className="size-3" />
@@ -544,7 +544,7 @@ function MessageItemComponent({
                                                     );
                                                   }
                                                 }}
-                                                className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                className="h-7 w-7 opacity-0 transition-opacity group-hover/msg:opacity-100"
                                                 title={
                                                   copiedMessagePartId ===
                                                   `${message.id}-${i}`
@@ -576,7 +576,7 @@ function MessageItemComponent({
                                               />
                                             </div>
                                           )}
-                                        <div className="group w-full max-w-full min-w-0">
+                                        <div className="group/msg w-full max-w-full min-w-0">
                                           <Message
                                             key={`${message.id}-${i}`}
                                             from={message.role}
@@ -606,7 +606,7 @@ function MessageItemComponent({
                                                         ) ?? [],
                                                       )
                                                     }
-                                                    className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                    className="h-7 w-7 opacity-0 transition-opacity group-hover/msg:opacity-100"
                                                     title={t('sidebar.edit')}
                                                   >
                                                     <PencilIcon className="size-3" />
@@ -632,7 +632,7 @@ function MessageItemComponent({
                                                       );
                                                     }
                                                   }}
-                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                  className="h-7 w-7 opacity-0 transition-opacity group-hover/msg:opacity-100"
                                                   title={
                                                     copiedMessagePartId ===
                                                     `${message.id}-${i}`
@@ -1000,63 +1000,16 @@ function MessageItemComponent({
                   default:
                     if (part.type.startsWith('tool-')) {
                       const toolPart = part as ToolUIPart;
-                      const inProgressStates = new Set([
-                        'input-streaming',
-                        'input-available',
-                        'approval-requested',
-                      ]);
-                      const isToolInProgress = inProgressStates.has(
-                        toolPart.state as string,
-                      );
-
                       const toolPartKey = `${message.id}-${i}`;
-                      const isLastPart = i === message.parts.length - 1;
 
-                      if (isToolInProgress) {
-                        return (
-                          <div
-                            key={toolPartKey}
-                            className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
-                          >
-                            <ToolPart
-                              part={toolPart}
-                              messageId={message.id}
-                              index={i}
-                              executionTimeMs={getExecutionTimeMs(
-                                toolPart,
-                                message,
-                              )}
-                              open={
-                                openToolPartKeys !== undefined &&
-                                openToolPartKeys !== null
-                                  ? openToolPartKeys.has(toolPartKey)
-                                  : undefined
-                              }
-                              onOpenChange={
-                                onToolPartOpenChange
-                                  ? (open) =>
-                                      onToolPartOpenChange(toolPartKey, open)
-                                  : undefined
-                              }
-                              defaultOpenWhenUncontrolled={isLastPart}
-                              onPasteToNotebook={onPasteToNotebook}
-                              notebookContext={notebookContext}
-                              onToolApproval={onToolApproval}
-                              pluginLogoMap={pluginLogoMap}
-                              selectedDatasourceItems={selectedDatasourceItems}
-                              messages={messages}
-                            />
-                          </div>
-                        );
-                      }
-
-                      // Use ToolPart component for completed tools (includes visualizers)
                       return (
                         <div
                           key={toolPartKey}
                           className="flex w-full max-w-full min-w-0 flex-col justify-start gap-2 overflow-x-hidden"
                         >
-                          <ToolPart
+                          <ToolWithTaskDelimiter
+                            parts={message.parts}
+                            partIndex={i}
                             part={toolPart}
                             messageId={message.id}
                             index={i}
@@ -1085,6 +1038,9 @@ function MessageItemComponent({
                             pluginLogoMap={pluginLogoMap}
                             selectedDatasourceItems={selectedDatasourceItems}
                             messages={messages}
+                            datasources={datasources}
+                            onDatasourceNameClick={onDatasourceNameClick}
+                            onTableNameClick={onTableNameClick}
                           />
                         </div>
                       );
@@ -1151,6 +1107,22 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
   }
 
   if (prev.openToolPartKeys !== next.openToolPartKeys) {
+    return false;
+  }
+
+  if (prev.editDatasources !== next.editDatasources) {
+    return false;
+  }
+
+  if (prev.datasources !== next.datasources) {
+    return false;
+  }
+
+  if (prev.selectedDatasources !== next.selectedDatasources) {
+    return false;
+  }
+
+  if (prev.pluginLogoMap !== next.pluginLogoMap) {
     return false;
   }
 
