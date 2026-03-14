@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tauri::Manager;
 use tauri_plugin_shell::process::CommandEvent;
 use keyring::Entry;
+use tauri_plugin_shell::ShellExt;
 
 fn target_triple() -> &'static str {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -19,7 +20,16 @@ fn target_triple() -> &'static str {
     #[allow(unreachable_code)]
     "aarch64-apple-darwin" // fallback
 }
-use tauri_plugin_shell::ShellExt;
+
+#[cfg(target_os = "windows")]
+fn configure_webview_zoom() {
+    const ARGS: &str =
+        "--disable-pinch --disable-features=OverscrollHistoryNavigation,msExperimentalScrolling";
+    std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", ARGS);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_webview_zoom() {}
 
 const SERVICE_NAME: &str = "run.qwery.desktop";
 
@@ -107,6 +117,8 @@ fn set_app_config(app: tauri::AppHandle, config: HashMap<String, String>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    configure_webview_zoom();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
