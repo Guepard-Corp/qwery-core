@@ -135,12 +135,18 @@ pub fn run() {
 
             // API server is a JS bundle - run it with Bun sidecar
             let target = target_triple();
-            let api_server_name = format!("api-server-{}", target);
-            let api_server_path: PathBuf = if cfg!(debug_assertions) {
-                // Dev: binaries are in src-tauri/binaries/
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries").join(&api_server_name)
+            let base_name = format!("api-server-{}", target);
+            let api_server_name = if cfg!(target_os = "windows") {
+                format!("{base_name}.exe")
             } else {
-                // Prod: sidecars are next to the executable
+                base_name
+            };
+
+            let api_server_path: PathBuf = if cfg!(debug_assertions) {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("binaries")
+                    .join(&api_server_name)
+            } else {
                 let exe_dir = std::env::current_exe()
                     .expect("failed to get executable path")
                     .parent()
