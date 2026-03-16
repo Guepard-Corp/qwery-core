@@ -120,7 +120,7 @@ pnpm dev
 # Start specific app
 pnpm --filter server dev     # Server app
 pnpm --filter web dev        # Web app (port 3000)
-pnpm --filter desktop dev    # Desktop app
+pnpm desktop:dev             # Desktop app (Tauri)
 pnpm --filter tui dev        # Terminal app
 
 # Code Quality

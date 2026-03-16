@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
@@ -5,8 +7,10 @@ import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react(), tsconfigPaths({ ignoreConfigErrors: true })],
   resolve: {
+    alias: {
+      '~': path.resolve(process.cwd()),
+    },
     dedupe: ['react', 'react-dom'],
-    alias: {},
   },
   test: {
     clearMocks: true,

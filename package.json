@@ -55,7 +55,7 @@
     "desktop:tauri": "pnpm --filter ./apps/desktop tauri",
     "desktop:build": "pnpm --filter ./apps/desktop build",
     "desktop:package": "pnpm --filter ./apps/desktop run tauri:build",
-    "desktop:start": "pnpm --filter desktop start",
+    "desktop:start": "pnpm --filter ./apps/desktop start",
     "extensions:build": "node tooling/extensions/build.js",
     "update": "pnpm update -r",
     "syncpack:list": "pnpm dlx syncpack list-mismatches",
