@@ -136,10 +136,28 @@ pub fn run() {
             // API server is a JS bundle - run it with Bun sidecar
             let target = target_triple();
             let base_name = format!("api-server-{}", target);
-            let api_server_name = if cfg!(target_os = "windows") {
-                format!("{base_name}.exe")
+
+            // Dev (debug): use per‑triple name under src-tauri/binaries, same as build script
+            let api_server_name = if cfg!(debug_assertions) {
+                #[cfg(target_os = "windows")]
+                {
+                    format!("{base_name}.exe")
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    base_name
+                }
             } else {
-                base_name
+                // Prod: use plain "api-server.exe" next to qwery-app.exe on Windows,
+                // and "api-server-<triple>" on other platforms if you want
+                #[cfg(target_os = "windows")]
+                {
+                    "api-server.exe".to_string()
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    base_name
+                }
             };
 
             let api_server_path: PathBuf = if cfg!(debug_assertions) {

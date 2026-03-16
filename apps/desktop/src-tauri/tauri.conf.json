@@ -24,7 +24,8 @@
         "minimizable": true,
         "closable": true,
         "fullscreen": false,
-        "skipTaskbar": false
+        "skipTaskbar": false,
+        "devtools": true
       }
     ],
     "security": {
