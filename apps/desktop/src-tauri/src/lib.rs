@@ -323,10 +323,23 @@ pub fn run() {
                 .resolve("", tauri::path::BaseDirectory::Resource)
                 .expect("failed to resolve resource dir");
             let node_modules_path = resource_dir.join("node_modules");
-            let extensions_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("target")
-                .join("debug")
-                .join("extensions");
+            let extensions_dir = if cfg!(debug_assertions) {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("target")
+                    .join("debug")
+                    .join("extensions")
+            } else {
+                let from_resources = resource_dir.join("extensions");
+                if from_resources.exists() {
+                    from_resources
+                } else {
+                    let exe_dir = std::env::current_exe()
+                        .ok()
+                        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                        .unwrap_or_else(|| resource_dir.clone());
+                    exe_dir.join("extensions")
+                }
+            };
 
             println!("Node modules path: {}", node_modules_path.to_str().unwrap());
 
@@ -390,7 +403,10 @@ pub fn run() {
                 .shell()
                 .sidecar("bun")
                 .expect("failed to create bun command")
-                .envs(std::env::vars_os());
+                .envs(std::env::vars_os())
+                // Help Bun/Node resolve deps for extension drivers (e.g. `pg`).
+                .env("NODE_PATH", node_modules_path.to_str().unwrap_or(""))
+                .current_dir(&resource_dir);
 
             for key in MANAGED_KEYS {
                 match keyring_entry(key) {
