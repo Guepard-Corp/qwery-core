@@ -39,9 +39,11 @@ const SERVICE_NAME: &str = "run.qwery.desktop";
 fn keyring_entry(key: &str) -> Result<Entry, String> {
     #[cfg(target_os = "windows")]
     {
-        // On Windows, use an explicit "target" so credentials are stable across
-        // dev/prod builds and installer contexts.
-        Entry::new_with_target(SERVICE_NAME, SERVICE_NAME, key)
+        // On Windows, the credential store key is primarily the "target".
+        // If we reuse the same target for all variables, they overwrite each other.
+        // Make the target unique per env var key but stable across runs.
+        let target = format!("{SERVICE_NAME}/{key}");
+        Entry::new_with_target(&target, SERVICE_NAME, "desktop")
             .map_err(|e| format!("keyring init error: {e}"))
     }
     #[cfg(not(target_os = "windows"))]
@@ -54,6 +56,14 @@ fn keyring_entry(key: &str) -> Result<Entry, String> {
 fn keyring_entry_legacy(key: &str) -> Result<Entry, String> {
     // Previous behavior: service=user mapping only. Keep as legacy read/migrate path.
     Entry::new(SERVICE_NAME, key).map_err(|e| format!("keyring init error: {e}"))
+}
+
+#[cfg(target_os = "windows")]
+fn keyring_entry_legacy_shared_target(key: &str) -> Result<Entry, String> {
+    // Broken legacy behavior: all keys shared the same target so values overwrite.
+    // Keep only for delete cleanup; do NOT migrate from this.
+    Entry::new_with_target(SERVICE_NAME, SERVICE_NAME, key)
+        .map_err(|e| format!("keyring init error: {e}"))
 }
 
 fn log_path(app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -91,6 +101,9 @@ fn save_api_key(app: tauri::AppHandle, key: String, value: String) -> Result<(),
                 // Best-effort cleanup of legacy location if it exists.
                 if let Ok(legacy) = keyring_entry_legacy(&key) {
                     let _ = legacy.delete_credential();
+                }
+                if let Ok(shared) = keyring_entry_legacy_shared_target(&key) {
+                    let _ = shared.delete_credential();
                 }
             }
             Ok(())
@@ -167,6 +180,9 @@ fn delete_api_key(app: tauri::AppHandle, key: String) -> Result<(), String> {
     {
         if let Ok(legacy) = keyring_entry_legacy(&key) {
             let _ = legacy.delete_credential();
+        }
+        if let Ok(shared) = keyring_entry_legacy_shared_target(&key) {
+            let _ = shared.delete_credential();
         }
     }
     append_log_line(&app, &format!("desktop:delete_api_key key={key} status=ok"));
