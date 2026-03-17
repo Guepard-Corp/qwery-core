@@ -405,8 +405,7 @@ pub fn run() {
                 .expect("failed to create bun command")
                 .envs(std::env::vars_os())
                 // Help Bun/Node resolve deps for extension drivers (e.g. `pg`).
-                .env("NODE_PATH", node_modules_path.to_str().unwrap_or(""))
-                .current_dir(&resource_dir);
+                .env("NODE_PATH", node_modules_path.to_str().unwrap_or(""));
 
             for key in MANAGED_KEYS {
                 match keyring_entry(key) {
@@ -446,8 +445,16 @@ pub fn run() {
                 }
             }
 
+            // Match the behavior of running `bun.exe api-server.exe` manually:
+            // make the cwd the directory containing the API server binary.
+            let api_server_cwd = api_server_path
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| resource_dir.clone());
+
             let (mut rx, child) = cmd
                 .args([api_server_path.to_str().expect("api-server path")])
+                .current_dir(api_server_cwd)
                 .env("QWERY_STORAGE_DIR", storage_dir.to_str().expect("storage path"))
                 .env(
                     "QWERY_EXTENSIONS_PATH",
