@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 
 import { Button } from '@qwery/ui/button';
@@ -6,6 +8,7 @@ import { Label } from '@qwery/ui/label';
 import { Page, PageBody, PageHeader, PageTitle } from '@qwery/ui/page';
 import { Separator } from '@qwery/ui/separator';
 import { Switch } from '@qwery/ui/switch';
+import { toast } from 'sonner';
 import { isDesktopApp } from '@qwery/shared/desktop';
 
 type KeyConfig = {
@@ -80,6 +83,15 @@ type ConfigValues = Record<string, string>;
 export default function DesktopSettingsRoute() {
   const [values, setValues] = useState<KeyValues>({});
   const [config, setConfig] = useState<ConfigValues>({});
+  const [configuredKeys, setConfiguredKeys] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [keysToDelete, setKeysToDelete] = useState<Record<string, boolean>>({});
+  const [initialValues, setInitialValues] = useState<KeyValues>({});
+  const [initialConfig, setInitialConfig] = useState<ConfigValues>({});
+  const [initialConfiguredKeys, setInitialConfiguredKeys] = useState<
+    Record<string, boolean>
+  >({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +109,7 @@ export default function DesktopSettingsRoute() {
       try {
         const core = await import('@tauri-apps/api/core');
         const next: KeyValues = {};
+        const configuredNext: Record<string, boolean> = {};
         for (const group of KEY_GROUPS) {
           for (const key of group.keys) {
             try {
@@ -107,7 +120,10 @@ export default function DesktopSettingsRoute() {
                 },
               )) as string | null;
               if (existing) {
-                next[key.id] = existing;
+                configuredNext[key.id] = true;
+                if (key.type !== 'password') {
+                  next[key.id] = existing;
+                }
               }
             } catch {
               // ignore per-key errors
@@ -126,6 +142,11 @@ export default function DesktopSettingsRoute() {
         if (mounted) {
           setValues(next);
           setConfig(configNext);
+          setConfiguredKeys(configuredNext);
+          setKeysToDelete({});
+          setInitialValues(next);
+          setInitialConfig(configNext);
+          setInitialConfiguredKeys(configuredNext);
         }
       } catch (e) {
         if (mounted) {
@@ -147,6 +168,7 @@ export default function DesktopSettingsRoute() {
 
   const handleChange = (id: string, value: string) => {
     setValues((prev) => ({ ...prev, [id]: value }));
+    setKeysToDelete((prev) => ({ ...prev, [id]: false }));
     setSaved(false);
     setError(null);
   };
@@ -155,6 +177,36 @@ export default function DesktopSettingsRoute() {
     setConfig((prev) => ({ ...prev, [id]: value }));
     setSaved(false);
     setError(null);
+  };
+
+  const markKeyForDeletion = (id: string) => {
+    setValues((prev) => ({ ...prev, [id]: '' }));
+    setKeysToDelete((prev) => ({ ...prev, [id]: true }));
+    setConfiguredKeys((prev) => ({ ...prev, [id]: false }));
+    setSaved(false);
+    setError(null);
+  };
+
+  const didChangeRequireRestart = () => {
+    for (const group of KEY_GROUPS) {
+      for (const key of group.keys) {
+        const id = key.id;
+        if (keysToDelete[id]) return true;
+        const nextValue = values[id] ?? '';
+        if (key.type === 'password') {
+          if (nextValue) return true;
+          continue;
+        }
+        const prevValue = initialValues[id] ?? '';
+        if (nextValue !== prevValue) return true;
+      }
+    }
+    for (const k of CONFIG_KEYS_ORDER) {
+      const prevValue = initialConfig[k] ?? '';
+      const nextValue = config[k] ?? '';
+      if (nextValue !== prevValue) return true;
+    }
+    return false;
   };
 
   const handleSave = async () => {
@@ -169,11 +221,25 @@ export default function DesktopSettingsRoute() {
 
       for (const group of KEY_GROUPS) {
         for (const key of group.keys) {
-          const value = values[key.id] ?? '';
-          if (!value) {
-            await core.invoke('delete_api_key', { key: key.id });
-          } else {
-            await core.invoke('save_api_key', { key: key.id, value });
+          const id = key.id;
+          if (keysToDelete[id]) {
+            await core.invoke('delete_api_key', { key: id });
+            continue;
+          }
+
+          const value = values[id] ?? '';
+          if (key.type === 'password') {
+            if (!value) {
+              continue;
+            }
+            await core.invoke('save_api_key', { key: id, value });
+            continue;
+          }
+
+          if (!value && initialConfiguredKeys[id]) {
+            await core.invoke('delete_api_key', { key: id });
+          } else if (value) {
+            await core.invoke('save_api_key', { key: id, value });
           }
         }
       }
@@ -187,6 +253,13 @@ export default function DesktopSettingsRoute() {
       await core.invoke('set_app_config', { config: configToSave });
 
       setSaved(true);
+      if (didChangeRequireRestart()) {
+        toast.info('Restart required', {
+          description:
+            'Some changes only apply after restarting the desktop app.',
+          duration: 8000,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings.');
     } finally {
@@ -223,16 +296,40 @@ export default function DesktopSettingsRoute() {
                   <div className="space-y-3">
                     {group.keys.map((key) => (
                       <div key={key.id} className="space-y-1">
-                        <Label htmlFor={key.id}>{key.label}</Label>
-                        <Input
-                          id={key.id}
-                          type={key.type ?? 'text'}
-                          value={values[key.id] ?? ''}
-                          onChange={(event) =>
-                            handleChange(key.id, event.target.value)
-                          }
-                          autoComplete="off"
-                        />
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor={key.id}>{key.label}</Label>
+                          {configuredKeys[key.id] ? (
+                            <span className="text-muted-foreground text-xs">
+                              Configured
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={key.id}
+                            type={key.type ?? 'text'}
+                            value={values[key.id] ?? ''}
+                            onChange={(event) =>
+                              handleChange(key.id, event.target.value)
+                            }
+                            placeholder={
+                              key.type === 'password' && configuredKeys[key.id]
+                                ? 'Configured (enter new value to replace)'
+                                : undefined
+                            }
+                            autoComplete="off"
+                          />
+                          {key.type === 'password' && configuredKeys[key.id] ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => markKeyForDeletion(key.id)}
+                            >
+                              Clear
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -310,7 +407,7 @@ export default function DesktopSettingsRoute() {
                   className="text-muted-foreground text-sm"
                   data-test="settings-saved"
                 >
-                  Saved. Please restart the desktop app to apply changes.
+                  Saved.
                 </p>
               )}
 

@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::process::Command;
 use tauri::Manager;
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use keyring::Entry;
 use tauri_plugin_shell::ShellExt;
 
@@ -87,6 +89,55 @@ const CONFIG_KEYS: &[&str] = &[
     "QWERY_TELEMETRY_DEBUG",
 ];
 
+fn pick_port(preferred: u16) -> u16 {
+    use std::net::TcpListener;
+    if TcpListener::bind(("127.0.0.1", preferred)).is_ok() {
+        return preferred;
+    }
+    TcpListener::bind(("127.0.0.1", 0))
+        .ok()
+        .and_then(|l| l.local_addr().ok().map(|a| a.port()))
+        .unwrap_or(preferred)
+}
+
+fn pid_file_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.path().app_config_dir().ok().map(|d| d.join("api-server.pid"))
+}
+
+fn kill_pid_best_effort(pid: u32) {
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .output();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .output();
+        let _ = Command::new("kill")
+            .args(["-KILL", &pid.to_string()])
+            .output();
+    }
+}
+
+fn kill_previous_api_server(app: &tauri::AppHandle) {
+    let Some(pid_path) = pid_file_path(app) else { return };
+    let Ok(raw) = fs::read_to_string(&pid_path) else { return };
+    let Ok(pid) = raw.trim().parse::<u32>() else { return };
+    kill_pid_best_effort(pid);
+    let _ = fs::remove_file(&pid_path);
+}
+
+fn write_api_server_pid(app: &tauri::AppHandle, pid: u32) {
+    let Some(pid_path) = pid_file_path(app) else { return };
+    if let Some(parent) = pid_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(pid_path, pid.to_string());
+}
+
 fn config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
@@ -122,6 +173,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let app_handle = app.handle().clone();
+            kill_previous_api_server(&app_handle);
+
             let resource_dir = app.path()
                 .resolve("", tauri::path::BaseDirectory::Resource)
                 .expect("failed to resolve resource dir");
@@ -180,6 +234,8 @@ pub fn run() {
                 .join(".qwery")
                 .join("storage");
 
+            let port = pick_port(4096);
+
             #[cfg(debug_assertions)]
             {
                 let env_path =
@@ -218,17 +274,31 @@ pub fn run() {
                 }
             }
 
-            let (mut rx, _child) = cmd
+            let (mut rx, child) = cmd
                 .args([api_server_path.to_str().expect("api-server path")])
                 .env("QWERY_STORAGE_DIR", storage_dir.to_str().expect("storage path"))
                 .env(
                     "QWERY_EXTENSIONS_PATH",
                     extensions_dir.to_str().expect("extensions path"),
                 )
+                .env("HOSTNAME", "127.0.0.1")
+                .env("PORT", port.to_string())
                 .env("VITE_QWERY_RUNTIME", "DESKTOP")
                 .env("LOGGER", "pino")
                 .spawn()
                 .expect("Failed to spawn API server");
+
+            // Persist PID so we can kill it on next startup after crashes/hard-kills.
+            write_api_server_pid(&app_handle, child.pid() as u32);
+
+            let api_url = format!("http://127.0.0.1:{}/api", port);
+            if let Some(window) = app.get_webview_window("main") {
+                let js = format!(
+                    "window.__QWERY_API_URL = {};",
+                    serde_json::to_string(&api_url).unwrap_or_else(|_| "\"\"".to_string())
+                );
+                let _ = window.eval(&js);
+            }
 
             // Optional: Log server output in development
             #[cfg(debug_assertions)]
@@ -249,6 +319,7 @@ pub fn run() {
             }
 
             // Wait for server to be ready by checking if port is listening
+            let ready_port = port;
             tauri::async_runtime::spawn(async move {
                 use std::net::TcpStream;
                 use std::time::Duration;
@@ -258,7 +329,7 @@ pub fn run() {
 
                 for attempt in 1..=max_attempts {
                     match TcpStream::connect_timeout(
-                        &"127.0.0.1:4096".parse().unwrap(),
+                        &format!("127.0.0.1:{}", ready_port).parse().unwrap(),
                         Duration::from_millis(500),
                     ) {
                         Ok(_) => {
@@ -281,6 +352,27 @@ pub fn run() {
             // Give the server a moment to start before continuing
             // The port check will ensure readiness in the background
             std::thread::sleep(std::time::Duration::from_millis(500));
+
+            // Track child and ensure we kill it on exit / window close.
+            let child_state: Arc<Mutex<Option<CommandChild>>> =
+                Arc::new(Mutex::new(Some(child)));
+            if let Some(window) = app.get_webview_window("main") {
+                let child_for_close = child_state.clone();
+                let app_for_close = app.app_handle().clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        if let Ok(mut guard) = child_for_close.lock() {
+                            if let Some(child) = guard.take() {
+                                let _ = child.kill();
+                            }
+                        }
+                        // Best-effort cleanup of persisted pid file.
+                        if let Some(pid_path) = pid_file_path(&app_for_close) {
+                            let _ = fs::remove_file(pid_path);
+                        }
+                    }
+                });
+            }
 
             Ok(())
         })
