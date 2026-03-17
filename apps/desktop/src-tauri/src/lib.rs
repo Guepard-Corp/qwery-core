@@ -403,7 +403,31 @@ pub fn run() {
                 .shell()
                 .sidecar("bun")
                 .expect("failed to create bun command")
-                .envs(std::env::vars_os());
+                ;
+
+            // On Windows, inheriting the full parent environment is risky: a single malformed
+            // env var can crash Bun before it even starts the server. Keep a small safe subset.
+            #[cfg(target_os = "windows")]
+            {
+                for k in [
+                    "PATH",
+                    "SystemRoot",
+                    "TEMP",
+                    "TMP",
+                    "USERPROFILE",
+                    "LOCALAPPDATA",
+                    "APPDATA",
+                ] {
+                    if let Some(v) = std::env::var_os(k) {
+                        cmd = cmd.env(k, v);
+                    }
+                }
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                cmd = cmd.envs(std::env::vars_os());
+            }
 
             for key in MANAGED_KEYS {
                 match keyring_entry(key) {
