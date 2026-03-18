@@ -34,27 +34,31 @@ function PageWithHeaderSidebar(props: PageProps) {
     MobileNavigation,
   } = getSlotsFromPage(props);
 
+  const hasTopBar = TopNavigation != null || MobileNavigation != null;
+
   return (
     <div className="page-root flex h-screen w-screen flex-col overflow-hidden overflow-x-hidden">
       {/* Topbar */}
-      <div
-        className={cn(
-          'page-top-bar-container bg-sidebar dark:border-border relative flex h-14 w-full shrink-0 items-center justify-between overflow-x-hidden border-b px-4',
-          props.sticky === false
-            ? ''
-            : 'bg-sidebar sticky top-0 z-[100] backdrop-blur-md',
-        )}
-      >
-        {/* Desktop Navigation */}
-        <div className="hidden w-full min-w-0 flex-1 items-center space-x-8 overflow-x-hidden lg:flex">
-          {TopNavigation}
+      {hasTopBar && (
+        <div
+          className={cn(
+            'page-top-bar-container bg-sidebar dark:border-border relative flex h-14 w-full shrink-0 items-center justify-between overflow-x-hidden border-b px-4',
+            props.sticky === false
+              ? ''
+              : 'bg-sidebar sticky top-0 z-[100] backdrop-blur-md',
+          )}
+        >
+          {/* Desktop Navigation */}
+          <div className="hidden w-full min-w-0 flex-1 items-center space-x-8 overflow-x-hidden lg:flex">
+            {TopNavigation}
+          </div>
+          {/* Mobile Navigation */}
+          {MobileNavigation}
         </div>
-        {/* Mobile Navigation */}
-        {MobileNavigation}
-      </div>
+      )}
 
       {/* Sidebar + Content */}
-      <div className="flex h-screen w-screen flex-col overflow-hidden overflow-x-hidden">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden overflow-x-hidden">
         <div className="flex min-h-0 flex-1 overflow-hidden overflow-x-hidden">
           {Navigation}
           {/* Main Content - takes remaining width */}

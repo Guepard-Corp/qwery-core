@@ -196,8 +196,9 @@ const Sidebar = forwardRef<
     if (collapsible === 'none') {
       return (
         <div
+          data-sidebar="sidebar"
           className={cn(
-            'bg-sidebar text-sidebar-foreground flex h-full w-[--sidebar-width] flex-col',
+            'bg-sidebar text-sidebar-foreground flex h-full w-[--sidebar-width] shrink-0 flex-col',
             className,
           )}
           ref={ref}
@@ -239,7 +240,7 @@ const Sidebar = forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer text-sidebar-foreground hidden shrink-0 self-stretch md:block"
+        className="group peer text-sidebar-foreground relative hidden shrink-0 self-stretch md:block"
         data-state={state}
         data-collapsible={state === 'collapsed' ? collapsible : ''}
         data-minimized={state === 'collapsed' ? 'true' : undefined}
@@ -262,7 +263,7 @@ const Sidebar = forwardRef<
         <div
           data-sidebar="sidebar"
           className={cn(
-            'bg-sidebar fixed top-0 z-10 hidden h-svh min-w-0 flex-col overflow-hidden md:flex',
+            'bg-sidebar absolute inset-y-0 z-10 hidden h-full min-w-0 flex-col overflow-hidden md:flex',
             'transition-[width,min-width,max-width,left,right] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
             'w-[var(--sidebar-width)]',
             isOffcanvasCollapsed && 'w-0',

@@ -41,7 +41,7 @@ export function ConversationWelcome({
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] w-full items-center justify-center px-4">
+    <div className="flex min-h-0 w-full flex-1 items-center justify-center px-4">
       <div className="w-full max-w-3xl space-y-8">
         {/* Welcome Header */}
         <div className="space-y-4 text-center">

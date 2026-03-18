@@ -25,7 +25,8 @@
         "closable": true,
         "fullscreen": false,
         "skipTaskbar": false,
-        "devtools": true
+        "devtools": true,
+        "zoomHotkeysEnabled": false
       }
     ],
     "security": {

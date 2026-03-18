@@ -47,6 +47,37 @@ html.desktop-app .desktop-content-area .page-root > div[class*="flex"][class*="m
   min-height: 0;
 }
 
+/* Shadcn SidebarProvider wrapper uses min-h-svh (safe viewport height) which
+   ignores the desktop title/status bars. Force it to respect the desktop
+   content area height. */
+html.desktop-app .desktop-content-area .group\/sidebar-wrapper {
+  height: 100%;
+  min-height: 0;
+}
+
+/* Sidebar with collapsible="none" (e.g. DatasourceSidebar) renders as a plain
+   flex child. Ensure it takes full height and never shrinks to zero. */
+html.desktop-app .desktop-content-area [data-sidebar="sidebar"],
+html.desktop-app .desktop-content-area .bg-sidebar.flex.h-full.flex-col {
+  height: 100%;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+/* Fixed overlays (Sheet/Dialog backdrop) must respect the desktop safe area
+   so they don't cover the titlebar or statusbar. */
+html.desktop-app .fixed.inset-0 {
+  top: var(--titlebar-height) !important;
+  bottom: var(--statusbar-height) !important;
+}
+
+/* Fixed Sheet panels (side drawers) must also respect the desktop safe area. */
+html.desktop-app .fixed.inset-y-0 {
+  top: var(--titlebar-height) !important;
+  bottom: var(--statusbar-height) !important;
+  height: auto !important;
+}
+
 /* When OS-level visual zoom is active (Linux best-effort),
    relax hard vh-based constraints to avoid layout glitches. */
 html.visual-zoomed.desktop-app .desktop-content-area {
