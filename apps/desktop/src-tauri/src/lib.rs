@@ -319,29 +319,31 @@ pub fn run() {
             kill_previous_api_server(&app_handle);
             append_log_line(&app_handle, "desktop: starting");
 
-            let resource_dir = app.path()
-                .resolve("", tauri::path::BaseDirectory::Resource)
-                .expect("failed to resolve resource dir");
-            let node_modules_path = resource_dir.join("node_modules");
+            // In prod on Windows, everything lives next to qwery-app.exe in AppData\Local\Qwery\.
+            // In dev, paths are relative to CARGO_MANIFEST_DIR.
+            let exe_dir = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+
             let extensions_dir = if cfg!(debug_assertions) {
                 PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                     .join("target")
                     .join("debug")
                     .join("extensions")
             } else {
-                let from_resources = resource_dir.join("extensions");
-                if from_resources.exists() {
-                    from_resources
-                } else {
-                    let exe_dir = std::env::current_exe()
-                        .ok()
-                        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                        .unwrap_or_else(|| resource_dir.clone());
-                    exe_dir.join("extensions")
-                }
+                exe_dir.clone().unwrap_or_default().join("extensions")
             };
 
-            println!("Node modules path: {}", node_modules_path.to_str().unwrap());
+            let node_modules_dir = if cfg!(debug_assertions) {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("target")
+                    .join("debug")
+                    .join("node_modules")
+            } else {
+                exe_dir.clone().unwrap_or_default().join("node_modules")
+            };
+
+            append_log_line(&app_handle, &format!("desktop:extensions_dir {}", extensions_dir.display()));
 
             // API server is a JS bundle - run it with Bun sidecar
             let target = target_triple();
@@ -421,6 +423,15 @@ pub fn run() {
                     if let Some(v) = std::env::var_os(k) {
                         cmd = cmd.env(k, v);
                     }
+                }
+
+                // Work around sporadic Bun crashes on Windows that mention `transpiler_cache`
+                // in the feature list by disabling the runtime transpiler cache entirely.
+                // This does not affect runtime behavior besides startup perf.
+                cmd = cmd.env("BUN_RUNTIME_TRANSPILER_CACHE_PATH", "0");
+
+                if let Some(node_path) = node_modules_dir.to_str() {
+                    cmd = cmd.env("NODE_PATH", node_path);
                 }
             }
 
