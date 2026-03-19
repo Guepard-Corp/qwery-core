@@ -303,9 +303,9 @@ describe('discovery', () => {
       });
       try {
         const paths = getDefaultExtensionPaths();
-        expect(paths).toEqual([
+        expect(paths).toContain(
           path.join(os.homedir(), '.qwery', 'extensions'),
-        ]);
+        );
       } finally {
         Object.defineProperty(process, 'platform', {
           value: originalPlatform,
@@ -664,6 +664,56 @@ describe('discovery', () => {
       expect(ext?.scope).toBe(ExtensionScope.DATASOURCE);
       expect(ext?.drivers).toHaveLength(1);
       expect(ext?.drivers[0]?.id).toBe('discovery.test.driver');
+    });
+
+    it('registers from QWERY_EXTENSIONS_PATH when basePaths are omitted', () => {
+      const baseDir = createTempDir();
+      const extDir = path.join(baseDir, 'neon-ext');
+      fs.mkdirSync(extDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(extDir, 'package.json'),
+        JSON.stringify({
+          contributes: {
+            datasources: [
+              {
+                id: 'postgresql-neon',
+                name: 'Neon',
+                drivers: ['postgresql.default'],
+              },
+            ],
+            drivers: [
+              {
+                id: 'postgresql.default',
+                name: 'PostgreSQL (Node)',
+                runtime: 'node',
+                entry: './dist/driver.js',
+              },
+            ],
+          },
+        }),
+      );
+
+      const original = process.env.QWERY_EXTENSIONS_PATH;
+      process.env.QWERY_EXTENSIONS_PATH = baseDir;
+      try {
+        registerExtensionsFromFolders();
+        const ext = ExtensionsRegistry.get('postgresql-neon');
+        expect(ext).toBeDefined();
+        expect(ext?.drivers).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'postgresql.default',
+              runtime: 'node',
+            }),
+          ]),
+        );
+      } finally {
+        if (original !== undefined) {
+          process.env.QWERY_EXTENSIONS_PATH = original;
+        } else {
+          delete process.env.QWERY_EXTENSIONS_PATH;
+        }
+      }
     });
   });
 });

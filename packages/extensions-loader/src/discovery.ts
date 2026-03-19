@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export interface ContributesDriver {
   id: string;
@@ -33,6 +33,21 @@ export interface DiscoveredExtension {
   pkg: { contributes?: PackageContributes };
   datasources: ContributesDatasource[];
   drivers: ContributesDriver[];
+}
+
+function findMonorepoExtensionsPath(startDir: string): string | null {
+  let dir = path.resolve(startDir);
+  while (true) {
+    const candidate = path.join(dir, 'packages', 'extensions');
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+      return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
 }
 
 export function getDefaultExtensionPaths(): string[] {
@@ -86,6 +101,17 @@ export function getDefaultExtensionPaths(): string[] {
     }
     default:
       break;
+  }
+
+  const monorepoCandidates = [
+    findMonorepoExtensionsPath(process.cwd()),
+    findMonorepoExtensionsPath(path.dirname(fileURLToPath(import.meta.url))),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of monorepoCandidates) {
+    if (!paths.includes(candidate)) {
+      paths.push(candidate);
+    }
   }
 
   paths.push(userPath);
