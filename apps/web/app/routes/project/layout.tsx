@@ -222,7 +222,11 @@ function SidebarLayoutInner(
               <div className="bg-background w-fit px-4 pt-4 pb-3 lg:px-12 lg:pt-6">
                 <ProjectBreadcrumb />
               </div>
-              <div className="flex-1 overflow-hidden">{props.children}</div>
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full px-8 py-6 lg:px-64">
+                  {props.children}
+                </div>
+              </div>
             </div>
           </Page>
         </SidebarProvider>
