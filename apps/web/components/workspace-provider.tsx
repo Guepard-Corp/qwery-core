@@ -9,14 +9,14 @@ import type { Repositories } from '@qwery/domain/repositories';
 import { LoadingOverlay } from '@qwery/ui/loading-overlay';
 import { Trans } from '@qwery/ui/trans';
 
-import { WorkspaceContext } from '~/lib/context/workspace-context';
-import { useWorkspaceMode } from '~/lib/hooks/use-workspace-mode';
-import { createRepositories } from '~/lib/repositories/repositories-factory';
-import { WorkspaceService } from '~/lib/services/workspace-service';
+import { WorkspaceContext } from '../lib/context/workspace-context';
+import { useWorkspaceMode } from '../lib/hooks/use-workspace-mode';
+import { createRepositories } from '../lib/repositories/repositories-factory';
+import { WorkspaceService } from '../lib/services/workspace-service';
 import {
   getWorkspaceFromLocalStorage,
   setWorkspaceInLocalStorage,
-} from '~/lib/workspace/workspace-helper';
+} from '../lib/workspace/workspace-helper';
 
 const STORAGE_KEYS: (keyof Workspace)[] = [
   'id',

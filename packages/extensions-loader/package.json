@@ -7,7 +7,8 @@
     ".": {
       "browser": "./src/index.browser.ts",
       "default": "./src/index.ts"
-    }
+    },
+    "./registry.json": "./src/registry.json"
   },
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",
@@ -19,16 +20,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@qwery/extension-clickhouse-node": "workspace:*",
-    "@qwery/extension-csv-online": "workspace:*",
-    "@qwery/extension-duckdb": "workspace:*",
-    "@qwery/extension-gsheet-csv": "workspace:*",
-    "@qwery/extension-json-online": "workspace:*",
-    "@qwery/extension-mysql": "workspace:*",
-    "@qwery/extension-parquet-online": "workspace:*",
-    "@qwery/extension-postgresql": "workspace:*",
-    "@qwery/extension-s3": "workspace:*",
-    "@qwery/extension-youtube-data-api-v3": "workspace:*",
     "@qwery/extensions-sdk": "workspace:*"
   },
   "devDependencies": {

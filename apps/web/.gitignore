@@ -10,3 +10,5 @@ qwery.db
 
 /.vercel
 /.vercel/*
+
+public/extensions/

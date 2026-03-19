@@ -6,7 +6,7 @@ import type { Route } from '~/types/app/routes/layout/+types/layout';
 
 import { LayoutFooter } from './_components/layout-footer';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

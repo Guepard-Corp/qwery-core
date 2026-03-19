@@ -11,7 +11,7 @@ export interface AgentProps {
 const Agent = forwardRef<AgentUIWrapperRef, AgentProps>(
   ({ conversationSlug, initialMessages, initialSuggestions }, ref) => {
     return (
-      <div className="h-[calc(100vh-50px)] overflow-auto p-0">
+      <div className="h-full min-h-0 overflow-auto p-0">
         <AgentUIWrapper
           ref={ref}
           conversationSlug={conversationSlug}

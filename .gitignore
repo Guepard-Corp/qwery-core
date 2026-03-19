@@ -39,6 +39,9 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+# Extensions build lock (serializes parallel builds)
+.extensions-build.lock
+
 # Dependency directories
 node_modules/
 jspm_packages/
@@ -154,9 +157,13 @@ storybook-static
 # Desktop app
 apps/desktop/release
 apps/desktop/dist
+apps/desktop/src-tauri/binaries
+apps/desktop/public/extensions/
+apps/desktop/public/extensions.tmp.*/
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 qwery-db
 qwery.db-shm

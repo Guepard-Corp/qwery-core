@@ -1,7 +1,16 @@
 import { type ApiErrorResponseBody } from '@qwery/shared/error';
 import { getLogger } from '@qwery/shared/logger';
 
+declare global {
+  interface Window {
+    __QWERY_API_URL?: string;
+  }
+}
+
 function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.__QWERY_API_URL) {
+    return window.__QWERY_API_URL;
+  }
   if (typeof process !== 'undefined' && process.env) {
     const url = process.env.VITE_API_URL ?? process.env.SERVER_API_URL ?? '';
     if (url) return url;

@@ -17,6 +17,7 @@
     "./logger": "./src/logger/index.ts",
     "./model-cost": "./src/model-cost/index.ts",
     "./utils": "./src/utils.ts",
+    "./workspace": "./src/workspace.ts",
     "./hooks": "./src/hooks/index.ts",
     "./events": "./src/events/index.tsx",
     "./registry": "./src/registry/index.ts",
@@ -49,6 +50,9 @@
     "*": {
       "*": [
         "src/*"
+      ],
+      "workspace": [
+        "src/workspace.ts"
       ]
     }
   }

@@ -5,6 +5,17 @@ export default defineConfig({
   test: {
     coverage: {
       provider: 'istanbul',
+      exclude: [
+        'src/load-browser-driver.ts',
+        '**/*.test.ts',
+        '**/__tests__/**',
+      ],
+      thresholds: {
+        lines: 95,
+        functions: 100,
+        statements: 95,
+        branches: 87,
+      },
     },
     environment: 'node',
   },

@@ -35,9 +35,9 @@ import { useTranslation } from 'react-i18next';
 import {
   useCreateOrganization,
   useUpdateOrganization,
-} from '~/lib/mutations/use-organization';
-import { useWorkspace } from '~/lib/context/workspace-context';
-import pathsConfig, { createPath } from '~/config/paths.config';
+} from '../../../../lib/mutations/use-organization';
+import { useWorkspace } from '../../../../lib/context/workspace-context';
+import pathsConfig, { createPath } from '../../../../config/paths.config';
 import { getErrorKey } from '~/lib/utils/error-key';
 
 const NAME_MAX_LENGTH = 255;
@@ -120,13 +120,13 @@ export function OrganizationDialog({
       updateMutation.mutate({
         id: organization.id,
         name: data.name,
-        updatedBy: workspace.userId || 'system',
+        updatedBy: workspace.userId,
       });
     } else {
       createMutation.mutate({
         name: data.name,
-        userId: workspace.userId || 'system',
-        createdBy: workspace.userId || 'system',
+        userId: workspace.userId,
+        createdBy: workspace.userId,
       });
     }
   };

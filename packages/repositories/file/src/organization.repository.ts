@@ -79,14 +79,13 @@ export class OrganizationRepository extends IOrganizationRepository {
 
   async create(entity: Organization): Promise<Organization> {
     const now = new Date();
-    const userId = 'system';
     const entityWithId = {
       ...entity,
       id: entity.id || uuidv4(),
       createdAt: entity.createdAt || now,
       updatedAt: entity.updatedAt || now,
-      createdBy: entity.createdBy || userId,
-      updatedBy: entity.updatedBy || userId,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
     };
     const entityWithSlug = {
       ...entityWithId,
@@ -101,11 +100,10 @@ export class OrganizationRepository extends IOrganizationRepository {
     if (!existing) {
       throw new Error(`Organization with id ${entity.id} not found`);
     }
-    const userId = 'system';
     const updated = {
       ...entity,
       updatedAt: entity.updatedAt || new Date(),
-      updatedBy: entity.updatedBy || userId,
+      updatedBy: entity.updatedBy,
       slug: this.shortenId(entity.id),
     };
     await Storage.write([ENTITY, entity.id], serialize(updated));

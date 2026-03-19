@@ -17,6 +17,7 @@ import { createNotebooksRoutes } from './routes/notebooks';
 import { createNotebookQueryRoutes } from './routes/notebook-query';
 import { createUsageRoutes } from './routes/usage';
 import { createInitRoutes } from './routes/init';
+import { createPosthogProxyRoutes } from './routes/posthog-proxy';
 import { handleMcpRequest } from './lib/mcp-handler';
 import { getCurrentTraceId, handleDomainException } from './lib/http-utils';
 
@@ -60,6 +61,8 @@ export function createApp() {
   );
 
   app.get('/health', (c) => c.json({ status: 'ok' }));
+
+  app.route('/qwery', createPosthogProxyRoutes());
 
   app.all('/mcp', async (c) => handleMcpRequest(c.req.raw));
 
@@ -374,6 +377,41 @@ function getOpenAPISpec(): Record<string, unknown> {
             },
           ],
           responses: { '200': { description: 'Deleted' } },
+        },
+      },
+      '/api/driver/command': {
+        post: {
+          summary: 'Execute driver command',
+          description:
+            'Run datasource driver actions: testConnection, metadata, or query. Requires node runtime driver.',
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['action', 'datasourceProvider', 'config'],
+                  properties: {
+                    action: {
+                      type: 'string',
+                      enum: ['testConnection', 'metadata', 'query'],
+                    },
+                    datasourceProvider: { type: 'string' },
+                    driverId: { type: 'string' },
+                    config: {
+                      type: 'object',
+                      additionalProperties: true,
+                    },
+                    sql: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Command result' },
+            '404': { description: 'Datasource or driver not found' },
+            '500': { description: 'Driver execution error' },
+          },
         },
       },
       '/api/extensions': {

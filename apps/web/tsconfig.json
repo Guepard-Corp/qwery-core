@@ -23,7 +23,8 @@
     "lib/**/*.ts",
     "app",
     "__tests__",
-    ".react-router/types/**/*"
-, "components", "lib"  ],
+    ".react-router/types/**/*",
+    "types/**/*"
+  ],
   "exclude": ["node_modules"]
 }

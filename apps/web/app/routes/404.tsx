@@ -29,7 +29,7 @@ export const meta = ({ data }: Route.MetaArgs) => {
 
 export default function NotFoundPage() {
   return (
-    <div className={'flex h-screen flex-1 flex-col'}>
+    <div className={'flex h-full min-h-0 flex-1 flex-col'}>
       <div
         className={
           'container m-auto flex w-full flex-1 flex-col items-center justify-center'

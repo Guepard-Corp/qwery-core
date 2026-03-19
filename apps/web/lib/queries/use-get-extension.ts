@@ -10,12 +10,12 @@ import { getLogger } from '@qwery/shared/logger';
 export function useGetExtension(extensionId: string) {
   return useQuery({
     queryKey: ['extension', extensionId],
-    queryFn: async (): Promise<ExtensionDefinition | undefined> => {
+    queryFn: async (): Promise<ExtensionDefinition | null> => {
       const extension = await apiGet<ExtensionDefinition | null>(
         `/extensions/${encodeURIComponent(extensionId)}`,
         true,
       );
-      return extension ?? undefined;
+      return extension;
     },
     enabled: !!extensionId,
     staleTime: 60 * 1000,

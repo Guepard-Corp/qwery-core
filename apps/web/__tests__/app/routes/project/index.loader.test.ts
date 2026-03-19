@@ -4,16 +4,16 @@ import type { Route } from '~/types/app/routes/project/+types/index';
 
 import * as CreateRepositories from '~/lib/loaders/create-repositories';
 import { GetProjectBySlugService } from '@qwery/domain/services';
-import { loader } from '../../../../app/routes/project/index';
+import { clientLoader as loader } from '../../../../app/routes/project/index';
 
 vi.mock('~/lib/loaders/create-repositories');
 
-function createArgs(slug?: string): Route.LoaderArgs {
+function createArgs(slug?: string): Route.ClientLoaderArgs {
   return {
-    params: { slug },
+    params: { slug: slug ?? '' },
     request: new Request('https://example.test/prj'),
-    context: {},
-  } as Route.LoaderArgs;
+    context: {} as Route.ClientLoaderArgs['context'],
+  } as Route.ClientLoaderArgs;
 }
 
 describe('project/index loader', () => {

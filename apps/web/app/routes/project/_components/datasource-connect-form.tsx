@@ -348,8 +348,6 @@ export function DatasourceConnectForm({
     const datasourceKind =
       runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
 
-    const userId = workspace.userId;
-
     createDatasourceMutation.mutate({
       projectId,
       name: datasourceName.trim() || generateRandomName(),
@@ -358,7 +356,7 @@ export function DatasourceConnectForm({
       datasource_driver: driver?.id || '',
       datasource_kind: datasourceKind as string,
       config: validData,
-      createdBy: userId,
+      createdBy: workspace.userId,
     });
   }, [
     t,

@@ -30,6 +30,9 @@
         "NODE_ENV"
       ]
     },
+    "server#build": {
+      "outputs": ["dist/**"]
+    },
     "dev": {
       "persistent": true,
       "cache": false

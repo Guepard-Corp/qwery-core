@@ -3110,8 +3110,8 @@ function mergeDefs(...defs) {
   }
   return Object.defineProperties({}, mergedDescriptors);
 }
-function cloneDef(schema) {
-  return mergeDefs(schema._zod.def);
+function cloneDef(schema2) {
+  return mergeDefs(schema2._zod.def);
 }
 function getElementAtPath(obj, path) {
   if (!path)
@@ -3319,14 +3319,14 @@ var BIGINT_FORMAT_RANGES = {
   int64: [/* @__PURE__ */ BigInt("-9223372036854775808"), /* @__PURE__ */ BigInt("9223372036854775807")],
   uint64: [/* @__PURE__ */ BigInt(0), /* @__PURE__ */ BigInt("18446744073709551615")]
 };
-function pick(schema, mask) {
-  const currDef = schema._zod.def;
+function pick(schema2, mask) {
+  const currDef = schema2._zod.def;
   const checks = currDef.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     throw new Error(".pick() cannot be used on object schemas containing refinements");
   }
-  const def = mergeDefs(schema._zod.def, {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
       const newShape = {};
       for (const key in mask) {
@@ -3342,18 +3342,18 @@ function pick(schema, mask) {
     },
     checks: []
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
-function omit(schema, mask) {
-  const currDef = schema._zod.def;
+function omit(schema2, mask) {
+  const currDef = schema2._zod.def;
   const checks = currDef.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     throw new Error(".omit() cannot be used on object schemas containing refinements");
   }
-  const def = mergeDefs(schema._zod.def, {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
-      const newShape = { ...schema._zod.def.shape };
+      const newShape = { ...schema2._zod.def.shape };
       for (const key in mask) {
         if (!(key in currDef.shape)) {
           throw new Error(`Unrecognized key: "${key}"`);
@@ -3367,43 +3367,43 @@ function omit(schema, mask) {
     },
     checks: []
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
-function extend(schema, shape) {
+function extend(schema2, shape) {
   if (!isPlainObject(shape)) {
     throw new Error("Invalid input to extend: expected a plain object");
   }
-  const checks = schema._zod.def.checks;
+  const checks = schema2._zod.def.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
-    const existingShape = schema._zod.def.shape;
+    const existingShape = schema2._zod.def.shape;
     for (const key in shape) {
       if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
         throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
       }
     }
   }
-  const def = mergeDefs(schema._zod.def, {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
-      const _shape = { ...schema._zod.def.shape, ...shape };
+      const _shape = { ...schema2._zod.def.shape, ...shape };
       assignProp(this, "shape", _shape);
       return _shape;
     }
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
-function safeExtend(schema, shape) {
+function safeExtend(schema2, shape) {
   if (!isPlainObject(shape)) {
     throw new Error("Invalid input to safeExtend: expected a plain object");
   }
-  const def = mergeDefs(schema._zod.def, {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
-      const _shape = { ...schema._zod.def.shape, ...shape };
+      const _shape = { ...schema2._zod.def.shape, ...shape };
       assignProp(this, "shape", _shape);
       return _shape;
     }
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
 function merge(a, b) {
   const def = mergeDefs(a._zod.def, {
@@ -3420,16 +3420,16 @@ function merge(a, b) {
   });
   return clone(a, def);
 }
-function partial(Class2, schema, mask) {
-  const currDef = schema._zod.def;
+function partial(Class2, schema2, mask) {
+  const currDef = schema2._zod.def;
   const checks = currDef.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
     throw new Error(".partial() cannot be used on object schemas containing refinements");
   }
-  const def = mergeDefs(schema._zod.def, {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
-      const oldShape = schema._zod.def.shape;
+      const oldShape = schema2._zod.def.shape;
       const shape = { ...oldShape };
       if (mask) {
         for (const key in mask) {
@@ -3456,12 +3456,12 @@ function partial(Class2, schema, mask) {
     },
     checks: []
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
-function required(Class2, schema, mask) {
-  const def = mergeDefs(schema._zod.def, {
+function required(Class2, schema2, mask) {
+  const def = mergeDefs(schema2._zod.def, {
     get shape() {
-      const oldShape = schema._zod.def.shape;
+      const oldShape = schema2._zod.def.shape;
       const shape = { ...oldShape };
       if (mask) {
         for (const key in mask) {
@@ -3487,7 +3487,7 @@ function required(Class2, schema, mask) {
       return shape;
     }
   });
-  return clone(schema, def);
+  return clone(schema2, def);
 }
 function aborted(x, startIndex = 0) {
   if (x.aborted === true)
@@ -3756,9 +3756,9 @@ function prettifyError(error48) {
 }
 
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/parse.js
-var _parse = (_Err) => (schema, value, _ctx, _params) => {
+var _parse = (_Err) => (schema2, value, _ctx, _params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: false }) : { async: false };
-  const result = schema._zod.run({ value, issues: [] }, ctx);
+  const result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise) {
     throw new $ZodAsyncError();
   }
@@ -3770,9 +3770,9 @@ var _parse = (_Err) => (schema, value, _ctx, _params) => {
   return result.value;
 };
 var parse = /* @__PURE__ */ _parse($ZodRealError);
-var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
+var _parseAsync = (_Err) => async (schema2, value, _ctx, params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
-  let result = schema._zod.run({ value, issues: [] }, ctx);
+  let result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise)
     result = await result;
   if (result.issues.length) {
@@ -3783,9 +3783,9 @@ var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   return result.value;
 };
 var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
-var _safeParse = (_Err) => (schema, value, _ctx) => {
+var _safeParse = (_Err) => (schema2, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-  const result = schema._zod.run({ value, issues: [] }, ctx);
+  const result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise) {
     throw new $ZodAsyncError();
   }
@@ -3795,9 +3795,9 @@ var _safeParse = (_Err) => (schema, value, _ctx) => {
   } : { success: true, data: result.value };
 };
 var safeParse = /* @__PURE__ */ _safeParse($ZodRealError);
-var _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
+var _safeParseAsync = (_Err) => async (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
-  let result = schema._zod.run({ value, issues: [] }, ctx);
+  let result = schema2._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise)
     result = await result;
   return result.issues.length ? {
@@ -3806,40 +3806,40 @@ var _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
   } : { success: true, data: result.value };
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
-var _encode = (_Err) => (schema, value, _ctx) => {
+var _encode = (_Err) => (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { direction: "backward" }) : { direction: "backward" };
-  return _parse(_Err)(schema, value, ctx);
+  return _parse(_Err)(schema2, value, ctx);
 };
 var encode = /* @__PURE__ */ _encode($ZodRealError);
-var _decode = (_Err) => (schema, value, _ctx) => {
-  return _parse(_Err)(schema, value, _ctx);
+var _decode = (_Err) => (schema2, value, _ctx) => {
+  return _parse(_Err)(schema2, value, _ctx);
 };
 var decode = /* @__PURE__ */ _decode($ZodRealError);
-var _encodeAsync = (_Err) => async (schema, value, _ctx) => {
+var _encodeAsync = (_Err) => async (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { direction: "backward" }) : { direction: "backward" };
-  return _parseAsync(_Err)(schema, value, ctx);
+  return _parseAsync(_Err)(schema2, value, ctx);
 };
 var encodeAsync = /* @__PURE__ */ _encodeAsync($ZodRealError);
-var _decodeAsync = (_Err) => async (schema, value, _ctx) => {
-  return _parseAsync(_Err)(schema, value, _ctx);
+var _decodeAsync = (_Err) => async (schema2, value, _ctx) => {
+  return _parseAsync(_Err)(schema2, value, _ctx);
 };
 var decodeAsync = /* @__PURE__ */ _decodeAsync($ZodRealError);
-var _safeEncode = (_Err) => (schema, value, _ctx) => {
+var _safeEncode = (_Err) => (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { direction: "backward" }) : { direction: "backward" };
-  return _safeParse(_Err)(schema, value, ctx);
+  return _safeParse(_Err)(schema2, value, ctx);
 };
 var safeEncode = /* @__PURE__ */ _safeEncode($ZodRealError);
-var _safeDecode = (_Err) => (schema, value, _ctx) => {
-  return _safeParse(_Err)(schema, value, _ctx);
+var _safeDecode = (_Err) => (schema2, value, _ctx) => {
+  return _safeParse(_Err)(schema2, value, _ctx);
 };
 var safeDecode = /* @__PURE__ */ _safeDecode($ZodRealError);
-var _safeEncodeAsync = (_Err) => async (schema, value, _ctx) => {
+var _safeEncodeAsync = (_Err) => async (schema2, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { direction: "backward" }) : { direction: "backward" };
-  return _safeParseAsync(_Err)(schema, value, ctx);
+  return _safeParseAsync(_Err)(schema2, value, ctx);
 };
 var safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync($ZodRealError);
-var _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
-  return _safeParseAsync(_Err)(schema, value, _ctx);
+var _safeDecodeAsync = (_Err) => async (schema2, value, _ctx) => {
+  return _safeParseAsync(_Err)(schema2, value, _ctx);
 };
 var safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync($ZodRealError);
 
@@ -5382,8 +5382,8 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
     for (const key of normalized.keys) {
       const id = ids[key];
       const k = esc(key);
-      const schema = shape[key];
-      const isOptionalOut = schema?._zod?.optout === "optional";
+      const schema2 = shape[key];
+      const isOptionalOut = schema2?._zod?.optout === "optional";
       doc.write(`const ${id} = ${parseStr(key)};`);
       if (isOptionalOut) {
         doc.write(`
@@ -12148,11 +12148,11 @@ var $ZodRegistry = class {
     this._map = /* @__PURE__ */ new WeakMap();
     this._idmap = /* @__PURE__ */ new Map();
   }
-  add(schema, ..._meta) {
+  add(schema2, ..._meta) {
     const meta3 = _meta[0];
-    this._map.set(schema, meta3);
+    this._map.set(schema2, meta3);
     if (meta3 && typeof meta3 === "object" && "id" in meta3) {
-      this._idmap.set(meta3.id, schema);
+      this._idmap.set(meta3.id, schema2);
     }
     return this;
   }
@@ -12161,26 +12161,26 @@ var $ZodRegistry = class {
     this._idmap = /* @__PURE__ */ new Map();
     return this;
   }
-  remove(schema) {
-    const meta3 = this._map.get(schema);
+  remove(schema2) {
+    const meta3 = this._map.get(schema2);
     if (meta3 && typeof meta3 === "object" && "id" in meta3) {
       this._idmap.delete(meta3.id);
     }
-    this._map.delete(schema);
+    this._map.delete(schema2);
     return this;
   }
-  get(schema) {
-    const p = schema._zod.parent;
+  get(schema2) {
+    const p = schema2._zod.parent;
     if (p) {
       const pm = { ...this.get(p) ?? {} };
       delete pm.id;
-      const f = { ...pm, ...this._map.get(schema) };
+      const f = { ...pm, ...this._map.get(schema2) };
       return Object.keys(f).length ? f : void 0;
     }
-    return this._map.get(schema);
+    return this._map.get(schema2);
   }
-  has(schema) {
-    return this._map.has(schema);
+  has(schema2) {
+    return this._map.has(schema2);
   }
 };
 function registry() {
@@ -12833,11 +12833,11 @@ function _endsWith(suffix, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _property(property, schema, params) {
+function _property(property, schema2, params) {
   return new $ZodCheckProperty({
     check: "property",
     property,
-    schema,
+    schema: schema2,
     ...normalizeParams(params)
   });
 }
@@ -13085,23 +13085,23 @@ function _promise(Class2, innerType) {
 function _custom(Class2, fn, _params) {
   const norm = normalizeParams(_params);
   norm.abort ?? (norm.abort = true);
-  const schema = new Class2({
+  const schema2 = new Class2({
     type: "custom",
     check: "custom",
     fn,
     ...norm
   });
-  return schema;
+  return schema2;
 }
 // @__NO_SIDE_EFFECTS__
 function _refine(Class2, fn, _params) {
-  const schema = new Class2({
+  const schema2 = new Class2({
     type: "custom",
     check: "custom",
     fn,
     ...normalizeParams(_params)
   });
-  return schema;
+  return schema2;
 }
 // @__NO_SIDE_EFFECTS__
 function _superRefine(fn) {
@@ -13250,40 +13250,40 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function process(schema, ctx, _params = { path: [], schemaPath: [] }) {
+function process(schema2, ctx, _params = { path: [], schemaPath: [] }) {
   var _a2;
-  const def = schema._zod.def;
-  const seen = ctx.seen.get(schema);
+  const def = schema2._zod.def;
+  const seen = ctx.seen.get(schema2);
   if (seen) {
     seen.count++;
-    const isCycle = _params.schemaPath.includes(schema);
+    const isCycle = _params.schemaPath.includes(schema2);
     if (isCycle) {
       seen.cycle = _params.path;
     }
     return seen.schema;
   }
   const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
-  ctx.seen.set(schema, result);
-  const overrideSchema = schema._zod.toJSONSchema?.();
+  ctx.seen.set(schema2, result);
+  const overrideSchema = schema2._zod.toJSONSchema?.();
   if (overrideSchema) {
     result.schema = overrideSchema;
   } else {
     const params = {
       ..._params,
-      schemaPath: [..._params.schemaPath, schema],
+      schemaPath: [..._params.schemaPath, schema2],
       path: _params.path
     };
-    if (schema._zod.processJSONSchema) {
-      schema._zod.processJSONSchema(ctx, result.schema, params);
+    if (schema2._zod.processJSONSchema) {
+      schema2._zod.processJSONSchema(ctx, result.schema, params);
     } else {
       const _json = result.schema;
       const processor = ctx.processors[def.type];
       if (!processor) {
         throw new Error(`[toJSONSchema]: Non-representable type encountered: ${def.type}`);
       }
-      processor(schema, ctx, _json, params);
+      processor(schema2, ctx, _json, params);
     }
-    const parent = schema._zod.parent;
+    const parent = schema2._zod.parent;
     if (parent) {
       if (!result.ref)
         result.ref = parent;
@@ -13291,21 +13291,21 @@ function process(schema, ctx, _params = { path: [], schemaPath: [] }) {
       ctx.seen.get(parent).isParent = true;
     }
   }
-  const meta3 = ctx.metadataRegistry.get(schema);
+  const meta3 = ctx.metadataRegistry.get(schema2);
   if (meta3)
     Object.assign(result.schema, meta3);
-  if (ctx.io === "input" && isTransforming(schema)) {
+  if (ctx.io === "input" && isTransforming(schema2)) {
     delete result.schema.examples;
     delete result.schema.default;
   }
   if (ctx.io === "input" && result.schema._prefault)
     (_a2 = result.schema).default ?? (_a2.default = result.schema._prefault);
   delete result.schema._prefault;
-  const _result = ctx.seen.get(schema);
+  const _result = ctx.seen.get(schema2);
   return _result.schema;
 }
-function extractDefs(ctx, schema) {
-  const root = ctx.seen.get(schema);
+function extractDefs(ctx, schema2) {
+  const root = ctx.seen.get(schema2);
   if (!root)
     throw new Error("Unprocessed schema. This is a bug in Zod.");
   const idToSchema = /* @__PURE__ */ new Map();
@@ -13348,11 +13348,11 @@ function extractDefs(ctx, schema) {
     seen.def = { ...seen.schema };
     if (defId)
       seen.defId = defId;
-    const schema2 = seen.schema;
-    for (const key in schema2) {
-      delete schema2[key];
+    const schema3 = seen.schema;
+    for (const key in schema3) {
+      delete schema3[key];
     }
-    schema2.$ref = ref;
+    schema3.$ref = ref;
   };
   if (ctx.cycles === "throw") {
     for (const entry of ctx.seen.entries()) {
@@ -13366,13 +13366,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
   }
   for (const entry of ctx.seen.entries()) {
     const seen = entry[1];
-    if (schema === entry[0]) {
+    if (schema2 === entry[0]) {
       extractToDef(entry);
       continue;
     }
     if (ctx.external) {
       const ext = ctx.external.registry.get(entry[0])?.id;
-      if (schema !== entry[0] && ext) {
+      if (schema2 !== entry[0] && ext) {
         extractToDef(entry);
         continue;
       }
@@ -13394,16 +13394,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
     }
   }
 }
-function finalize(ctx, schema) {
-  const root = ctx.seen.get(schema);
+function finalize(ctx, schema2) {
+  const root = ctx.seen.get(schema2);
   if (!root)
     throw new Error("Unprocessed schema. This is a bug in Zod.");
   const flattenRef = (zodSchema) => {
     const seen = ctx.seen.get(zodSchema);
     if (seen.ref === null)
       return;
-    const schema2 = seen.def ?? seen.schema;
-    const _cached = { ...schema2 };
+    const schema3 = seen.def ?? seen.schema;
+    const _cached = { ...schema3 };
     const ref = seen.ref;
     seen.ref = null;
     if (ref) {
@@ -13411,28 +13411,28 @@ function finalize(ctx, schema) {
       const refSeen = ctx.seen.get(ref);
       const refSchema = refSeen.schema;
       if (refSchema.$ref && (ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0")) {
-        schema2.allOf = schema2.allOf ?? [];
-        schema2.allOf.push(refSchema);
+        schema3.allOf = schema3.allOf ?? [];
+        schema3.allOf.push(refSchema);
       } else {
-        Object.assign(schema2, refSchema);
+        Object.assign(schema3, refSchema);
       }
-      Object.assign(schema2, _cached);
+      Object.assign(schema3, _cached);
       const isParentRef = zodSchema._zod.parent === ref;
       if (isParentRef) {
-        for (const key in schema2) {
+        for (const key in schema3) {
           if (key === "$ref" || key === "allOf")
             continue;
           if (!(key in _cached)) {
-            delete schema2[key];
+            delete schema3[key];
           }
         }
       }
       if (refSchema.$ref && refSeen.def) {
-        for (const key in schema2) {
+        for (const key in schema3) {
           if (key === "$ref" || key === "allOf")
             continue;
-          if (key in refSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(refSeen.def[key])) {
-            delete schema2[key];
+          if (key in refSeen.def && JSON.stringify(schema3[key]) === JSON.stringify(refSeen.def[key])) {
+            delete schema3[key];
           }
         }
       }
@@ -13442,13 +13442,13 @@ function finalize(ctx, schema) {
       flattenRef(parent);
       const parentSeen = ctx.seen.get(parent);
       if (parentSeen?.schema.$ref) {
-        schema2.$ref = parentSeen.schema.$ref;
+        schema3.$ref = parentSeen.schema.$ref;
         if (parentSeen.def) {
-          for (const key in schema2) {
+          for (const key in schema3) {
             if (key === "$ref" || key === "allOf")
               continue;
-            if (key in parentSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(parentSeen.def[key])) {
-              delete schema2[key];
+            if (key in parentSeen.def && JSON.stringify(schema3[key]) === JSON.stringify(parentSeen.def[key])) {
+              delete schema3[key];
             }
           }
         }
@@ -13456,7 +13456,7 @@ function finalize(ctx, schema) {
     }
     ctx.override({
       zodSchema,
-      jsonSchema: schema2,
+      jsonSchema: schema3,
       path: seen.path ?? []
     });
   };
@@ -13474,7 +13474,7 @@ function finalize(ctx, schema) {
   } else {
   }
   if (ctx.external?.uri) {
-    const id = ctx.external.registry.get(schema)?.id;
+    const id = ctx.external.registry.get(schema2)?.id;
     if (!id)
       throw new Error("Schema is missing an `id` property");
     result.$id = ctx.external.uri(id);
@@ -13501,10 +13501,10 @@ function finalize(ctx, schema) {
     const finalized = JSON.parse(JSON.stringify(result));
     Object.defineProperty(finalized, "~standard", {
       value: {
-        ...schema["~standard"],
+        ...schema2["~standard"],
         jsonSchema: {
-          input: createStandardJSONSchemaMethod(schema, "input", ctx.processors),
-          output: createStandardJSONSchemaMethod(schema, "output", ctx.processors)
+          input: createStandardJSONSchemaMethod(schema2, "input", ctx.processors),
+          output: createStandardJSONSchemaMethod(schema2, "output", ctx.processors)
         }
       },
       enumerable: false,
@@ -13566,18 +13566,18 @@ function isTransforming(_schema, _ctx) {
   }
   return false;
 }
-var createToJSONSchemaMethod = (schema, processors = {}) => (params) => {
+var createToJSONSchemaMethod = (schema2, processors = {}) => (params) => {
   const ctx = initializeContext({ ...params, processors });
-  process(schema, ctx);
-  extractDefs(ctx, schema);
-  return finalize(ctx, schema);
+  process(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
 };
-var createStandardJSONSchemaMethod = (schema, io, processors = {}) => (params) => {
+var createStandardJSONSchemaMethod = (schema2, io, processors = {}) => (params) => {
   const { libraryOptions, target } = params ?? {};
   const ctx = initializeContext({ ...libraryOptions ?? {}, target, io, processors });
-  process(schema, ctx);
-  extractDefs(ctx, schema);
-  return finalize(ctx, schema);
+  process(schema2, ctx);
+  extractDefs(ctx, schema2);
+  return finalize(ctx, schema2);
 };
 
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/json-schema-processors.js
@@ -13589,10 +13589,10 @@ var formatMap = {
   regex: ""
   // do not set
 };
-var stringProcessor = (schema, ctx, _json, _params) => {
+var stringProcessor = (schema2, ctx, _json, _params) => {
   const json2 = _json;
   json2.type = "string";
-  const { minimum, maximum, format, patterns, contentEncoding } = schema._zod.bag;
+  const { minimum, maximum, format, patterns, contentEncoding } = schema2._zod.bag;
   if (typeof minimum === "number")
     json2.minLength = minimum;
   if (typeof maximum === "number")
@@ -13621,9 +13621,9 @@ var stringProcessor = (schema, ctx, _json, _params) => {
     }
   }
 };
-var numberProcessor = (schema, ctx, _json, _params) => {
+var numberProcessor = (schema2, ctx, _json, _params) => {
   const json2 = _json;
-  const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema._zod.bag;
+  const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema2._zod.bag;
   if (typeof format === "string" && format.includes("int"))
     json2.type = "integer";
   else
@@ -13709,8 +13709,8 @@ var dateProcessor = (_schema, ctx, _json, _params) => {
     throw new Error("Date cannot be represented in JSON Schema");
   }
 };
-var enumProcessor = (schema, _ctx, json2, _params) => {
-  const def = schema._zod.def;
+var enumProcessor = (schema2, _ctx, json2, _params) => {
+  const def = schema2._zod.def;
   const values = getEnumValues(def.entries);
   if (values.every((v) => typeof v === "number"))
     json2.type = "number";
@@ -13718,8 +13718,8 @@ var enumProcessor = (schema, _ctx, json2, _params) => {
     json2.type = "string";
   json2.enum = values;
 };
-var literalProcessor = (schema, ctx, json2, _params) => {
-  const def = schema._zod.def;
+var literalProcessor = (schema2, ctx, json2, _params) => {
+  const def = schema2._zod.def;
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
@@ -13763,22 +13763,22 @@ var nanProcessor = (_schema, ctx, _json, _params) => {
     throw new Error("NaN cannot be represented in JSON Schema");
   }
 };
-var templateLiteralProcessor = (schema, _ctx, json2, _params) => {
+var templateLiteralProcessor = (schema2, _ctx, json2, _params) => {
   const _json = json2;
-  const pattern = schema._zod.pattern;
+  const pattern = schema2._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json2, _params) => {
+var fileProcessor = (schema2, _ctx, json2, _params) => {
   const _json = json2;
   const file2 = {
     type: "string",
     format: "binary",
     contentEncoding: "binary"
   };
-  const { minimum, maximum, mime } = schema._zod.bag;
+  const { minimum, maximum, mime } = schema2._zod.bag;
   if (minimum !== void 0)
     file2.minLength = minimum;
   if (maximum !== void 0)
@@ -13823,10 +13823,10 @@ var setProcessor = (_schema, ctx, _json, _params) => {
     throw new Error("Set cannot be represented in JSON Schema");
   }
 };
-var arrayProcessor = (schema, ctx, _json, params) => {
+var arrayProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
-  const def = schema._zod.def;
-  const { minimum, maximum } = schema._zod.bag;
+  const def = schema2._zod.def;
+  const { minimum, maximum } = schema2._zod.bag;
   if (typeof minimum === "number")
     json2.minItems = minimum;
   if (typeof maximum === "number")
@@ -13834,9 +13834,9 @@ var arrayProcessor = (schema, ctx, _json, params) => {
   json2.type = "array";
   json2.items = process(def.element, ctx, { ...params, path: [...params.path, "items"] });
 };
-var objectProcessor = (schema, ctx, _json, params) => {
+var objectProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
-  const def = schema._zod.def;
+  const def = schema2._zod.def;
   json2.type = "object";
   json2.properties = {};
   const shape = def.shape;
@@ -13870,8 +13870,8 @@ var objectProcessor = (schema, ctx, _json, params) => {
     });
   }
 };
-var unionProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var unionProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => process(x, ctx, {
     ...params,
@@ -13883,8 +13883,8 @@ var unionProcessor = (schema, ctx, json2, params) => {
     json2.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var intersectionProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   const a = process(def.left, ctx, {
     ...params,
     path: [...params.path, "allOf", 0]
@@ -13900,9 +13900,9 @@ var intersectionProcessor = (schema, ctx, json2, params) => {
   ];
   json2.allOf = allOf;
 };
-var tupleProcessor = (schema, ctx, _json, params) => {
+var tupleProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
-  const def = schema._zod.def;
+  const def = schema2._zod.def;
   json2.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
@@ -13936,15 +13936,15 @@ var tupleProcessor = (schema, ctx, _json, params) => {
       json2.additionalItems = rest;
     }
   }
-  const { minimum, maximum } = schema._zod.bag;
+  const { minimum, maximum } = schema2._zod.bag;
   if (typeof minimum === "number")
     json2.minItems = minimum;
   if (typeof maximum === "number")
     json2.maxItems = maximum;
 };
-var recordProcessor = (schema, ctx, _json, params) => {
+var recordProcessor = (schema2, ctx, _json, params) => {
   const json2 = _json;
-  const def = schema._zod.def;
+  const def = schema2._zod.def;
   json2.type = "object";
   const keyType = def.keyType;
   const keyBag = keyType._zod.bag;
@@ -13978,10 +13978,10 @@ var recordProcessor = (schema, ctx, _json, params) => {
     }
   }
 };
-var nullableProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var nullableProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   const inner = process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
     json2.nullable = true;
@@ -13989,31 +13989,31 @@ var nullableProcessor = (schema, ctx, json2, params) => {
     json2.anyOf = [inner, { type: "null" }];
   }
 };
-var nonoptionalProcessor = (schema, ctx, _json, params) => {
-  const def = schema._zod.def;
+var nonoptionalProcessor = (schema2, ctx, _json, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var defaultProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var defaultProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   json2.default = JSON.parse(JSON.stringify(def.defaultValue));
 };
-var prefaultProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var prefaultProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   if (ctx.io === "input")
     json2._prefault = JSON.parse(JSON.stringify(def.defaultValue));
 };
-var catchProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var catchProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   let catchValue;
   try {
@@ -14023,36 +14023,36 @@ var catchProcessor = (schema, ctx, json2, params) => {
   }
   json2.default = catchValue;
 };
-var pipeProcessor = (schema, ctx, _json, params) => {
-  const def = schema._zod.def;
+var pipeProcessor = (schema2, ctx, _json, params) => {
+  const def = schema2._zod.def;
   const innerType = ctx.io === "input" ? def.in._zod.def.type === "transform" ? def.out : def.in : def.out;
   process(innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json2, params) => {
-  const def = schema._zod.def;
+var readonlyProcessor = (schema2, ctx, json2, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
   json2.readOnly = true;
 };
-var promiseProcessor = (schema, ctx, _json, params) => {
-  const def = schema._zod.def;
+var promiseProcessor = (schema2, ctx, _json, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var optionalProcessor = (schema, ctx, _json, params) => {
-  const def = schema._zod.def;
+var optionalProcessor = (schema2, ctx, _json, params) => {
+  const def = schema2._zod.def;
   process(def.innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = def.innerType;
 };
-var lazyProcessor = (schema, ctx, _json, params) => {
-  const innerType = schema._zod.innerType;
+var lazyProcessor = (schema2, ctx, _json, params) => {
+  const innerType = schema2._zod.innerType;
   process(innerType, ctx, params);
-  const seen = ctx.seen.get(schema);
+  const seen = ctx.seen.get(schema2);
   seen.ref = innerType;
 };
 var allProcessors = {
@@ -14102,8 +14102,8 @@ function toJSONSchema(input, params) {
     const ctx2 = initializeContext({ ...params, processors: allProcessors });
     const defs = {};
     for (const entry of registry2._idmap.entries()) {
-      const [_, schema] = entry;
-      process(schema, ctx2);
+      const [_, schema2] = entry;
+      process(schema2, ctx2);
     }
     const schemas = {};
     const external = {
@@ -14113,9 +14113,9 @@ function toJSONSchema(input, params) {
     };
     ctx2.external = external;
     for (const entry of registry2._idmap.entries()) {
-      const [key, schema] = entry;
-      extractDefs(ctx2, schema);
-      schemas[key] = finalize(ctx2, schema);
+      const [key, schema2] = entry;
+      extractDefs(ctx2, schema2);
+      schemas[key] = finalize(ctx2, schema2);
     }
     if (Object.keys(defs).length > 0) {
       const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
@@ -14183,14 +14183,14 @@ var JSONSchemaGenerator = class {
    * Process a schema to prepare it for JSON Schema generation.
    * This must be called before emit().
    */
-  process(schema, _params = { path: [], schemaPath: [] }) {
-    return process(schema, this.ctx, _params);
+  process(schema2, _params = { path: [], schemaPath: [] }) {
+    return process(schema2, this.ctx, _params);
   }
   /**
    * Emit the final JSON Schema after processing.
    * Must call process() first.
    */
-  emit(schema, _params) {
+  emit(schema2, _params) {
     if (_params) {
       if (_params.cycles)
         this.ctx.cycles = _params.cycles;
@@ -14199,8 +14199,8 @@ var JSONSchemaGenerator = class {
       if (_params.external)
         this.ctx.external = _params.external;
     }
-    extractDefs(this.ctx, schema);
-    const result = finalize(this.ctx, schema);
+    extractDefs(this.ctx, schema2);
+    const result = finalize(this.ctx, schema2);
     const { "~standard": _, ...plainResult } = result;
     return plainResult;
   }
@@ -15004,8 +15004,8 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
 function array(element, params) {
   return _array(ZodArray, element, params);
 }
-function keyof(schema) {
-  const shape = schema._zod.def.shape;
+function keyof(schema2) {
+  const shape = schema2._zod.def.shape;
   return _enum2(Object.keys(shape));
 }
 var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
@@ -15582,8 +15582,8 @@ function json(params) {
   });
   return jsonSchema;
 }
-function preprocess(fn, schema) {
-  return pipe(transform(fn), schema);
+function preprocess(fn, schema2) {
+  return pipe(transform(fn), schema2);
 }
 
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/compat.js
@@ -15689,8 +15689,8 @@ var RECOGNIZED_KEYS = /* @__PURE__ */ new Set([
   "nullable",
   "readOnly"
 ]);
-function detectVersion(schema, defaultTarget) {
-  const $schema = schema.$schema;
+function detectVersion(schema2, defaultTarget) {
+  const $schema = schema2.$schema;
   if ($schema === "https://json-schema.org/draft/2020-12/schema") {
     return "draft-2020-12";
   }
@@ -15720,27 +15720,27 @@ function resolveRef(ref, ctx) {
   }
   throw new Error(`Reference not found: ${ref}`);
 }
-function convertBaseSchema(schema, ctx) {
-  if (schema.not !== void 0) {
-    if (typeof schema.not === "object" && Object.keys(schema.not).length === 0) {
+function convertBaseSchema(schema2, ctx) {
+  if (schema2.not !== void 0) {
+    if (typeof schema2.not === "object" && Object.keys(schema2.not).length === 0) {
       return z.never();
     }
     throw new Error("not is not supported in Zod (except { not: {} } for never)");
   }
-  if (schema.unevaluatedItems !== void 0) {
+  if (schema2.unevaluatedItems !== void 0) {
     throw new Error("unevaluatedItems is not supported");
   }
-  if (schema.unevaluatedProperties !== void 0) {
+  if (schema2.unevaluatedProperties !== void 0) {
     throw new Error("unevaluatedProperties is not supported");
   }
-  if (schema.if !== void 0 || schema.then !== void 0 || schema.else !== void 0) {
+  if (schema2.if !== void 0 || schema2.then !== void 0 || schema2.else !== void 0) {
     throw new Error("Conditional schemas (if/then/else) are not supported");
   }
-  if (schema.dependentSchemas !== void 0 || schema.dependentRequired !== void 0) {
+  if (schema2.dependentSchemas !== void 0 || schema2.dependentRequired !== void 0) {
     throw new Error("dependentSchemas and dependentRequired are not supported");
   }
-  if (schema.$ref) {
-    const refPath = schema.$ref;
+  if (schema2.$ref) {
+    const refPath = schema2.$ref;
     if (ctx.refs.has(refPath)) {
       return ctx.refs.get(refPath);
     }
@@ -15759,9 +15759,9 @@ function convertBaseSchema(schema, ctx) {
     ctx.processing.delete(refPath);
     return zodSchema2;
   }
-  if (schema.enum !== void 0) {
-    const enumValues = schema.enum;
-    if (ctx.version === "openapi-3.0" && schema.nullable === true && enumValues.length === 1 && enumValues[0] === null) {
+  if (schema2.enum !== void 0) {
+    const enumValues = schema2.enum;
+    if (ctx.version === "openapi-3.0" && schema2.nullable === true && enumValues.length === 1 && enumValues[0] === null) {
       return z.null();
     }
     if (enumValues.length === 0) {
@@ -15779,13 +15779,13 @@ function convertBaseSchema(schema, ctx) {
     }
     return z.union([literalSchemas[0], literalSchemas[1], ...literalSchemas.slice(2)]);
   }
-  if (schema.const !== void 0) {
-    return z.literal(schema.const);
+  if (schema2.const !== void 0) {
+    return z.literal(schema2.const);
   }
-  const type = schema.type;
+  const type = schema2.type;
   if (Array.isArray(type)) {
     const typeSchemas = type.map((t) => {
-      const typeSchema = { ...schema, type: t };
+      const typeSchema = { ...schema2, type: t };
       return convertBaseSchema(typeSchema, ctx);
     });
     if (typeSchemas.length === 0) {
@@ -15803,8 +15803,8 @@ function convertBaseSchema(schema, ctx) {
   switch (type) {
     case "string": {
       let stringSchema = z.string();
-      if (schema.format) {
-        const format = schema.format;
+      if (schema2.format) {
+        const format = schema2.format;
         if (format === "email") {
           stringSchema = stringSchema.check(z.email());
         } else if (format === "uri" || format === "uri-reference") {
@@ -15853,14 +15853,14 @@ function convertBaseSchema(schema, ctx) {
           stringSchema = stringSchema.check(z.ksuid());
         }
       }
-      if (typeof schema.minLength === "number") {
-        stringSchema = stringSchema.min(schema.minLength);
+      if (typeof schema2.minLength === "number") {
+        stringSchema = stringSchema.min(schema2.minLength);
       }
-      if (typeof schema.maxLength === "number") {
-        stringSchema = stringSchema.max(schema.maxLength);
+      if (typeof schema2.maxLength === "number") {
+        stringSchema = stringSchema.max(schema2.maxLength);
       }
-      if (schema.pattern) {
-        stringSchema = stringSchema.regex(new RegExp(schema.pattern));
+      if (schema2.pattern) {
+        stringSchema = stringSchema.regex(new RegExp(schema2.pattern));
       }
       zodSchema = stringSchema;
       break;
@@ -15868,24 +15868,24 @@ function convertBaseSchema(schema, ctx) {
     case "number":
     case "integer": {
       let numberSchema = type === "integer" ? z.number().int() : z.number();
-      if (typeof schema.minimum === "number") {
-        numberSchema = numberSchema.min(schema.minimum);
+      if (typeof schema2.minimum === "number") {
+        numberSchema = numberSchema.min(schema2.minimum);
       }
-      if (typeof schema.maximum === "number") {
-        numberSchema = numberSchema.max(schema.maximum);
+      if (typeof schema2.maximum === "number") {
+        numberSchema = numberSchema.max(schema2.maximum);
       }
-      if (typeof schema.exclusiveMinimum === "number") {
-        numberSchema = numberSchema.gt(schema.exclusiveMinimum);
-      } else if (schema.exclusiveMinimum === true && typeof schema.minimum === "number") {
-        numberSchema = numberSchema.gt(schema.minimum);
+      if (typeof schema2.exclusiveMinimum === "number") {
+        numberSchema = numberSchema.gt(schema2.exclusiveMinimum);
+      } else if (schema2.exclusiveMinimum === true && typeof schema2.minimum === "number") {
+        numberSchema = numberSchema.gt(schema2.minimum);
       }
-      if (typeof schema.exclusiveMaximum === "number") {
-        numberSchema = numberSchema.lt(schema.exclusiveMaximum);
-      } else if (schema.exclusiveMaximum === true && typeof schema.maximum === "number") {
-        numberSchema = numberSchema.lt(schema.maximum);
+      if (typeof schema2.exclusiveMaximum === "number") {
+        numberSchema = numberSchema.lt(schema2.exclusiveMaximum);
+      } else if (schema2.exclusiveMaximum === true && typeof schema2.maximum === "number") {
+        numberSchema = numberSchema.lt(schema2.maximum);
       }
-      if (typeof schema.multipleOf === "number") {
-        numberSchema = numberSchema.multipleOf(schema.multipleOf);
+      if (typeof schema2.multipleOf === "number") {
+        numberSchema = numberSchema.multipleOf(schema2.multipleOf);
       }
       zodSchema = numberSchema;
       break;
@@ -15900,15 +15900,15 @@ function convertBaseSchema(schema, ctx) {
     }
     case "object": {
       const shape = {};
-      const properties = schema.properties || {};
-      const requiredSet = new Set(schema.required || []);
+      const properties = schema2.properties || {};
+      const requiredSet = new Set(schema2.required || []);
       for (const [key, propSchema] of Object.entries(properties)) {
         const propZodSchema = convertSchema(propSchema, ctx);
         shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
       }
-      if (schema.propertyNames) {
-        const keySchema = convertSchema(schema.propertyNames, ctx);
-        const valueSchema = schema.additionalProperties && typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : z.any();
+      if (schema2.propertyNames) {
+        const keySchema = convertSchema(schema2.propertyNames, ctx);
+        const valueSchema = schema2.additionalProperties && typeof schema2.additionalProperties === "object" ? convertSchema(schema2.additionalProperties, ctx) : z.any();
         if (Object.keys(shape).length === 0) {
           zodSchema = z.record(keySchema, valueSchema);
           break;
@@ -15918,8 +15918,8 @@ function convertBaseSchema(schema, ctx) {
         zodSchema = z.intersection(objectSchema2, recordSchema);
         break;
       }
-      if (schema.patternProperties) {
-        const patternProps = schema.patternProperties;
+      if (schema2.patternProperties) {
+        const patternProps = schema2.patternProperties;
         const patternKeys = Object.keys(patternProps);
         const looseRecords = [];
         for (const pattern of patternKeys) {
@@ -15946,18 +15946,18 @@ function convertBaseSchema(schema, ctx) {
         break;
       }
       const objectSchema = z.object(shape);
-      if (schema.additionalProperties === false) {
+      if (schema2.additionalProperties === false) {
         zodSchema = objectSchema.strict();
-      } else if (typeof schema.additionalProperties === "object") {
-        zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties, ctx));
+      } else if (typeof schema2.additionalProperties === "object") {
+        zodSchema = objectSchema.catchall(convertSchema(schema2.additionalProperties, ctx));
       } else {
         zodSchema = objectSchema.passthrough();
       }
       break;
     }
     case "array": {
-      const prefixItems = schema.prefixItems;
-      const items = schema.items;
+      const prefixItems = schema2.prefixItems;
+      const items = schema2.items;
       if (prefixItems && Array.isArray(prefixItems)) {
         const tupleItems = prefixItems.map((item) => convertSchema(item, ctx));
         const rest = items && typeof items === "object" && !Array.isArray(items) ? convertSchema(items, ctx) : void 0;
@@ -15966,34 +15966,34 @@ function convertBaseSchema(schema, ctx) {
         } else {
           zodSchema = z.tuple(tupleItems);
         }
-        if (typeof schema.minItems === "number") {
-          zodSchema = zodSchema.check(z.minLength(schema.minItems));
+        if (typeof schema2.minItems === "number") {
+          zodSchema = zodSchema.check(z.minLength(schema2.minItems));
         }
-        if (typeof schema.maxItems === "number") {
-          zodSchema = zodSchema.check(z.maxLength(schema.maxItems));
+        if (typeof schema2.maxItems === "number") {
+          zodSchema = zodSchema.check(z.maxLength(schema2.maxItems));
         }
       } else if (Array.isArray(items)) {
         const tupleItems = items.map((item) => convertSchema(item, ctx));
-        const rest = schema.additionalItems && typeof schema.additionalItems === "object" ? convertSchema(schema.additionalItems, ctx) : void 0;
+        const rest = schema2.additionalItems && typeof schema2.additionalItems === "object" ? convertSchema(schema2.additionalItems, ctx) : void 0;
         if (rest) {
           zodSchema = z.tuple(tupleItems).rest(rest);
         } else {
           zodSchema = z.tuple(tupleItems);
         }
-        if (typeof schema.minItems === "number") {
-          zodSchema = zodSchema.check(z.minLength(schema.minItems));
+        if (typeof schema2.minItems === "number") {
+          zodSchema = zodSchema.check(z.minLength(schema2.minItems));
         }
-        if (typeof schema.maxItems === "number") {
-          zodSchema = zodSchema.check(z.maxLength(schema.maxItems));
+        if (typeof schema2.maxItems === "number") {
+          zodSchema = zodSchema.check(z.maxLength(schema2.maxItems));
         }
       } else if (items !== void 0) {
         const element = convertSchema(items, ctx);
         let arraySchema = z.array(element);
-        if (typeof schema.minItems === "number") {
-          arraySchema = arraySchema.min(schema.minItems);
+        if (typeof schema2.minItems === "number") {
+          arraySchema = arraySchema.min(schema2.minItems);
         }
-        if (typeof schema.maxItems === "number") {
-          arraySchema = arraySchema.max(schema.maxItems);
+        if (typeof schema2.maxItems === "number") {
+          arraySchema = arraySchema.max(schema2.maxItems);
         }
         zodSchema = arraySchema;
       } else {
@@ -16004,64 +16004,64 @@ function convertBaseSchema(schema, ctx) {
     default:
       throw new Error(`Unsupported type: ${type}`);
   }
-  if (schema.description) {
-    zodSchema = zodSchema.describe(schema.description);
+  if (schema2.description) {
+    zodSchema = zodSchema.describe(schema2.description);
   }
-  if (schema.default !== void 0) {
-    zodSchema = zodSchema.default(schema.default);
+  if (schema2.default !== void 0) {
+    zodSchema = zodSchema.default(schema2.default);
   }
   return zodSchema;
 }
-function convertSchema(schema, ctx) {
-  if (typeof schema === "boolean") {
-    return schema ? z.any() : z.never();
+function convertSchema(schema2, ctx) {
+  if (typeof schema2 === "boolean") {
+    return schema2 ? z.any() : z.never();
   }
-  let baseSchema = convertBaseSchema(schema, ctx);
-  const hasExplicitType = schema.type || schema.enum !== void 0 || schema.const !== void 0;
-  if (schema.anyOf && Array.isArray(schema.anyOf)) {
-    const options = schema.anyOf.map((s) => convertSchema(s, ctx));
+  let baseSchema = convertBaseSchema(schema2, ctx);
+  const hasExplicitType = schema2.type || schema2.enum !== void 0 || schema2.const !== void 0;
+  if (schema2.anyOf && Array.isArray(schema2.anyOf)) {
+    const options = schema2.anyOf.map((s) => convertSchema(s, ctx));
     const anyOfUnion = z.union(options);
     baseSchema = hasExplicitType ? z.intersection(baseSchema, anyOfUnion) : anyOfUnion;
   }
-  if (schema.oneOf && Array.isArray(schema.oneOf)) {
-    const options = schema.oneOf.map((s) => convertSchema(s, ctx));
+  if (schema2.oneOf && Array.isArray(schema2.oneOf)) {
+    const options = schema2.oneOf.map((s) => convertSchema(s, ctx));
     const oneOfUnion = z.xor(options);
     baseSchema = hasExplicitType ? z.intersection(baseSchema, oneOfUnion) : oneOfUnion;
   }
-  if (schema.allOf && Array.isArray(schema.allOf)) {
-    if (schema.allOf.length === 0) {
+  if (schema2.allOf && Array.isArray(schema2.allOf)) {
+    if (schema2.allOf.length === 0) {
       baseSchema = hasExplicitType ? baseSchema : z.any();
     } else {
-      let result = hasExplicitType ? baseSchema : convertSchema(schema.allOf[0], ctx);
+      let result = hasExplicitType ? baseSchema : convertSchema(schema2.allOf[0], ctx);
       const startIdx = hasExplicitType ? 0 : 1;
-      for (let i = startIdx; i < schema.allOf.length; i++) {
-        result = z.intersection(result, convertSchema(schema.allOf[i], ctx));
+      for (let i = startIdx; i < schema2.allOf.length; i++) {
+        result = z.intersection(result, convertSchema(schema2.allOf[i], ctx));
       }
       baseSchema = result;
     }
   }
-  if (schema.nullable === true && ctx.version === "openapi-3.0") {
+  if (schema2.nullable === true && ctx.version === "openapi-3.0") {
     baseSchema = z.nullable(baseSchema);
   }
-  if (schema.readOnly === true) {
+  if (schema2.readOnly === true) {
     baseSchema = z.readonly(baseSchema);
   }
   const extraMeta = {};
   const coreMetadataKeys = ["$id", "id", "$comment", "$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor"];
   for (const key of coreMetadataKeys) {
-    if (key in schema) {
-      extraMeta[key] = schema[key];
+    if (key in schema2) {
+      extraMeta[key] = schema2[key];
     }
   }
   const contentMetadataKeys = ["contentEncoding", "contentMediaType", "contentSchema"];
   for (const key of contentMetadataKeys) {
-    if (key in schema) {
-      extraMeta[key] = schema[key];
+    if (key in schema2) {
+      extraMeta[key] = schema2[key];
     }
   }
-  for (const key of Object.keys(schema)) {
+  for (const key of Object.keys(schema2)) {
     if (!RECOGNIZED_KEYS.has(key)) {
-      extraMeta[key] = schema[key];
+      extraMeta[key] = schema2[key];
     }
   }
   if (Object.keys(extraMeta).length > 0) {
@@ -16069,21 +16069,21 @@ function convertSchema(schema, ctx) {
   }
   return baseSchema;
 }
-function fromJSONSchema(schema, params) {
-  if (typeof schema === "boolean") {
-    return schema ? z.any() : z.never();
+function fromJSONSchema(schema2, params) {
+  if (typeof schema2 === "boolean") {
+    return schema2 ? z.any() : z.never();
   }
-  const version2 = detectVersion(schema, params?.defaultTarget);
-  const defs = schema.$defs || schema.definitions || {};
+  const version2 = detectVersion(schema2, params?.defaultTarget);
+  const defs = schema2.$defs || schema2.definitions || {};
   const ctx = {
     version: version2,
     defs,
     refs: /* @__PURE__ */ new Map(),
     processing: /* @__PURE__ */ new Set(),
-    rootSchema: schema,
+    rootSchema: schema2,
     registry: params?.registry ?? globalRegistry
   };
-  return convertSchema(schema, ctx);
+  return convertSchema(schema2, ctx);
 }
 
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/coerce.js
@@ -16124,6 +16124,12 @@ var ExtensionScope = /* @__PURE__ */ ((ExtensionScope2) => {
   ExtensionScope2["SKILL"] = "skill";
   return ExtensionScope2;
 })(ExtensionScope || {});
+var PreviewUrlKindSchema = external_exports.enum([
+  "embeddable",
+  "data-file",
+  "connection"
+]);
+var PreviewDataFormatSchema = external_exports.enum(["json", "parquet", "csv"]);
 var ExtensionDefinitionSchema = external_exports.object({
   id: external_exports.string(),
   name: external_exports.string(),
@@ -16133,7 +16139,9 @@ var ExtensionDefinitionSchema = external_exports.object({
   scope: external_exports.nativeEnum(ExtensionScope),
   schema: external_exports.any().optional().nullable(),
   docsUrl: external_exports.string().nullable().optional(),
-  supportsPreview: external_exports.boolean().optional()
+  supportsPreview: external_exports.boolean().optional(),
+  previewUrlKind: PreviewUrlKindSchema.optional(),
+  previewDataFormat: PreviewDataFormatSchema.optional()
 });
 var DriverRuntimeSchema = external_exports.enum(["node", "browser"]);
 var DriverExtensionSchema = external_exports.object({
@@ -16433,8 +16441,8 @@ var Exception = class _Exception extends Error {
 
 // packages/domain/src/common/entity.ts
 var Entity = class {
-  constructor(schema, id) {
-    this.schema = schema;
+  constructor(schema2, id) {
+    this.schema = schema2;
     this.id = id;
   }
   getId() {
@@ -16452,7 +16460,7 @@ var Entity = class {
   }
   toDto() {
     const data = this.getData();
-    const { schema, ...serializable } = data;
+    const { schema: schema2, ...serializable } = data;
     return serializable;
   }
   async validate() {
@@ -18048,10 +18056,10 @@ var DatasourceSchema = external_exports.object({
   config: external_exports.object({}).passthrough(),
   createdAt: external_exports.date().describe("The date and time the datasource was created"),
   updatedAt: external_exports.date().describe("The date and time the datasource was last updated"),
-  createdBy: external_exports.string().describe("The user who created the datasource"),
-  updatedBy: external_exports.string().describe("The user who last updated the datasource"),
+  createdBy: external_exports.uuid().describe("The user who created the datasource"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the datasource"),
   isPublic: external_exports.boolean().default(false).describe("If true, this datasource is publicly viewable"),
-  remixedFrom: external_exports.uuid().optional().nullable().describe("If set, this datasource was remixed from another datasource")
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this datasource was remixed from another datasource")
 });
 var DatasourceEntity = class extends Entity {
   static create(newDatasource) {
@@ -18171,7 +18179,7 @@ var CellSchema = external_exports.object({
 });
 var NotebookSchema = external_exports.object({
   id: external_exports.uuid().describe("The unique identifier for the notebook"),
-  projectId: external_exports.uuid().describe("The unique identifier for the project"),
+  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
   title: external_exports.string().min(1).max(255).describe("The title of the notebook"),
   description: external_exports.string().min(1).max(1024).optional().describe("The description of the notebook"),
   slug: external_exports.string().min(1).describe("The slug of the notebook"),
@@ -18180,9 +18188,9 @@ var NotebookSchema = external_exports.object({
   updatedAt: external_exports.date().describe("The date and time the notebook was last updated"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the Notebook"),
   cells: external_exports.array(CellSchema),
-  createdBy: external_exports.uuid().optional().describe("The user who created the notebook"),
+  createdBy: external_exports.string().uuid().optional().describe("The user who created the notebook"),
   isPublic: external_exports.boolean().default(false).describe("If true, this notebook is publicly viewable"),
-  remixedFrom: external_exports.uuid().optional().nullable().describe("If set, this notebook was remixed from another notebook")
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this notebook was remixed from another notebook")
 });
 var NotebookEntity = class extends Entity {
   static create(newNotebook) {
@@ -18296,7 +18304,7 @@ var WorkspaceSchema = external_exports.object({
   id: external_exports.uuid().describe("The unique identifier for the workspace"),
   userId: external_exports.uuid().describe("The id of the user"),
   username: external_exports.string().min(1).max(255).default("anonymous").describe("The username of the user"),
-  organizationId: external_exports.uuid().optional().describe("The id of the organization"),
+  organizationId: external_exports.string().uuid().optional().describe("The id of the organization"),
   projectId: external_exports.uuid().optional().describe("The id of the project"),
   isAnonymous: external_exports.boolean().default(true).describe("Whether the user is anonymous"),
   mode: WorkspaceModeSchema.describe("The mode of the workspace"),
@@ -18308,7 +18316,7 @@ var OrganizationSchema = external_exports.object({
   id: external_exports.uuid().describe("The id of the organization"),
   name: external_exports.string().describe("The name of the organization"),
   slug: external_exports.string().min(1).describe("The slug of the organization"),
-  userId: external_exports.uuid().describe("The id of the user who is the owner of the organization"),
+  userId: external_exports.string().uuid().describe("The id of the user who is the owner of the organization"),
   // timestamps
   createdAt: external_exports.date().describe("The date and time the organization was created"),
   updatedAt: external_exports.date().describe("The date and time the organization was last updated"),
@@ -18386,10 +18394,10 @@ OrganizationEntity = __decorateClass([
 // packages/domain/src/entities/project.type.ts
 var ProjectSchema = external_exports.object({
   id: external_exports.uuid().describe("The unique identifier for the project"),
-  organizationId: external_exports.uuid().describe("The unique identifier for the organisation"),
+  organizationId: external_exports.string().uuid().describe("The unique identifier for the organisation"),
   name: external_exports.string().min(1).max(255).describe("The name of the project"),
   slug: external_exports.string().min(1).describe("The slug of the project"),
-  description: external_exports.string().min(1).max(1024).optional().describe("The description of the project"),
+  description: external_exports.string().max(1024).optional().describe("The description of the project"),
   status: external_exports.string().min(1).max(255).optional().describe("The status of the project"),
   createdAt: external_exports.coerce.date().describe("The date and time the project was created"),
   updatedAt: external_exports.coerce.date().describe("The date and time the project was last updated"),
@@ -18419,7 +18427,9 @@ var ProjectEntity = class extends Entity {
     const updatedProject = {
       ...project,
       ...projectDTO.name && { name: projectDTO.name },
-      ...projectDTO.description && { description: projectDTO.description },
+      ...projectDTO.description !== void 0 && {
+        description: projectDTO.description
+      },
       ...projectDTO.status && { status: projectDTO.status },
       ...projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy },
       updatedAt: date5
@@ -18541,8 +18551,8 @@ var AgentSchema = external_exports.object({
   policies: external_exports.array(external_exports.string()).describe("The policies of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var AgentStateSchema = external_exports.object({
   messages: external_exports.array(
@@ -18582,8 +18592,8 @@ var ActionSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var ActionEntity = class extends Entity {
 };
@@ -18609,8 +18619,8 @@ var ContextSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var ContextEntity = class extends Entity {
 };
@@ -18636,15 +18646,15 @@ var ConversationSchema = external_exports.object({
   title: external_exports.string().describe("The title of the conversation"),
   seedMessage: external_exports.string().optional().describe("The seed message for the conversation"),
   taskId: external_exports.uuid().describe("The unique identifier for the task"),
-  projectId: external_exports.uuid().describe("The unique identifier for the project"),
+  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
   slug: external_exports.string().describe("The slug of the conversation"),
   datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the conversation"),
   createdAt: external_exports.date().describe("The date and time the conversation was created"),
   updatedAt: external_exports.date().describe("The date and time the conversation was last updated"),
-  createdBy: external_exports.string().describe("The user who created the conversation"),
-  updatedBy: external_exports.string().describe("The user who last updated the conversation"),
+  createdBy: external_exports.uuid().describe("The user who created the conversation"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the conversation"),
   isPublic: external_exports.boolean().default(false).describe("If true, this conversation is publicly viewable"),
-  remixedFrom: external_exports.uuid().optional().nullable().describe(
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe(
     "If set, this conversation was remixed from another conversation"
   )
 });
@@ -18741,8 +18751,8 @@ var MemorySchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var MemoryEntity = class extends Entity {
 };
@@ -18769,16 +18779,134 @@ var MessageRole = /* @__PURE__ */ ((MessageRole2) => {
   MessageRole2["SYSTEM"] = "system";
   return MessageRole2;
 })(MessageRole || {});
-var MessageContentPartSchema = external_exports.object({
-  type: external_exports.string(),
-  text: external_exports.string().optional(),
-  state: external_exports.string().optional()
-}).passthrough();
+var StepStartPartSchema = external_exports.object({
+  type: external_exports.literal("step-start")
+}).loose();
+var TextPartSchema = external_exports.object({
+  type: external_exports.literal("text"),
+  text: external_exports.string(),
+  state: external_exports.enum(["streaming", "done"]).optional(),
+  synthetic: external_exports.boolean().optional()
+}).loose();
+var TOOL_INVOCATION_STATES = [
+  "input-streaming",
+  "input-available",
+  "approval-requested",
+  "approval-responded",
+  "output-available",
+  "output-error",
+  "output-denied",
+  "output-streaming",
+  "partial-call",
+  "call"
+];
+var ToolInvocationPartSchema = external_exports.object({
+  type: external_exports.string().refine((t) => t.startsWith("tool-") || t === "dynamic-tool"),
+  state: external_exports.enum(TOOL_INVOCATION_STATES).optional(),
+  toolCallId: external_exports.string().optional(),
+  toolName: external_exports.string().optional(),
+  input: external_exports.record(external_exports.string(), external_exports.any()).optional(),
+  output: external_exports.unknown().optional(),
+  errorText: external_exports.string().optional(),
+  title: external_exports.string().optional(),
+  isError: external_exports.boolean().optional(),
+  compactedAt: external_exports.number().optional()
+}).loose();
+var ReasoningPartSchema = external_exports.object({
+  type: external_exports.literal("reasoning"),
+  text: external_exports.string(),
+  state: external_exports.enum(["streaming", "done"]).optional()
+}).loose();
+var FilePartSchema = external_exports.object({
+  type: external_exports.literal("file"),
+  mediaType: external_exports.string().optional(),
+  mime: external_exports.string().optional(),
+  filename: external_exports.string().optional(),
+  url: external_exports.string()
+}).refine((d) => !!(d.mediaType ?? d.mime), {
+  message: "File part must have mediaType or mime"
+}).loose();
+var CompactionPartSchema = external_exports.object({
+  type: external_exports.literal("compaction"),
+  auto: external_exports.boolean()
+}).loose();
+var SnapshotPartSchema = external_exports.object({
+  type: external_exports.literal("snapshot"),
+  snapshot: external_exports.string()
+}).loose();
+var PatchPartSchema = external_exports.object({
+  type: external_exports.literal("patch"),
+  hash: external_exports.string(),
+  files: external_exports.array(external_exports.string())
+}).loose();
+var AgentPartSchema = external_exports.object({
+  type: external_exports.literal("agent"),
+  name: external_exports.string(),
+  source: external_exports.object({
+    value: external_exports.string(),
+    start: external_exports.number().int(),
+    end: external_exports.number().int()
+  }).optional()
+}).loose();
+var SubtaskPartSchema = external_exports.object({
+  type: external_exports.literal("subtask"),
+  prompt: external_exports.string(),
+  description: external_exports.string(),
+  agent: external_exports.string(),
+  modelId: external_exports.string().optional(),
+  providerId: external_exports.string().optional(),
+  command: external_exports.string().optional()
+}).loose();
+var RetryPartSchema = external_exports.object({
+  type: external_exports.literal("retry"),
+  attempt: external_exports.number(),
+  error: external_exports.record(external_exports.string(), external_exports.any()),
+  time: external_exports.object({
+    created: external_exports.number()
+  })
+}).loose();
+var StepFinishPartSchema = external_exports.object({
+  type: external_exports.literal("step-finish"),
+  reason: external_exports.string(),
+  snapshot: external_exports.string().optional(),
+  cost: external_exports.number(),
+  tokens: external_exports.object({
+    input: external_exports.number(),
+    output: external_exports.number(),
+    reasoning: external_exports.number(),
+    cache: external_exports.object({
+      read: external_exports.number(),
+      write: external_exports.number()
+    })
+  })
+}).loose();
+var ToolPartSchema = external_exports.object({
+  type: external_exports.literal("tool"),
+  callID: external_exports.string(),
+  tool: external_exports.string(),
+  state: external_exports.record(external_exports.string(), external_exports.any())
+}).loose();
+var MessageContentPartSchema = external_exports.union([
+  StepStartPartSchema,
+  TextPartSchema,
+  ReasoningPartSchema,
+  FilePartSchema,
+  ToolInvocationPartSchema,
+  ToolPartSchema,
+  CompactionPartSchema,
+  SnapshotPartSchema,
+  PatchPartSchema,
+  AgentPartSchema,
+  SubtaskPartSchema,
+  RetryPartSchema,
+  StepFinishPartSchema,
+  external_exports.object({ type: external_exports.string() }).loose()
+]);
 var MessageContentSchema = external_exports.object({
   id: external_exports.string().optional(),
   role: external_exports.string().optional(),
   parts: external_exports.array(MessageContentPartSchema).optional()
-}).passthrough();
+}).loose();
 var TokensSchema = external_exports.object({
   input: external_exports.number(),
   output: external_exports.number(),
@@ -18787,7 +18915,7 @@ var TokensSchema = external_exports.object({
     read: external_exports.number(),
     write: external_exports.number()
   }).optional()
-}).passthrough();
+}).loose();
 var MessageMetadataSchema = external_exports.object({
   error: external_exports.unknown().optional(),
   modelId: external_exports.string().optional(),
@@ -18801,12 +18929,8 @@ var MessageMetadataSchema = external_exports.object({
     cwd: external_exports.string(),
     root: external_exports.string()
   }).optional(),
-  agent: external_exports.string().optional(),
-  model: external_exports.object({
-    providerID: external_exports.string(),
-    modelID: external_exports.string()
-  }).optional()
-}).passthrough();
+  agent: external_exports.string().optional()
+}).loose();
 var MessageSchema = external_exports.object({
   id: external_exports.uuid().describe("The unique identifier for the action"),
   conversationId: external_exports.uuid().describe("The unique identifier for the conversation"),
@@ -18815,8 +18939,8 @@ var MessageSchema = external_exports.object({
   metadata: MessageMetadataSchema.describe("The metadata of the message"),
   createdAt: external_exports.date().describe("The date and time the message was created"),
   updatedAt: external_exports.date().describe("The date and time the message was last updated"),
-  createdBy: external_exports.string().describe("The user who created the message"),
-  updatedBy: external_exports.string().describe("The user who last updated the message")
+  createdBy: external_exports.uuid().describe("The user who created the message"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the message")
 });
 var MessageEntity = class extends Entity {
   static create(newMessage) {
@@ -18884,8 +19008,8 @@ var ModelSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var ModelEntity = class extends Entity {
 };
@@ -18911,8 +19035,8 @@ var ObservationSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var ObservationEntity = class extends Entity {
 };
@@ -18938,8 +19062,8 @@ var OutcomeSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var OutcomeEntity = class extends Entity {
 };
@@ -18965,8 +19089,8 @@ var PlanSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var PlanEntity = class extends Entity {
 };
@@ -18992,8 +19116,8 @@ var PromptSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var PromptEntity = class extends Entity {
 };
@@ -19019,8 +19143,8 @@ var TaskSchema = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var TaskEntity = class extends Entity {
 };
@@ -19042,11 +19166,11 @@ TaskEntity = __decorateClass([
 
 // packages/domain/src/entities/ai/usage.type.ts
 var UsageSchema = external_exports.object({
-  id: external_exports.number().describe("The unique identifier for the action").default(Date.now()),
-  conversationId: external_exports.string().describe("The unique identifier for the conversation"),
-  projectId: external_exports.string().describe("The unique identifier for the project"),
-  organizationId: external_exports.string().describe("The unique identifier for the organization"),
-  userId: external_exports.string().describe("The unique identifier for the user"),
+  id: external_exports.uuid().describe("Usage id"),
+  conversationId: external_exports.uuid().describe("The unique identifier for the conversation"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
+  organizationId: external_exports.uuid().describe("The unique identifier for the organization"),
+  userId: external_exports.uuid().describe("The unique identifier for the user"),
   model: external_exports.string().describe("The name of the model"),
   inputTokens: external_exports.number().describe("The total number of input tokens used").default(0),
   outputTokens: external_exports.number().describe("The total number of output tokens used").default(0),
@@ -19061,11 +19185,17 @@ var UsageSchema = external_exports.object({
   memory: external_exports.number().describe("The memory usage in percentage").default(0),
   network: external_exports.number().describe("The network usage in percentage").default(0),
   gpu: external_exports.number().describe("The GPU usage in percentage").default(0),
-  storage: external_exports.number().describe("The storage usage in percentage").default(0)
+  storage: external_exports.number().describe("The storage usage in percentage").default(0),
+  timestamp: external_exports.date().default(/* @__PURE__ */ new Date()).describe("The timestamp of the usage")
+});
+var UsageCreateSchema = UsageSchema.extend({
+  id: external_exports.uuid().optional()
 });
 var UsageEntity = class extends Entity {
   static new(usage) {
-    return plainToClass(UsageEntity, UsageSchema.parse(usage), {
+    const parsed = UsageCreateSchema.parse(usage);
+    const withId = { ...parsed, id: parsed.id ?? v4_default() };
+    return plainToClass(UsageEntity, withId, {
       excludeExtraneousValues: true
     });
   }
@@ -19108,7 +19238,31 @@ __decorateClass([
 ], UsageEntity.prototype, "cost", 2);
 __decorateClass([
   Expose()
+], UsageEntity.prototype, "creditsCap", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "creditsUsed", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "cpu", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "memory", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "network", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "gpu", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "storage", 2);
+__decorateClass([
+  Expose()
 ], UsageEntity.prototype, "contextSize", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "timestamp", 2);
 UsageEntity = __decorateClass([
   Exclude()
 ], UsageEntity);
@@ -19130,8 +19284,8 @@ var WorkspaceSchema2 = external_exports.object({
   name: external_exports.string().min(1).max(255).describe("The name of the agent"),
   createdAt: external_exports.date().describe("The date and time the agent was created"),
   updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
-  createdBy: external_exports.string().describe("The user who created the agent"),
-  updatedBy: external_exports.string().describe("The user who last updated the agent")
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
 });
 var WorkspaceEntity = class extends Entity {
 };
@@ -19794,18 +19948,44 @@ function extractConnectionUrl(config2, providerId) {
   }
 }
 
-// packages/extensions/clickhouse-web/dist/driver.js
-var ConfigSchema = external_exports.object({
-  connectionUrl: external_exports.string().url().describe("secret:true").optional(),
-  host: external_exports.string().optional(),
-  port: external_exports.coerce.number().int().min(1).max(65535).optional(),
-  username: external_exports.string().optional(),
-  user: external_exports.string().optional(),
-  password: external_exports.string().describe("secret:true").optional(),
-  database: external_exports.string().optional()
-}).refine((data) => data.connectionUrl || data.host, {
-  message: "Either connectionUrl or host must be provided"
+// packages/extensions/clickhouse-web/dist/schema.js
+var passwordField = external_exports.string().min(1).describe("secret:true").meta({
+  description: "ClickHouse password",
+  secret: true
 });
+var connectionUrlField = external_exports.url().min(1).describe("secret:true").meta({
+  description: "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
+  placeholder: "clickhouse://user:pass@host:8123/default or http://host:8123",
+  secret: true
+});
+var detailsSchema = external_exports.object({
+  host: external_exports.string().min(1).meta({
+    label: "Host",
+    description: "ClickHouse server hostname"
+  }),
+  port: external_exports.number().int().min(1).max(65535).default(8123).meta({
+    label: "Port",
+    placeholder: "8123"
+  }),
+  username: external_exports.string().default("default").meta({
+    label: "Username",
+    description: "ClickHouse user"
+  }),
+  user: external_exports.string().default("default").optional().meta({
+    label: "User (alias for username)"
+  }),
+  password: passwordField.optional(),
+  database: external_exports.string().default("default").meta({
+    label: "Database",
+    description: "ClickHouse database name"
+  })
+});
+var urlSchema = external_exports.object({
+  connectionUrl: connectionUrlField
+});
+var schema = external_exports.union([detailsSchema, urlSchema]);
+
+// packages/extensions/clickhouse-web/dist/driver.js
 function buildClickHouseConfigFromFields(fields) {
   const connectionUrl = extractConnectionUrl(fields, "clickhouse-web");
   return buildClickHouseConfig(connectionUrl);
@@ -19822,7 +20002,7 @@ function buildClickHouseConfig(connectionUrl) {
   };
 }
 function makeClickHouseDriver(context) {
-  const parsedConfig = ConfigSchema.parse(context.config);
+  const parsedConfig = schema.parse(context.config);
   const clientMap = /* @__PURE__ */ new Map();
   const getClient = () => {
     const connectionUrl = extractConnectionUrl(parsedConfig, "clickhouse-web");
@@ -19884,10 +20064,10 @@ function makeClickHouseDriver(context) {
       const columnsData = await columnsResult.json();
       let tableId = 1;
       const tableMap = /* @__PURE__ */ new Map();
-      const buildColumn = (schema, table, name, ordinal, dataType) => ({
-        id: `${schema}.${table}.${name}`,
+      const buildColumn = (schema2, table, name, ordinal, dataType) => ({
+        id: `${schema2}.${table}.${name}`,
         table_id: 0,
-        schema,
+        schema: schema2,
         table,
         name,
         ordinal_position: ordinal,

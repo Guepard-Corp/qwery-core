@@ -7,7 +7,7 @@
   "types": "./dist/driver.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/driver.ts",
+      "bun": "./dist/driver.js",
       "types": "./dist/driver.d.ts",
       "import": "./dist/driver.js",
       "require": "./dist/driver.js",

@@ -5,7 +5,7 @@ import type { Route } from '~/types/app/routes/organization/+types/layout';
 
 import { OrgBreadcrumb } from './_components/org-breadcrumb';
 
-export async function loader(_args: Route.LoaderArgs) {
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
     layoutState: {
       open: true,

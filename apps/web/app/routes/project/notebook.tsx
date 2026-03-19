@@ -372,13 +372,21 @@ export default function NotebookPage() {
           conversationSlug = updatedConversation.slug;
         }
       } else {
-        // Create new conversation
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(notebookProjectId)) {
+          toast.error(
+            'Notebook project id is invalid, cannot start conversation',
+          );
+          setLoadingCellId(null);
+          return;
+        }
         const { v4: uuidv4 } = await import('uuid');
         const notebookTitle = `Notebook - ${notebook.data.id}`;
 
         const newConversation = await createConversationMutation.mutateAsync({
           title: notebookTitle,
-          projectId: notebookProjectId || '',
+          projectId: notebookProjectId,
           taskId: uuidv4(),
           datasources: [datasourceId],
           seedMessage: '',

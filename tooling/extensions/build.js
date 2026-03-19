@@ -34,6 +34,16 @@ const publicRoot = path.resolve(
   'extensions',
 );
 
+const desktopPublicRoot = path.resolve(
+  here,
+  '..',
+  '..',
+  'apps',
+  'desktop',
+  'public',
+  'extensions',
+);
+
 const extensionsLoaderSrc = path.resolve(
   here,
   '..',
@@ -43,8 +53,48 @@ const extensionsLoaderSrc = path.resolve(
   'src',
 );
 
+const lockDir = path.resolve(here, '..', '..', '.extensions-build.lock');
+const LOCK_STALE_MS = 120_000;
+
+async function withLock(fn) {
+  const maxWait = 60000;
+  const step = 500;
+  let waited = 0;
+  while (waited < maxWait) {
+    try {
+      await fs.mkdir(lockDir);
+      break;
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+      try {
+        const stat = await fs.stat(lockDir);
+        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+          await fs.rmdir(lockDir);
+          continue;
+        }
+      } catch {
+        // ignore
+      }
+      await new Promise((r) => setTimeout(r, step));
+      waited += step;
+    }
+  }
+  if (waited >= maxWait) throw new Error('[extensions-build] timed out waiting for lock');
+  try {
+    return await fn();
+  } finally {
+    await fs.rmdir(lockDir).catch(() => {});
+  }
+}
+
 async function main() {
-  await fs.rm(publicRoot, { recursive: true, force: true });
+  await withLock(async () => {
+    await runExtensionsBuild();
+  });
+}
+
+async function runExtensionsBuild() {
+  await forceRemoveDir(publicRoot);
   await fs.mkdir(publicRoot, { recursive: true });
 
   const registry = { datasources: [] };
@@ -72,7 +122,58 @@ async function main() {
         const runtime = driver.runtime ?? 'node';
 
         let copiedEntry;
-        if (runtime === 'browser') {
+        if (runtime === 'node' && esbuild) {
+          // Bundle node drivers for desktop: packaged app cannot resolve
+          // workspace deps (e.g. @qwery/extensions-sdk) from extension's node_modules
+          const srcDriverTs = path.resolve(pkgDir, 'src', 'driver.ts');
+          const manifestEntryPath = path.resolve(pkgDir, entryFile);
+          const sourcePath = (await fileExists(srcDriverTs))
+            ? srcDriverTs
+            : manifestEntryPath;
+          const destPath = path.resolve(pkgDir, 'dist', 'driver.js');
+          if (await fileExists(sourcePath)) {
+            try {
+              const nodeModulesPath = path.resolve(
+                pkgDir,
+                '..',
+                '..',
+                '..',
+                'node_modules',
+              );
+              await fs.mkdir(path.dirname(destPath), { recursive: true });
+              await esbuild.build({
+                entryPoints: [sourcePath],
+                bundle: true,
+                format: 'esm',
+                platform: 'node',
+                target: 'es2020',
+                outfile: destPath,
+                allowOverwrite: true,
+                external: [
+                  // Native bindings - must stay external
+                  '@duckdb/node-api',
+                  'better-sqlite3',
+                  'pg-native',
+                  'mysql2',
+                ],
+                packages: 'bundle',
+                nodePaths: [nodeModulesPath],
+                sourcemap: false,
+                minify: false,
+                treeShaking: true,
+                logLevel: 'silent',
+              });
+              console.log(
+                `[extensions-build] Bundled node driver ${driver.id} to ${destPath}`,
+              );
+            } catch (error) {
+              console.error(
+                `[extensions-build] Failed to bundle node driver ${driver.id}:`,
+                error.message,
+              );
+            }
+          }
+        } else if (runtime === 'browser') {
           const sourcePath = path.resolve(pkgDir, entryFile);
           if (await fileExists(sourcePath)) {
             const driverOutDir = path.join(publicRoot, driver.id);
@@ -359,6 +460,15 @@ async function main() {
   const publicRegistryPath = path.join(publicRoot, 'registry.json');
   await fs.writeFile(publicRegistryPath, JSON.stringify(registry, null, 2));
   console.log(`[extensions-build] Registry written to ${publicRegistryPath}`);
+
+  // Copy extensions to desktop app public folder for Tauri/desktop build (atomic to avoid race with parallel extensions:build)
+  const desktopPublicDir = path.dirname(desktopPublicRoot);
+  await fs.mkdir(desktopPublicDir, { recursive: true });
+  const desktopTmp = path.join(desktopPublicDir, `extensions.tmp.${process.pid}`);
+  await fs.cp(publicRoot, desktopTmp, { recursive: true });
+  await forceRemoveDir(desktopPublicRoot);
+  await fs.rename(desktopTmp, desktopPublicRoot);
+  console.log(`[extensions-build] Copied extensions to ${desktopPublicRoot}`);
 }
 
 async function findPGliteInPnpm(nodeModulesPath) {
@@ -445,6 +555,24 @@ async function findDuckDBWasmInPnpm(nodeModulesPath) {
     // Ignore errors
   }
   return paths;
+}
+
+async function forceRemoveDir(dir) {
+  try {
+    await fs.rm(dir, { recursive: true, force: true });
+  } catch (err) {
+    if (err.code === 'ENOTEMPTY' || err.code === 'EPERM') {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) await forceRemoveDir(full);
+        else await fs.unlink(full);
+      }
+      await fs.rmdir(dir);
+    } else {
+      throw err;
+    }
+  }
 }
 
 async function safeReaddir(target) {
