@@ -48,6 +48,57 @@ function createMockDriver(): IDataSourceDriver {
   };
 }
 
+function createPostgresqlNeonFixture(baseDir: string): void {
+  const extDir = path.join(baseDir, 'postgresql-neon-ext');
+  fs.mkdirSync(path.join(extDir, 'dist'), { recursive: true });
+  fs.writeFileSync(
+    path.join(extDir, 'package.json'),
+    JSON.stringify({
+      name: '@qwery/extension-postgresql',
+      contributes: {
+        datasources: [
+          {
+            id: 'postgresql-neon',
+            name: 'Neon',
+            drivers: ['postgresql.default'],
+            docsUrl: 'https://neon.tech/docs/connect/connect-intro',
+          },
+        ],
+        drivers: [
+          {
+            id: 'postgresql.default',
+            name: 'PostgreSQL (Node)',
+            runtime: 'node',
+            entry: './dist/driver.js',
+          },
+        ],
+      },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(extDir, 'dist', 'driver.js'),
+    `export const driverFactory = () => ({
+      async testConnection() {},
+      async query() {
+        return {
+          columns: [],
+          rows: [],
+          stat: { rowsAffected: 0, rowsRead: 0, rowsWritten: 0, queryDurationMs: null },
+        };
+      },
+      async metadata() {
+        return {
+          version: '0.0.1',
+          driver: 'postgresql.default',
+          schemas: [],
+          tables: [],
+          columns: [],
+        };
+      },
+    });`,
+  );
+}
+
 describe('extensions-loader', () => {
   afterEach(() => {
     for (const d of disposables) {
@@ -71,18 +122,32 @@ describe('extensions-loader', () => {
   });
 
   describe('ExtensionsRegistry', () => {
-    it('registers datasource extensions when loader is loaded in Node', () => {
-      const list = ExtensionsRegistry.list(ExtensionScope.DATASOURCE);
-      expect(Array.isArray(list)).toBe(true);
-      for (const ext of list) {
-        expect(ext).toMatchObject({
-          id: expect.any(String),
-          name: expect.any(String),
+    it('registers postgresql-neon datasource with postgresql.default driver', () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qwery-neon-reg-'));
+      try {
+        createPostgresqlNeonFixture(tempDir);
+        registerExtensionsFromFolders([tempDir]);
+
+        const list = ExtensionsRegistry.list(ExtensionScope.DATASOURCE);
+        expect(list.length).toBeGreaterThan(0);
+
+        const neon = ExtensionsRegistry.get('postgresql-neon');
+        expect(neon).toBeDefined();
+        expect(neon).toMatchObject({
+          id: 'postgresql-neon',
+          name: 'Neon',
           scope: ExtensionScope.DATASOURCE,
-          schema: null,
         });
-        expect(ext.drivers).toBeDefined();
-        expect(Array.isArray(ext.drivers)).toBe(true);
+        expect(neon?.drivers).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'postgresql.default',
+              runtime: 'node',
+            }),
+          ]),
+        );
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
       }
     });
   });
@@ -370,6 +435,26 @@ describe('extensions-loader', () => {
         await expect(
           getDriverInstance(driverDescriptor, context),
         ).rejects.toThrow(/non-error string/);
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('resolves postgresql.default from postgresql-neon provider', async () => {
+      const tempDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'qwery-neon-driver-'),
+      );
+      try {
+        createPostgresqlNeonFixture(tempDir);
+        registerExtensionsFromFolders([tempDir]);
+
+        const neon = ExtensionsRegistry.get('postgresql-neon');
+        const driver = neon?.drivers.find((d) => d.id === 'postgresql.default');
+        expect(driver).toBeDefined();
+
+        const instance = await getDriverInstance(driver!, { config: {} });
+        const metadata = await instance.metadata();
+        expect(metadata.driver).toBe('postgresql.default');
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }

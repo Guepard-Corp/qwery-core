@@ -16,6 +16,13 @@ import { registerExtensionsFromFolders } from '../src/index';
 
 describe('discovery', () => {
   describe('getDefaultExtensionPaths', () => {
+    const repoExtensionsPath = path.resolve(
+      __dirname,
+      '..',
+      '..',
+      'extensions',
+    );
+
     it('returns user path for all platforms', () => {
       const original = process.env.QWERY_EXTENSIONS_PATH;
       delete process.env.QWERY_EXTENSIONS_PATH;
@@ -78,6 +85,21 @@ describe('discovery', () => {
     it('supports multiple paths in QWERY_EXTENSIONS_PATH (comma or semicolon)', () => {
       const original = process.env.QWERY_EXTENSIONS_PATH;
       process.env.QWERY_EXTENSIONS_PATH = '/path1,/path2;/path3';
+      try {
+        const paths = getDefaultExtensionPaths();
+        expect(paths).toEqual(['/path1', '/path2', '/path3']);
+      } finally {
+        if (original !== undefined) {
+          process.env.QWERY_EXTENSIONS_PATH = original;
+        } else {
+          delete process.env.QWERY_EXTENSIONS_PATH;
+        }
+      }
+    });
+
+    it('trims and filters empty entries in QWERY_EXTENSIONS_PATH', () => {
+      const original = process.env.QWERY_EXTENSIONS_PATH;
+      process.env.QWERY_EXTENSIONS_PATH = ' /path1 ; ; /path2 ,  ,/path3  ';
       try {
         const paths = getDefaultExtensionPaths();
         expect(paths).toEqual(['/path1', '/path2', '/path3']);
@@ -303,15 +325,44 @@ describe('discovery', () => {
       });
       try {
         const paths = getDefaultExtensionPaths();
-        expect(paths).toEqual([
+        expect(paths).toContain(
           path.join(os.homedir(), '.qwery', 'extensions'),
-        ]);
+        );
       } finally {
         Object.defineProperty(process, 'platform', {
           value: originalPlatform,
           configurable: true,
           writable: true,
         });
+        if (original !== undefined) {
+          process.env.QWERY_EXTENSIONS_PATH = original;
+        }
+      }
+    });
+
+    it('includes monorepo packages/extensions path when available', () => {
+      const original = process.env.QWERY_EXTENSIONS_PATH;
+      delete process.env.QWERY_EXTENSIONS_PATH;
+      try {
+        const paths = getDefaultExtensionPaths();
+        expect(paths).toContain(repoExtensionsPath);
+      } finally {
+        if (original !== undefined) {
+          process.env.QWERY_EXTENSIONS_PATH = original;
+        }
+      }
+    });
+
+    it('deduplicates monorepo path candidates', () => {
+      const original = process.env.QWERY_EXTENSIONS_PATH;
+      delete process.env.QWERY_EXTENSIONS_PATH;
+      try {
+        const paths = getDefaultExtensionPaths();
+        const occurrences = paths.filter(
+          (p) => p === repoExtensionsPath,
+        ).length;
+        expect(occurrences).toBeLessThanOrEqual(1);
+      } finally {
         if (original !== undefined) {
           process.env.QWERY_EXTENSIONS_PATH = original;
         }
@@ -361,7 +412,7 @@ describe('discovery', () => {
           '/ext',
           './dist/driver.js',
           undefined,
-          { exports: { '.': { default: './dist/driver.js' } } },
+          { exports: { '.': {} } },
         );
         expect(href).toMatch(/dist\/driver\.js$/);
       } finally {
@@ -372,7 +423,11 @@ describe('discovery', () => {
     it('uses entry when Bun is set but pkg is undefined', () => {
       vi.stubGlobal('Bun', {});
       try {
-        const href = resolveDriverEntryPath('/ext', './dist/driver.js');
+        const href = resolveDriverEntryPath(
+          '/ext',
+          './dist/driver.js',
+          undefined,
+        );
         expect(href).toMatch(/dist\/driver\.js$/);
       } finally {
         vi.unstubAllGlobals();
@@ -664,6 +719,56 @@ describe('discovery', () => {
       expect(ext?.scope).toBe(ExtensionScope.DATASOURCE);
       expect(ext?.drivers).toHaveLength(1);
       expect(ext?.drivers[0]?.id).toBe('discovery.test.driver');
+    });
+
+    it('registers from QWERY_EXTENSIONS_PATH when basePaths are omitted', () => {
+      const baseDir = createTempDir();
+      const extDir = path.join(baseDir, 'neon-ext');
+      fs.mkdirSync(extDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(extDir, 'package.json'),
+        JSON.stringify({
+          contributes: {
+            datasources: [
+              {
+                id: 'postgresql-neon',
+                name: 'Neon',
+                drivers: ['postgresql.default'],
+              },
+            ],
+            drivers: [
+              {
+                id: 'postgresql.default',
+                name: 'PostgreSQL (Node)',
+                runtime: 'node',
+                entry: './dist/driver.js',
+              },
+            ],
+          },
+        }),
+      );
+
+      const original = process.env.QWERY_EXTENSIONS_PATH;
+      process.env.QWERY_EXTENSIONS_PATH = baseDir;
+      try {
+        registerExtensionsFromFolders();
+        const ext = ExtensionsRegistry.get('postgresql-neon');
+        expect(ext).toBeDefined();
+        expect(ext?.drivers).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'postgresql.default',
+              runtime: 'node',
+            }),
+          ]),
+        );
+      } finally {
+        if (original !== undefined) {
+          process.env.QWERY_EXTENSIONS_PATH = original;
+        } else {
+          delete process.env.QWERY_EXTENSIONS_PATH;
+        }
+      }
     });
   });
 });

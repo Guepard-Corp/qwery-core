@@ -78,7 +78,16 @@ function initDriverImportsFromFolders(basePaths?: string[]): void {
   }
 }
 
-initDriverImportsFromFolders();
+function ensureDiscoveryInitialized(): void {
+  const hasRegisteredDatasources =
+    ExtensionsRegistry.list(ExtensionScope.DATASOURCE).length > 0;
+  if (hasRegisteredDatasources || driverImports.size > 0) {
+    return;
+  }
+  initDriverImportsFromFolders();
+}
+
+ensureDiscoveryInitialized();
 
 /**
  * Register extensions discovered from the given folders.
@@ -95,6 +104,7 @@ export function registerExtensionsFromFolders(basePaths?: string[]): void {
 export async function loadExtensionSchemaForProvider(
   extensionId: string,
 ): Promise<void> {
+  ensureDiscoveryInitialized();
   const extension = ExtensionsRegistry.get(extensionId) as
     | DatasourceExtension
     | undefined;
@@ -144,6 +154,7 @@ async function loadDriverModule(driverId: string): Promise<DriverModule> {
  * Get all registered node driver IDs
  */
 export function getNodeDriverIds(): string[] {
+  ensureDiscoveryInitialized();
   return Array.from(driverImports.keys());
 }
 
@@ -155,6 +166,7 @@ export async function getDriverInstance(
   driver: DriverExtension,
   context: DriverContext,
 ): Promise<ReturnType<DriverFactory>> {
+  ensureDiscoveryInitialized();
   let factory = datasources.getDriverRegistration(driver.id)?.factory;
   if (factory) {
     const driverContext: DriverContext = {
