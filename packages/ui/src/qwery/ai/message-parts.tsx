@@ -33,7 +33,6 @@ import {
   SchemaVisualizer,
   type SchemaVisualizerDatasourceItem,
 } from './schema-visualizer';
-import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 import { Trans } from '../trans';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { parseTodosFromPart } from './utils/todo-logic';
@@ -314,6 +313,30 @@ export interface TextPartProps {
   getDatasourceTooltip?: (id: string) => string;
 }
 
+function sanitizeMarkdownLists(markdown: string): string {
+  if (!markdown) return markdown;
+
+  const lines = markdown.split('\n');
+  const sanitized: string[] = [];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const current = lines[i] ?? '';
+    const trimmed = current.trim();
+
+    // Drop orphan bullet lines like "-" or "*"
+    if (trimmed === '-' || trimmed === '*') {
+      const next = lines[i + 1]?.trim();
+      if (next && !next.startsWith('- ') && !next.startsWith('* ')) {
+        continue;
+      }
+    }
+
+    sanitized.push(current);
+  }
+
+  return sanitized.join('\n');
+}
+
 export function TextPart({
   part,
   messageId,
@@ -328,6 +351,10 @@ export function TextPart({
 }: TextPartProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [currentHeading, setCurrentHeading] = useState('');
+  const sanitizedText = useMemo(
+    () => sanitizeMarkdownLists(part.text),
+    [part.text],
+  );
 
   const handleCopy = async () => {
     try {
@@ -374,7 +401,7 @@ export function TextPart({
                 remarkPlugins={[remarkGfm]}
                 components={agentMarkdownComponents}
               >
-                {part.text}
+                {sanitizedText}
               </ReactMarkdown>
             </div>
           </MessageContent>
@@ -907,9 +934,9 @@ export function ToolPart({
     const detailLevel = inputDetailLevel ?? outputDetailLevel;
 
     if (detailLevel === 'simple') {
-      toolName = `${toolName} (simple)`;
+      toolName = 'Get simple schema';
     } else if (detailLevel === 'full') {
-      toolName = `${toolName} (full)`;
+      toolName = 'Get full schema';
     }
   }
   // Render specialized visualizers based on tool type
@@ -1028,14 +1055,23 @@ export function ToolPart({
       );
     }
 
-    // Handle getSchema errors
+    // Handle getSchema errors - show requested detail level above error
     if (
       part.type === 'tool-getSchema' &&
       part.state === 'output-error' &&
       part.errorText
     ) {
+      const input = part.input as { detailLevel?: 'simple' | 'full' } | null;
       return (
         <div className="space-y-3">
+          {input?.detailLevel && (
+            <div className="bg-muted/50 rounded-md p-3">
+              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                Detail Level
+              </p>
+              <p className="text-sm">{input.detailLevel}</p>
+            </div>
+          )}
           <ToolErrorVisualizer errorText={part.errorText} />
         </div>
       );
@@ -1902,8 +1938,7 @@ export function ToolPart({
                                 alt=""
                                 className={cn(
                                   'h-3.5 w-3.5 shrink-0 object-contain',
-                                  shouldInvertDatasourceIcon(provider) &&
-                                    'dark:invert',
+                                  provider === 'json-online' && 'dark:invert',
                                 )}
                               />
                             ) : (

@@ -267,41 +267,136 @@ export function SchemaVisualizer({
 
   if (!hasTables || datasourceNames.length === 0) {
     return (
-      <div
-        className={cn(
-          'flex flex-col items-center justify-center text-center',
-          isMinimal ? 'p-5' : 'p-10',
-          className,
+      <div className={cn('flex flex-col gap-3', className)}>
+        {schemaErrors.length > 0 && (
+          <div className={cn('flex flex-col gap-2', isMinimal ? 'mb-1' : 'mb-2')}>
+            <div
+              className={cn(
+                'flex items-center gap-2 py-1 select-none',
+                isMinimal ? 'px-2' : 'px-3',
+              )}
+            >
+              <AlertCircleIcon
+                className={cn(
+                  'text-destructive/80',
+                  isMinimal ? 'h-4 w-4' : 'h-5 w-5',
+                )}
+              />
+              <span
+                className={cn(
+                  'text-destructive/80 font-bold tracking-widest uppercase',
+                  isMinimal ? 'text-[10px]' : 'text-xs',
+                )}
+              >
+                Unavailable
+              </span>
+              <div className="bg-destructive/40 h-px flex-1" />
+            </div>
+            <div
+              className={cn(
+                'flex flex-wrap gap-2',
+                isMinimal ? 'px-2' : 'px-3',
+              )}
+            >
+              {schemaErrors.map((e) => {
+                const datasource = datasources?.find(
+                  (ds) => ds.id === e.datasourceId,
+                );
+                const icon = getPluginIcon(datasource?.datasource_provider);
+                const id = datasource?.id ?? e.datasourceId;
+                const name =
+                  datasource?.name ?? e.datasourceName ?? e.datasourceId;
+                const isClickable = Boolean(onDatasourceNameClick);
+                const errorCardClass = cn(
+                  'bg-destructive/5 text-destructive/80 border-destructive/40 hover:bg-destructive/10 flex items-center gap-2 rounded-md border font-bold shadow-sm transition-all',
+                  isMinimal ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
+                );
+                const content = (
+                  <>
+                    {icon ? (
+                      <img
+                        src={icon}
+                        alt={name}
+                        className={cn(
+                          'h-4 w-4 shrink-0 object-contain',
+                          shouldInvertDatasourceIcon(
+                            datasource?.datasource_provider,
+                          ) && 'dark:invert',
+                        )}
+                      />
+                    ) : (
+                      <Database
+                        className={cn(
+                          'text-destructive/60 shrink-0',
+                          isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                        )}
+                      />
+                    )}
+                    {e.datasourceName ?? e.datasourceId}
+                  </>
+                );
+
+                return isClickable ? (
+                  <button
+                    key={e.datasourceId}
+                    type="button"
+                    onClick={() => onDatasourceNameClick?.(id, name)}
+                    title={e.error}
+                    className={cn(
+                      errorCardClass,
+                      'cursor-pointer outline-none active:scale-[0.98]',
+                    )}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div
+                    key={e.datasourceId}
+                    className={errorCardClass}
+                    title={e.error}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
-      >
-        <Database
+        <div
           className={cn(
-            'text-muted-foreground opacity-50',
-            isMinimal ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
-          )}
-        />
-        <h3
-          className={cn(
-            'text-foreground mb-2 font-semibold',
-            isMinimal ? 'text-sm' : 'text-base',
+            'flex flex-col items-center justify-center text-center',
+            isMinimal ? 'p-5' : 'p-10',
           )}
         >
-          <Trans
-            i18nKey="common:schema.noSchemaDataAvailable"
-            defaults="No schema data available"
+          <Database
+            className={cn(
+              'text-muted-foreground opacity-50',
+              isMinimal ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
+            )}
           />
-        </h3>
-        <p
-          className={cn(
-            'text-muted-foreground',
-            isMinimal ? 'text-xs' : 'text-sm',
-          )}
-        >
-          <Trans
-            i18nKey="common:schema.schemaEmptyOrNotLoaded"
-            defaults="The schema information is empty or could not be loaded."
-          />
-        </p>
+          <h3
+            className={cn(
+              'text-foreground mb-2 font-semibold',
+              isMinimal ? 'text-sm' : 'text-base',
+            )}
+          >
+            <Trans
+              i18nKey="common:schema.noSchemaDataAvailable"
+              defaults="No schema data available"
+            />
+          </h3>
+          <p
+            className={cn(
+              'text-muted-foreground',
+              isMinimal ? 'text-xs' : 'text-sm',
+            )}
+          >
+            <Trans
+              i18nKey="common:schema.schemaEmptyOrNotLoaded"
+              defaults="The schema information is empty or could not be loaded."
+            />
+          </p>
+        </div>
       </div>
     );
   }
@@ -524,15 +619,7 @@ export function SchemaVisualizer({
                         isMinimal ? 'text-sm' : 'text-base',
                       )}
                     >
-                      {(() => {
-                        const schemaLabel = schemaNameOnly(dsName);
-                        const datasourceLabel = displayInfo.name;
-                        if (!datasourceLabel) return schemaLabel;
-                        if (datasourceLabel === schemaLabel) {
-                          return datasourceLabel;
-                        }
-                        return `${datasourceLabel} · ${schemaLabel}`;
-                      })()}
+                      {schemaNameOnly(dsName)}
                     </span>
                     <div className="flex shrink-0 items-center gap-2">
                       <span
@@ -720,9 +807,6 @@ export function SchemaVisualizer({
                           className={cn(isMinimal ? 'space-y-4' : 'space-y-5')}
                         >
                           {tables.map((table: TableWithColumns) => {
-                            const shouldCollapseColumns =
-                              allTables.length > 3 &&
-                              table.resolvedColumns.length > 5;
                             const openTableCard = onTableNameClick
                               ? () =>
                                   onTableNameClick(
@@ -746,18 +830,19 @@ export function SchemaVisualizer({
                                 key={`${table.schema}.${table.name}`}
                                 className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                               >
-                                <Collapsible
-                                  defaultOpen={!shouldCollapseColumns}
-                                  className="w-full"
-                                >
+                                <Collapsible defaultOpen={false} className="w-full">
                                   <CollapsibleTrigger
                                     className={cn(
                                       'bg-muted/10 border-border/30 flex w-full items-center justify-between border-b',
                                       isMinimal ? 'px-3 py-2' : 'px-4 py-2.5',
-                                      shouldCollapseColumns && 'cursor-pointer',
+                                      'cursor-pointer',
                                     )}
                                   >
                                     <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground h-3.5 w-3.5 shrink-0">
+                                        <ChevronRight className="h-3.5 w-3.5 group-data-[state=open]:hidden" />
+                                        <ChevronDown className="hidden h-3.5 w-3.5 group-data-[state=open]:block" />
+                                      </span>
                                       <Table2
                                         className={cn(
                                           'text-primary/70',
@@ -781,7 +866,19 @@ export function SchemaVisualizer({
                                               : `Open ${displayInfo.name} in new tab`
                                           }
                                         >
-                                          {table.name}
+                                          <span className="inline-flex items-center gap-2">
+                                            <span>{table.name}</span>
+                                            <span
+                                              className={cn(
+                                                'text-muted-foreground font-mono',
+                                                isMinimal
+                                                  ? 'text-[10px]'
+                                                  : 'text-xs',
+                                              )}
+                                            >
+                                              ({table.resolvedColumns.length})
+                                            </span>
+                                          </span>
                                         </button>
                                       ) : (
                                         <h4
@@ -795,28 +892,28 @@ export function SchemaVisualizer({
                                               : table.name
                                           }
                                         >
-                                          {table.name}
+                                          <span className="inline-flex items-center gap-2">
+                                            <span>{table.name}</span>
+                                            <span
+                                              className={cn(
+                                                'text-muted-foreground font-mono',
+                                                isMinimal
+                                                  ? 'text-[10px]'
+                                                  : 'text-xs',
+                                              )}
+                                            >
+                                              ({table.resolvedColumns.length})
+                                            </span>
+                                          </span>
                                         </h4>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span
+                                      <ChevronDown
                                         className={cn(
-                                          'bg-muted/50 text-muted-foreground rounded-full font-mono',
-                                          isMinimal
-                                            ? 'px-2 py-0.5 text-[10px]'
-                                            : 'px-2.5 py-1 text-xs',
+                                          'text-muted-foreground h-3.5 w-3.5',
                                         )}
-                                      >
-                                        {table.resolvedColumns.length} columns
-                                      </span>
-                                      {shouldCollapseColumns && (
-                                        <ChevronDown
-                                          className={cn(
-                                            'text-muted-foreground h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180',
-                                          )}
-                                        />
-                                      )}
+                                      />
                                     </div>
                                   </CollapsibleTrigger>
 
