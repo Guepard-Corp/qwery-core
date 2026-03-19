@@ -13,6 +13,7 @@ import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 import { DatasourceConnectSheet } from './datasource-connect-sheet';
 import { DatasourceExtension } from '@qwery/extensions-sdk';
@@ -170,8 +171,6 @@ export function NewDatasource({
     setFailedLogos((prev) => new Set(prev).add(datasourceId));
   }, []);
 
-  const isJsonDatasource = (id: string) => id.toLowerCase().includes('json');
-
   return (
     <div className="flex h-full flex-col">
       <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
@@ -273,7 +272,9 @@ export function NewDatasource({
                 {paginatedDatasources.map((datasource, index) => {
                   const hasFailed = failedLogos.has(datasource.id);
                   const showLogo = datasource.icon && !hasFailed;
-                  const shouldInvert = isJsonDatasource(datasource.id);
+                  const shouldInvert = shouldInvertDatasourceIcon(
+                    datasource.id,
+                  );
                   const isDragging = draggingIndex === index;
 
                   return (

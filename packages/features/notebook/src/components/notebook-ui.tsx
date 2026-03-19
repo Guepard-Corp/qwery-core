@@ -71,6 +71,7 @@ import { Alert, AlertDescription } from '@qwery/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
 import { Shortcuts } from '@qwery/ui/shortcuts';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 interface NotebookUIProps {
   notebook?: Notebook;
@@ -410,7 +411,8 @@ function FullViewDialog({
             alt={`${displayName} logo`}
             className={cn(
               'h-4 w-4 rounded object-contain',
-              selectedDatasource.id === 'json-online' && 'dark:invert',
+              shouldInvertDatasourceIcon(selectedDatasource.id) &&
+                'dark:invert',
             )}
           />
         ) : (

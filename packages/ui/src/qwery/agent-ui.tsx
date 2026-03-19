@@ -1428,30 +1428,6 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
                                         }
                                       }
 
-                                      const lastUserMessage = [...messages]
-                                        .reverse()
-                                        .find((msg) => msg.role === 'user');
-
-                                      const isLastUserMessage =
-                                        lastUserMessage?.id === message.id;
-
-                                      if (
-                                        isLastUserMessage &&
-                                        selectedDatasources &&
-                                        selectedDatasources.length > 0
-                                      ) {
-                                        return selectedDatasources
-                                          .map((dsId) =>
-                                            datasources?.find(
-                                              (ds) => ds.id === dsId,
-                                            ),
-                                          )
-                                          .filter(
-                                            (ds): ds is DatasourceItem =>
-                                              ds !== undefined,
-                                          );
-                                      }
-
                                       return undefined;
                                     })()
                                   : undefined;

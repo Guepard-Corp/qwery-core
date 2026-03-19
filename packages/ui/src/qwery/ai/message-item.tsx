@@ -198,6 +198,7 @@ function MessageItemComponent({
   const { t } = useTranslation('common');
   const { t: tChat } = useTranslation('chat');
   useToolVariant();
+
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
@@ -358,27 +359,6 @@ function MessageItemComponent({
                               return metadataDatasources;
                             }
                           }
-                        }
-
-                        const lastUserMessage = [...messages]
-                          .reverse()
-                          .find((msg) => normalizeUIRole(msg.role) === 'user');
-
-                        const isLastUserMessage =
-                          lastUserMessage?.id === message.id;
-
-                        if (
-                          isLastUserMessage &&
-                          selectedDatasources &&
-                          selectedDatasources.length > 0
-                        ) {
-                          return selectedDatasources
-                            .map((dsId) =>
-                              datasources?.find((ds) => ds.id === dsId),
-                            )
-                            .filter(
-                              (ds): ds is DatasourceItem => ds !== undefined,
-                            );
                         }
 
                         return undefined;

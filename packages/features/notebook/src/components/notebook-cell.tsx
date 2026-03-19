@@ -71,6 +71,7 @@ import remarkGfm from 'remark-gfm';
 import { NotebookCellAiPopup } from './notebook-cell-ai-popup';
 import { DataGrid } from '@qwery/ui/ai';
 import { notebookMarkdownComponents } from './notebook-markdown-components';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 export interface NotebookCellData {
   query?: string;
@@ -720,7 +721,7 @@ function NotebookCellComponent({
             alt={`${displayName} logo`}
             className={cn(
               'h-4 w-4 flex-shrink-0 rounded object-contain',
-              ds.id === 'json-online' && 'dark:invert',
+              shouldInvertDatasourceIcon(ds.id) && 'dark:invert',
             )}
           />
         ) : (

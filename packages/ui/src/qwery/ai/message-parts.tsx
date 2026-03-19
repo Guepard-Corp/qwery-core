@@ -33,6 +33,7 @@ import {
   SchemaVisualizer,
   type SchemaVisualizerDatasourceItem,
 } from './schema-visualizer';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 import { Trans } from '../trans';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { parseTodosFromPart } from './utils/todo-logic';
@@ -1901,7 +1902,8 @@ export function ToolPart({
                                 alt=""
                                 className={cn(
                                   'h-3.5 w-3.5 shrink-0 object-contain',
-                                  provider === 'json-online' && 'dark:invert',
+                                  shouldInvertDatasourceIcon(provider) &&
+                                    'dark:invert',
                                 )}
                               />
                             ) : (

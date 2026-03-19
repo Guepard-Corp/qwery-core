@@ -155,6 +155,26 @@ type SendMessageFn = (
   ) => void;
 };
 
+function datasourceIconMapKeys(extensionId: string, driverIds: string[]) {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const keys = new Set<string>();
+  const add = (value: string) => {
+    const normalized = normalize(value);
+    keys.add(normalized);
+    keys.add(normalized.replace(/_/g, '-'));
+    keys.add(normalized.replace(/-/g, '_'));
+    keys.add(normalized.replace(/\./g, '-'));
+    keys.add(normalized.replace(/\./g, '_'));
+
+    const dotBase = normalized.split('.')[0];
+    if (dotBase) keys.add(dotBase);
+  };
+
+  add(extensionId);
+  driverIds.forEach(add);
+  return [...keys];
+}
+
 export interface AgentUIWrapperRef {
   sendMessage: (text: string) => void | Promise<void>;
 }
@@ -339,10 +359,13 @@ export const AgentUIWrapper = forwardRef<
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    extensions.forEach((plugin) => {
-      if (plugin.icon) {
-        map.set(plugin.id, plugin.icon);
-      }
+    extensions.forEach((extension) => {
+      if (!extension.icon) return;
+      const driverIds = extension.drivers?.map((driver) => driver.id) ?? [];
+      const keys = datasourceIconMapKeys(extension.id, driverIds);
+      keys.forEach((key) => {
+        map.set(key, extension.icon);
+      });
     });
     return map;
   }, [extensions]);

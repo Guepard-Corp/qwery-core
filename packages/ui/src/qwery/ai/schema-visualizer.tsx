@@ -27,6 +27,7 @@ import { Button } from '../../shadcn/button';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { Trans } from '../trans';
 import { useCallback, useMemo, useState } from 'react';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 const SCHEMA_TABLES_PER_PAGE = 3;
 
@@ -367,8 +368,9 @@ export function SchemaVisualizer({
                       className={cn(
                         'shrink-0 object-contain',
                         variant === 'minimal' ? 'h-4 w-4' : 'h-4 w-4',
-                        datasource?.datasource_provider === 'json-online' &&
-                          'dark:invert',
+                        shouldInvertDatasourceIcon(
+                          datasource?.datasource_provider,
+                        ) && 'dark:invert',
                       )}
                     />
                   ) : (
@@ -453,7 +455,8 @@ export function SchemaVisualizer({
                     className={cn(
                       'shrink-0 object-contain',
                       isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                      displayInfo.provider === 'json-online' && 'dark:invert',
+                      shouldInvertDatasourceIcon(displayInfo.provider) &&
+                        'dark:invert',
                     )}
                   />
                 ) : (

@@ -126,8 +126,10 @@ function PromptInputContent(props: QweryPromptInputProps) {
     [setPreferredSearchEngine],
   );
 
-  const { allModels, onModelsChange } = props;
-  const canManageModels = allModels != null && onModelsChange != null;
+  const canManageModels =
+    props.allModels != null && props.onModelsChange != null;
+  const allModels = props.allModels;
+  const onModelsChange = props.onModelsChange;
   const enabledModelIds = useMemo(
     () => new Set(props.models.map((m) => m.value)),
     [props.models],
