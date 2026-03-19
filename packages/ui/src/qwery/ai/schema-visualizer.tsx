@@ -269,7 +269,9 @@ export function SchemaVisualizer({
     return (
       <div className={cn('flex flex-col gap-3', className)}>
         {schemaErrors.length > 0 && (
-          <div className={cn('flex flex-col gap-2', isMinimal ? 'mb-1' : 'mb-2')}>
+          <div
+            className={cn('flex flex-col gap-2', isMinimal ? 'mb-1' : 'mb-2')}
+          >
             <div
               className={cn(
                 'flex items-center gap-2 py-1 select-none',
@@ -830,7 +832,10 @@ export function SchemaVisualizer({
                                 key={`${table.schema}.${table.name}`}
                                 className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                               >
-                                <Collapsible defaultOpen={false} className="w-full">
+                                <Collapsible
+                                  defaultOpen={false}
+                                  className="w-full"
+                                >
                                   <CollapsibleTrigger
                                     className={cn(
                                       'bg-muted/10 border-border/30 flex w-full items-center justify-between border-b',

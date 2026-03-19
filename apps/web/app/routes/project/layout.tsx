@@ -26,18 +26,10 @@ import { ProjectPausedOverlay } from './_components/project-paused-overlay';
 // LocalStorage key for persisting notebook sidebar conversation
 const NOTEBOOK_SIDEBAR_CONVERSATION_KEY = 'notebook-sidebar-conversation';
 
-export async function loader(_args: Route.LoaderArgs) {
-  return {
-    layoutState: {
-      open: true,
-    },
-  };
-}
-
 function SidebarLayoutInner(
   props: Route.ComponentProps & React.PropsWithChildren,
 ) {
-  const { layoutState } = props.loaderData;
+  const layoutState = { open: true } as const;
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const { repositories } = useWorkspace();

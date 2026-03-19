@@ -96,7 +96,10 @@ function normalizeDatasourceConfig(config: unknown): unknown {
     }
   }
 
-  if (typeof normalized.url !== 'string' && typeof normalized.sharedLink === 'string') {
+  if (
+    typeof normalized.url !== 'string' &&
+    typeof normalized.sharedLink === 'string'
+  ) {
     normalized.url = normalized.sharedLink;
   }
 
