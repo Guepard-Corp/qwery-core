@@ -29,6 +29,7 @@ import {
 import { instanceToPlain } from 'class-transformer';
 import { getRepositories } from './repositories';
 import { isUUID } from './http-utils';
+import '@qwery/extensions-loader';
 
 function toSerializable(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;

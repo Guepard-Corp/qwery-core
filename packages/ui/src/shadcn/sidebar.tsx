@@ -4,7 +4,12 @@ import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { useIsMobile } from '../hooks/use-mobile';
-import { useSidebarStore } from '../hooks/use-sidebar';
+import {
+  useSidebarStore,
+  SIDEBAR_DEFAULT_WIDTH_PX,
+  SIDEBAR_MIN_WIDTH_PX,
+  SIDEBAR_MAX_WIDTH_PX,
+} from '../hooks/use-sidebar';
 import { forwardRef, useCallback, useEffect, useMemo } from 'react';
 import { cn } from '../lib/utils';
 import { Button } from '../shadcn/button';
@@ -145,13 +150,18 @@ const SidebarProvider = React.forwardRef<
       ],
     );
 
+    const sidebarWidthPx = isHydrated
+      ? sidebarStore.width
+      : SIDEBAR_DEFAULT_WIDTH_PX;
+
     return (
       <SidebarContext.Provider value={contextValue}>
         <TooltipProvider delayDuration={0}>
           <div
+            data-sidebar-provider=""
             style={
               {
-                '--sidebar-width': SIDEBAR_WIDTH,
+                '--sidebar-width': `${sidebarWidthPx}px`,
                 '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties
@@ -192,6 +202,51 @@ const Sidebar = forwardRef<
     ref,
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+
+    const handleResizeMouseDown = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = useSidebarStore.getState().width;
+        const direction = side === 'right' ? -1 : 1;
+        const providerEl = (
+          e.currentTarget as HTMLElement
+        ).closest<HTMLElement>('[data-sidebar-provider]');
+        if (!providerEl) return;
+
+        const onMove = (ev: MouseEvent) => {
+          const newWidth = Math.min(
+            Math.max(
+              startWidth + (ev.clientX - startX) * direction,
+              SIDEBAR_MIN_WIDTH_PX,
+            ),
+            SIDEBAR_MAX_WIDTH_PX,
+          );
+          providerEl.style.setProperty('--sidebar-width', `${newWidth}px`);
+        };
+
+        const onUp = (ev: MouseEvent) => {
+          const newWidth = Math.min(
+            Math.max(
+              startWidth + (ev.clientX - startX) * direction,
+              SIDEBAR_MIN_WIDTH_PX,
+            ),
+            SIDEBAR_MAX_WIDTH_PX,
+          );
+          useSidebarStore.getState().setWidth(newWidth);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        };
+
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      },
+      [side],
+    );
 
     if (collapsible === 'none') {
       return (
@@ -283,6 +338,24 @@ const Sidebar = forwardRef<
         >
           {children}
         </div>
+        {state === 'expanded' && (
+          <div
+            className={cn(
+              'group/rh absolute inset-y-0 z-40 w-2 cursor-ew-resize',
+              side === 'left' ? '-right-1' : '-left-1',
+            )}
+            onMouseDown={handleResizeMouseDown}
+            title="Resize sidebar"
+            aria-label="Resize sidebar"
+          >
+            <div
+              className={cn(
+                'bg-border/80 group-hover/rh:bg-primary absolute inset-y-0 w-px transition-colors',
+                side === 'left' ? 'right-1' : 'left-1',
+              )}
+            />
+          </div>
+        )}
       </div>
     );
   },
@@ -302,7 +375,7 @@ const SidebarTrigger = React.forwardRef<
       variant="ghost"
       size="icon"
       className={cn(
-        'h-7 w-7 shrink-0 transition-transform duration-200 ease-linear',
+        'h-7 w-7 shrink-0 cursor-pointer transition-transform duration-200 ease-linear',
         className,
       )}
       onClick={(event) => {
@@ -497,7 +570,7 @@ const SidebarGroupAction = React.forwardRef<
       ref={ref}
       data-sidebar="group-action"
       className={cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 cursor-pointer items-center justify-center rounded-md p-0 outline-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         'transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
         // Increases the hit area of the button on mobile.
         'after:absolute after:-inset-2 after:md:hidden',

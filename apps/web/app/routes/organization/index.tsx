@@ -49,7 +49,8 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 export default function OrganizationPage(props: Route.ComponentProps) {
   const { organization, projects } = props.loaderData;
 
-  const pagePadding = 'px-24 py-16 lg:px-32 lg:py-20';
+  const pagePadding =
+    'px-10 py-16 sm:px-16 md:px-20 lg:px-44 xl:px-56 2xl:px-64 lg:py-20';
 
   if (!organization) {
     throw new Response('Not Found', { status: 404 });

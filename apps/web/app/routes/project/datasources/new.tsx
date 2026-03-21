@@ -783,7 +783,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
   return (
     <div className="bg-background flex h-full flex-col">
       <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
-        <div className="mx-auto max-w-2xl px-6 py-4">
+        <div className="mx-auto w-full max-w-3xl px-8 py-6 lg:px-16 lg:py-8">
           <Link
             to={createPath(pathsConfig.app.availableSources, project_id)}
             className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -803,7 +803,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-foreground text-xl font-semibold tracking-tight">
+              <h1 className="text-foreground text-3xl font-bold tracking-tight">
                 Connect to {loaderData.name || extension.data?.name}
               </h1>
               {(loaderData.description || extension.data?.description) && (
@@ -817,7 +817,7 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-2xl px-6 py-8">
+        <div className="mx-auto w-full max-w-3xl px-8 py-8 lg:px-16">
           <div
             className={cn(
               'border-border/60 overflow-hidden rounded-xl border transition-all',

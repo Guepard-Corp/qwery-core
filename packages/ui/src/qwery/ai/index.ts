@@ -45,6 +45,7 @@ export { type PromptInputMessage } from '../../ai-elements/prompt-input';
 export { type ChatStatus } from 'ai';
 export { AgentTabs } from './agent-tabs';
 export * from './utils/chat-status';
+export * from './utils/export-to-markdown';
 export * from './utils/notebook-cell-type';
 export * from './utils/notification-sound';
 export { DatasourceSelector, type DatasourceItem } from './datasource-selector';

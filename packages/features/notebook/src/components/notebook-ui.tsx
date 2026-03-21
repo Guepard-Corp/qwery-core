@@ -70,7 +70,7 @@ import { Textarea } from '@qwery/ui/textarea';
 import { Alert, AlertDescription } from '@qwery/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { cn } from '@qwery/ui/utils';
-import { Shortcuts } from '@qwery/ui/shortcuts';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 interface NotebookUIProps {
   notebook?: Notebook;
@@ -410,7 +410,8 @@ function FullViewDialog({
             alt={`${displayName} logo`}
             className={cn(
               'h-4 w-4 rounded object-contain',
-              selectedDatasource.id === 'json-online' && 'dark:invert',
+              shouldInvertDatasourceIcon(selectedDatasource.id) &&
+                'dark:invert',
             )}
           />
         ) : (
@@ -1256,7 +1257,7 @@ export function NotebookUI({
       {/* Title / Actions */}
       {shouldRenderHeader && (
         <div
-          className="border-border border-b px-6 py-4"
+          className="border-border border-b px-4 py-4 lg:px-12"
           onMouseEnter={() => setIsHoveringTitle(true)}
           onMouseLeave={() => setIsHoveringTitle(false)}
         >
@@ -1343,10 +1344,12 @@ export function NotebookUI({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div
+              <button
+                type="button"
                 onClick={() => {
                   const isMac =
-                    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                    typeof navigator !== 'undefined' &&
+                    navigator.platform.toUpperCase().includes('MAC');
                   const event = new KeyboardEvent('keydown', {
                     key: 'l',
                     code: 'KeyL',
@@ -1356,14 +1359,14 @@ export function NotebookUI({
                   });
                   window.dispatchEvent(event);
                 }}
-                className="cursor-pointer"
-                role="button"
-                tabIndex={0}
+                className="border-border/60 bg-muted/35 text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:ring-ring/40 inline-flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                aria-label="Open agent sidebar"
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     const isMac =
-                      navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                      typeof navigator !== 'undefined' &&
+                      navigator.platform.toUpperCase().includes('MAC');
                     const keyboardEvent = new KeyboardEvent('keydown', {
                       key: 'l',
                       code: 'KeyL',
@@ -1375,15 +1378,20 @@ export function NotebookUI({
                   }
                 }}
               >
-                <Shortcuts
-                  items={[
-                    {
-                      text: 'Agent',
-                      keys: ['⌘', 'L'],
-                    },
-                  ]}
-                />
-              </div>
+                <span className="bg-primary/10 text-primary flex h-4 w-4 items-center justify-center rounded-sm">
+                  <Sparkles className="h-2.5 w-2.5" />
+                </span>
+                <span>Agent</span>
+                <span className="bg-background/80 border-border/60 text-muted-foreground inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px]">
+                  <span>
+                    {typeof navigator !== 'undefined' &&
+                    navigator.platform.toUpperCase().includes('MAC')
+                      ? '⌘'
+                      : 'Ctrl'}
+                  </span>
+                  <span>L</span>
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -1391,7 +1399,7 @@ export function NotebookUI({
 
       {/* Cells container */}
       <div className="[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50 mt-6 min-h-0 flex-1 overflow-x-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-        <div className="h-full pr-12 pl-16">
+        <div className="h-full px-4 lg:px-12">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}

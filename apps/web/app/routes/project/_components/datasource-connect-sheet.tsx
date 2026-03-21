@@ -26,6 +26,7 @@ import {
 import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import type { ExtensionDefinition } from '@qwery/extensions-sdk';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 const SHEET_OVERLAY_Z = 'z-[100]';
 const SHEET_CONTENT_Z = 'z-[101]';
@@ -194,7 +195,7 @@ export function DatasourceConnectSheet({
                     alt={extensionMeta.name}
                     className={cn(
                       'h-16 w-16 object-contain',
-                      extensionId === 'json-online' && 'dark:invert',
+                      shouldInvertDatasourceIcon(extensionId) && 'dark:invert',
                     )}
                   />
                 )}
@@ -295,9 +296,9 @@ export function DatasourceConnectSheet({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto">
-              <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-3 pb-6">
-                <div className="min-h-0 shrink-0">
+            <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-4">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <DatasourceConnectForm
                     extensionId={extensionId}
                     projectSlug={projectSlug}

@@ -40,6 +40,7 @@ import {
   useUpdateConversation,
 } from '~/lib/mutations/use-conversation';
 import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
+import { useNotebookSidebarOpenStore } from '~/lib/store/use-notebook-sidebar-open';
 
 export default function NotebookPage() {
   const { t } = useTranslation();
@@ -48,6 +49,7 @@ export default function NotebookPage() {
   const slug = params.slug as string;
   const { repositories, workspace } = useWorkspace();
   const navigate = useNavigate();
+  const { open: notebookSidebarOpen } = useNotebookSidebarOpenStore();
   const notebookRepository = repositories.notebook;
   const datasourceRepository = repositories.datasource;
   const notebook = useGetNotebook(notebookRepository, slug);
@@ -1059,7 +1061,13 @@ export default function NotebookPage() {
 
   // Convert NotebookUseCaseDto to Notebook format
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div
+      className={
+        notebookSidebarOpen
+          ? 'h-full w-full overflow-hidden px-4 lg:px-8'
+          : 'h-full w-full overflow-hidden px-4 lg:px-12'
+      }
+    >
       {notebook.isLoading && <Skeleton className="h-full w-full" />}
       {notebook.isError && <Navigate to="/404" />}
       {normalizedNotebook && (

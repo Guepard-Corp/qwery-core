@@ -60,6 +60,52 @@ function toSortedSimpleSchemaArray(
     .map(([, schema]) => schema);
 }
 
+function normalizeDatasourceConfig(config: unknown): unknown {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return config;
+  }
+
+  const normalized = { ...(config as Record<string, unknown>) };
+
+  if (typeof normalized.sharedLink !== 'string') {
+    // Try known URL field aliases first
+    const urlAliases = [
+      'url',
+      'link',
+      'spreadsheetUrl',
+      'spreadsheet_url',
+      'sheet_url',
+      'csv_url',
+      'connection_url',
+    ];
+    for (const alias of urlAliases) {
+      if (typeof normalized[alias] === 'string') {
+        normalized.sharedLink = normalized[alias];
+        break;
+      }
+    }
+
+    // Last resort: any string value that looks like a URL
+    if (typeof normalized.sharedLink !== 'string') {
+      for (const value of Object.values(normalized)) {
+        if (typeof value === 'string' && value.startsWith('http')) {
+          normalized.sharedLink = value;
+          break;
+        }
+      }
+    }
+  }
+
+  if (
+    typeof normalized.url !== 'string' &&
+    typeof normalized.sharedLink === 'string'
+  ) {
+    normalized.url = normalized.sharedLink;
+  }
+
+  return normalized;
+}
+
 export const GetSchemaTool = Tool.define('getSchema', {
   description: DESCRIPTION,
   parameters: z.object({
@@ -142,7 +188,7 @@ export const GetSchemaTool = Tool.define('getSchema', {
             }
 
             const instance = await getDriverInstance(nodeDriver, {
-              config: datasource.config,
+              config: normalizeDatasourceConfig(datasource.config),
             });
 
             const metadata = await instance.metadata();

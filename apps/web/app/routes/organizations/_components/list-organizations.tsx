@@ -80,29 +80,28 @@ export function ListOrganizations({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (isGridView) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedIds(new Set());
-    }
-  }, [isGridView]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingOrganization, setEditingOrganization] =
     useState<Organization | null>(null);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         setShouldAnimate(true);
         searchInputRef.current?.focus();
-        setTimeout(() => setShouldAnimate(false), 1000);
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => setShouldAnimate(false), 1000);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const bulkDeleteMutation = useBulkOrganizations({
@@ -271,7 +270,10 @@ export function ListOrganizations({
                     Display Mode
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onClick={() => setIsGridView(true)}
+                    onClick={() => {
+                      setIsGridView(true);
+                      setSelectedIds(new Set());
+                    }}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       isGridView &&
@@ -292,7 +294,10 @@ export function ListOrganizations({
                     {isGridView && <Check className="h-4 w-4 text-[#ffcb51]" />}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setIsGridView(false)}
+                    onClick={() => {
+                      setIsGridView(false);
+                      setSelectedIds(new Set());
+                    }}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2.5',
                       !isGridView &&

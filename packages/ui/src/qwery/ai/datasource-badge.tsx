@@ -16,6 +16,8 @@ import {
 import { Button } from '../../shadcn/button';
 import { cn } from '../../lib/utils';
 import type { DatasourceItem } from './datasource-selector';
+import { getDatasourceIcon } from './utils/datasource-icon';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 export type { DatasourceItem };
 
@@ -53,7 +55,7 @@ export function DatasourceBadge({
                 alt={displayName}
                 className={cn(
                   'h-3.5 w-3.5 object-contain transition-transform group-hover:scale-105',
-                  datasource.datasource_provider === 'json-online' &&
+                  shouldInvertDatasourceIcon(datasource.datasource_provider) &&
                     'dark:invert',
                 )}
               />
@@ -85,7 +87,7 @@ export function DatasourceBadge({
                 alt={datasource.name || datasource.slug || datasource.id}
                 className={cn(
                   'h-7 w-7 object-contain',
-                  datasource.datasource_provider === 'json-online' &&
+                  shouldInvertDatasourceIcon(datasource.datasource_provider) &&
                     'dark:invert',
                 )}
               />
@@ -133,7 +135,10 @@ export function DatasourceBadges({
     if (!datasource) {
       return null;
     }
-    const iconUrl = pluginLogoMap?.get(datasource.datasource_provider);
+    const iconUrl = getDatasourceIcon(
+      pluginLogoMap,
+      datasource.datasource_provider,
+    );
     return (
       <div className={cn('mb-2', className)}>
         <DatasourceBadge datasource={datasource} iconUrl={iconUrl} />
@@ -188,7 +193,7 @@ function DatasourceBadgesHover({
 
   // Get first 3 unique icons for the stack
   const stackIcons = datasources.slice(0, 3).map((ds) => ({
-    url: pluginLogoMap?.get(ds.datasource_provider),
+    url: getDatasourceIcon(pluginLogoMap, ds.datasource_provider),
     provider: ds.datasource_provider,
   }));
 
@@ -214,7 +219,8 @@ function DatasourceBadgesHover({
                     alt=""
                     className={cn(
                       'h-3 w-3 object-contain',
-                      icon.provider === 'json-online' && 'dark:invert',
+                      shouldInvertDatasourceIcon(icon.provider) &&
+                        'dark:invert',
                     )}
                   />
                 ) : (
@@ -265,7 +271,8 @@ function DatasourceBadgesHover({
           {/* List */}
           <div className="max-h-[260px] space-y-0.5 overflow-y-auto p-1.5">
             {currentItems.map((datasource) => {
-              const iconUrl = pluginLogoMap?.get(
+              const iconUrl = getDatasourceIcon(
+                pluginLogoMap,
                 datasource.datasource_provider,
               );
               const displayName =
@@ -285,8 +292,9 @@ function DatasourceBadgesHover({
                         alt=""
                         className={cn(
                           'h-4 w-4 object-contain',
-                          datasource.datasource_provider === 'json-online' &&
-                            'dark:invert',
+                          shouldInvertDatasourceIcon(
+                            datasource.datasource_provider,
+                          ) && 'dark:invert',
                         )}
                       />
                     ) : (

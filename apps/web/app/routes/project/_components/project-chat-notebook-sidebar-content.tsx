@@ -284,7 +284,7 @@ export function ProjectChatNotebookSidebarContent() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-foreground hover:bg-accent absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded transition-colors"
                   title="New chat or notebook"
                 >
                   <Plus className="size-4" />

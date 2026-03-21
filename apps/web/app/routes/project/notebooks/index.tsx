@@ -43,7 +43,7 @@ export default function ProjectNotebooksPage() {
   return (
     <div className="flex h-full flex-col">
       {notebooks.isLoading && (
-        <div className="p-6 lg:p-10">
+        <div className="shrink-0">
           <Skeleton className="h-10 w-full" />
         </div>
       )}

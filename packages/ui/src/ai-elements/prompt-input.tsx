@@ -713,18 +713,17 @@ export const PromptInput = ({
       try {
         const result = onSubmit({ text, files: convertedFiles }, event);
 
-        // Handle both sync and async onSubmit
-        if (result instanceof Promise) {
-          result
-            .then(() => {
-              clear();
-            })
-            .catch(() => {
-              // Don't clear on error - user may want to retry
-            });
-        } else {
-          // Sync function completed without throwing, clear attachments
+        const clearOnSuccess = () => {
           clear();
+          controller?.textInput?.clear();
+        };
+
+        if (result instanceof Promise) {
+          result.then(clearOnSuccess).catch(() => {
+            // Don't clear on error - user may want to retry
+          });
+        } else {
+          clearOnSuccess();
         }
       } catch (error) {
         // Don't clear on error - user may want to retry

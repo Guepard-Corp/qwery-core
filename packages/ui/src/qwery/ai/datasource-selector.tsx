@@ -24,6 +24,8 @@ import { Skeleton } from '../../shadcn/skeleton';
 import { cn } from '../../lib/utils';
 import { Trans } from '../trans';
 import { useTranslation } from 'react-i18next';
+import { getDatasourceIcon } from './utils/datasource-icon';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 export interface DatasourceItem {
   id: string;
@@ -38,7 +40,7 @@ export interface DatasourceSelectorProps {
   selectedDatasources: string[]; // Array of datasource IDs
   onSelectionChange: (datasourceIds: string[]) => void;
   datasources: DatasourceItem[];
-  pluginLogoMap: Map<string, string>; // Maps datasource_provider to icon URL
+  pluginLogoMap: Map<string, string>; // Maps normalized provider/id aliases to icon URL
   isLoading?: boolean;
   searchPlaceholder?: string;
   variant?: 'default' | 'badge';
@@ -172,7 +174,10 @@ export function DatasourceSelector({
         (ds) => ds.id === selectedDatasources[0],
       );
       if (selected) {
-        const icon = pluginLogoMap.get(selected.datasource_provider);
+        const icon = getDatasourceIcon(
+          pluginLogoMap,
+          selected.datasource_provider,
+        );
         return {
           type: 'single' as const,
           label: selected.name,
@@ -211,7 +216,8 @@ export function DatasourceSelector({
               alt={displayInfo.label}
               className={cn(
                 'h-3.5 w-3.5 shrink-0 object-contain',
-                displayInfo.provider === 'json-online' && 'dark:invert',
+                shouldInvertDatasourceIcon(displayInfo.provider) &&
+                  'dark:invert',
               )}
               onError={() => {
                 if (selectedDatasources[0]) {
@@ -334,7 +340,8 @@ export function DatasourceSelector({
                       const isSelected = selectedDatasources.includes(
                         datasource.id,
                       );
-                      const icon = pluginLogoMap.get(
+                      const icon = getDatasourceIcon(
+                        pluginLogoMap,
                         datasource.datasource_provider,
                       );
                       const hasFailed = failedImages.has(datasource.id);
@@ -369,8 +376,9 @@ export function DatasourceSelector({
                                 alt=""
                                 className={cn(
                                   'h-4 w-4 object-contain transition-transform group-hover:scale-110',
-                                  datasource.datasource_provider ===
-                                    'json-online' && 'dark:invert',
+                                  shouldInvertDatasourceIcon(
+                                    datasource.datasource_provider,
+                                  ) && 'dark:invert',
                                 )}
                                 onError={() => handleImageError(datasource.id)}
                               />

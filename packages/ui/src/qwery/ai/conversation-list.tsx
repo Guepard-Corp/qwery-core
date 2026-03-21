@@ -30,6 +30,8 @@ import {
   type Conversation,
 } from './utils/conversation-utils';
 
+const CONVERSATION_LIST_PAGE_SIZE = 20;
+
 export interface ConversationListProps {
   conversations?: Conversation[];
   isLoading?: boolean;
@@ -99,7 +101,7 @@ export function ConversationList({
   const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(CONVERSATION_LIST_PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const previousTitlesRef = useRef<Map<string, string>>(new Map());
@@ -255,7 +257,9 @@ export function ConversationList({
   const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
     setTimeout(() => {
-      setVisibleCount((prev) => Math.min(prev + 20, allConversations.length));
+      setVisibleCount((prev) =>
+        Math.min(prev + CONVERSATION_LIST_PAGE_SIZE, allConversations.length),
+      );
       setIsLoadingMore(false);
     }, 100);
   }, [allConversations.length]);
@@ -359,7 +363,6 @@ export function ConversationList({
                     isEditMode &&
                       selectedIds.has(currentConversation.id) &&
                       'bg-primary/5 hover:bg-primary/20',
-                    'data-[selected=true]:bg-accent',
                   )}
                 >
                   <div className="flex w-full items-center gap-2 px-2 py-1.5">
@@ -495,13 +498,12 @@ export function ConversationList({
                   }}
                   className={cn(
                     'group relative mx-1 my-0.5 rounded-md transition-all',
-                    'hover:bg-accent/50',
+                    'hover:bg-muted/70 data-[selected=true]:bg-muted/70',
                     conversation.id === currentConversationId &&
-                      'bg-primary/10 hover:bg-primary/20',
+                      'bg-primary/12 hover:bg-primary/22 data-[selected=true]:bg-primary/22',
                     isEditMode &&
                       selectedIds.has(conversation.id) &&
-                      'bg-primary/5 hover:bg-primary/20',
-                    'data-[selected=true]:bg-accent',
+                      'bg-primary/8 hover:bg-primary/22 data-[selected=true]:bg-primary/22',
                   )}
                 >
                   <div className="flex w-full items-center gap-2 px-2 py-1.5">
@@ -590,12 +592,12 @@ export function ConversationList({
                           }}
                           className={cn(
                             'group relative mx-1 my-0.5 rounded-md transition-all',
-                            'hover:bg-accent/50',
-                            isCurrent && 'bg-primary/10 hover:bg-primary/20',
+                            'hover:bg-muted/70 data-[selected=true]:bg-muted/70',
+                            isCurrent &&
+                              'bg-primary/12 hover:bg-primary/22 data-[selected=true]:bg-primary/22',
                             isEditMode &&
                               isSelected &&
-                              'bg-primary/5 hover:bg-primary/20',
-                            'data-[selected=true]:bg-accent',
+                              'bg-primary/8 hover:bg-primary/22 data-[selected=true]:bg-primary/22',
                           )}
                         >
                           <div className="flex w-full items-center gap-2 px-2 py-1.5">
@@ -738,32 +740,31 @@ export function ConversationList({
               );
             })
           )}
+
+          {!isSearching && hasMore && (
+            <div className="bg-background relative z-10 shrink-0 px-4 py-3">
+              {renderLoadMoreFooter ? (
+                renderLoadMoreFooter({
+                  hasMore,
+                  onLoadMore: handleLoadMore,
+                  isLoading: isLoadingMore,
+                })
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="text-muted-foreground hover:text-foreground bg-background hover:bg-muted h-9 w-full"
+                  data-test="conversation-load-more"
+                >
+                  {isLoadingMore ? 'Loading...' : 'Load more'}
+                </Button>
+              )}
+            </div>
+          )}
         </CommandList>
       </Command>
-
-      {!isSearching &&
-        hasMore &&
-        !onLoadMoreStateChange &&
-        (renderLoadMoreFooter ? (
-          renderLoadMoreFooter({
-            hasMore,
-            onLoadMore: handleLoadMore,
-            isLoading: isLoadingMore,
-          })
-        ) : (
-          <div className="border-border bg-background shrink-0 border-t px-4 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLoadMore}
-              disabled={isLoadingMore}
-              className="text-muted-foreground hover:text-foreground border-border h-9 w-full border"
-              data-test="conversation-load-more"
-            >
-              {isLoadingMore ? 'Loading...' : 'Load more'}
-            </Button>
-          </div>
-        ))}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

@@ -1,7 +1,24 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Hono } from 'hono';
+import { ExtensionsRegistry, ExtensionScope } from '@qwery/extensions-sdk';
 
 import { createTestApp, cleanupTestDir } from './helpers/setup';
+
+const TEST_PROVIDER_ID = 'test-postgresql';
+
+function registerTestProvider() {
+  ExtensionsRegistry.register({
+    id: TEST_PROVIDER_ID,
+    name: 'Test PostgreSQL',
+    icon: '',
+    description: 'Test provider for unit tests',
+    scope: ExtensionScope.DATASOURCE,
+    schema: { type: 'object', properties: { host: { type: 'string' } } },
+    docsUrl: null,
+    supportsPreview: false,
+    drivers: [],
+  });
+}
 
 const MCP_ACCEPT = 'application/json, text/event-stream';
 const MCP_PROTOCOL_VERSION = '2024-11-05';
@@ -134,6 +151,7 @@ describe('MCP handler', () => {
   let projectId: string;
 
   beforeAll(async () => {
+    registerTestProvider();
     const out = await createTestApp();
     app = out.app;
     testDir = out.testDir;
@@ -195,7 +213,7 @@ describe('MCP handler', () => {
     it('returns full provider definition for known provider', async () => {
       const result = (await mcpPost(app, sessionId, 'tools/call', {
         name: 'get_datasource_provider',
-        arguments: { providerId: 'postgresql' },
+        arguments: { providerId: TEST_PROVIDER_ID },
       })) as { isError?: boolean; content?: { type: string; text: string }[] };
       if (result.isError) {
         const errText = result.content?.find((c) => c.type === 'text')?.text;
@@ -209,7 +227,7 @@ describe('MCP handler', () => {
         schema?: unknown;
         drivers?: unknown[];
       };
-      expect(def.id).toBe('postgresql');
+      expect(def.id).toBe(TEST_PROVIDER_ID);
       expect(def.name).toBeDefined();
       expect(def.schema).toBeDefined();
       expect(Array.isArray(def.drivers)).toBe(true);

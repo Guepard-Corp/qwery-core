@@ -39,6 +39,7 @@ export interface UserMessageBubbleProps {
   onEditStart?: (text: string, datasourceIds: string[]) => void;
   isLastUserMessage?: boolean;
   timestamp?: Date | string;
+  scrollToMessageId?: (messageId: string) => void;
 }
 
 /**
@@ -423,24 +424,53 @@ export function UserMessageBubble({
   onEditStart: _onEditStart,
   isLastUserMessage = false,
   timestamp: _timestamp,
+  scrollToMessageId,
 }: UserMessageBubbleProps) {
   const hasContext = context && context.lastAssistantResponse;
   const hasSourceSuggestion = context?.sourceSuggestionId;
   const [isHoverCardOpen, setIsHoverCardOpen] = useState(false);
   const hoverCardContentRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [bubbleHeight, setBubbleHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = bubbleRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setBubbleHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    setBubbleHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [text]);
 
   const scrollToSourceSuggestion = () => {
     if (!context?.sourceSuggestionId) return;
+    setIsHoverCardOpen(false);
 
-    scrollToElementBySelector(
-      `[data-suggestion-id="${context.sourceSuggestionId}"]`,
-      {
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest',
-        offset: -20,
-      },
-    );
+    const runScrollToSuggestion = () => {
+      scrollToElementBySelector(
+        `[data-suggestion-id="${context.sourceSuggestionId}"]`,
+        {
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+          offset: -20,
+          highlightDuration: 2000,
+          enableHighlight: true,
+          maxRetries: 8,
+        },
+      );
+    };
+
+    const assistantMessageId =
+      context.parentConversationId?.match(/^parent-[^-]+-(.+)$/)?.[1];
+    if (scrollToMessageId && assistantMessageId) {
+      scrollToMessageId(assistantMessageId);
+      setTimeout(runScrollToSuggestion, 450);
+    } else {
+      runScrollToSuggestion();
+    }
   };
 
   // Close HoverCard on scroll (only if scrolling outside the popup)
@@ -526,79 +556,106 @@ export function UserMessageBubble({
           )}
         </div>
       )}
-      {/* Horizontal layout: previous response preview - message bubble */}
-      <div className="flex w-full max-w-full min-w-0 items-stretch gap-1 overflow-x-hidden">
-        {/* Previous response preview - height capped to bubble height via stretch */}
+      <div className="flex w-full max-w-full min-w-0 items-center overflow-x-hidden">
         {previewData && (
-          <HoverCard open={isHoverCardOpen} onOpenChange={setIsHoverCardOpen}>
-            <HoverCardTrigger asChild>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground relative flex max-w-[65%] min-w-0 cursor-pointer items-start justify-end self-stretch overflow-hidden border-0 bg-transparent [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] p-0 text-right text-xs leading-relaxed transition-colors"
-                onClick={
-                  hasSourceSuggestion ? scrollToSourceSuggestion : undefined
-                }
-                title={
-                  hasSourceSuggestion
-                    ? 'Scroll to original suggestion'
-                    : undefined
-                }
+          <div
+            className="flex min-h-0 max-w-[65%] min-w-0 shrink-0 justify-end overflow-hidden"
+            style={
+              bubbleHeight != null ? { maxHeight: bubbleHeight } : undefined
+            }
+          >
+            <HoverCard open={isHoverCardOpen} onOpenChange={setIsHoverCardOpen}>
+              <HoverCardTrigger asChild>
+                <div
+                  className="text-muted-foreground hover:text-foreground relative flex h-full min-h-0 w-full cursor-pointer items-center justify-end overflow-hidden border-0 bg-transparent [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] p-0 text-right text-xs leading-relaxed transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  title={
+                    hasSourceSuggestion
+                      ? 'Scroll to original suggestion'
+                      : undefined
+                  }
+                  onKeyDown={(e) => {
+                    if (
+                      hasSourceSuggestion &&
+                      (e.key === 'Enter' || e.key === ' ')
+                    ) {
+                      e.preventDefault();
+                      scrollToSourceSuggestion();
+                    }
+                  }}
+                  onPointerDown={(e) => {
+                    if (hasSourceSuggestion) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      scrollToSourceSuggestion();
+                    }
+                  }}
+                >
+                  <span className="pr-4 break-words">
+                    {previewData.preview}
+                  </span>
+                </div>
+              </HoverCardTrigger>
+              <HoverCardContent
+                ref={hoverCardContentRef}
+                className="max-h-[400px] w-96 overflow-y-auto"
+                side="top"
+                align="start"
               >
-                <span className="pr-4 break-words">{previewData.preview}</span>
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent
-              ref={hoverCardContentRef}
-              className="max-h-[400px] w-96 overflow-y-auto"
-              side="top"
-              align="start"
-            >
-              <div className="flex flex-col gap-4">
-                {/* User Question - Right side (originating question) */}
-                {userQuestion && (
-                  <div className="flex items-start justify-end">
-                    <Message
-                      from="user"
-                      className="flex !w-auto max-w-[80%] min-w-0"
-                    >
-                      <MessageContent className="overflow-wrap-anywhere max-w-full min-w-0 break-words">
-                        <span className="text-base font-semibold break-words">
-                          {userQuestion}
-                        </span>
-                      </MessageContent>
-                    </Message>
-                  </div>
-                )}
-                {/* Assistant Response - Left side with bot avatar */}
-                <div className="flex items-start gap-3">
-                  <div className="mt-1 shrink-0">
-                    <BotAvatar size={6} isLoading={false} />
-                  </div>
-                  <div className="prose prose-base dark:prose-invert [&_li]:text-foreground [&_li]:marker:text-foreground/90 [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:ml-4 [&_ul]:list-outside [&_ul]:list-disc [&_ul]:pl-6">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={agentMarkdownComponents}
-                    >
-                      {previewData.fullText}
-                    </ReactMarkdown>
+                <div className="flex flex-col gap-4">
+                  {/* User Question - Right side (originating question) */}
+                  {userQuestion && (
+                    <div className="flex items-start justify-end">
+                      <Message
+                        from="user"
+                        className="flex !w-auto max-w-[80%] min-w-0"
+                      >
+                        <MessageContent className="overflow-wrap-anywhere max-w-full min-w-0 break-words">
+                          <span className="text-base font-semibold break-words">
+                            {userQuestion}
+                          </span>
+                        </MessageContent>
+                      </Message>
+                    </div>
+                  )}
+                  {/* Assistant Response - Left side with bot avatar */}
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 shrink-0">
+                      <BotAvatar size={6} isLoading={false} />
+                    </div>
+                    <div className="prose prose-base dark:prose-invert [&_li]:text-foreground [&_li]:marker:text-foreground/90 [&_p]:text-foreground [&_strong]:text-foreground max-w-none min-w-0 flex-1 [&_li]:my-1 [&_strong]:inline [&_strong]:font-semibold [&_strong]:not-italic [&_ul]:ml-4 [&_ul]:list-outside [&_ul]:list-disc [&_ul]:pl-6">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={agentMarkdownComponents}
+                      >
+                        {previewData.fullText}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
+              </HoverCardContent>
+            </HoverCard>
+          </div>
         )}
-        {/* Message bubble - right-aligned, sits next to preview */}
-        <Message
-          from="user"
-          className={cn('flex !w-auto max-w-[80%] min-w-0 shrink-0', className)}
-        >
-          <MessageContent
-            className="overflow-wrap-anywhere max-w-full min-w-0 break-words"
-            style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+        <div ref={bubbleRef}>
+          <Message
+            from="user"
+            className={cn(
+              'flex !w-auto max-w-[80%] min-w-0 shrink-0 items-center',
+              className,
+            )}
           >
-            <span className="text-base font-semibold break-words">{text}</span>
-          </MessageContent>
-        </Message>
+            <MessageContent
+              className="overflow-wrap-anywhere max-w-full min-w-0 break-words"
+              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+            >
+              <span className="text-base font-semibold break-words">
+                {text}
+              </span>
+            </MessageContent>
+          </Message>
+        </div>
       </div>
     </div>
   );

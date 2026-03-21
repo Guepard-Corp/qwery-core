@@ -1,4 +1,5 @@
 import type { UIMessage, ToolUIPart } from 'ai';
+import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 import { getUserFriendlyToolName } from './tool-name';
 import { getToolStatusLabel } from './message-context';
 
@@ -176,4 +177,96 @@ export function messagesToMarkdown(
   }
 
   return header + messageSections.join('\n\n---\n\n');
+}
+
+export type DownloadChatMarkdownOptions = ExportToMarkdownOptions & {
+  conversationTitle?: string;
+  /** If omitted, a default is derived from title or date */
+  filename?: string;
+};
+
+export function buildChatMarkdownFilenameBase(
+  conversationTitle?: string | null,
+  fallbackSlug?: string | null,
+): string {
+  const raw =
+    conversationTitle?.trim() || fallbackSlug?.trim() || 'conversation';
+  return (
+    raw
+      .replace(/[^a-z0-9-_]+/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'conversation'
+  );
+}
+
+export function findPrecedingUserMessage(
+  messages: UIMessage[],
+  assistantMessageId: string,
+): UIMessage | undefined {
+  const messageIndex = messages.findIndex((m) => m.id === assistantMessageId);
+  if (messageIndex < 0) return undefined;
+  for (let i = messageIndex - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m && normalizeUIRole(m.role) === 'user') return m;
+  }
+  return undefined;
+}
+
+export function downloadFullChatMarkdown(
+  messages: UIMessage[],
+  options: DownloadChatMarkdownOptions = {},
+): void {
+  const { conversationTitle, filename, getChartSvg } = options;
+  const md = messagesToMarkdown(messages, conversationTitle, { getChartSvg });
+  const outName =
+    filename?.trim() ??
+    (conversationTitle?.trim()
+      ? `chat-${buildChatMarkdownFilenameBase(conversationTitle)}`
+      : `chat-${new Date().toISOString().slice(0, 10)}`);
+  downloadMarkdown(md, outName);
+}
+
+export function downloadChatMarkdownUpTo(
+  messages: UIMessage[],
+  upToMessageId: string,
+  options: DownloadChatMarkdownOptions = {},
+): void {
+  const idx = messages.findIndex((m) => m.id === upToMessageId);
+  if (idx < 0) return;
+  const slice = messages.slice(0, idx + 1);
+  const { conversationTitle, filename, getChartSvg } = options;
+  const md = messagesToMarkdown(slice, conversationTitle, { getChartSvg });
+  const defaultFilename =
+    filename?.trim() ??
+    (conversationTitle?.trim()
+      ? conversationTitle.trim()
+      : `chat-${new Date().toISOString().slice(0, 10)}`);
+  downloadMarkdown(md, defaultFilename);
+}
+
+export type DownloadAssistantResponseMarkdownOptions =
+  ExportToMarkdownOptions & {
+    conversationTitle?: string;
+  };
+
+export function downloadAssistantResponseMarkdown(
+  messages: UIMessage[],
+  assistantMessageId: string,
+  options: DownloadAssistantResponseMarkdownOptions = {},
+): void {
+  const assistant = messages.find((m) => m.id === assistantMessageId);
+  if (!assistant) return;
+
+  const user = findPrecedingUserMessage(messages, assistantMessageId);
+  const toExport = user ? [user, assistant] : [assistant];
+  const md = messagesToMarkdown(toExport, undefined, options);
+
+  const date = new Date().toISOString().slice(0, 10);
+  const titlePart = options.conversationTitle?.trim()
+    ? `${options.conversationTitle.trim()}-`
+    : '';
+  downloadMarkdown(
+    md,
+    `${titlePart}response-${date}-${assistantMessageId.slice(0, 8)}`,
+  );
 }

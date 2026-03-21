@@ -27,6 +27,7 @@ import {
 } from '../../ai-elements/message';
 import { toToolError, toUserFacingError } from './user-facing-error';
 import { useTranslation } from 'react-i18next';
+import { getLogger } from '@qwery/shared/logger';
 import { normalizeUIRole } from '@qwery/shared/message-role-utils';
 
 const FullWidthScroller = forwardRef<
@@ -36,7 +37,7 @@ const FullWidthScroller = forwardRef<
   <div
     ref={ref}
     style={style}
-    className="w-full overflow-x-hidden overflow-y-auto"
+    className="qwery-chat-scroller w-full overflow-x-hidden overflow-y-auto"
     {...props}
   />
 ));
@@ -129,6 +130,8 @@ export const VirtuosoMessageList = forwardRef<
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollerRefRef = useRef(scrollerRef);
+  scrollerRefRef.current = scrollerRef;
   const [shouldFollowOutput, setShouldFollowOutput] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const wasAtBottomWhenStreamStartedRef = useRef(true);
@@ -195,6 +198,7 @@ export const VirtuosoMessageList = forwardRef<
       messageItemProps.onDatasourceNameClick,
       messageItemProps.onTableNameClick,
       messageItemProps.getDatasourceTooltip,
+      messageItemProps.webSearch,
     ],
   );
 
@@ -209,10 +213,26 @@ export const VirtuosoMessageList = forwardRef<
     }
   }, [messages.length]);
 
+  const scrollToMessageId = useCallback(
+    (messageId: string) => {
+      const idx = messages.findIndex((m) => m?.id === messageId);
+      if (idx >= 0 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({
+          index: idx,
+          behavior: 'smooth',
+          align: 'center',
+        });
+      }
+    },
+    [messages],
+  );
+
   const itemContent = useCallback(
     (index: number, message: UIMessage) => {
       if (!message || !message.id) {
-        console.warn('Invalid message at index', index);
+        void getLogger().then((logger) =>
+          logger.warn({ index }, 'Invalid message at index'),
+        );
         return null;
       }
 
@@ -227,6 +247,7 @@ export const VirtuosoMessageList = forwardRef<
             status={status}
             {...stableMessageItemProps}
             scrollToBottom={scrollToBottom}
+            scrollToMessageId={scrollToMessageId}
           />
           {showIndicator ? (
             <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
@@ -244,41 +265,44 @@ export const VirtuosoMessageList = forwardRef<
       status,
       stableMessageItemProps,
       scrollToBottom,
+      scrollToMessageId,
       indicatorAfterUserMessageIds,
     ],
   );
 
-  const components = useMemo(() => {
-    const scrollerRefStable = scrollerRef;
-    const Scroller = forwardRef<
-      HTMLDivElement,
-      React.HTMLAttributes<HTMLDivElement>
-    >((props, ref) => {
-      return (
-        <FullWidthScroller
-          {...props}
-          ref={(node) => {
-            if (typeof ref === 'function') ref(node);
-            else if (ref) ref.current = node;
+  const ScrollerComponent = useMemo(
+    () =>
+      forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+        function VirtuosoScroller(props, ref) {
+          return (
+            <FullWidthScroller
+              {...props}
+              ref={(node) => {
+                if (typeof ref === 'function') ref(node);
+                else if (ref)
+                  (ref as React.RefObject<HTMLDivElement | null>).current =
+                    node;
+                const parentRef = scrollerRefRef.current;
+                if (parentRef) {
+                  if (typeof parentRef === 'function') {
+                    (parentRef as (n: HTMLDivElement | null) => void)(node);
+                  } else {
+                    (
+                      parentRef as React.RefObject<HTMLDivElement | null>
+                    ).current = node;
+                  }
+                }
+              }}
+            />
+          );
+        },
+      ),
+    [],
+  );
 
-            if (scrollerRefStable) {
-              if (typeof scrollerRefStable === 'function') {
-                (scrollerRefStable as (node: HTMLDivElement | null) => void)(
-                  node,
-                );
-              } else {
-                (
-                  scrollerRefStable as React.RefObject<HTMLDivElement | null>
-                ).current = node;
-              }
-            }
-          }}
-        />
-      );
-    });
-    Scroller.displayName = 'VirtuosoScroller';
+  const components = useMemo(() => {
     return {
-      Scroller,
+      Scroller: ScrollerComponent,
       List: CenteredList,
       Header: ({ context }: { context: typeof footerContext }) => {
         const state = context;
@@ -406,7 +430,7 @@ export const VirtuosoMessageList = forwardRef<
         );
       },
     };
-  }, [scrollerRef, t]);
+  }, [ScrollerComponent, t]);
 
   useImperativeHandle(
     ref,
@@ -432,37 +456,22 @@ export const VirtuosoMessageList = forwardRef<
 
   useEffect(() => {
     if (
-      !hasPerformedInitialScrollRef.current &&
-      messages.length > 0 &&
-      virtuosoRef.current
+      hasPerformedInitialScrollRef.current ||
+      messages.length === 0 ||
+      !virtuosoRef.current
     ) {
-      const id = requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: messages.length - 1,
-          behavior: 'auto',
-          align: 'end',
-        });
-      });
-      hasPerformedInitialScrollRef.current = true;
-      return () => cancelAnimationFrame(id);
+      return;
     }
-  }, [messages.length, conversationSlug]);
-
-  useEffect(() => {
-    if (conversationSlug === undefined) return;
-
-    const t = setTimeout(() => {
-      if (messages.length > 0 && virtuosoRef.current) {
-        virtuosoRef.current.scrollToIndex({
-          index: messages.length - 1,
-          behavior: 'auto',
-          align: 'end',
-        });
-      }
-    }, 150);
-
-    return () => clearTimeout(t);
-  }, [conversationSlug, messages.length]);
+    hasPerformedInitialScrollRef.current = true;
+    const id = requestAnimationFrame(() => {
+      virtuosoRef.current?.scrollToIndex({
+        index: messages.length - 1,
+        behavior: 'auto',
+        align: 'end',
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [messages.length]);
 
   const shouldAutoScroll = wasAtBottomWhenStreamStarted && shouldFollowOutput;
 
@@ -487,23 +496,14 @@ export const VirtuosoMessageList = forwardRef<
     ) {
       return;
     }
-    const scrollLastIntoView = () => {
+    const id = requestAnimationFrame(() => {
       virtuosoRef.current?.scrollToIndex({
         index: messages.length - 1,
         behavior: 'auto',
         align: 'end',
       });
-    };
-    const id1 = requestAnimationFrame(scrollLastIntoView);
-    const t0 = setTimeout(scrollLastIntoView, 0);
-    const t1 = setTimeout(scrollLastIntoView, 50);
-    const t2 = setTimeout(scrollLastIntoView, 150);
-    return () => {
-      cancelAnimationFrame(id1);
-      clearTimeout(t0);
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    });
+    return () => cancelAnimationFrame(id);
   }, [lastMessageContentKey, status, shouldAutoScroll, messages.length]);
   return (
     <div
@@ -523,7 +523,9 @@ export const VirtuosoMessageList = forwardRef<
         startReached={() => {
           if (!isLoadingOlder && hasMoreOlder && !loadError) {
             onLoadOlder().catch((error) => {
-              console.error('Error in startReached callback:', error);
+              void getLogger().then((logger) =>
+                logger.error({ err: error }, 'Error in startReached callback'),
+              );
             });
           }
         }}

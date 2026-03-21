@@ -25,7 +25,8 @@ export async function clientLoader(_args: Route.ClientLoaderArgs) {
   }
 }
 
-const PAGE_PADDING = 'px-24 py-16 lg:px-32 lg:py-20';
+const PAGE_PADDING =
+  'px-10 py-16 sm:px-16 md:px-20 lg:px-44 xl:px-56 2xl:px-64 lg:py-20';
 
 export default function OrganizationsPage(props: Route.ComponentProps) {
   const { organizations } = props.loaderData;

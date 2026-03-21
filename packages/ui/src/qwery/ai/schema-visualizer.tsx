@@ -27,6 +27,7 @@ import { Button } from '../../shadcn/button';
 import { TOOL_UI_CONFIG } from './utils/tool-ui-config';
 import { Trans } from '../trans';
 import { useCallback, useMemo, useState } from 'react';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 const SCHEMA_TABLES_PER_PAGE = 3;
 
@@ -266,41 +267,138 @@ export function SchemaVisualizer({
 
   if (!hasTables || datasourceNames.length === 0) {
     return (
-      <div
-        className={cn(
-          'flex flex-col items-center justify-center text-center',
-          isMinimal ? 'p-5' : 'p-10',
-          className,
+      <div className={cn('flex flex-col gap-3', className)}>
+        {schemaErrors.length > 0 && (
+          <div
+            className={cn('flex flex-col gap-2', isMinimal ? 'mb-1' : 'mb-2')}
+          >
+            <div
+              className={cn(
+                'flex items-center gap-2 py-1 select-none',
+                isMinimal ? 'px-2' : 'px-3',
+              )}
+            >
+              <AlertCircleIcon
+                className={cn(
+                  'text-destructive/80',
+                  isMinimal ? 'h-4 w-4' : 'h-5 w-5',
+                )}
+              />
+              <span
+                className={cn(
+                  'text-destructive/80 font-bold tracking-widest uppercase',
+                  isMinimal ? 'text-[10px]' : 'text-xs',
+                )}
+              >
+                Unavailable
+              </span>
+              <div className="bg-destructive/40 h-px flex-1" />
+            </div>
+            <div
+              className={cn(
+                'flex flex-wrap gap-2',
+                isMinimal ? 'px-2' : 'px-3',
+              )}
+            >
+              {schemaErrors.map((e) => {
+                const datasource = datasources?.find(
+                  (ds) => ds.id === e.datasourceId,
+                );
+                const icon = getPluginIcon(datasource?.datasource_provider);
+                const id = datasource?.id ?? e.datasourceId;
+                const name =
+                  datasource?.name ?? e.datasourceName ?? e.datasourceId;
+                const isClickable = Boolean(onDatasourceNameClick);
+                const errorCardClass = cn(
+                  'bg-destructive/5 text-destructive/80 border-destructive/40 hover:bg-destructive/10 flex items-center gap-2 rounded-md border font-bold shadow-sm transition-all',
+                  isMinimal ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
+                );
+                const content = (
+                  <>
+                    {icon ? (
+                      <img
+                        src={icon}
+                        alt={name}
+                        className={cn(
+                          'h-4 w-4 shrink-0 object-contain',
+                          shouldInvertDatasourceIcon(
+                            datasource?.datasource_provider,
+                          ) && 'dark:invert',
+                        )}
+                      />
+                    ) : (
+                      <Database
+                        className={cn(
+                          'text-destructive/60 shrink-0',
+                          isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                        )}
+                      />
+                    )}
+                    {e.datasourceName ?? e.datasourceId}
+                  </>
+                );
+
+                return isClickable ? (
+                  <button
+                    key={e.datasourceId}
+                    type="button"
+                    onClick={() => onDatasourceNameClick?.(id, name)}
+                    title={e.error}
+                    className={cn(
+                      errorCardClass,
+                      'cursor-pointer outline-none active:scale-[0.98]',
+                    )}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div
+                    key={e.datasourceId}
+                    className={errorCardClass}
+                    title={e.error}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
-      >
-        <Database
+        <div
           className={cn(
-            'text-muted-foreground opacity-50',
-            isMinimal ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
-          )}
-        />
-        <h3
-          className={cn(
-            'text-foreground mb-2 font-semibold',
-            isMinimal ? 'text-sm' : 'text-base',
+            'flex flex-col items-center justify-center text-center',
+            isMinimal ? 'p-5' : 'p-10',
           )}
         >
-          <Trans
-            i18nKey="common:schema.noSchemaDataAvailable"
-            defaults="No schema data available"
+          <Database
+            className={cn(
+              'text-muted-foreground opacity-50',
+              isMinimal ? 'mb-2 h-9 w-9' : 'mb-4 h-14 w-14',
+            )}
           />
-        </h3>
-        <p
-          className={cn(
-            'text-muted-foreground',
-            isMinimal ? 'text-xs' : 'text-sm',
-          )}
-        >
-          <Trans
-            i18nKey="common:schema.schemaEmptyOrNotLoaded"
-            defaults="The schema information is empty or could not be loaded."
-          />
-        </p>
+          <h3
+            className={cn(
+              'text-foreground mb-2 font-semibold',
+              isMinimal ? 'text-sm' : 'text-base',
+            )}
+          >
+            <Trans
+              i18nKey="common:schema.noSchemaDataAvailable"
+              defaults="No schema data available"
+            />
+          </h3>
+          <p
+            className={cn(
+              'text-muted-foreground',
+              isMinimal ? 'text-xs' : 'text-sm',
+            )}
+          >
+            <Trans
+              i18nKey="common:schema.schemaEmptyOrNotLoaded"
+              defaults="The schema information is empty or could not be loaded."
+            />
+          </p>
+        </div>
       </div>
     );
   }
@@ -367,8 +465,9 @@ export function SchemaVisualizer({
                       className={cn(
                         'shrink-0 object-contain',
                         variant === 'minimal' ? 'h-4 w-4' : 'h-4 w-4',
-                        datasource?.datasource_provider === 'json-online' &&
-                          'dark:invert',
+                        shouldInvertDatasourceIcon(
+                          datasource?.datasource_provider,
+                        ) && 'dark:invert',
                       )}
                     />
                   ) : (
@@ -453,7 +552,8 @@ export function SchemaVisualizer({
                     className={cn(
                       'shrink-0 object-contain',
                       isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                      displayInfo.provider === 'json-online' && 'dark:invert',
+                      shouldInvertDatasourceIcon(displayInfo.provider) &&
+                        'dark:invert',
                     )}
                   />
                 ) : (
@@ -521,15 +621,7 @@ export function SchemaVisualizer({
                         isMinimal ? 'text-sm' : 'text-base',
                       )}
                     >
-                      {(() => {
-                        const schemaLabel = schemaNameOnly(dsName);
-                        const datasourceLabel = displayInfo.name;
-                        if (!datasourceLabel) return schemaLabel;
-                        if (datasourceLabel === schemaLabel) {
-                          return datasourceLabel;
-                        }
-                        return `${datasourceLabel} · ${schemaLabel}`;
-                      })()}
+                      {schemaNameOnly(dsName)}
                     </span>
                     <div className="flex shrink-0 items-center gap-2">
                       <span
@@ -740,129 +832,165 @@ export function SchemaVisualizer({
                                 key={`${table.schema}.${table.name}`}
                                 className="bg-background max-w-full min-w-0 overflow-hidden rounded-md border"
                               >
-                                <div
-                                  className={cn(
-                                    'bg-muted/10 border-border/30 flex items-center justify-between border-b',
-                                    isMinimal ? 'px-3 py-2' : 'px-4 py-2.5',
-                                  )}
+                                <Collapsible
+                                  defaultOpen={false}
+                                  className="w-full"
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <Table2
-                                      className={cn(
-                                        'text-primary/70',
-                                        isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                                      )}
-                                    />
-                                    {handleCardTitleClick ? (
-                                      <button
-                                        type="button"
-                                        onClick={handleCardTitleClick}
-                                        className={cn(
-                                          'text-foreground/90 hover:text-primary cursor-pointer text-left font-mono font-medium transition-colors outline-none hover:underline',
-                                          isMinimal ? 'text-sm' : 'text-base',
-                                        )}
-                                        title={
-                                          openTableCard
-                                            ? `Open table ${table.name} in new tab`
-                                            : `Open ${displayInfo.name} in new tab`
-                                        }
-                                      >
-                                        {table.name}
-                                      </button>
-                                    ) : (
-                                      <h4
-                                        className={cn(
-                                          'text-foreground/90 font-mono font-medium',
-                                          isMinimal ? 'text-sm' : 'text-base',
-                                        )}
-                                        title={
-                                          table.schema
-                                            ? `${table.schema}.${table.name}`
-                                            : table.name
-                                        }
-                                      >
-                                        {table.name}
-                                      </h4>
-                                    )}
-                                  </div>
-                                  <span
+                                  <CollapsibleTrigger
                                     className={cn(
-                                      'bg-muted/50 text-muted-foreground rounded-full font-mono',
-                                      isMinimal
-                                        ? 'px-2 py-0.5 text-[10px]'
-                                        : 'px-2.5 py-1 text-xs',
+                                      'bg-muted/10 border-border/30 flex w-full items-center justify-between border-b',
+                                      isMinimal ? 'px-3 py-2' : 'px-4 py-2.5',
+                                      'cursor-pointer',
                                     )}
                                   >
-                                    {table.resolvedColumns.length} columns
-                                  </span>
-                                </div>
-
-                                {table.resolvedColumns.length > 0 ? (
-                                  <div className="overflow-x-auto">
-                                    <table
-                                      className={cn(
-                                        'w-full text-left',
-                                        isMinimal ? 'text-sm' : 'text-base',
-                                      )}
-                                    >
-                                      <thead>
-                                        <tr className="bg-muted/10 text-muted-foreground border-border/30 border-b text-xs tracking-wider uppercase">
-                                          <th
-                                            className={cn(
-                                              'w-1/3 font-medium',
-                                              isMinimal
-                                                ? 'px-3 py-1.5'
-                                                : 'px-4 py-2',
-                                            )}
-                                          >
-                                            Column
-                                          </th>
-                                          <th
-                                            className={cn(
-                                              'font-medium',
-                                              isMinimal
-                                                ? 'px-3 py-1.5'
-                                                : 'px-4 py-2',
-                                            )}
-                                          >
-                                            Type
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-border/30 divide-y">
-                                        {table.resolvedColumns.map(
-                                          (col: Column) => (
-                                            <tr
-                                              key={col.id}
-                                              className="hover:bg-muted/20 transition-colors"
-                                            >
-                                              <td
-                                                className={cn(
-                                                  'text-foreground/90 font-medium break-all',
-                                                  isMinimal
-                                                    ? 'px-3 py-1.5 text-xs'
-                                                    : 'px-4 py-2 text-sm',
-                                                )}
-                                              >
-                                                {col.name}
-                                              </td>
-                                              <td
-                                                className={cn(
-                                                  'text-muted-foreground font-mono',
-                                                  isMinimal
-                                                    ? 'px-3 py-1.5 text-[10px]'
-                                                    : 'px-4 py-2 text-xs',
-                                                )}
-                                              >
-                                                {col.data_type}
-                                              </td>
-                                            </tr>
-                                          ),
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground h-3.5 w-3.5 shrink-0">
+                                        <ChevronRight className="h-3.5 w-3.5 group-data-[state=open]:hidden" />
+                                        <ChevronDown className="hidden h-3.5 w-3.5 group-data-[state=open]:block" />
+                                      </span>
+                                      <Table2
+                                        className={cn(
+                                          'text-primary/70',
+                                          isMinimal ? 'h-3.5 w-3.5' : 'h-4 w-4',
                                         )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                ) : null}
+                                      />
+                                      {handleCardTitleClick ? (
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleCardTitleClick();
+                                          }}
+                                          className={cn(
+                                            'text-foreground/90 hover:text-primary cursor-pointer text-left font-mono font-medium transition-colors outline-none hover:underline',
+                                            isMinimal ? 'text-sm' : 'text-base',
+                                          )}
+                                          title={
+                                            openTableCard
+                                              ? `Open table ${table.name} in new tab`
+                                              : `Open ${displayInfo.name} in new tab`
+                                          }
+                                        >
+                                          <span className="inline-flex items-center gap-2">
+                                            <span>{table.name}</span>
+                                            <span
+                                              className={cn(
+                                                'text-muted-foreground font-mono',
+                                                isMinimal
+                                                  ? 'text-[10px]'
+                                                  : 'text-xs',
+                                              )}
+                                            >
+                                              ({table.resolvedColumns.length})
+                                            </span>
+                                          </span>
+                                        </button>
+                                      ) : (
+                                        <h4
+                                          className={cn(
+                                            'text-foreground/90 font-mono font-medium',
+                                            isMinimal ? 'text-sm' : 'text-base',
+                                          )}
+                                          title={
+                                            table.schema
+                                              ? `${table.schema}.${table.name}`
+                                              : table.name
+                                          }
+                                        >
+                                          <span className="inline-flex items-center gap-2">
+                                            <span>{table.name}</span>
+                                            <span
+                                              className={cn(
+                                                'text-muted-foreground font-mono',
+                                                isMinimal
+                                                  ? 'text-[10px]'
+                                                  : 'text-xs',
+                                              )}
+                                            >
+                                              ({table.resolvedColumns.length})
+                                            </span>
+                                          </span>
+                                        </h4>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <ChevronDown
+                                        className={cn(
+                                          'text-muted-foreground h-3.5 w-3.5',
+                                        )}
+                                      />
+                                    </div>
+                                  </CollapsibleTrigger>
+
+                                  <CollapsibleContent>
+                                    {table.resolvedColumns.length > 0 ? (
+                                      <div className="overflow-x-auto">
+                                        <table
+                                          className={cn(
+                                            'w-full text-left',
+                                            isMinimal ? 'text-sm' : 'text-base',
+                                          )}
+                                        >
+                                          <thead>
+                                            <tr className="bg-muted/10 text-muted-foreground border-border/30 border-b text-xs tracking-wider uppercase">
+                                              <th
+                                                className={cn(
+                                                  'w-1/3 font-medium',
+                                                  isMinimal
+                                                    ? 'px-3 py-1.5'
+                                                    : 'px-4 py-2',
+                                                )}
+                                              >
+                                                Column
+                                              </th>
+                                              <th
+                                                className={cn(
+                                                  'font-medium',
+                                                  isMinimal
+                                                    ? 'px-3 py-1.5'
+                                                    : 'px-4 py-2',
+                                                )}
+                                              >
+                                                Type
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-border/30 divide-y">
+                                            {table.resolvedColumns.map(
+                                              (col: Column) => (
+                                                <tr
+                                                  key={col.id}
+                                                  className="hover:bg-muted/20 transition-colors"
+                                                >
+                                                  <td
+                                                    className={cn(
+                                                      'text-foreground/90 font-medium break-all',
+                                                      isMinimal
+                                                        ? 'px-3 py-1.5 text-xs'
+                                                        : 'px-4 py-2 text-sm',
+                                                    )}
+                                                  >
+                                                    {col.name}
+                                                  </td>
+                                                  <td
+                                                    className={cn(
+                                                      'text-muted-foreground font-mono',
+                                                      isMinimal
+                                                        ? 'px-3 py-1.5 text-[10px]'
+                                                        : 'px-4 py-2 text-xs',
+                                                    )}
+                                                  >
+                                                    {col.data_type}
+                                                  </td>
+                                                </tr>
+                                              ),
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ) : null}
+                                  </CollapsibleContent>
+                                </Collapsible>
                               </div>
                             );
                           })}

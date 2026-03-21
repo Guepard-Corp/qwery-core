@@ -47,6 +47,7 @@ import {
   getErrorKey,
   getFirstZodValidationMessage,
 } from '~/lib/utils/error-key';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 export interface DatasourceConnectFormProps {
   extensionId: string;
@@ -508,7 +509,7 @@ export function DatasourceConnectForm({
                   alt={extensionMeta.name}
                   className={cn(
                     'h-9 w-9 object-contain',
-                    extensionId === 'json-online' && 'dark:invert',
+                    shouldInvertDatasourceIcon(extensionId) && 'dark:invert',
                   )}
                 />
               )}
