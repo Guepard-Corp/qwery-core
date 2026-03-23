@@ -121,6 +121,7 @@ The proxy can sync `/etc/hosts` for custom TLDs. Prefer **`.test`** (reserved); 
 | `QWERY_DEV_TERMINAL` | macOS | `auto` (default): iTerm if installed under `Applications`, else Terminal.app. `iterm` / `terminal` to force one app. |
 | `QWERY_DEV_TERMINAL_EMU` | Linux | Try this emulator first (e.g. `foot`, `wezterm`, `ghostty`) if supported by `scripts/open-dev-terminals.sh`; otherwise falls back to the built-in list. |
 | `QWERY_DEV_TERMINAL_UI` | all | `auto` (default): inside **VS Code / Cursor** integrated terminal, `pnpm dev:terminals` **does not** spawn an external emulator; it prints which **workspace task** to run (see `.vscode/tasks.json`). `vscode` forces that behavior; `external` always opens gnome-terminal / Terminal.app / etc. |
+| `QWERY_PORTLESS_API_HOST` | all | Optional override for Portless API host used by `dev:stack:clients:portless` when **web** is selected. Default is auto-computed: `api.qwery.localhost:1355` in the primary checkout, `<branch>.api.qwery.localhost:1355` in linked worktrees. |
 
 ### VS Code / Cursor integrated terminals
 
@@ -136,7 +137,7 @@ That writes **`.vscode/tasks.json`** with parallel compound tasks (server + clie
 
 **502 from Portless (“target app is not responding”)** — The proxy forwards to whatever `PORT` it sets. If Vite ignored `PORT` and stayed on `3000`, nothing listens on the assigned port. This repo’s `apps/web/vite.config.ts` uses `PORT` / `HOST` when set so the dev server binds where Portless expects.
 
-**Vite `ECONNREFUSED 127.0.0.1:4096` on `/api`** — With Portless, the API listens on a **random** port, not 4096. Dev SSR uses Vite’s `/api` proxy; `pnpm web:dev:portless` sets **`VITE_DEV_API_PROXY=http://api.qwery.localhost:1355`** so the proxy hits the API through Portless (same host as `VITE_API_URL` / `server:dev:portless`). Override if your API hostname differs (e.g. git worktree).
+**Vite `ECONNREFUSED 127.0.0.1:4096` on `/api`** — With Portless, the API listens on a **random** port, not 4096. Dev SSR uses Vite’s `/api` proxy; `dev:stack:clients:portless` auto-sets **`VITE_DEV_API_PROXY`** to the matching Portless API host (`api.qwery.localhost:1355` or `<branch>.api.qwery.localhost:1355` in linked worktrees). Override with **`QWERY_PORTLESS_API_HOST`** when needed.
 
 ## Reference
 

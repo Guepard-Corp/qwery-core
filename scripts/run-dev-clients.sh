@@ -17,16 +17,55 @@ else
   mapfile -t CLIENTS < <(normalize_clients_list "$@")
 fi
 
+is_linked_worktree() {
+  [[ -f "$ROOT/.git" ]]
+}
+
+sanitize_branch_for_host() {
+  local raw=$1
+  local cleaned
+  cleaned=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+  cleaned=$(printf '%s' "$cleaned" | tr '/._' '-')
+  cleaned=$(printf '%s' "$cleaned" | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
+  printf '%s' "$cleaned"
+}
+
+compute_portless_api_host() {
+  local base='api.qwery.localhost:1355'
+  if ! is_linked_worktree; then
+    printf '%s' "$base"
+    return 0
+  fi
+
+  local branch slug
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+  slug=$(sanitize_branch_for_host "$branch")
+  if [[ -n "$slug" && "$slug" != "head" ]]; then
+    printf '%s' "${slug}.${base}"
+  else
+    printf '%s' "$base"
+  fi
+}
+
 if [[ "$MODE" == "portless" ]]; then
   if printf '%s\n' "${CLIENTS[@]}" | grep -qx web; then
-    export VITE_API_URL="${VITE_API_URL:-http://api.qwery.localhost:1355/api}"
-    export VITE_DEV_API_PROXY="${VITE_DEV_API_PROXY:-http://api.qwery.localhost:1355}"
+    PORTLESS_API_HOST="${QWERY_PORTLESS_API_HOST:-$(compute_portless_api_host)}"
+    export VITE_API_URL="${VITE_API_URL:-http://${PORTLESS_API_HOST}/api}"
+    export VITE_DEV_API_PROXY="${VITE_DEV_API_PROXY:-http://${PORTLESS_API_HOST}}"
   fi
 fi
 
 PIDS=()
+
+# cleanup_dev_clients() runs only via EXIT/INT/TERM traps (indirect invocation).
+# shellcheck disable=SC2317
 cleanup_dev_clients() {
-  for p in "${PIDS[@]:-}"; do
+  # Only run when we actually have child process IDs.
+  if [[ ${#PIDS[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  for p in "${PIDS[@]}"; do
     kill -TERM "$p" 2>/dev/null || true
     pkill -TERM -P "$p" 2>/dev/null || true
   done

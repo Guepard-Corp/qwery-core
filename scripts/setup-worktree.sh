@@ -63,7 +63,7 @@ discover_primary_worktree() {
   while IFS= read -r line; do
     if [[ "$line" =~ ^worktree[[:space:]]+(.*)$ ]]; then
       wt="${BASH_REMATCH[1]}"
-      if [[ -d "$wt/.git" ]]; then
+      if git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         printf '%s' "$wt"
         return 0
       fi

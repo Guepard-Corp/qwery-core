@@ -149,6 +149,16 @@ export default defineConfig(({ command }) => ({
     sourcemap: false, // Disable sourcemaps to avoid resolution errors in monorepo
     manifest: true, // Enable manifest generation for React Router
     rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        if (
+          warning.message.includes(
+            "Error when using sourcemap for reporting an error: Can't resolve original location of error.",
+          )
+        ) {
+          return;
+        }
+        defaultHandler(warning);
+      },
       external: (id: string) => {
         if (id === 'fsevents') return true;
         if (id === '@duckdb/node-api') return true;
