@@ -6,7 +6,10 @@ import {
   type DatasourceExtension,
 } from '@qwery/extensions-sdk';
 
-import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import {
+  resolveDatasourceDriver,
+  resolveDriverOrThrow,
+} from '~/lib/utils/datasource-driver';
 
 const extension = {
   id: 'postgresql',
@@ -62,5 +65,36 @@ describe('resolveDatasourceDriver', () => {
     const driver = resolveDatasourceDriver(extension, datasource);
 
     expect(driver?.id).toBe('postgresql.browser');
+  });
+});
+
+describe('resolveDriverOrThrow', () => {
+  it('returns the resolved driver when found', () => {
+    const driver = resolveDriverOrThrow(extension, {
+      datasource_driver: 'postgresql.default',
+    });
+    expect(driver.id).toBe('postgresql.default');
+  });
+
+  it('throws when no driver can be resolved (empty drivers list)', () => {
+    const emptyExtension = {
+      ...extension,
+      drivers: [],
+    } as unknown as DatasourceExtension;
+
+    expect(() => resolveDriverOrThrow(emptyExtension, { config: {} })).toThrow(
+      /No driver resolved for provider/,
+    );
+  });
+
+  it('includes provider id and available drivers in the error message', () => {
+    const emptyExtension = {
+      ...extension,
+      drivers: [],
+    } as unknown as DatasourceExtension;
+
+    expect(() => resolveDriverOrThrow(emptyExtension, { config: {} })).toThrow(
+      /postgresql/,
+    );
   });
 });

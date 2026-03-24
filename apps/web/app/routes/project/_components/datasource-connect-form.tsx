@@ -57,7 +57,10 @@ import {
 } from '~/lib/utils/datasource-form-config';
 import { getLogger } from '@qwery/shared/logger';
 import { useDatasourceAddedFlash } from '~/lib/context/datasource-added-flash-context';
-import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import {
+  resolveDatasourceDriver,
+  resolveDriverOrThrow,
+} from '~/lib/utils/datasource-driver';
 import { DatasourceDocsLink } from './datasource-docs-link';
 import { DatasourceConnectionFields } from './datasource-connection-fields';
 import { DatasourceS3Fields } from './datasource-s3-fields';
@@ -587,17 +590,27 @@ export function DatasourceConnectForm({
       setIsConnecting(false);
       return;
     }
-    const driver = resolveDatasourceDriver(dsMeta, { config: validData });
-    const runtime = driver?.runtime ?? 'browser';
+
+    let driver;
+    try {
+      driver = resolveDriverOrThrow(dsMeta, { config: validData });
+    } catch {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      setIsConnecting(false);
+      return;
+    }
+
     const datasourceKind =
-      runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
+      driver.runtime === 'browser'
+        ? DatasourceKind.EMBEDDED
+        : DatasourceKind.REMOTE;
 
     createDatasourceMutation.mutate({
       projectId,
       name: datasourceName.trim() || generateRandomName(),
       description: extension.data.description || '',
       datasource_provider: extension.data.id || '',
-      datasource_driver: driver?.id || '',
+      datasource_driver: driver.id,
       datasource_kind: datasourceKind,
       config: validData,
       createdBy: workspace.userId,
@@ -665,15 +678,24 @@ export function DatasourceConnectForm({
       }
     }
 
-    const driver = resolveDatasourceDriver(dsMeta, { config: validData });
-    const runtime = driver?.runtime ?? 'browser';
+    let driver;
+    try {
+      driver = resolveDriverOrThrow(dsMeta, { config: validData });
+    } catch {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      setIsConnecting(false);
+      return;
+    }
+
     const datasourceKind =
-      runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
+      driver.runtime === 'browser'
+        ? DatasourceKind.EMBEDDED
+        : DatasourceKind.REMOTE;
 
     updateDatasourceMutation.mutate({
       id: existingDatasource.id,
       name: datasourceName.trim() || existingDatasource.name,
-      datasource_driver: driver?.id,
+      datasource_driver: driver.id,
       datasource_kind: datasourceKind,
       config: validData,
       updatedBy: workspace.userId ?? 'system',

@@ -31,7 +31,7 @@ import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { generateRandomName } from '~/lib/names';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
-import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import { resolveDriverOrThrow } from '~/lib/utils/datasource-driver';
 import { getUrlForValidation } from '~/lib/utils/datasource-utils';
 import {
   validateUrlStructure,
@@ -260,17 +260,26 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
         toast.error(<Trans i18nKey="datasources:notFoundError" />);
         return;
       }
-      const driver = resolveDatasourceDriver(dsMeta, { config });
-      const runtime = driver?.runtime ?? 'browser';
+
+      let driver;
+      try {
+        driver = resolveDriverOrThrow(dsMeta, { config });
+      } catch {
+        toast.error(<Trans i18nKey="datasources:notFoundError" />);
+        return;
+      }
+
       const datasourceKind =
-        runtime === 'browser' ? DatasourceKind.EMBEDDED : DatasourceKind.REMOTE;
+        driver.runtime === 'browser'
+          ? DatasourceKind.EMBEDDED
+          : DatasourceKind.REMOTE;
 
       createDatasourceMutation.mutate({
         projectId,
         name: datasourceName.trim() || generateRandomName(),
         description: extension.data.description || '',
         datasource_provider: extension.data.id || '',
-        datasource_driver: driver?.id || '',
+        datasource_driver: driver.id,
         datasource_kind: datasourceKind,
         config,
         createdBy: userId,
@@ -335,17 +344,22 @@ export default function DatasourcesPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    const driver = resolveDatasourceDriver(dsMeta, {
-      config: normalizedConfig,
-    });
+    let driver;
+    try {
+      driver = resolveDriverOrThrow(dsMeta, { config: normalizedConfig });
+    } catch {
+      toast.error(<Trans i18nKey="datasources:notFoundError" />);
+      return;
+    }
+
     const datasourceKind =
-      (driver?.runtime ?? 'browser') === 'browser'
+      driver.runtime === 'browser'
         ? DatasourceKind.EMBEDDED
         : DatasourceKind.REMOTE;
 
     const testDatasource: Partial<Datasource> = {
       datasource_provider: extension.data.id,
-      datasource_driver: driver?.id ?? '',
+      datasource_driver: driver.id,
       datasource_kind: datasourceKind,
       name: datasourceName || 'Test Connection',
       config: normalizedConfig,
