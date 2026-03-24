@@ -47,6 +47,7 @@ import {
 import {
   hasLegacyFormRule,
   getDocsUrl,
+  DATASOURCE_INPUT_MAX_LENGTH,
 } from '~/lib/utils/datasource-form-config';
 import { getLogger } from '@qwery/shared/logger';
 import { useDatasourceAddedFlash } from '~/lib/context/datasource-added-flash-context';
@@ -679,6 +680,7 @@ export function DatasourceConnectForm({
                     onChange={(e) => setDatasourceName(e.target.value)}
                     onBlur={handleNameSave}
                     onKeyDown={handleNameKeyDown}
+                    maxLength={DATASOURCE_INPUT_MAX_LENGTH.name}
                     autoComplete="off"
                     className="bg-muted/40 focus-visible:ring-ring h-8 min-w-[120px] flex-1 rounded-md border-0 px-2 text-base font-medium shadow-none focus-visible:ring-2"
                     placeholder="Name..."

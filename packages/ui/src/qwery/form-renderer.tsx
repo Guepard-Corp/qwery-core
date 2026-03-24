@@ -45,6 +45,7 @@ import {
   humanizeFieldKey,
   unwrapSchema,
 } from './schema-form-utils';
+import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
 import { useEffect } from 'react';
 
 type ZodSchemaType = z.ZodTypeAny;
@@ -221,6 +222,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
           path.endsWith('.connectionUrl') ||
           path.endsWith('.connectionString');
         const useTextarea = isLongText || isConnectionStringField;
+        const maxLength = checks.max;
         return (
           <FormField
             key={path}
@@ -243,6 +245,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
                       <Textarea
                         {...field}
                         placeholder={displayPlaceholder}
+                        {...(maxLength != null ? { maxLength } : {})}
                         rows={4}
                         className="min-h-[140px] resize-none font-mono text-sm"
                       />
@@ -268,6 +271,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
                       <SecretInput
                         {...field}
                         placeholder={displayPlaceholder}
+                        {...(maxLength != null ? { maxLength } : {})}
                         value={field.value ?? ''}
                       />
                     ) : (
@@ -275,6 +279,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
                         {...field}
                         type={inputType}
                         placeholder={displayPlaceholder}
+                        {...(maxLength != null ? { maxLength } : {})}
                         value={field.value ?? ''}
                       />
                     )}
@@ -422,6 +427,7 @@ export function FormRenderer<T extends z.ZodTypeAny>({
                         ? field.value.join(', ')
                         : ((field.value as string) ?? '')
                     }
+                    maxLength={DATASOURCE_INPUT_MAX_LENGTH.patternList}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                       const v = e.target.value;
                       field.onChange(

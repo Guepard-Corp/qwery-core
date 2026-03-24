@@ -3,7 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { S3_FORM_SCHEMA } from '~/lib/utils/datasource-form-config';
+import {
+  DATASOURCE_INPUT_MAX_LENGTH,
+  S3_FORM_SCHEMA,
+} from '~/lib/utils/datasource-form-config';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@qwery/ui/button';
 import {
@@ -61,11 +64,13 @@ function SecretKeyInput({
   onChange,
   placeholder,
   label,
+  maxLength,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   label: string;
+  maxLength?: number;
 }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -77,6 +82,7 @@ function SecretKeyInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          maxLength={maxLength}
           autoComplete="off"
           className="bg-background/50 focus:bg-background pr-10 transition-colors"
         />
@@ -204,6 +210,7 @@ export function DatasourceS3Fields({
                       ? 'https://fra1.digitaloceanspaces.com'
                       : 'https://nyc3.digitaloceanspaces.com'
                   }
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.endpointUrl}
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -233,6 +240,7 @@ export function DatasourceS3Fields({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={isDigitalOcean ? 'qwery' : 'my-bucket'}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.bucket}
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -254,6 +262,7 @@ export function DatasourceS3Fields({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={isDigitalOcean ? 'fra1' : 'us-east-1'}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.region}
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -277,6 +286,7 @@ export function DatasourceS3Fields({
                 value={typeof field.value === 'string' ? field.value : ''}
                 type="text"
                 autoComplete="off"
+                maxLength={DATASOURCE_INPUT_MAX_LENGTH.accessKeyId}
                 placeholder="Access key"
                 className="bg-background/50"
               />
@@ -295,6 +305,7 @@ export function DatasourceS3Fields({
                 value={typeof field.value === 'string' ? field.value : ''}
                 onChange={field.onChange}
                 placeholder="Secret key"
+                maxLength={DATASOURCE_INPUT_MAX_LENGTH.secretAccessKey}
                 label={
                   isDigitalOcean ? 'Spaces Secret Key' : 'Secret Access Key'
                 }
@@ -315,6 +326,7 @@ export function DatasourceS3Fields({
                 {...field}
                 value={typeof field.value === 'string' ? field.value : ''}
                 placeholder="folder/ or leave empty"
+                maxLength={DATASOURCE_INPUT_MAX_LENGTH.prefix}
                 autoComplete="off"
                 className="bg-background/50"
               />
@@ -367,6 +379,7 @@ export function DatasourceS3Fields({
                       ? field.value
                       : ''
                 }
+                maxLength={DATASOURCE_INPUT_MAX_LENGTH.patternList}
                 autoComplete="off"
                 onChange={(e) => {
                   const v = e.target.value.trim();

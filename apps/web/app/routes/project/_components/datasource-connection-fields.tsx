@@ -37,6 +37,7 @@ import { useDebouncedValue } from '~/lib/hooks/use-debounced-value';
 import {
   getDatasourceFormConfig,
   getProviderZodSchema,
+  DATASOURCE_INPUT_MAX_LENGTH,
 } from '~/lib/utils/datasource-form-config';
 import { parseConnectionString } from '~/lib/utils/parse-connection-string';
 
@@ -116,6 +117,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                 {...field}
                 value={typeof field.value === 'string' ? field.value : ''}
                 placeholder={placeholders.host}
+                maxLength={DATASOURCE_INPUT_MAX_LENGTH.host}
                 autoComplete="off"
                 className="bg-background/50"
               />
@@ -138,6 +140,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={placeholders.port}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.port}
                   inputMode="numeric"
                   autoComplete="off"
                   className="bg-background/50"
@@ -160,6 +163,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={placeholders.database}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.database}
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -183,6 +187,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={placeholders.username}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.username}
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -203,6 +208,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                   value={typeof field.value === 'string' ? field.value : ''}
                   onChange={field.onChange}
                   placeholder={placeholders.password}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.password}
                   autoComplete="off"
                 />
               </FormControl>
@@ -459,6 +465,7 @@ export function DatasourceConnectionFields({
                       {...field}
                       value={typeof field.value === 'string' ? field.value : ''}
                       placeholder={placeholders.connectionString}
+                      maxLength={DATASOURCE_INPUT_MAX_LENGTH.connectionString}
                       autoComplete="off"
                       className="bg-background/50 min-h-[140px] resize-none font-mono text-sm"
                     />
@@ -481,6 +488,7 @@ export function DatasourceConnectionFields({
                   {...field}
                   value={typeof field.value === 'string' ? field.value : ''}
                   placeholder={placeholders.connectionString}
+                  maxLength={DATASOURCE_INPUT_MAX_LENGTH.connectionString}
                   autoComplete="off"
                   className="bg-background/50 min-h-[140px] resize-none font-mono text-sm"
                 />

@@ -1,8 +1,10 @@
+import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
 import { z } from 'zod';
 
 const passwordField = z
   .string()
   .min(1)
+  .max(DATASOURCE_INPUT_MAX_LENGTH.password)
   .describe('secret:true')
   .meta({
     description: 'MySQL password',
@@ -10,8 +12,10 @@ const passwordField = z
   });
 
 const connectionUrlField = z
-  .url()
+  .string()
   .min(1)
+  .max(DATASOURCE_INPUT_MAX_LENGTH.connectionString)
+  .url()
   .describe('secret:true')
   .meta({
     description:
@@ -24,6 +28,7 @@ const detailsSchema = z.object({
   host: z
     .string()
     .min(1)
+    .max(DATASOURCE_INPUT_MAX_LENGTH.host)
     .meta({
       label: 'Host',
       description: 'MySQL server hostname',
@@ -41,6 +46,7 @@ const detailsSchema = z.object({
   username: z
     .string()
     .min(1)
+    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
     .meta({
       label: 'Username',
       description: 'MySQL user',
@@ -48,6 +54,7 @@ const detailsSchema = z.object({
   user: z
     .string()
     .min(1)
+    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
     .optional()
     .meta({
       label: 'User (alias for username)',
@@ -56,6 +63,7 @@ const detailsSchema = z.object({
   database: z
     .string()
     .min(1)
+    .max(DATASOURCE_INPUT_MAX_LENGTH.database)
     .meta({
       label: 'Database',
       description: 'MySQL database name',

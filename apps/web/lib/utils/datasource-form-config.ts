@@ -1,10 +1,13 @@
 import { z } from 'zod';
+import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
 import {
   validateDatasourceUrl,
   isDataFileUrl,
   isGsheetLikeUrl,
 } from './datasource-utils';
 import type { DatasourceExtensionMeta } from './datasource-utils';
+
+export { DATASOURCE_INPUT_MAX_LENGTH };
 
 const CONNECTION_STRING_REGEX = /^(postgresql|postgres|mysql):\/\/.+/i;
 const HTTP_URL_REGEX = /^https?:\/\/.+/i;
@@ -158,20 +161,59 @@ type ProviderRule = {
   zodSchema: z.ZodType<Record<string, unknown>>;
 };
 
-const stringOrUndefined = z.union([z.string(), z.undefined()]);
+const limitedStringOrUndefined = (max: number, label: string) =>
+  z.union([
+    z.string().max(max, `${label} must be at most ${max} characters`),
+    z.undefined(),
+  ]);
+
+const stringOrUndefined = limitedStringOrUndefined(4096, 'Value');
 const baseConfigSchema = z.record(z.string(), z.unknown()).and(
   z.object({
-    host: stringOrUndefined.optional(),
-    port: stringOrUndefined.optional(),
-    database: stringOrUndefined.optional(),
-    username: stringOrUndefined.optional(),
-    password: stringOrUndefined.optional(),
-    connectionUrl: stringOrUndefined.optional(),
-    connectionString: stringOrUndefined.optional(),
-    url: stringOrUndefined.optional(),
-    sharedLink: stringOrUndefined.optional(),
-    jsonUrl: stringOrUndefined.optional(),
-    apiKey: stringOrUndefined.optional(),
+    host: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.host,
+      'Host',
+    ).optional(),
+    port: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.port,
+      'Port',
+    ).optional(),
+    database: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.database,
+      'Database',
+    ).optional(),
+    username: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.username,
+      'Username',
+    ).optional(),
+    password: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.password,
+      'Password',
+    ).optional(),
+    connectionUrl: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.url,
+      'Connection URL',
+    ).optional(),
+    connectionString: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.connectionString,
+      'Connection string',
+    ).optional(),
+    url: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.url,
+      'URL',
+    ).optional(),
+    sharedLink: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.sharedLink,
+      'Shared link',
+    ).optional(),
+    jsonUrl: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.url,
+      'JSON URL',
+    ).optional(),
+    apiKey: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.apiKey,
+      'API key',
+    ).optional(),
     ssl: z.boolean().optional(),
   }),
 );
@@ -179,16 +221,67 @@ const baseConfigSchema = z.record(z.string(), z.unknown()).and(
 export const S3_FORM_SCHEMA = z
   .object({
     provider: z.enum(['aws', 'digitalocean', 'minio', 'other']),
-    endpoint_url: stringOrUndefined,
-    aws_access_key_id: z.string().min(1, 'Access Key ID is required'),
-    aws_secret_access_key: z.string().min(1, 'Secret Access Key is required'),
-    aws_session_token: stringOrUndefined,
-    region: z.string().min(1, 'Region is required'),
-    bucket: z.string().min(1, 'Bucket is required'),
-    prefix: stringOrUndefined,
+    endpoint_url: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.endpointUrl,
+      'Endpoint URL',
+    ),
+    aws_access_key_id: z
+      .string()
+      .min(1, 'Access Key ID is required')
+      .max(
+        DATASOURCE_INPUT_MAX_LENGTH.accessKeyId,
+        `Access Key ID must be at most ${DATASOURCE_INPUT_MAX_LENGTH.accessKeyId} characters`,
+      ),
+    aws_secret_access_key: z
+      .string()
+      .min(1, 'Secret Access Key is required')
+      .max(
+        DATASOURCE_INPUT_MAX_LENGTH.secretAccessKey,
+        `Secret Access Key must be at most ${DATASOURCE_INPUT_MAX_LENGTH.secretAccessKey} characters`,
+      ),
+    aws_session_token: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.sessionToken,
+      'Session token',
+    ),
+    region: z
+      .string()
+      .min(1, 'Region is required')
+      .max(
+        DATASOURCE_INPUT_MAX_LENGTH.region,
+        `Region must be at most ${DATASOURCE_INPUT_MAX_LENGTH.region} characters`,
+      ),
+    bucket: z
+      .string()
+      .min(1, 'Bucket is required')
+      .max(
+        DATASOURCE_INPUT_MAX_LENGTH.bucket,
+        `Bucket must be at most ${DATASOURCE_INPUT_MAX_LENGTH.bucket} characters`,
+      ),
+    prefix: limitedStringOrUndefined(
+      DATASOURCE_INPUT_MAX_LENGTH.prefix,
+      'Prefix',
+    ),
     format: z.enum(['parquet', 'json']),
-    includes: z.array(z.string()).optional(),
-    excludes: z.array(z.string()).optional(),
+    includes: z
+      .array(
+        z
+          .string()
+          .max(
+            DATASOURCE_INPUT_MAX_LENGTH.patternList,
+            `Include pattern must be at most ${DATASOURCE_INPUT_MAX_LENGTH.patternList} characters`,
+          ),
+      )
+      .optional(),
+    excludes: z
+      .array(
+        z
+          .string()
+          .max(
+            DATASOURCE_INPUT_MAX_LENGTH.patternList,
+            `Exclude pattern must be at most ${DATASOURCE_INPUT_MAX_LENGTH.patternList} characters`,
+          ),
+      )
+      .optional(),
   })
   .refine(
     (data) =>

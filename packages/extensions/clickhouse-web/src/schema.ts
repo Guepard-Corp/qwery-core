@@ -1,8 +1,10 @@
+import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
 import { z } from 'zod';
 
 const passwordField = z
   .string()
   .min(1)
+  .max(DATASOURCE_INPUT_MAX_LENGTH.password)
   .describe('secret:true')
   .meta({
     description: 'ClickHouse password',
@@ -10,8 +12,10 @@ const passwordField = z
   });
 
 const connectionUrlField = z
-  .url()
+  .string()
   .min(1)
+  .max(DATASOURCE_INPUT_MAX_LENGTH.connectionString)
+  .url()
   .describe('secret:true')
   .meta({
     description:
@@ -41,6 +45,7 @@ const detailsSchema = z.object({
     }),
   username: z
     .string()
+    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
     .default('default')
     .meta({
       label: 'Username',
@@ -48,6 +53,7 @@ const detailsSchema = z.object({
     }),
   user: z
     .string()
+    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
     .default('default')
     .optional()
     .meta({
@@ -56,6 +62,7 @@ const detailsSchema = z.object({
   password: passwordField.optional(),
   database: z
     .string()
+    .max(DATASOURCE_INPUT_MAX_LENGTH.database)
     .default('default')
     .meta({
       label: 'Database',

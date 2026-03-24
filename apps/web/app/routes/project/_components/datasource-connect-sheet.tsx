@@ -33,6 +33,7 @@ import { generateRandomName } from '~/lib/names';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import type { ExtensionDefinition } from '@qwery/extensions-sdk';
 import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
+import { DATASOURCE_INPUT_MAX_LENGTH } from '~/lib/utils/datasource-form-config';
 
 const SHEET_OVERLAY_Z = 'z-[100]';
 const SHEET_CONTENT_Z = 'z-[101]';
@@ -85,7 +86,13 @@ export function DatasourceConnectSheet({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editingNameRef = useRef<string>('');
   const extension = useGetExtension(extensionId);
-  const extensionMetaForPreview = extension?.data ?? extensionMeta;
+  const extensionMetaForPreview = useMemo(
+    () => ({
+      ...extensionMeta,
+      ...(extension.data ?? {}),
+    }),
+    [extensionMeta, extension.data],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -237,6 +244,7 @@ export function DatasourceConnectSheet({
                         onChange={(e) => setDatasourceName(e.target.value)}
                         onBlur={handleNameSave}
                         onKeyDown={handleNameKeyDown}
+                        maxLength={DATASOURCE_INPUT_MAX_LENGTH.name}
                         autoComplete="off"
                         className="min-w-[120px] flex-1 border-0 bg-transparent px-0 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         placeholder="Name..."
@@ -310,7 +318,7 @@ export function DatasourceConnectSheet({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-4">
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex min-w-0 flex-col">
                   <DatasourceConnectForm
                     extensionId={extensionId}
                     projectSlug={projectSlug}
