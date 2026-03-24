@@ -194,6 +194,8 @@
     "./qwery/datasource/tables": "./src/qwery/datasource/tables.tsx",
     "./qwery/datasource/columns": "./src/qwery/datasource/columns.tsx",
     "./qwery/datasource": "./src/qwery/datasource/index.ts",
+    "./qwery/notebook": "./src/qwery/notebook/index.ts",
+    "./notebook": "./src/qwery/notebook/index.ts",
     "./qwery/confirm-delete-dialog": "./src/qwery/confirm-delete-dialog.tsx"
   },
   "typesVersions": {

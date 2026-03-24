@@ -313,6 +313,30 @@ export interface TextPartProps {
   getDatasourceTooltip?: (id: string) => string;
 }
 
+function sanitizeMarkdownLists(markdown: string): string {
+  if (!markdown) return markdown;
+
+  const lines = markdown.split('\n');
+  const sanitized: string[] = [];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const current = lines[i] ?? '';
+    const trimmed = current.trim();
+
+    // Drop orphan bullet lines like "-" or "*"
+    if (trimmed === '-' || trimmed === '*') {
+      const next = lines[i + 1]?.trim();
+      if (next && !next.startsWith('- ') && !next.startsWith('* ')) {
+        continue;
+      }
+    }
+
+    sanitized.push(current);
+  }
+
+  return sanitized.join('\n');
+}
+
 export function TextPart({
   part,
   messageId,
@@ -327,6 +351,10 @@ export function TextPart({
 }: TextPartProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [currentHeading, setCurrentHeading] = useState('');
+  const sanitizedText = useMemo(
+    () => sanitizeMarkdownLists(part.text),
+    [part.text],
+  );
 
   const handleCopy = async () => {
     try {
@@ -373,7 +401,7 @@ export function TextPart({
                 remarkPlugins={[remarkGfm]}
                 components={agentMarkdownComponents}
               >
-                {part.text}
+                {sanitizedText}
               </ReactMarkdown>
             </div>
           </MessageContent>
@@ -799,6 +827,7 @@ export interface ToolPartProps {
     slug?: string;
     datasource_provider?: string;
   }>;
+  webSearch?: boolean;
 }
 
 function getExecutionTimeMs(
@@ -905,9 +934,9 @@ export function ToolPart({
     const detailLevel = inputDetailLevel ?? outputDetailLevel;
 
     if (detailLevel === 'simple') {
-      toolName = `${toolName} (simple)`;
+      toolName = 'Get simple schema';
     } else if (detailLevel === 'full') {
-      toolName = `${toolName} (full)`;
+      toolName = 'Get full schema';
     }
   }
   // Render specialized visualizers based on tool type
@@ -1196,7 +1225,7 @@ export function ToolPart({
       let chartExecutionOverride: boolean = false;
 
       // Check top-level output first (expected structure)
-      if (output && typeof output === 'object') {
+      if (output) {
         if ('sqlQuery' in output && typeof output.sqlQuery === 'string') {
           sqlQuery = output.sqlQuery;
         }
@@ -1226,7 +1255,6 @@ export function ToolPart({
 
       const executedFlag =
         output &&
-        typeof output === 'object' &&
         'executed' in output &&
         typeof (output as Record<string, unknown>).executed === 'boolean'
           ? (output as Record<string, unknown>).executed
@@ -1264,7 +1292,6 @@ export function ToolPart({
 
       const exportFilename =
         (output &&
-        typeof output === 'object' &&
         'exportFilename' in output &&
         typeof output.exportFilename === 'string'
           ? output.exportFilename

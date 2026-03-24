@@ -11,7 +11,6 @@ import {
   LayoutGrid,
   List,
   Clock,
-  User,
   Settings2,
   Check,
   Calendar,
@@ -35,7 +34,7 @@ import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { DatasourceCard } from '@qwery/ui/qwery/datasource';
 import { Switch } from '@qwery/ui/switch';
-import { cn, truncateText } from '@qwery/ui/utils';
+import { cn, truncateText, highlightSearchMatch } from '@qwery/ui/utils';
 import { formatRelativeTime } from '@qwery/ui/ai';
 
 import {
@@ -46,6 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@qwery/ui/dropdown-menu';
+import { Badge } from '@qwery/ui/badge';
 import {
   Table,
   TableBody,
@@ -137,24 +137,30 @@ export function ListDatasources({
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
     extensions.forEach((plugin) => {
-      map.set(plugin.id, plugin.icon);
+      if (plugin.icon) map.set(plugin.id, plugin.icon);
     });
     return map;
   }, [extensions]);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         setShouldAnimate(true);
         searchInputRef.current?.focus();
 
-        setTimeout(() => setShouldAnimate(false), 1000);
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => setShouldAnimate(false), 1000);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const filteredDatasources = useMemo(() => {
@@ -216,20 +222,6 @@ export function ListDatasources({
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const highlightMatch = (text: string, query: string) => {
-    if (!query.trim()) return text;
-    const regex = new RegExp(`(${query})`, 'gi');
-    return text.split(regex).map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-[#ffcb51] text-black">
-          {part}
-        </span>
-      ) : (
-        part
-      ),
-    );
-  };
-
   const handleSortClick = (criterion: SortCriterion) => {
     if (sortCriterion === criterion) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -258,7 +250,7 @@ export function ListDatasources({
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 flex-col gap-6 px-8 py-6 lg:px-16 lg:py-10">
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-4xl font-bold tracking-tight">
           <Trans
             i18nKey="datasources:list_title"
             defaults="Saved Datasources"
@@ -492,12 +484,12 @@ export function ListDatasources({
 
           <Button
             variant="outline"
-            className="text-foreground h-11 border-[#ffcb51]/50 px-5 font-medium hover:border-[#ffcb51] hover:bg-[#ffcb51]/10"
+            className="text-foreground border-border/60 h-11 gap-2 px-4 font-medium transition-colors hover:border-[#ffcb51] hover:bg-[#ffcb51]/10"
             disabled={!projectId}
             onClick={handleOpenPlaygroundConfirm}
           >
-            <Play className="mr-2 h-4 w-4" />
-            Try Playground
+            <Play className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            Playground
           </Button>
           <Button
             asChild
@@ -514,7 +506,7 @@ export function ListDatasources({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="h-full px-8 lg:px-16">
+        <div className="h-full px-8 py-6 lg:px-16 lg:py-6">
           {filteredDatasources.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-foreground mb-2 text-base font-medium">
@@ -545,7 +537,7 @@ export function ListDatasources({
                         <div className="bg-muted/50 flex h-6 w-6 items-center justify-center rounded border p-1">
                           {pluginLogoMap.has(provider) ? (
                             <img
-                              src={pluginLogoMap.get(provider)}
+                              src={pluginLogoMap.get(provider)!}
                               alt={provider}
                               className="h-full w-full object-contain"
                             />
@@ -562,7 +554,7 @@ export function ListDatasources({
 
                     {!isCollapsed &&
                       (isGridView ? (
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
                           {items.map((datasource) => {
                             const logo = datasource.datasource_provider
                               ? pluginLogoMap.get(
@@ -579,21 +571,10 @@ export function ListDatasources({
                                 createdBy={datasource.createdBy}
                                 logo={logo}
                                 provider={datasource.datasource_provider}
-                                viewButton={
-                                  <Link
-                                    to={createDatasourceViewPath(
-                                      datasource.slug,
-                                    )}
-                                    className="flex w-full items-center justify-center gap-2 px-3 py-2"
-                                  >
-                                    <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
-                                      <Trans
-                                        i18nKey="datasources:card.view"
-                                        defaults="View"
-                                      />
-                                    </span>
-                                    <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
-                                  </Link>
+                                onClick={() =>
+                                  navigate(
+                                    createDatasourceViewPath(datasource.slug),
+                                  )
                                 }
                                 dataTest={`datasource-card-${datasource.id}`}
                               />
@@ -662,25 +643,21 @@ export function ListDatasources({
                                             className="text-sm font-semibold"
                                             title={datasource.name}
                                           >
-                                            {highlightMatch(
+                                            {highlightSearchMatch(
                                               truncateText(datasource.name, 40),
                                               searchQuery,
-                                            )}
-                                          </span>
-                                          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                                            <User className="h-2.5 w-2.5" />
-                                            {truncateText(
-                                              datasource.createdBy || 'System',
-                                              28,
                                             )}
                                           </span>
                                         </div>
                                       </div>
                                     </TableCell>
                                     <TableCell>
-                                      <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-primary/10 text-primary border-primary/20 pointer-events-none rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors"
+                                      >
                                         {datasource.datasource_provider}
-                                      </span>
+                                      </Badge>
                                     </TableCell>
                                     <TableCell className="text-muted-foreground text-sm">
                                       <div className="flex items-center gap-1.5">
@@ -717,7 +694,7 @@ export function ListDatasources({
               })}
             </div>
           ) : isGridView ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
               {paginatedDatasources.map((datasource: Datasource) => {
                 const logo = datasource.datasource_provider
                   ? pluginLogoMap.get(datasource.datasource_provider)
@@ -732,19 +709,8 @@ export function ListDatasources({
                     createdBy={datasource.createdBy}
                     logo={logo}
                     provider={datasource.datasource_provider}
-                    viewButton={
-                      <Link
-                        to={createDatasourceViewPath(datasource.slug)}
-                        className="flex w-full items-center justify-center gap-2 px-3 py-2"
-                      >
-                        <span className="text-foreground group-hover/btn:text-foreground text-xs font-medium transition-colors">
-                          <Trans
-                            i18nKey="datasources:card.view"
-                            defaults="View"
-                          />
-                        </span>
-                        <ArrowRight className="text-muted-foreground group-hover/btn:text-foreground h-3.5 w-3.5 transition-all group-hover/btn:translate-x-1" />
-                      </Link>
+                    onClick={() =>
+                      navigate(createDatasourceViewPath(datasource.slug))
                     }
                     data-test={`datasource-card-${datasource.id}`}
                   />
@@ -819,25 +785,21 @@ export function ListDatasources({
                                 className="text-sm font-semibold"
                                 title={datasource.name}
                               >
-                                {highlightMatch(
+                                {highlightSearchMatch(
                                   truncateText(datasource.name, 40),
                                   searchQuery,
-                                )}
-                              </span>
-                              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                                <User className="h-2.5 w-2.5" />
-                                {truncateText(
-                                  datasource.createdBy || 'System',
-                                  28,
                                 )}
                               </span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium tracking-wider uppercase">
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/20 pointer-events-none rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors"
+                          >
                             {datasource.datasource_provider}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           <div className="flex items-center gap-1.5">
@@ -871,7 +833,7 @@ export function ListDatasources({
       </div>
 
       {totalPages > 1 && !groupByProvider && (
-        <div className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-10 flex shrink-0 items-center justify-center border-t py-6 backdrop-blur">
+        <div className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-10 flex shrink-0 items-center justify-center pt-4 pb-8 backdrop-blur">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

@@ -58,8 +58,8 @@ import {
   getFeedbackFromMetadata,
 } from './feedback-types';
 import {
-  messagesToMarkdown,
-  downloadMarkdown,
+  downloadAssistantResponseMarkdown,
+  downloadChatMarkdownUpTo,
 } from './utils/export-to-markdown';
 import {
   DropdownMenu,
@@ -116,6 +116,8 @@ export interface MessageItemProps {
   openToolPartKeys?: Set<string> | null;
   onToolPartOpenChange?: (key: string, open: boolean) => void;
   scrollToBottom?: () => void;
+  scrollToMessageId?: (messageId: string) => void;
+  webSearch?: boolean;
   onBeforeSuggestionSend?: (
     text: string,
     metadata?: import('./utils/suggestion-pattern').SuggestionMetadata,
@@ -184,6 +186,8 @@ function MessageItemComponent({
   openToolPartKeys,
   onToolPartOpenChange,
   scrollToBottom,
+  scrollToMessageId,
+  webSearch,
   onBeforeSuggestionSend,
   onDatasourceNameClick,
   onTableNameClick,
@@ -194,6 +198,7 @@ function MessageItemComponent({
   const { t } = useTranslation('common');
   const { t: tChat } = useTranslation('chat');
   useToolVariant();
+
   const sourceParts = message.parts.filter(
     (part: { type: string }) => part.type === 'source-url',
   );
@@ -211,31 +216,17 @@ function MessageItemComponent({
   };
 
   const handleExportResponse = () => {
-    const messageIndex = messages.findIndex((m) => m.id === message.id);
-    let userMessage: (typeof messages)[0] | null = null;
-    for (let i = messageIndex - 1; i >= 0; i--) {
-      if (normalizeUIRole(messages[i]?.role) === 'user') {
-        userMessage = messages[i] ?? null;
-        break;
-      }
-    }
-    const messagesToExport = userMessage ? [userMessage, message] : [message];
-
-    const md = messagesToMarkdown(messagesToExport, undefined, { getChartSvg });
-    const date = new Date().toISOString().slice(0, 10);
-    const filename = `response-${date}-${message.id.slice(0, 8)}`;
-    downloadMarkdown(md, filename);
+    downloadAssistantResponseMarkdown(messages, message.id, {
+      getChartSvg,
+      conversationTitle,
+    });
   };
 
   const handleExportChat = () => {
-    const messageIndex = messages.findIndex((m) => m.id === message.id);
-    const messagesUpToThisPoint = messages.slice(0, messageIndex + 1);
-    const md = messagesToMarkdown(messagesUpToThisPoint, conversationTitle, {
+    downloadChatMarkdownUpTo(messages, message.id, {
+      conversationTitle,
       getChartSvg,
     });
-    const filename =
-      conversationTitle || `chat-${new Date().toISOString().slice(0, 10)}`;
-    downloadMarkdown(md, filename);
   };
 
   const textParts = message.parts.filter((p) => p.type === 'text');
@@ -370,27 +361,6 @@ function MessageItemComponent({
                           }
                         }
 
-                        const lastUserMessage = [...messages]
-                          .reverse()
-                          .find((msg) => normalizeUIRole(msg.role) === 'user');
-
-                        const isLastUserMessage =
-                          lastUserMessage?.id === message.id;
-
-                        if (
-                          isLastUserMessage &&
-                          selectedDatasources &&
-                          selectedDatasources.length > 0
-                        ) {
-                          return selectedDatasources
-                            .map((dsId) =>
-                              datasources?.find((ds) => ds.id === dsId),
-                            )
-                            .filter(
-                              (ds): ds is DatasourceItem => ds !== undefined,
-                            );
-                        }
-
                         return undefined;
                       })();
 
@@ -502,6 +472,9 @@ function MessageItemComponent({
                                             messages={messages}
                                             datasources={messageDatasources}
                                             pluginLogoMap={pluginLogoMap}
+                                            scrollToMessageId={
+                                              scrollToMessageId
+                                            }
                                           />
                                           {isLastTextPart && (
                                             <div className="mt-1 flex items-center justify-end gap-1">
@@ -1041,6 +1014,7 @@ function MessageItemComponent({
                             datasources={datasources}
                             onDatasourceNameClick={onDatasourceNameClick}
                             onTableNameClick={onTableNameClick}
+                            webSearch={webSearch}
                           />
                         </div>
                       );
@@ -1056,75 +1030,4 @@ function MessageItemComponent({
   );
 }
 
-export const MessageItem = memo(MessageItemComponent, (prev, next) => {
-  if (prev.message.id !== next.message.id) {
-    return false;
-  }
-
-  if (prev.message.parts.length !== next.message.parts.length) {
-    return false;
-  }
-
-  if (prev.status !== next.status) {
-    return false;
-  }
-
-  if (prev.editingMessageId !== next.editingMessageId) {
-    return false;
-  }
-
-  if (prev.editText !== next.editText) {
-    return false;
-  }
-
-  if (prev.copiedMessagePartId !== next.copiedMessagePartId) {
-    return false;
-  }
-
-  // Re-render when metadata changes (e.g. feedback optimistic update)
-  if (prev.message.metadata !== next.message.metadata) {
-    return false;
-  }
-
-  const isLastMessage = prev.message.id === prev.messages.at(-1)?.id;
-  if (
-    isLastMessage &&
-    (isChatStreaming(prev.status) || isChatStreaming(next.status))
-  ) {
-    return false;
-  }
-
-  if (prev.messages.length !== next.messages.length) {
-    const messageStillExists = next.messages.some(
-      (m) => m.id === prev.message.id,
-    );
-    if (!messageStillExists) {
-      return false;
-    }
-    if (isLastMessage) {
-      return false;
-    }
-  }
-
-  if (prev.openToolPartKeys !== next.openToolPartKeys) {
-    return false;
-  }
-
-  if (prev.editDatasources !== next.editDatasources) {
-    return false;
-  }
-
-  if (prev.datasources !== next.datasources) {
-    return false;
-  }
-
-  if (prev.selectedDatasources !== next.selectedDatasources) {
-    return false;
-  }
-
-  if (prev.pluginLogoMap !== next.pluginLogoMap) {
-    return false;
-  }
-
-  return true;
-});
+export const MessageItem = memo(MessageItemComponent);

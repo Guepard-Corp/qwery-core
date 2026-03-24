@@ -134,3 +134,15 @@ export function sortByDateDesc<T>(
     return bTime - aTime;
   });
 }
+
+export function shouldInvertDatasourceIcon(
+  providerOrId: string | null | undefined,
+): boolean {
+  if (!providerOrId) return false;
+
+  const value = providerOrId.trim().toLowerCase();
+  if (value.length === 0) return false;
+
+  // Temporary global rule until json icon asset is replaced.
+  return value === 'json-online' || value.startsWith('json-online.');
+}

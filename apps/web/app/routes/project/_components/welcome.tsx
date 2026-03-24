@@ -28,6 +28,7 @@ import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useConversation } from '~/lib/mutations/use-conversation';
 import { getErrorKey } from '~/lib/utils/error-key';
+import { setChatBootstrapMessage } from '~/lib/utils/chat-session-bootstrap';
 import { usePlayground } from '~/lib/mutations/use-playground';
 
 import { PlaygroundConfirmDialog } from './playground-confirm-dialog';
@@ -62,10 +63,7 @@ export default function WelcomePage() {
     (conversation) => {
       const messageText = input.trim();
       if (messageText) {
-        localStorage.setItem(
-          `pending-message-${conversation.slug}`,
-          messageText,
-        );
+        setChatBootstrapMessage(conversation.slug, messageText);
       }
       setInput('');
       navigate(createPath(pathsConfig.app.conversation, conversation.slug));
@@ -141,13 +139,9 @@ export default function WelcomePage() {
         {
           onSuccess: (conversation) => {
             toast.dismiss('creating-conversation');
-            localStorage.setItem(
-              `pending-message-${conversation.slug}`,
+            setChatBootstrapMessage(
+              conversation.slug,
               selectedSuggestion.query,
-            );
-            localStorage.setItem(
-              `pending-datasource-${conversation.slug}`,
-              playgroundDatasource.id,
             );
             setInput('');
             navigate(
@@ -169,15 +163,27 @@ export default function WelcomePage() {
   };
 
   return (
-    <div className="bg-background h-full overflow-y-auto">
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-20">
+    <div className="bg-background -mx-8 h-full overflow-y-auto px-10 lg:-mx-72 lg:px-72">
+      <main className="mx-auto max-w-4xl px-6 py-12 sm:px-10 sm:py-20">
         <LandingHero title={t('heroTitle')} subtitle={t('heroSubtitle')} />
 
         {/* PRIMARY CHAT INPUT */}
         <section className="mb-12">
+          <div className="mb-4 flex flex-wrap justify-center gap-2.5">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.id}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="border-border/50 bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground hover:border-foreground cursor-pointer rounded-md border px-4 py-2.5 text-sm transition-colors dark:hover:border-white"
+              >
+                {suggestion.query}
+              </button>
+            ))}
+          </div>
+
           <PromptInput
             onSubmit={handleSubmit}
-            className="bg-card border-border/60 rounded-lg border shadow-sm transition-shadow hover:shadow-md"
+            className="border-border/60 rounded-lg border bg-transparent shadow-sm transition-shadow hover:shadow-md"
             globalDrop
           >
             <PromptInputBody>
@@ -189,7 +195,7 @@ export default function WelcomePage() {
                 className="min-h-[120px] resize-none border-none px-4 py-4 text-[15px] focus-visible:ring-0"
               />
             </PromptInputBody>
-            <PromptInputFooter className="bg-muted/20 border-border/40 border-t px-3 py-2.5">
+            <PromptInputFooter className="bg-transparent px-3 py-2.5">
               <PromptInputTools />
               <PromptInputSubmit
                 disabled={!input.trim() || createConversationMutation.isPending}
@@ -200,19 +206,6 @@ export default function WelcomePage() {
               </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>
-
-          {/* Example prompts */}
-          <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion.id}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="border-border/50 bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground hover:border-foreground cursor-pointer rounded-md border px-4 py-2.5 text-sm transition-colors dark:hover:border-white"
-              >
-                {suggestion.query}
-              </button>
-            ))}
-          </div>
         </section>
 
         <LandingSectionDivider label={t('quickActions')} />

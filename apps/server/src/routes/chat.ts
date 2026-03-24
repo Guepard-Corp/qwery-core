@@ -22,6 +22,7 @@ const chatBodySchema = z.object({
   messages: z.array(z.unknown()),
   model: z.string().optional(),
   datasources: z.array(z.string()).optional(),
+  webSearch: z.boolean().optional(),
   trigger: z.enum(['submit-message', 'regenerate-message']).optional(),
 });
 
@@ -169,6 +170,7 @@ User request: ${cleanText}`;
           messages: validatedMessages,
           model,
           datasources,
+          webSearch: body.webSearch,
           repositories,
           telemetry,
           generateTitle: true,

@@ -13,6 +13,7 @@ import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 import { DatasourceConnectSheet } from './datasource-connect-sheet';
 import { DatasourceExtension } from '@qwery/extensions-sdk';
@@ -170,15 +171,13 @@ export function NewDatasource({
     setFailedLogos((prev) => new Set(prev).add(datasourceId));
   }, []);
 
-  const isJsonDatasource = (id: string) => id.toLowerCase().includes('json');
-
   return (
     <div className="flex h-full flex-col">
       <div className="border-border/40 bg-background/95 sticky top-0 z-10 border-b backdrop-blur-sm">
         <div className="px-8 py-6 lg:px-16 lg:py-10">
           <div className="flex flex-col gap-5">
             <div>
-              <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+              <h1 className="text-foreground text-4xl font-bold tracking-tight">
                 <Trans i18nKey="datasources:new_pageTitle" />
               </h1>
               <p className="text-muted-foreground mt-1 text-sm">
@@ -269,11 +268,13 @@ export function NewDatasource({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 {paginatedDatasources.map((datasource, index) => {
                   const hasFailed = failedLogos.has(datasource.id);
                   const showLogo = datasource.icon && !hasFailed;
-                  const shouldInvert = isJsonDatasource(datasource.id);
+                  const shouldInvert = shouldInvertDatasourceIcon(
+                    datasource.id,
+                  );
                   const isDragging = draggingIndex === index;
 
                   return (
@@ -292,29 +293,31 @@ export function NewDatasource({
                       <button
                         type="button"
                         onClick={() => openDrawerFor(datasource)}
-                        className="group relative flex w-full cursor-pointer flex-col items-center rounded-xl p-5 text-left transition-all duration-200 hover:bg-[#ffcb51]/5"
+                        className="group hover:bg-muted/50 hover:border-border/50 relative flex w-full cursor-pointer flex-col rounded-xl border border-transparent p-4 text-left transition-all duration-200"
                       >
-                        <div className="bg-muted/40 group-hover:bg-muted/60 mb-4 flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-200 group-hover:scale-105">
+                        <div className="bg-muted/40 group-hover:bg-background border-border/40 group-hover:border-border mb-3 flex h-16 w-16 items-center justify-center rounded-xl border shadow-inner transition-all duration-200">
                           {showLogo ? (
                             <img
                               src={datasource.icon}
                               alt={datasource.name}
                               className={cn(
-                                'h-12 w-12 object-contain',
+                                'h-8 w-8 object-contain transition-transform group-hover:scale-110',
                                 shouldInvert && 'dark:invert',
                               )}
                               onError={() => handleLogoError(datasource.id)}
                             />
                           ) : (
-                            <Database className="text-muted-foreground/60 h-9 w-9" />
+                            <Database className="text-muted-foreground/60 h-7 w-7" />
                           )}
                         </div>
-                        <span className="text-foreground text-center text-base leading-tight font-medium">
-                          {datasource.name}
-                        </span>
-                        <div className="text-muted-foreground/0 group-hover:text-muted-foreground/60 mt-1.5 flex items-center gap-1 text-xs transition-all duration-200">
-                          <span>Connect</span>
-                          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-foreground mb-1 block truncate text-sm leading-tight font-medium">
+                            {datasource.name}
+                          </span>
+                          <div className="text-muted-foreground flex translate-y-1 items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                            <span>Connect</span>
+                            <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5" />
+                          </div>
                         </div>
                       </button>
                     </div>

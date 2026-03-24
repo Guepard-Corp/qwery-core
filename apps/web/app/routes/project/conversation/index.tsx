@@ -196,18 +196,15 @@ export default function ConversationIndexPage() {
   const isLoading = isLoadingConversations || isProjectLoading;
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [loadMoreState, setLoadMoreState] = useState<{
-    hasMore: boolean;
-    onLoadMore: () => void;
-    isLoading: boolean;
-  } | null>(null);
 
   return (
     <div className="bg-background flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="flex h-full min-h-0 flex-1 flex-col">
         <section className="flex shrink-0 flex-col gap-6 px-8 py-6 lg:px-16 lg:py-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">{t('chat:title')}</h1>
+            <h1 className="text-5xl font-bold tracking-tight">
+              {t('chat:title')}
+            </h1>
           </div>
 
           <div className="flex items-center gap-3">
@@ -263,27 +260,11 @@ export default function ConversationIndexPage() {
                 onSearchQueryChange={setSearchQuery}
                 isEditMode={isEditMode}
                 onEditModeChange={setIsEditMode}
-                onLoadMoreStateChange={setLoadMoreState}
                 className="h-full"
               />
             )}
           </div>
         </div>
-
-        {loadMoreState?.hasMore && (
-          <div className="bg-background flex shrink-0 items-center px-8 py-4 lg:px-16 lg:py-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadMoreState.onLoadMore}
-              disabled={loadMoreState.isLoading}
-              className="text-muted-foreground hover:text-foreground h-10 w-full border-2"
-              data-test="conversation-load-more"
-            >
-              {loadMoreState.isLoading ? 'Loading...' : 'Load more'}
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -128,6 +128,8 @@ function PromptInputContent(props: QweryPromptInputProps) {
 
   const canManageModels =
     props.allModels != null && props.onModelsChange != null;
+  const allModels = props.allModels;
+  const onModelsChange = props.onModelsChange;
   const enabledModelIds = useMemo(
     () => new Set(props.models.map((m) => m.value)),
     [props.models],
@@ -135,11 +137,11 @@ function PromptInputContent(props: QweryPromptInputProps) {
 
   const handleModelsChange = useCallback(
     (next: Set<string>) => {
-      if (!props.allModels || !props.onModelsChange) return;
-      const enabled = props.allModels.filter((m) => next.has(m.value));
-      props.onModelsChange(enabled);
+      if (!allModels || !onModelsChange) return;
+      const enabled = allModels.filter((m) => next.has(m.value));
+      onModelsChange(enabled);
     },
-    [props.allModels, props.onModelsChange],
+    [allModels, onModelsChange],
   );
 
   return (

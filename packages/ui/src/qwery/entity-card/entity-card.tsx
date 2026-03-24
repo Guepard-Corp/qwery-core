@@ -22,7 +22,7 @@ import type { ReactNode } from 'react';
 
 export interface EntityCardProps {
   id: string;
-  name: string;
+  name: ReactNode;
   slug?: string;
   description?: string;
   status?: string;
@@ -37,7 +37,7 @@ export interface EntityCardProps {
   onPause?: () => void;
   className?: string;
   dataTest?: string;
-  variant?: 'project' | 'organization' | 'datasource';
+  variant?: 'project' | 'organization' | 'datasource' | 'notebook';
 }
 
 export function EntityCard({
@@ -59,15 +59,18 @@ export function EntityCard({
   dataTest,
   variant: _variant = 'project',
 }: EntityCardProps) {
-  const statusColor =
-    status === 'active'
-      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+  const isDatasource = _variant === 'datasource';
+  const isMinimalHover = isDatasource;
+  const statusColor = isDatasource
+    ? 'bg-primary/10 text-primary border-primary/20'
+    : status === 'active'
+      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-transparent'
       : status === 'inactive'
-        ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+        ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300 border-transparent'
         : status === 'paused'
-          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 border-transparent'
           : status
-            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
+            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300 border-transparent'
             : '';
 
   const displayIcon =
@@ -80,7 +83,10 @@ export function EntityCard({
   const cardContent = (
     <Card
       className={cn(
-        'group hover:!bg-sidebar hover:border-primary hover:shadow-primary/5 relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl',
+        'group relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300',
+        isMinimalHover
+          ? 'hover:border-primary'
+          : 'hover:!bg-sidebar hover:border-primary hover:shadow-primary/5 hover:shadow-2xl',
         'cursor-pointer',
         className,
       )}
@@ -88,7 +94,13 @@ export function EntityCard({
       data-test={dataTest || `entity-card-${id}`}
     >
       <CardContent className="flex flex-row items-start gap-4 p-6">
-        <div className="bg-muted group-hover:bg-primary group-hover:text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all duration-300">
+        <div
+          className={cn(
+            'bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all duration-300',
+            !isMinimalHover &&
+              'group-hover:bg-primary group-hover:text-primary-foreground',
+          )}
+        >
           {displayIcon}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -110,7 +122,7 @@ export function EntityCard({
             </div>
             {status && (
               <Badge
-                variant="secondary"
+                variant={isDatasource ? 'outline' : 'secondary'}
                 className={cn(
                   'h-5 shrink-0 border px-2 text-[10px] font-bold tracking-wider uppercase',
                   statusColor,
@@ -134,9 +146,11 @@ export function EntityCard({
             {viewButton}
           </div>
         ) : (
-          <div className="text-primary flex items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </div>
+          !isMinimalHover && (
+            <div className="text-primary flex items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          )
         )}
       </CardContent>
     </Card>

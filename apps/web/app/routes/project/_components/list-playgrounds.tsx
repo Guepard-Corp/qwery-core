@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@qwery/ui/tooltip';
-import { cn, truncateText } from '@qwery/ui/utils';
+import { truncateText } from '@qwery/ui/utils';
 
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
@@ -53,7 +53,6 @@ export function ListPlaygrounds({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Load project to get projectId
   const project = useGetProjectBySlug(projectRepository, project_id);
@@ -72,9 +71,12 @@ export function ListPlaygrounds({
   );
 
   const handleCreate = (playgroundId: string) => {
+    const projectId = project.data?.id;
+    if (!projectId) return;
+
     createPlaygroundMutation.mutate({
       playgroundId,
-      projectId: project.data?.id as string,
+      projectId,
     });
   };
 
@@ -135,12 +137,7 @@ export function ListPlaygrounds({
             {t('playgrounds:description')}
           </p>
 
-          <div
-            className={cn(
-              'bg-muted/30 border-border/50 focus-within:border-border flex h-14 w-full max-w-2xl items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent',
-              isSearchFocused && 'ring-2 ring-[#ffcb51] ring-offset-2',
-            )}
-          >
+          <div className="bg-muted/30 border-border/50 focus-within:border-border focus-within:ring-ring flex h-14 w-full max-w-2xl items-center gap-3 rounded-xl border px-4 transition-all focus-within:bg-transparent focus-within:ring-2 focus-within:ring-offset-2">
             <MagnifyingGlassIcon className="text-muted-foreground/60 h-5 w-5 shrink-0" />
             <Input
               ref={searchInputRef}
@@ -149,8 +146,6 @@ export function ListPlaygrounds({
               className="h-full flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
             />
             {searchQuery && (
               <button
@@ -192,7 +187,7 @@ export function ListPlaygrounds({
                   <div
                     key={playground.id}
                     onClick={() => handleCreate(playground.id)}
-                    className="group hover:!bg-sidebar hover:border-primary hover:shadow-primary/5 relative flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl"
+                    className="group hover:bg-sidebar! hover:border-primary hover:shadow-primary/5 relative flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl"
                   >
                     <div className="flex flex-row items-start gap-4 p-6">
                       <div className="bg-muted group-hover:bg-primary group-hover:text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all duration-300">
@@ -235,85 +230,19 @@ export function ListPlaygrounds({
                             <TooltipContent
                               side="right"
                               sideOffset={12}
-                              className="bg-popover text-popover-foreground border-border/60 max-w-sm overflow-hidden rounded-lg border-2 p-0 shadow-xl backdrop-blur-sm"
+                              className="bg-popover text-popover-foreground border-border/60 max-w-sm rounded-lg border-2 p-3 shadow-xl"
                             >
-                              <div className="bg-primary/5 border-border/50 border-b px-4 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="bg-primary/20 text-primary border-primary/30 flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm">
-                                    <Database className="h-4 w-4" />
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-semibold">
-                                      Available Data
-                                    </div>
-                                    <div className="text-muted-foreground mt-0.5 text-[10px]">
-                                      3 tables with sample data
-                                    </div>
-                                  </div>
+                              <div className="flex items-start gap-2.5">
+                                <div className="bg-primary/20 text-primary border-primary/30 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border shadow-sm">
+                                  <Database className="h-4 w-4" />
                                 </div>
-                              </div>
-                              <div className="space-y-2.5 p-4">
-                                <div className="group/item flex items-start gap-2.5">
-                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                    U
+                                <div>
+                                  <div className="text-sm font-semibold">
+                                    {playground.name}
                                   </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-primary font-mono text-xs font-bold">
-                                        users
-                                      </span>
-                                      <span className="text-muted-foreground/60 text-[10px]">
-                                        • 5 rows
-                                      </span>
-                                    </div>
-                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                      User accounts with basic information
-                                    </div>
+                                  <div className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                                    {playground.description}
                                   </div>
-                                </div>
-                                <div className="group/item flex items-start gap-2.5">
-                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                    P
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-primary font-mono text-xs font-bold">
-                                        products
-                                      </span>
-                                      <span className="text-muted-foreground/60 text-[10px]">
-                                        • 8 rows
-                                      </span>
-                                    </div>
-                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                      Product catalog with pricing and inventory
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="group/item flex items-start gap-2.5">
-                                  <div className="bg-primary/10 text-primary border-primary/20 group-hover/item:bg-primary/20 mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition-colors">
-                                    O
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-primary font-mono text-xs font-bold">
-                                        orders
-                                      </span>
-                                      <span className="text-muted-foreground/60 text-[10px]">
-                                        • 8 rows
-                                      </span>
-                                    </div>
-                                    <div className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                                      Customer orders with status tracking
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="bg-muted/30 border-border/50 border-t px-4 py-2.5">
-                                <div className="text-muted-foreground flex items-center gap-1.5 text-[10px]">
-                                  <div className="bg-primary/40 h-1.5 w-1.5 rounded-full"></div>
-                                  <span>
-                                    Includes sample data and query examples
-                                  </span>
                                 </div>
                               </div>
                             </TooltipContent>

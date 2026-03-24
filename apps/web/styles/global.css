@@ -86,4 +86,13 @@
   .dark *::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+
+  /* Hide scrollbars for nested scroll containers inside the chat scroller */
+  .qwery-chat-scroller * {
+    scrollbar-width: none;
+  }
+
+  .qwery-chat-scroller *::-webkit-scrollbar {
+    display: none;
+  }
 }
