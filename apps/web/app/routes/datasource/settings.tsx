@@ -4,24 +4,56 @@ import { Database, Loader2 } from 'lucide-react';
 
 import { Trans } from '@qwery/ui/trans';
 
+import { GetDatasourceBySlugService } from '@qwery/domain/services';
+import { DomainException } from '@qwery/domain/exceptions';
+
 import pathsConfig from '~/config/paths.config';
 import { createPath } from '~/config/qwery.navigation.config';
-import { useWorkspace } from '~/lib/context/workspace-context';
-import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { pageTitle } from '~/lib/page-title';
 
+import type { Route } from './+types/settings';
 import { DatasourceConnectSheet } from '../project/_components/datasource-connect-sheet';
 
-export default function ProjectDatasourceViewPage() {
+export async function clientLoader(args: Route.ClientLoaderArgs) {
+  const slug = args.params.slug;
+  if (!slug) {
+    throw new Response('Not Found', { status: 404 });
+  }
+
+  const repositories = await getRepositoriesForLoader(args.request);
+  const getDatasourceService = new GetDatasourceBySlugService(
+    repositories.datasource,
+  );
+
+  try {
+    const datasource = await getDatasourceService.execute(slug);
+    return { datasource };
+  } catch (error) {
+    if (error instanceof DomainException) {
+      throw new Response('Not Found', { status: 404 });
+    }
+    throw error;
+  }
+}
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.datasource?.name?.trim()
+        ? `Datasource settings · ${data.datasource.name}`
+        : 'Datasource settings',
+    ),
+  },
+];
+
+export default function ProjectDatasourceViewPage(props: Route.ComponentProps) {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { repositories } = useWorkspace();
-  const datasourceRepository = repositories.datasource;
+  const { datasource } = props.loaderData;
 
-  const datasource = useGetDatasourceBySlug(datasourceRepository, slug ?? '');
-  const extension = useGetExtension(
-    datasource?.data?.datasource_provider ?? '',
-  );
+  const extension = useGetExtension(datasource.datasource_provider ?? '');
 
   const handleSuccess = () => {
     navigate(createPath(pathsConfig.app.datasourceSchema, slug ?? ''), {
@@ -43,26 +75,13 @@ export default function ProjectDatasourceViewPage() {
     }
   };
 
-  if (datasource.isLoading || extension.isLoading) {
+  if (extension.isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
           <p className="text-muted-foreground text-sm">
             <Trans i18nKey="datasources:loading" />
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!datasource.data) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Database className="text-muted-foreground/50 h-12 w-12" />
-          <p className="text-muted-foreground text-sm">
-            <Trans i18nKey="datasources:notFound" />
           </p>
         </div>
       </div>
@@ -86,12 +105,12 @@ export default function ProjectDatasourceViewPage() {
     <DatasourceConnectSheet
       open={true}
       onOpenChange={handleOpenChange}
-      extensionId={datasource.data.datasource_provider}
-      projectSlug={datasource.data.projectId ?? ''}
+      extensionId={datasource.datasource_provider}
+      projectSlug={datasource.projectId ?? ''}
       extensionMeta={extension.data}
-      existingDatasource={datasource.data}
+      existingDatasource={datasource}
       initialFormValues={
-        datasource.data.config as Record<string, unknown> | undefined
+        datasource.config as Record<string, unknown> | undefined
       }
       onSuccess={handleSuccess}
       onCancel={handleCancel}
