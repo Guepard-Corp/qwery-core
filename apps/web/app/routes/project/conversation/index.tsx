@@ -31,9 +31,7 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
 
 export const meta = ({ data }: Route.MetaArgs) => [
   {
-    title: pageTitle(
-      data?.projectName ? `Chat · ${data.projectName}` : 'Chat',
-    ),
+    title: pageTitle(data?.projectName ? `Chat · ${data.projectName}` : 'Chat'),
   },
 ];
 

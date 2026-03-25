@@ -12,9 +12,7 @@ import { ListProjects } from './_components/list-projects';
 
 export const meta = ({ data }: Route.MetaArgs) => [
   {
-    title: pageTitle(
-      data?.organization?.name?.trim() || 'Organization',
-    ),
+    title: pageTitle(data?.organization?.name?.trim() || 'Organization'),
   },
 ];
 
