@@ -7,6 +7,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from './+types/schema';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { pageTitle } from '~/lib/page-title';
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
@@ -29,6 +30,16 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     throw error;
   }
 }
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.datasource?.name?.trim()
+        ? `Schema · ${data.datasource.name}`
+        : 'Schema',
+    ),
+  },
+];
 
 export default function Schema(props: Route.ComponentProps) {
   const params = useParams();

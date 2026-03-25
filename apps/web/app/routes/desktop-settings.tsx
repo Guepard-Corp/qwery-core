@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 
+import { pageTitle } from '~/lib/page-title';
+
+export const meta = () => [{ title: pageTitle('Desktop settings') }];
+
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Label } from '@qwery/ui/label';

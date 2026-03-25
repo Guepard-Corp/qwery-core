@@ -7,6 +7,7 @@ import { Heading } from '@qwery/ui/heading';
 import { Trans } from '@qwery/ui/trans';
 
 import pathsConfig from '~/config/paths.config';
+import { pageTitle } from '~/lib/page-title';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import type { Route } from '~/types/app/routes/+types/404';
 
@@ -22,7 +23,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export const meta = ({ data }: Route.MetaArgs) => {
   return [
     {
-      title: data?.title,
+      title: pageTitle(data?.title ?? 'Not found'),
     },
   ];
 };

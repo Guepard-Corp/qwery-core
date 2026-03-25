@@ -12,6 +12,7 @@ import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from './+types/table';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { pageTitle } from '~/lib/page-title';
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
@@ -34,6 +35,17 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     throw error;
   }
 }
+
+export const meta = ({ data, params }: Route.MetaArgs) => {
+  const schema = params.schema ? decodeURIComponent(params.schema) : '';
+  const tableName = params.tableName
+    ? decodeURIComponent(params.tableName)
+    : '';
+  const ds = data?.datasource?.name?.trim() || 'Datasource';
+  const label =
+    schema && tableName ? `${schema}.${tableName} · ${ds}` : `Table · ${ds}`;
+  return [{ title: pageTitle(label) }];
+};
 
 export default function TablePage(props: Route.ComponentProps) {
   const params = useParams();

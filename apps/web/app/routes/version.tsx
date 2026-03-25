@@ -1,3 +1,7 @@
+import { pageTitle } from '~/lib/page-title';
+
+export const meta = () => [{ title: pageTitle('Version') }];
+
 export default function Version() {
   return (
     <div>

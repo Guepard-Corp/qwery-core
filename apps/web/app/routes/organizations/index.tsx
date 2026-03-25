@@ -5,8 +5,11 @@ import { DomainException } from '@qwery/domain/exceptions';
 import type { Route } from '../../../.react-router/types/app/routes/organizations/+types/index';
 import { createRepositories } from '../../../lib/repositories/repositories-factory';
 import { ApiError } from '~/lib/repositories/api-client';
+import { pageTitle } from '~/lib/page-title';
 
 import { ListOrganizations } from './_components/list-organizations';
+
+export const meta = () => [{ title: pageTitle('Organizations') }];
 
 export async function clientLoader(_args: Route.ClientLoaderArgs) {
   try {

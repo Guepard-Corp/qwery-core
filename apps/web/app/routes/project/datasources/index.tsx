@@ -4,9 +4,27 @@ import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import pathsConfig, { createPath } from '~/config/paths.config';
+import type { Route } from './+types/index';
+import { pageTitle } from '~/lib/page-title';
+import { loadProjectName } from '~/lib/loaders/route-meta-loaders';
 
 import { Skeleton } from '@qwery/ui/skeleton';
 import { ListDatasources } from '../_components/list-datasources';
+
+export async function clientLoader(args: Route.ClientLoaderArgs) {
+  const projectName = await loadProjectName(args.request, args.params.slug);
+  return { projectName };
+}
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.projectName
+        ? `Datasources · ${data.projectName}`
+        : 'Datasources',
+    ),
+  },
+];
 
 export default function ProjectDatasourcesPage() {
   const { slug } = useParams<{ slug: string }>();

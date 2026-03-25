@@ -6,8 +6,17 @@ import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from '~/types/app/routes/organization/+types/index';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { pageTitle } from '~/lib/page-title';
 
 import { ListProjects } from './_components/list-projects';
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.organization?.name?.trim() || 'Organization',
+    ),
+  },
+];
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;

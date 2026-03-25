@@ -1,6 +1,9 @@
 import { useProject } from '~/lib/context/project-context';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useNavigate, useLocation } from 'react-router';
+import type { Route } from './+types/index';
+import { pageTitle } from '~/lib/page-title';
+import { loadProjectName } from '~/lib/loaders/route-meta-loaders';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import {
@@ -20,6 +23,19 @@ import { ConversationList, Conversation, useAgentStatus } from '@qwery/ui/ai';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+
+export async function clientLoader(args: Route.ClientLoaderArgs) {
+  const projectName = await loadProjectName(args.request, args.params.slug);
+  return { projectName };
+}
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.projectName ? `Chat · ${data.projectName}` : 'Chat',
+    ),
+  },
+];
 
 export default function ConversationIndexPage() {
   const { t } = useTranslation(['chat', 'common']);
