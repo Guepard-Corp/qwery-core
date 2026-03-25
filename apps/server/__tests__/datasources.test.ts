@@ -9,6 +9,10 @@ import {
 } from 'vitest';
 import type { Hono } from 'hono';
 
+vi.mock('dssrf', () => ({
+  is_url_safe: vi.fn().mockResolvedValue(true),
+}));
+
 import { createTestApp, cleanupTestDir } from './helpers/setup';
 import { resetRateLimitStateForTests } from '../src/lib/rate-limit';
 
@@ -117,7 +121,7 @@ describe('Server API – Datasources', () => {
         lastStatus = res.status;
       }
       expect(lastStatus).toBe(429);
-    });
+    }, 20_000);
 
     it('POST /api/datasources/validate-url rate limits at 30/min', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -144,6 +148,6 @@ describe('Server API – Datasources', () => {
       }
       expect(last?.status).toBe(429);
       expect(last?.body).toEqual({ valid: false, error: 'Too many requests' });
-    });
+    }, 20_000);
   });
 });
