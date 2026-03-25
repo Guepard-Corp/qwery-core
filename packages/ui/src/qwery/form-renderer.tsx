@@ -46,7 +46,7 @@ import {
   humanizeFieldKey,
   unwrapSchema,
 } from './schema-form-utils';
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 
 type ZodSchemaType = z.ZodTypeAny;
 
@@ -131,15 +131,17 @@ export function FormRenderer<T extends z.ZodTypeAny>({
       currentRootSchema as Parameters<typeof zodResolver>[0],
     ),
     defaultValues: mergedDefaults as Record<string, unknown>,
-    mode: 'onChange',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
-
-  useEffect(() => {
-    form.trigger();
-  }, [form]);
 
   // form.watch() required for onFormReady; incompatible with React Compiler memoization
   const watchedValues = form.watch(); // eslint-disable-line react-hooks/incompatible-library
+
+  const schemaValid = useMemo(
+    () => currentRootSchema.safeParse(watchedValues).success,
+    [currentRootSchema, watchedValues],
+  );
 
   const lastSerializedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
@@ -152,9 +154,8 @@ export function FormRenderer<T extends z.ZodTypeAny>({
 
   React.useEffect(() => {
     if (!onValidityChange) return;
-    const isValid = form.formState.isValid;
-    onValidityChange(isValid);
-  }, [onValidityChange, form.formState.isValid]);
+    onValidityChange(schemaValid);
+  }, [onValidityChange, schemaValid]);
 
   React.useEffect(() => {
     const nextSchema = isUnion ? root.unionOptions[unionVariant] : undefined;

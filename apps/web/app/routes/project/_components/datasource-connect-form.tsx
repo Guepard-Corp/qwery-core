@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { z as zLib } from 'zod';
-import { Loader2, Pencil, Shuffle, Check } from 'lucide-react';
+import { Check, Loader2, Pencil, Shuffle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
@@ -55,6 +55,7 @@ import { resolveDriverOrThrow } from '~/lib/utils/datasource-driver';
 import { DatasourceDocsLink } from './datasource-docs-link';
 import { DatasourceConnectionFields } from './datasource-connection-fields';
 import { DatasourceS3Fields } from './datasource-s3-fields';
+import { expandStoredConfigForFormDefaults } from '~/lib/utils/datasource-connection-fields-utils';
 import { ERROR_KEYS, getErrorKey } from '~/lib/utils/error-key';
 import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 import { ZodErrorVisualizer } from '@qwery/ui/qwery/datasource';
@@ -189,6 +190,7 @@ export function DatasourceConnectForm({
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const nameSnapshotRef = useRef('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
@@ -281,6 +283,17 @@ export function DatasourceConnectForm({
   );
   const effectiveSchema = extensionSchema.data ?? fallbackSchema;
 
+  const editFormDefaults = useMemo(
+    () =>
+      expandStoredConfigForFormDefaults(
+        extensionId,
+        (existingDatasource?.config as Record<string, unknown> | undefined) ??
+          initialFormValues,
+        undefined,
+      ),
+    [extensionId, existingDatasource?.config, initialFormValues],
+  );
+
   const testConnectionMutation = useTestConnection(
     (result) => {
       onTestConnectionLoadingChange?.(false);
@@ -321,10 +334,12 @@ export function DatasourceConnectForm({
         handleNameSave();
       }
       if (e.key === 'Escape') {
+        e.preventDefault();
+        setDatasourceName(nameSnapshotRef.current);
         setIsEditingName(false);
       }
     },
-    [handleNameSave],
+    [handleNameSave, setDatasourceName],
   );
 
   const handleFormReady = useCallback(
@@ -696,7 +711,6 @@ export function DatasourceConnectForm({
                     autoFocus
                     value={datasourceName}
                     onChange={(e) => setDatasourceName(e.target.value)}
-                    onBlur={handleNameSave}
                     onKeyDown={handleNameKeyDown}
                     maxLength={DATASOURCE_INPUT_MAX_LENGTH.name}
                     autoComplete="off"
@@ -708,6 +722,7 @@ export function DatasourceConnectForm({
                     variant="ghost"
                     className="h-8 w-8 shrink-0"
                     onClick={handleNameSave}
+                    aria-label="Save name"
                   >
                     <Check className="h-5 w-5" />
                   </Button>
@@ -719,6 +734,19 @@ export function DatasourceConnectForm({
                     title="Randomize name"
                   >
                     <Shuffle className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => {
+                      setDatasourceName(nameSnapshotRef.current);
+                      setIsEditingName(false);
+                    }}
+                    aria-label="Discard name changes"
+                  >
+                    <X className="h-4 w-4" />
                   </Button>
                 </>
               ) : (
@@ -739,7 +767,10 @@ export function DatasourceConnectForm({
                     variant="ghost"
                     size="icon"
                     className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0"
-                    onClick={() => setIsEditingName(true)}
+                    onClick={() => {
+                      nameSnapshotRef.current = datasourceName;
+                      setIsEditingName(true);
+                    }}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -771,11 +802,7 @@ export function DatasourceConnectForm({
                   formId={formId ?? 'datasource-form'}
                   onFormReady={handleFormReady}
                   onValidityChange={setSchemaValid}
-                  defaultValues={
-                    existingDatasource?.config as
-                      | Record<string, unknown>
-                      | undefined
-                  }
+                  defaultValues={editFormDefaults}
                 />
               ) : usePresetForm ? (
                 <DatasourceConnectionFields
@@ -785,10 +812,7 @@ export function DatasourceConnectForm({
                   onFormReady={handleFormReady}
                   onValidityChange={setSchemaValid}
                   _formId={formId ?? 'datasource-form'}
-                  defaultValues={
-                    (existingDatasource?.config as Record<string, unknown>) ??
-                    initialFormValues
-                  }
+                  defaultValues={editFormDefaults}
                 />
               ) : (
                 <FormRenderer
@@ -800,11 +824,7 @@ export function DatasourceConnectForm({
                     handleFormReady(values as Record<string, unknown>)
                   }
                   onValidityChange={setSchemaValid}
-                  defaultValues={
-                    existingDatasource?.config as
-                      | Record<string, unknown>
-                      | undefined
-                  }
+                  defaultValues={editFormDefaults}
                 />
               )}
               {urlValidation.gsheetHintUrl && extensionId === 'csv-online' ? (

@@ -104,7 +104,10 @@ async function fetchData(
         }
       } catch (e) {
         void getLogger().then((logger) =>
-          logger.warn({ err: e }, 'Data preview HEAD size check failed, continuing'),
+          logger.warn(
+            { err: e },
+            'Data preview HEAD size check failed, continuing',
+          ),
         );
       }
 

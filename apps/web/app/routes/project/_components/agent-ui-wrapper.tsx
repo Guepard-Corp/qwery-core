@@ -20,14 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@qwery/ui/alert-dialog';
-import { getLogger } from '@qwery/shared/logger';
 import {
   SUPPORTED_MODELS,
   transportFactory,
   type UIMessage,
   getDefaultModel,
-  PROMPT_SOURCE,
-  NOTEBOOK_CELL_TYPE,
 } from '@qwery/agent-factory-sdk';
 import { MessageOutput, UsageOutput } from '@qwery/domain/usecases';
 import { convertMessages } from '~/lib/utils/messages-converter';
@@ -60,6 +57,7 @@ import { getConversationKey } from '~/lib/mutations/use-conversation';
 import { useConversationDatasourceSync } from '~/lib/hooks/use-conversation-datasource-sync';
 import { useConversationRenameToast } from '~/lib/hooks/use-conversation-rename-toast';
 import { useNotebookContext } from '~/lib/hooks/use-notebook-context';
+import { useAgentSendMessageReady } from './use-agent-send-message-ready';
 
 export interface NoDatasourceDialogRef {
   open: (text: string) => Promise<boolean>;
@@ -154,26 +152,6 @@ type SendMessageFn = (
     messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[]),
   ) => void;
 };
-
-function datasourceIconMapKeys(extensionId: string, driverIds: string[]) {
-  const normalize = (value: string) => value.trim().toLowerCase();
-  const keys = new Set<string>();
-  const add = (value: string) => {
-    const normalized = normalize(value);
-    keys.add(normalized);
-    keys.add(normalized.replace(/_/g, '-'));
-    keys.add(normalized.replace(/-/g, '_'));
-    keys.add(normalized.replace(/\./g, '-'));
-    keys.add(normalized.replace(/\./g, '_'));
-
-    const dotBase = normalized.split('.')[0];
-    if (dotBase) keys.add(dotBase);
-  };
-
-  add(extensionId);
-  driverIds.forEach(add);
-  return [...keys];
-}
 
 export interface AgentUIWrapperRef {
   sendMessage: (text: string) => void | Promise<void>;
@@ -359,13 +337,10 @@ export const AgentUIWrapper = forwardRef<
 
   const pluginLogoMap = useMemo(() => {
     const map = new Map<string, string>();
-    extensions.forEach((extension) => {
-      if (!extension.icon) return;
-      const driverIds = extension.drivers?.map((driver) => driver.id) ?? [];
-      const keys = datasourceIconMapKeys(extension.id, driverIds);
-      keys.forEach((key) => {
-        map.set(key, extension.icon);
-      });
+    extensions.forEach((plugin) => {
+      if (plugin.icon) {
+        map.set(plugin.id, plugin.icon);
+      }
     });
     return map;
   }, [extensions]);
@@ -395,177 +370,24 @@ export const AgentUIWrapper = forwardRef<
     [conversationSlug],
   );
 
-  const handleSendMessageReady = useCallback(
-    (sendMessageFn: SendMessageFn, model: string) => {
-      internalSendMessageRef.current = sendMessageFn;
-      currentModelRef.current = model;
-
-      // Store setMessages if available
-      const sendMessageWithSetMessages = sendMessageFn as SendMessageFn & {
-        setMessages?: (
-          messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[]),
-        ) => void;
-      };
-      if (sendMessageWithSetMessages.setMessages) {
-        setMessagesRef.current = sendMessageWithSetMessages.setMessages;
-      }
-
-      // Create wrapper that uses cellDatasource for initial message, then selectedDatasources
-      // This function is stable and doesn't need to be recreated on every datasource change
-      sendMessageRef.current = async (text: string) => {
-        if (internalSendMessageRef.current) {
-          // CRITICAL: ALWAYS check getCellDatasource() directly, not selectedDatasources
-          // selectedDatasources might be stale or not updated yet
-          const currentCellDs = getCellDatasource();
-          // Get notebookCellType BEFORE clearing it
-          const currentNotebookCellType = getNotebookCellType();
-          const currentCellId = getCellId();
-
-          // Determine datasources to use - prioritize cellDatasource
-          const datasourcesToUse = currentCellDs
-            ? [currentCellDs]
-            : selectedDatasources && selectedDatasources.length > 0
-              ? selectedDatasources
-              : undefined;
-
-          // Update conversation datasources BEFORE sending message.
-          // Uses mutateAsync so the returned Promise is independent of any
-          // concurrent mutate() calls (avoids the 2-click race condition).
-          if (
-            datasourcesToUse &&
-            datasourcesToUse.length > 0 &&
-            conversation?.id
-          ) {
-            const currentSorted = [...conversationDatasources].sort();
-            const newSorted = [...datasourcesToUse].sort();
-            const datasourcesChanged =
-              currentSorted.length !== newSorted.length ||
-              !currentSorted.every((dsId, index) => dsId === newSorted[index]);
-
-            if (datasourcesChanged) {
-              try {
-                await updateConversation.mutateAsync({
-                  id: conversation.id,
-                  datasources: datasourcesToUse,
-                  updatedBy: workspace.username || workspace.userId || 'system',
-                });
-              } catch (error) {
-                void getLogger().then((logger) => {
-                  logger.error('Failed to update conversation datasources', {
-                    error,
-                  });
-                });
-              }
-              setPendingDatasources(datasourcesToUse);
-            } else {
-              setPendingDatasources(datasourcesToUse);
-            }
-          } else if (currentCellDs) {
-            setPendingDatasources([currentCellDs]);
-          }
-
-          // Build message metadata BEFORE sending - include notebook context if present
-          const messageMetadata: Record<string, unknown> = {};
-          if (datasourcesToUse && datasourcesToUse.length > 0) {
-            messageMetadata.datasources = datasourcesToUse;
-          }
-
-          const hasNotebookContext =
-            currentCellDs ||
-            currentNotebookCellType ||
-            currentCellId !== undefined;
-
-          if (hasNotebookContext) {
-            messageMetadata.promptSource = PROMPT_SOURCE.INLINE;
-            messageMetadata.notebookCellType =
-              currentNotebookCellType || NOTEBOOK_CELL_TYPE.PROMPT;
-
-            if (currentCellId !== undefined && currentCellDs) {
-              setNotebookContext({
-                cellId: currentCellId,
-                notebookCellType: (currentNotebookCellType ||
-                  NOTEBOOK_CELL_TYPE.PROMPT) as 'query' | 'prompt',
-                datasourceId: currentCellDs,
-              });
-            }
-          }
-
-          // Don't clear context immediately - keep it for paste functionality
-          // The context will be used when tool output arrives to show paste button
-          // Only clear after tool output is received or after a delay
-          // Note: We keep cellId, notebookCellType, and datasourceId for paste functionality
-          // They will be cleared when the conversation ends or user navigates away
-
-          const requestBody = {
-            model: currentModelRef.current,
-            datasources: datasourcesToUse,
-          };
-
-          await internalSendMessageRef.current(
-            {
-              text,
-              ...(Object.keys(messageMetadata).length > 0
-                ? { metadata: messageMetadata }
-                : {}),
-            },
-            {
-              body: requestBody,
-            },
-          );
-
-          // Fallback: Update message metadata immediately after sending (in case useChat doesn't preserve it)
-          if (
-            setMessagesRef.current &&
-            Object.keys(messageMetadata).length > 0
-          ) {
-            // Use requestAnimationFrame to ensure message is added to array first
-            if (sendMessageRafIdRef.current != null) {
-              cancelAnimationFrame(sendMessageRafIdRef.current);
-              sendMessageRafIdRef.current = null;
-            }
-            sendMessageRafIdRef.current = requestAnimationFrame(() => {
-              setMessagesRef.current?.((prev: UIMessage[]) => {
-                // Find the last user message and ensure it has our metadata
-                const lastUserMessageIndex = prev.findLastIndex(
-                  (msg: UIMessage) => msg.role === 'user',
-                );
-                if (lastUserMessageIndex >= 0) {
-                  const lastUserMessage = prev[lastUserMessageIndex];
-                  if (!lastUserMessage) {
-                    return prev;
-                  }
-                  // Merge metadata to ensure our notebook context is preserved
-                  const updated = [...prev];
-                  updated[lastUserMessageIndex] = {
-                    ...lastUserMessage,
-                    metadata: {
-                      ...(lastUserMessage.metadata || {}),
-                      ...messageMetadata, // Our metadata takes precedence
-                    },
-                  };
-                  return updated;
-                }
-                return prev;
-              });
-            });
-          }
-        }
-      };
-    },
-    [
-      getCellDatasource,
-      getNotebookCellType,
-      getCellId,
-      selectedDatasources,
-      conversation,
-      conversationDatasources,
-      updateConversation,
-      workspace.username,
-      workspace.userId,
-      setPendingDatasources,
-      setNotebookContext,
-    ],
-  );
+  const handleSendMessageReady = useAgentSendMessageReady({
+    sendMessageRef,
+    internalSendMessageRef,
+    currentModelRef,
+    setMessagesRef,
+    sendMessageRafIdRef,
+    getCellDatasource,
+    getNotebookCellType,
+    getCellId,
+    selectedDatasources,
+    conversation,
+    conversationDatasources,
+    updateConversation,
+    workspaceUsername: workspace.username,
+    workspaceUserId: workspace.userId,
+    setPendingDatasources,
+    setNotebookContext,
+  });
 
   useImperativeHandle(
     ref,

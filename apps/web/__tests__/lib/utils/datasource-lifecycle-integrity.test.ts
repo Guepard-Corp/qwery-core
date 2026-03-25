@@ -52,6 +52,19 @@ describe('validateDatasourceConfigPipeline', () => {
     );
   });
 
+  it('normalized json-online config (jsonUrl) parses with driver schema', async () => {
+    const result = await validateDatasourceConfigPipeline({
+      values: { jsonUrl: 'https://example.com/data.json' },
+      extensionId: 'json-online',
+      extensionMeta: jsonOnlinePreviewMeta,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // For legacy json-online, `validateDatasourceConfigPipeline` normalizes to `{ jsonUrl: ... }`
+    // (used by the legacy form). Driver-level normalization is tested in the extension package.
+    expect(result.config.jsonUrl).toBe('https://example.com/data.json');
+  });
+
   it('rejects legacy gsheet-csv shared link exceeding max length', async () => {
     const longLink = `https://docs.google.com/${'a'.repeat(DATASOURCE_INPUT_MAX_LENGTH.sharedLink)}`;
     const result = await validateDatasourceConfigPipeline({

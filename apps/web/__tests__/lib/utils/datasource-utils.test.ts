@@ -12,6 +12,10 @@ import {
   usesParquetDataFormat,
   validateDatasourceUrl,
 } from '~/lib/utils/datasource-utils';
+import {
+  expandStoredConfigForFormDefaults,
+  getConnectionValueKey,
+} from '~/lib/utils/datasource-connection-fields-utils';
 
 describe('isGsheetLikeUrl', () => {
   it('returns true for valid Google Sheets URLs', () => {
@@ -329,5 +333,88 @@ describe('getDatasourcePreviewUrl', () => {
     expect(
       getDatasourcePreviewUrl({ url: 'https://example.com/file.csv' }, meta),
     ).toBe('https://example.com/file.csv');
+  });
+});
+
+describe('getConnectionValueKey', () => {
+  it('uses jsonUrl for json-online (matches saved normalizeProviderConfig)', () => {
+    expect(getConnectionValueKey('fileUrl', undefined, 'json-online')).toBe(
+      'jsonUrl',
+    );
+  });
+
+  it('defaults to url for csv/parquet fileUrl', () => {
+    expect(getConnectionValueKey('fileUrl', undefined, 'csv-online')).toBe(
+      'url',
+    );
+    expect(getConnectionValueKey('fileUrl', undefined, 'parquet-online')).toBe(
+      'url',
+    );
+  });
+
+  it('uses database for embeddable DuckDB / PGlite (matches saved normalize)', () => {
+    expect(getConnectionValueKey('connectionString', undefined, 'duckdb')).toBe(
+      'database',
+    );
+    expect(
+      getConnectionValueKey('connectionString', undefined, 'duckdb-wasm'),
+    ).toBe('database');
+    expect(getConnectionValueKey('connectionString', undefined, 'pglite')).toBe(
+      'database',
+    );
+  });
+});
+
+describe('expandStoredConfigForFormDefaults', () => {
+  it('maps connectionString into connectionUrl for SQL datasources', () => {
+    const out = expandStoredConfigForFormDefaults('postgresql', {
+      connectionString: 'postgresql://u:p@h:5432/db',
+    });
+    expect(out.connectionUrl).toBe('postgresql://u:p@h:5432/db');
+  });
+
+  it('maps jsonUrl for json-online and fills url aliases', () => {
+    expect(
+      expandStoredConfigForFormDefaults('json-online', {
+        jsonUrl: 'https://example.com/a.json',
+      }).jsonUrl,
+    ).toBe('https://example.com/a.json');
+    expect(
+      expandStoredConfigForFormDefaults('json-online', {
+        url: 'https://example.com/a.json',
+      }).jsonUrl,
+    ).toBe('https://example.com/a.json');
+  });
+
+  it('maps database path for DuckDB when only legacy keys exist', () => {
+    const out = expandStoredConfigForFormDefaults('duckdb', {
+      connectionUrl: ':memory:',
+    });
+    expect(out.database).toBe(':memory:');
+  });
+
+  it('fills sharedLink for gsheet-csv from url/connectionUrl', () => {
+    expect(
+      expandStoredConfigForFormDefaults('gsheet-csv', {
+        url: 'https://docs.google.com/spreadsheets/d/abc/edit#gid=0',
+      }).sharedLink,
+    ).toBe('https://docs.google.com/spreadsheets/d/abc/edit#gid=0');
+  });
+
+  it('cleans invalid gsheet sharedLink and recovers from url', () => {
+    expect(
+      expandStoredConfigForFormDefaults('gsheet-csv', {
+        sharedLink: 'postgresql://u:p@h:5432/db',
+        url: 'https://docs.google.com/spreadsheets/d/abc/edit#gid=0',
+      }).sharedLink,
+    ).toBe('https://docs.google.com/spreadsheets/d/abc/edit#gid=0');
+  });
+
+  it('fills url/jsonUrl for non-legacy schema forms', () => {
+    const out = expandStoredConfigForFormDefaults('some-new-extension', {
+      jsonUrl: 'https://x.com/f.json',
+    });
+    expect(out.url).toBe('https://x.com/f.json');
+    expect(out.jsonUrl).toBe('https://x.com/f.json');
   });
 });

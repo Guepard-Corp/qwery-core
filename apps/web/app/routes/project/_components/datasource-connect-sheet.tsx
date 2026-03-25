@@ -10,7 +10,7 @@ function stringifySorted(obj: Record<string, unknown>): string {
 }
 import type { DatasourcePreviewRef } from './datasource-preview';
 
-import { Pencil, Shuffle, X } from 'lucide-react';
+import { Check, Pencil, Shuffle, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle } from '@qwery/ui/sheet';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
@@ -123,6 +123,11 @@ export function DatasourceConnectSheet({
     setDatasourceName(editingNameRef.current);
     setIsEditingName(false);
   }, []);
+
+  const beginEditingName = useCallback(() => {
+    editingNameRef.current = datasourceName;
+    setIsEditingName(true);
+  }, [datasourceName]);
 
   const handleNameKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -242,13 +247,22 @@ export function DatasourceConnectSheet({
                         ref={titleInputRef}
                         value={datasourceName}
                         onChange={(e) => setDatasourceName(e.target.value)}
-                        onBlur={handleNameSave}
                         onKeyDown={handleNameKeyDown}
                         maxLength={DATASOURCE_INPUT_MAX_LENGTH.name}
                         autoComplete="off"
                         className="min-w-[120px] flex-1 border-0 bg-transparent px-0 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         placeholder="Name..."
                       />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={handleNameSave}
+                        aria-label="Save name"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
                       {!existingDatasource && (
                         <Button
                           type="button"
@@ -267,7 +281,7 @@ export function DatasourceConnectSheet({
                         variant="ghost"
                         className="h-8 w-8 shrink-0"
                         onClick={handleNameCancel}
-                        aria-label="Discard changes"
+                        aria-label="Discard name changes"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -300,10 +314,7 @@ export function DatasourceConnectSheet({
                           'h-8 w-8 shrink-0 transition-opacity',
                           isHoveringName ? 'opacity-100' : 'opacity-0',
                         )}
-                        onClick={() => {
-                          editingNameRef.current = datasourceName;
-                          setIsEditingName(true);
-                        }}
+                        onClick={beginEditingName}
                         aria-label="Edit name"
                       >
                         <Pencil className="h-4 w-4" />

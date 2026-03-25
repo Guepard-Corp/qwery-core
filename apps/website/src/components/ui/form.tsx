@@ -53,6 +53,10 @@ const useFormField = () => {
   }
 
   const fieldState = getFieldState(fieldContext.name, formState);
+  const showValidationError =
+    fieldState.isTouched || formState.submitCount > 0;
+  const errorForDisplay =
+    fieldState.error && showValidationError ? fieldState.error : undefined;
 
   const { id } = itemContext;
 
@@ -63,6 +67,8 @@ const useFormField = () => {
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
     ...fieldState,
+    error: errorForDisplay,
+    invalid: !!errorForDisplay,
   };
 };
 

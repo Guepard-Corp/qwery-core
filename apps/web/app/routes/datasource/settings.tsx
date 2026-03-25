@@ -90,6 +90,9 @@ export default function ProjectDatasourceViewPage() {
       projectSlug={datasource.data.projectId ?? ''}
       extensionMeta={extension.data}
       existingDatasource={datasource.data}
+      initialFormValues={
+        datasource.data.config as Record<string, unknown> | undefined
+      }
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />

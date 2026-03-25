@@ -264,6 +264,7 @@ export function DatasourceConnectionFields({
   const connectionValueKey = getConnectionValueKey(
     config.connectionFieldKind,
     formConfig ?? undefined,
+    extensionId,
   );
 
   const schema = useMemo(
@@ -305,7 +306,12 @@ export function DatasourceConnectionFields({
   );
 
   const values = useWatch({ control: form.control });
-  const isValid = form.formState.isValid;
+  const isValid = useMemo(
+    () =>
+      schema.safeParse((values ?? form.getValues()) as Record<string, unknown>)
+        .success,
+    [schema, values, form],
+  );
 
   const hostValue = useWatch({ control: form.control, name: 'host' });
   useEffect(() => {
@@ -426,6 +432,9 @@ export function DatasourceConnectionFields({
     (connectionFieldKind === 'apiKey' ? 'API Key' : 'Connection String');
 
   const rootError = form.formState.errors._root?.message as string | undefined;
+  const { submitCount, touchedFields } = form.formState;
+  const showRootError =
+    !!rootError && (submitCount > 0 || Object.keys(touchedFields).length > 0);
 
   const content = (
     <div className={cn('space-y-4', className)}>
@@ -505,7 +514,7 @@ export function DatasourceConnectionFields({
           showSslToggle={showSslToggle}
         />
       )}
-      {rootError ? (
+      {showRootError ? (
         <p
           className="border-destructive/30 bg-destructive/5 text-destructive dark:bg-destructive/10 rounded-r-md border-l-4 px-3 py-2.5 text-sm font-medium dark:text-red-400"
           role="alert"

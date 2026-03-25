@@ -12,12 +12,6 @@ function buildDatasourceKeyCandidates(value: string): string[] {
   candidates.add(normalized.replace(/\./g, '-'));
   candidates.add(normalized.replace(/\./g, '_'));
 
-  // Support driver ids and scoped datasource names (e.g. postgresql.default)
-  const dotBase = normalized.split('.')[0];
-  if (dotBase) {
-    candidates.add(dotBase);
-  }
-
   // Intentionally do not collapse `foo-bar` / `foo_bar` to `foo`.
   // Sibling extensions should not override each other's icons.
 

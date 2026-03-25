@@ -125,7 +125,10 @@ export function createDatasourcesRoutes(
             400,
           );
         }
-        const bodyRead = await readResponseBodyCapped(res, VALIDATE_URL_MAX_BYTES);
+        const bodyRead = await readResponseBodyCapped(
+          res,
+          VALIDATE_URL_MAX_BYTES,
+        );
         if (!bodyRead.ok) {
           return c.json({ error: 'JSON file too large (max 5MB)' }, 400);
         }

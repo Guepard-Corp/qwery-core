@@ -125,18 +125,15 @@ export function DatasourceS3Fields({
       ...defaultS3Values,
       ...(defaultValues as Partial<S3FormValues> | undefined),
     },
-    mode: 'onChange',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
-
-  useEffect(() => {
-    form.trigger();
-  }, [form]);
 
   const watched = useWatch({ control: form.control });
   const provider = (watched?.provider as string) ?? 'aws';
   const showEndpoint = provider !== 'aws';
   const isDigitalOcean = provider === 'digitalocean';
-  const isValid = form.formState.isValid;
+  const isValid = S3_FORM_SCHEMA.safeParse(watched ?? form.getValues()).success;
 
   useEffect(() => {
     const raw = (watched ?? form.getValues()) as Record<string, unknown>;
