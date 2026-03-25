@@ -38,6 +38,7 @@ import { generateRandomName } from '~/lib/names';
 import { useTestConnection } from '~/lib/mutations/use-test-connection';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
 import { useExtensionSchema } from '~/lib/queries/use-extension-schema';
+import { normalizeDatasourceConfigForProvider } from '~/lib/utils/datasource-utils';
 import { FormRenderer } from '@qwery/ui/form-renderer';
 import {
   getUrlForValidation,
@@ -829,6 +830,7 @@ export function DatasourceConnectForm({
             </div>
           ) : (
             <div className="space-y-6">
+<<<<<<< HEAD
               {extensionId === 's3' ? (
                 <DatasourceS3Fields
                   key={existingDatasource?.id ?? 'new'}
@@ -879,6 +881,27 @@ export function DatasourceConnectForm({
                   </Button>
                 </div>
               ) : urlValidation.error ? (
+=======
+              <FormRenderer
+                schema={effectiveSchema}
+                onSubmit={() => {}}
+                formId={formId ?? 'datasource-form'}
+                locale={i18n.resolvedLanguage}
+                onFormReady={(values) =>
+                  handleFormReady(values as Record<string, unknown>)
+                }
+                onValidityChange={setSchemaValid}
+                defaultValues={
+                  existingDatasource
+                    ? normalizeDatasourceConfigForProvider(
+                        existingDatasource.datasource_provider,
+                        existingDatasource.config,
+                      )
+                    : undefined
+                }
+              />
+              {urlValidation.error ? (
+>>>>>>> e7fa8e50b (refactor(web): improve datasource subpages)
                 <p
                   className="border-destructive/30 bg-destructive/5 text-destructive dark:border-destructive/40 dark:bg-destructive/10 mt-1 flex gap-2 rounded-md border px-3 py-1.5 text-xs leading-snug font-medium dark:text-red-300"
                   role="alert"

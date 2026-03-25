@@ -7,33 +7,12 @@ import {
 } from '@qwery/ui/qwery/datasource/columns';
 import { useGetDatasourceMetadata } from '~/lib/queries/use-get-datasource-metadata';
 import type { Column, Table } from '@qwery/domain/entities';
-import { GetDatasourceBySlugService } from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
 
 import type { Route } from './+types/table';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
+import { loadDatasourceBySlug } from '~/lib/loaders/load-datasource-by-slug';
+import pathsConfig, { createPath } from '~/config/paths.config';
 
-export async function clientLoader(args: Route.ClientLoaderArgs) {
-  const slug = args.params.slug;
-  if (!slug) {
-    throw new Response('Not Found', { status: 404 });
-  }
-
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getDatasourceService = new GetDatasourceBySlugService(
-    repositories.datasource,
-  );
-
-  try {
-    const datasource = await getDatasourceService.execute(slug);
-    return { datasource };
-  } catch (error) {
-    if (error instanceof DomainException) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    throw error;
-  }
-}
+export const clientLoader = loadDatasourceBySlug;
 
 export default function TablePage(props: Route.ComponentProps) {
   const params = useParams();
@@ -99,7 +78,7 @@ export default function TablePage(props: Route.ComponentProps) {
     );
   }
 
-  const tablesPath = `/ds/${slug}/tables`;
+  const tablesPath = createPath(pathsConfig.app.datasourceTables, slug);
 
   return (
     <div className="space-y-4 p-6">

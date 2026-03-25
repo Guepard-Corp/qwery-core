@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Tables, type TableListItem } from '@qwery/ui/qwery/datasource/tables';
@@ -13,31 +13,11 @@ import { useGetDatasourceMetadata } from '~/lib/queries/use-get-datasource-metad
 import type { Table, Column } from '@qwery/domain/entities';
 
 import type { Route } from './+types/tables';
-import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
-import { GetDatasourceBySlugService } from '@qwery/domain/services';
-import { DomainException } from '@qwery/domain/exceptions';
+import { loadDatasourceBySlug } from '~/lib/loaders/load-datasource-by-slug';
+import pathsConfig, { createPath } from '~/config/paths.config';
+import { DevProfiler } from '~/lib/perf/dev-profiler';
 
-export async function clientLoader(args: Route.ClientLoaderArgs) {
-  const slug = args.params.slug;
-  if (!slug) {
-    throw new Response('Not Found', { status: 404 });
-  }
-
-  const repositories = await getRepositoriesForLoader(args.request);
-  const getDatasourceService = new GetDatasourceBySlugService(
-    repositories.datasource,
-  );
-
-  try {
-    const datasource = await getDatasourceService.execute(slug);
-    return { datasource };
-  } catch (error) {
-    if (error instanceof DomainException) {
-      throw new Response('Not Found', { status: 404 });
-    }
-    throw error;
-  }
-}
+export const clientLoader = loadDatasourceBySlug;
 
 export default function TablesPage(props: Route.ComponentProps) {
   const params = useParams();
@@ -63,29 +43,36 @@ export default function TablesPage(props: Route.ComponentProps) {
     return tables.filter((table) => table.schema === selectedSchema);
   }, [metadata, selectedSchema]);
 
-  const tableListItems: TableListItem[] = useMemo(() => {
-    const allColumns = (metadata?.columns || []) as Column[];
-    return filteredTables.map((table) => {
-      const columnCount = allColumns.filter(
-        (col) => col.table_id === table.id && col.table === table.name,
-      ).length;
-      return {
-        tableName: table.name,
-        description: table.comment,
-        rowsEstimated: table.live_rows_estimate || 0,
-        sizeEstimated: table.size || '0 B',
-        numberOfColumns: columnCount || table.columns?.length || 0,
-      };
-    });
-  }, [filteredTables, metadata]);
+  const columnCountByTableId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const col of (metadata?.columns ?? []) as Column[]) {
+      map.set(col.table_id, (map.get(col.table_id) ?? 0) + 1);
+    }
+    return map;
+  }, [metadata?.columns]);
 
-  const handleTableClick = (table: TableListItem) => {
-    const tableData = filteredTables.find((t) => t.name === table.tableName);
-    if (!tableData) return;
-    const schema = encodeURIComponent(tableData.schema ?? 'main');
-    const tableName = encodeURIComponent(tableData.name);
-    navigate(`/ds/${slug}/tables/${schema}/${tableName}`);
-  };
+  const tableListItems: TableListItem[] = useMemo(() => {
+    return filteredTables.map((table) => ({
+      tableName: table.name,
+      schema: table.schema ?? 'main',
+      description: table.comment,
+      rowsEstimated: table.live_rows_estimate || 0,
+      sizeEstimated: table.size || '0 B',
+      numberOfColumns:
+        columnCountByTableId.get(table.id) ?? table.columns?.length ?? 0,
+    }));
+  }, [filteredTables, columnCountByTableId]);
+
+  const basePath = createPath(pathsConfig.app.datasourceTables, slug);
+
+  const handleTableClick = useCallback(
+    (table: TableListItem) => {
+      const schema = encodeURIComponent(table.schema ?? 'main');
+      const tableName = encodeURIComponent(table.tableName);
+      navigate(`${basePath}/${schema}/${tableName}`);
+    },
+    [basePath, navigate],
+  );
 
   if (!datasource) {
     throw new Response('Not Found', { status: 404 });
@@ -141,7 +128,9 @@ export default function TablesPage(props: Route.ComponentProps) {
           </Select>
         )}
       </div>
-      <Tables tables={tableListItems} onTableClick={handleTableClick} />
+      <DevProfiler id="DatasourceTables/Tables">
+        <Tables tables={tableListItems} onTableClick={handleTableClick} />
+      </DevProfiler>
     </div>
   );
 }

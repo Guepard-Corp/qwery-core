@@ -12,6 +12,27 @@ export type DatasourceExtensionMeta = Pick<
   'id' | 'supportsPreview' | 'previewUrlKind' | 'previewDataFormat'
 >;
 
+export function normalizeDatasourceConfigForProvider(
+  datasourceProvider: string,
+  config: unknown,
+): Record<string, unknown> {
+  if (!config || typeof config !== 'object') return {};
+  const cfg = config as Record<string, unknown>;
+
+  if (datasourceProvider === 'gsheet-csv') {
+    const sharedLink =
+      typeof cfg.sharedLink === 'string'
+        ? cfg.sharedLink
+        : typeof cfg.url === 'string'
+          ? cfg.url
+          : undefined;
+
+    return sharedLink !== undefined ? { ...cfg, sharedLink } : cfg;
+  }
+
+  return cfg;
+}
+
 const GSHEET_HOST_REGEX = /^(?:[a-z0-9-]+\.)?docs\.google\.com$/i;
 const GSHEET_PATH_REGEX = /^\/spreadsheets\/d\//;
 

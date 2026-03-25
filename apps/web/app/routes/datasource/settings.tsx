@@ -1,14 +1,16 @@
+import { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
 import { Database, Loader2 } from 'lucide-react';
 
 import { Trans } from '@qwery/ui/trans';
 
-import pathsConfig from '~/config/paths.config';
-import { createPath } from '~/config/qwery.navigation.config';
+import pathsConfig, { createPath } from '~/config/paths.config';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
 import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { useProject } from '~/lib/context/project-context';
+import { DevProfiler } from '~/lib/perf/dev-profiler';
 
 import { DatasourceConnectSheet } from '../project/_components/datasource-connect-sheet';
 
@@ -16,6 +18,7 @@ export default function ProjectDatasourceViewPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { repositories } = useWorkspace();
+  const { projectSlug } = useProject();
   const datasourceRepository = repositories.datasource;
 
   const datasource = useGetDatasourceBySlug(datasourceRepository, slug ?? '');
@@ -23,25 +26,18 @@ export default function ProjectDatasourceViewPage() {
     datasource?.data?.datasource_provider ?? '',
   );
 
-  const handleSuccess = () => {
-    navigate(createPath(pathsConfig.app.datasourceSchema, slug ?? ''), {
-      replace: true,
-    });
-  };
+  const schemaPath = createPath(pathsConfig.app.datasourceSchema, slug ?? '');
 
-  const handleCancel = () => {
-    navigate(createPath(pathsConfig.app.datasourceSchema, slug ?? ''), {
-      replace: true,
-    });
-  };
+  const closeToSchema = useCallback(() => {
+    navigate(schemaPath, { replace: true });
+  }, [navigate, schemaPath]);
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      navigate(createPath(pathsConfig.app.datasourceSchema, slug ?? ''), {
-        replace: true,
-      });
-    }
-  };
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) closeToSchema();
+    },
+    [closeToSchema],
+  );
 
   if (datasource.isLoading || extension.isLoading) {
     return (
@@ -83,18 +79,20 @@ export default function ProjectDatasourceViewPage() {
   }
 
   return (
-    <DatasourceConnectSheet
-      open={true}
-      onOpenChange={handleOpenChange}
-      extensionId={datasource.data.datasource_provider}
-      projectSlug={datasource.data.projectId ?? ''}
-      extensionMeta={extension.data}
-      existingDatasource={datasource.data}
-      initialFormValues={
-        datasource.data.config as Record<string, unknown> | undefined
-      }
-      onSuccess={handleSuccess}
-      onCancel={handleCancel}
-    />
+    <DevProfiler id="DatasourceSettings/DatasourceConnectSheet">
+      <DatasourceConnectSheet
+        open={true}
+        onOpenChange={handleOpenChange}
+        extensionId={datasource.data.datasource_provider}
+        projectSlug={projectSlug ?? ''}
+        extensionMeta={extension.data}
+        existingDatasource={datasource.data}
+        initialFormValues={
+          datasource.data.config as Record<string, unknown> | undefined
+        }
+        onSuccess={closeToSchema}
+        onCancel={closeToSchema}
+      />
+    </DevProfiler>
   );
 }
