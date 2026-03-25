@@ -7,7 +7,7 @@ const urlField = z
   .max(DATASOURCE_INPUT_MAX_LENGTH.url)
   .url()
   .meta({
-    label: 'JSO. Use S3 extension to connect to S3-compatible storage that needs authentication',
+    label: 'JSON file URL. Use S3 extension for authenticated S3-compatible storage.',
     placeholder: 'https://example.com/data.json',
   });
 

@@ -25,10 +25,7 @@ export function isDataFileUrl(url: string | null | undefined): boolean {
     return (
       path.endsWith('.json') ||
       path.endsWith('.csv') ||
-      path.endsWith('.parquet') ||
-      path.includes('.json?') ||
-      path.includes('.csv?') ||
-      path.includes('.parquet?')
+      path.endsWith('.parquet')
     );
   } catch {
     return false;

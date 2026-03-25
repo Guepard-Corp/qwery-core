@@ -177,7 +177,7 @@ export const DatasourcePreview = forwardRef<
   }, [previewUrl, needsPublicationCheck]);
 
   useEffect(() => {
-    if (!needsPublicationCheck || !previewUrl) {
+    if (!needsPublicationCheck || !previewUrl || validationError) {
       queueMicrotask(() =>
         setPreviewState((p) => ({ ...p, publicationStatus: 'unknown' })),
       );
@@ -204,13 +204,13 @@ export const DatasourcePreview = forwardRef<
       .catch(() => {
         setPreviewState((p) => ({ ...p, publicationStatus: 'unknown' }));
       });
-  }, [needsPublicationCheck, previewUrl, formValues]);
+  }, [needsPublicationCheck, previewUrl, formValues, validationError]);
 
   const needsDataFetching = extensionMeta?.previewUrlKind === 'data-file';
   const dataFormat = extensionMeta?.previewDataFormat;
 
   useEffect(() => {
-    if (!needsDataFetching || !previewUrl) {
+    if (!needsDataFetching || !previewUrl || validationError) {
       if (!isGsheetLikeUrl(previewUrl)) {
         queueMicrotask(() =>
           setDataState((d) => ({
@@ -268,7 +268,14 @@ export const DatasourcePreview = forwardRef<
       });
 
     return () => controller.abort();
-  }, [previewUrl, refreshKey, needsDataFetching, dataFormat, t]);
+  }, [
+    previewUrl,
+    refreshKey,
+    needsDataFetching,
+    dataFormat,
+    t,
+    validationError,
+  ]);
 
   useEffect(() => {
     if (

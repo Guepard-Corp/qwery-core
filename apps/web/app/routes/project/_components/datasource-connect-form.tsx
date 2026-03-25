@@ -190,7 +190,7 @@ export function DatasourceConnectForm({
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const nameSnapshotRef = useRef('');
+  const nameSnapshotRef = useRef(internalName);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, unknown> | null>(
@@ -199,6 +199,10 @@ export function DatasourceConnectForm({
   const [schemaValid, setSchemaValid] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
   const [validationError, setValidationError] = useState<ZodError | null>(null);
+  const lastValidatedRef = useRef<{
+    valuesKey: string;
+    config: Record<string, unknown>;
+  } | null>(null);
 
   const urlValidation = useMemo(() => {
     if (!extensionMeta?.supportsPreview) {
@@ -346,6 +350,7 @@ export function DatasourceConnectForm({
     (values: Record<string, unknown>) => {
       setFormValues(values);
       onFormValuesChange?.(values);
+      lastValidatedRef.current = null;
     },
     [onFormValuesChange],
   );
@@ -419,6 +424,10 @@ export function DatasourceConnectForm({
     }
     setValidationError(null);
     const validData = result.config;
+    lastValidatedRef.current = {
+      valuesKey: JSON.stringify(formValues),
+      config: validData,
+    };
 
     const dsMeta = extension.data as DatasourceExtension | undefined;
     if (!dsMeta) {
@@ -497,20 +506,32 @@ export function DatasourceConnectForm({
       return;
     }
 
-    const result = await validateDatasourceConfigPipeline({
-      values: formValues,
-      extensionId,
-      schema: effectiveSchema,
-      extensionMeta: extension.data,
-    });
-    if (!result.success) {
-      setValidationError(result.zodError ?? null);
-      toast.error(result.error);
-      setIsConnecting(false);
-      return;
+    const valuesKey = JSON.stringify(formValues);
+    const cached =
+      lastValidatedRef.current?.valuesKey === valuesKey
+        ? lastValidatedRef.current.config
+        : null;
+
+    let validData: Record<string, unknown>;
+    if (cached) {
+      validData = cached;
+    } else {
+      const result = await validateDatasourceConfigPipeline({
+        values: formValues,
+        extensionId,
+        schema: effectiveSchema,
+        extensionMeta: extension.data,
+      });
+      if (!result.success) {
+        setValidationError(result.zodError ?? null);
+        toast.error(result.error);
+        setIsConnecting(false);
+        return;
+      }
+      setValidationError(null);
+      validData = result.config;
+      lastValidatedRef.current = { valuesKey, config: validData };
     }
-    setValidationError(null);
-    const validData = result.config;
 
     const dsMeta = extension.data as DatasourceExtension | undefined;
     if (!dsMeta) {
@@ -575,20 +596,32 @@ export function DatasourceConnectForm({
     }
     setIsConnecting(true);
 
-    const result = await validateDatasourceConfigPipeline({
-      values: formValues,
-      extensionId,
-      schema: effectiveSchema,
-      extensionMeta: extension.data,
-    });
-    if (!result.success) {
-      setValidationError(result.zodError ?? null);
-      toast.error(result.error);
-      setIsConnecting(false);
-      return;
+    const valuesKey = JSON.stringify(formValues);
+    const cached =
+      lastValidatedRef.current?.valuesKey === valuesKey
+        ? lastValidatedRef.current.config
+        : null;
+
+    let validData: Record<string, unknown>;
+    if (cached) {
+      validData = cached;
+    } else {
+      const result = await validateDatasourceConfigPipeline({
+        values: formValues,
+        extensionId,
+        schema: effectiveSchema,
+        extensionMeta: extension.data,
+      });
+      if (!result.success) {
+        setValidationError(result.zodError ?? null);
+        toast.error(result.error);
+        setIsConnecting(false);
+        return;
+      }
+      setValidationError(null);
+      validData = result.config;
+      lastValidatedRef.current = { valuesKey, config: validData };
     }
-    setValidationError(null);
-    const validData = result.config;
 
     let driver;
     try {

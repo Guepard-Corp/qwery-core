@@ -10,6 +10,8 @@ vi.mock('~/lib/utils/validate-datasource-url-structure', () => ({
 }));
 
 import { validateUrlStructure } from '~/lib/utils/validate-datasource-url-structure';
+import { EXTENSION_META_FOR_VALIDATION } from '~/lib/utils/datasource-form-config';
+import extensionsRegistry from '../../../public/extensions/registry.json';
 
 const jsonOnlinePreviewMeta: DatasourceExtensionMeta = {
   id: 'json-online',
@@ -60,9 +62,7 @@ describe('validateDatasourceConfigPipeline', () => {
     });
     expect(result.success).toBe(true);
     if (!result.success) return;
-    // For legacy json-online, `validateDatasourceConfigPipeline` normalizes to `{ jsonUrl: ... }`
-    // (used by the legacy form). Driver-level normalization is tested in the extension package.
-    expect(result.config.jsonUrl).toBe('https://example.com/data.json');
+    expect(result.config.url).toBe('https://example.com/data.json');
   });
 
   it('rejects legacy gsheet-csv shared link exceeding max length', async () => {
@@ -118,6 +118,35 @@ describe('validateDatasourceConfigPipeline', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toBe('URL does not return valid JSON');
+    }
+  });
+
+  it('EXTENSION_META_FOR_VALIDATION matches registry', () => {
+    const registry = (extensionsRegistry as { datasources?: unknown[] })
+      .datasources;
+    expect(Array.isArray(registry)).toBe(true);
+    if (!Array.isArray(registry)) return;
+
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const ds of registry) {
+      if (ds && typeof ds === 'object' && 'id' in ds) {
+        byId.set(
+          String((ds as { id: unknown }).id),
+          ds as Record<string, unknown>,
+        );
+      }
+    }
+
+    for (const [id, meta] of Object.entries(EXTENSION_META_FOR_VALIDATION)) {
+      const reg = byId.get(id);
+      expect(reg).toBeTruthy();
+      if (!reg) continue;
+
+      expect(reg.supportsPreview).toBe(meta.supportsPreview);
+      expect(reg.previewUrlKind).toBe(meta.previewUrlKind);
+      if ('previewDataFormat' in meta && meta.previewDataFormat) {
+        expect(reg.previewDataFormat).toBe(meta.previewDataFormat);
+      }
     }
   });
 });

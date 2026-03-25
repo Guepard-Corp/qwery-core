@@ -94,4 +94,28 @@ describe('ssrf-guard', () => {
       fetchWithSsrfProtection('https://example.com'),
     ).rejects.toThrow(/Too many redirects/);
   });
+
+  it('follows multiple redirects when all targets are safe', async () => {
+    mockedIsUrlSafe.mockResolvedValue(true);
+
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'https://example.com/r1' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: '/r2' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+    const res = await fetchWithSsrfProtection('https://example.com/start');
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
 });

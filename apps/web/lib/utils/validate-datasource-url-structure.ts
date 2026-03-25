@@ -13,10 +13,21 @@ export interface ValidateUrlStructureResult {
 }
 
 const URL_STRUCTURE_CACHE_TTL_MS = 60_000;
+const URL_STRUCTURE_CACHE_MAX_ENTRIES = 200;
 const urlStructureSuccessCache = new Map<
   string,
   { expiresAt: number; result: ValidateUrlStructureResult }
 >();
+
+function purgeExpiredCacheEntries(now: number): void {
+  // Opportunistic cleanup to keep cache fresh; bounded work.
+  let checked = 0;
+  for (const [k, v] of urlStructureSuccessCache) {
+    checked += 1;
+    if (v.expiresAt <= now) urlStructureSuccessCache.delete(k);
+    if (checked >= 20) break;
+  }
+}
 
 function urlStructureCacheKey(
   url: string,
@@ -39,9 +50,11 @@ export async function validateUrlStructure(
 
   const key = urlStructureCacheKey(trimmed, expectedFormat);
   const now = Date.now();
+  purgeExpiredCacheEntries(now);
   const hit = urlStructureSuccessCache.get(key);
-  if (hit && hit.expiresAt > now && hit.result.valid) {
-    return hit.result;
+  if (hit) {
+    if (hit.expiresAt > now && hit.result.valid) return hit.result;
+    urlStructureSuccessCache.delete(key);
   }
 
   try {
@@ -55,6 +68,13 @@ export async function validateUrlStructure(
       error: result.error ?? null,
     };
     if (normalized.valid) {
+      purgeExpiredCacheEntries(now);
+      if (urlStructureSuccessCache.size >= URL_STRUCTURE_CACHE_MAX_ENTRIES) {
+        const oldestKey = urlStructureSuccessCache.keys().next().value as
+          | string
+          | undefined;
+        if (oldestKey) urlStructureSuccessCache.delete(oldestKey);
+      }
       urlStructureSuccessCache.set(key, {
         expiresAt: now + URL_STRUCTURE_CACHE_TTL_MS,
         result: normalized,

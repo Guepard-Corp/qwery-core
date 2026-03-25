@@ -574,7 +574,10 @@ const DEFAULT_RULE: ProviderRule = {
  * previewUrlKind / previewDataFormat. If the extension definition changes,
  * update this entry or replace with registry-driven meta at call sites.
  */
-const EXTENSION_META_FOR_VALIDATION: Record<string, DatasourceExtensionMeta> = {
+export const EXTENSION_META_FOR_VALIDATION: Record<
+  string,
+  DatasourceExtensionMeta
+> = {
   'gsheet-csv': {
     id: 'gsheet-csv',
     supportsPreview: true,
@@ -724,6 +727,12 @@ const LEGACY_RULES: Record<string, ProviderRule> = {
       ['jsonUrl', 'url', 'connectionUrl'],
       'Provide a JSON file URL',
     ),
+    // Canonicalize storage to `{ url }` so driver/runtime config is stable.
+    normalize: (c) => ({
+      url: (c.jsonUrl || c.url || c.connectionUrl || c.connectionString) as
+        | string
+        | undefined,
+    }),
     connectionFieldKind: 'fileUrl',
     placeholders: {
       connectionString: 'https://example.com/data.json',

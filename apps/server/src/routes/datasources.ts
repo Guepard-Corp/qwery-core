@@ -17,9 +17,24 @@ import {
 } from '../lib/http-utils';
 import { Code } from '@qwery/domain/common';
 import { fetchWithSsrfProtection, SsrfBlockedError } from '../lib/ssrf-guard';
+import { checkRateLimit } from '../lib/rate-limit';
 
 const VALIDATE_URL_TIMEOUT_MS = 15_000;
 const VALIDATE_URL_MAX_BYTES = 5 * 1024 * 1024;
+const VALIDATE_URL_RATE_LIMIT_MAX = 30;
+const VALIDATE_URL_RATE_LIMIT_WINDOW_MS = 60_000;
+
+function getRateLimitKey(c: {
+  req: { header: (name: string) => string | undefined };
+}): string {
+  const cf = c.req.header('cf-connecting-ip');
+  if (cf?.trim()) return cf.trim();
+  const real = c.req.header('x-real-ip');
+  if (real?.trim()) return real.trim();
+  const fwd = c.req.header('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0]?.trim() || fwd.trim();
+  return 'unknown';
+}
 
 async function readResponseBodyCapped(
   res: Response,
@@ -100,6 +115,17 @@ export function createDatasourcesRoutes(
 
   app.post('/proxy-json', async (c) => {
     try {
+      const key = getRateLimitKey(c);
+      if (
+        !checkRateLimit(
+          `datasources:proxy-json:${key}`,
+          VALIDATE_URL_RATE_LIMIT_MAX,
+          VALIDATE_URL_RATE_LIMIT_WINDOW_MS,
+        )
+      ) {
+        return c.json({ error: 'Too many requests' }, 429);
+      }
+
       const body = await c.req.json();
       const parsed = proxyJsonBodySchema.safeParse(body);
       if (!parsed.success) {
@@ -161,6 +187,17 @@ export function createDatasourcesRoutes(
 
   app.post('/validate-url', async (c) => {
     try {
+      const key = getRateLimitKey(c);
+      if (
+        !checkRateLimit(
+          `datasources:validate-url:${key}`,
+          VALIDATE_URL_RATE_LIMIT_MAX,
+          VALIDATE_URL_RATE_LIMIT_WINDOW_MS,
+        )
+      ) {
+        return c.json({ valid: false, error: 'Too many requests' }, 429);
+      }
+
       const body = await c.req.json();
       const parsed = validateUrlBodySchema.safeParse(body);
       if (!parsed.success) {
