@@ -540,7 +540,7 @@ export const DatasourcePreview = forwardRef<
                       itemsPerPage={
                         usesParquetFormat ||
                         usesCsvFormat ||
-                        (needsPublicationCheck && !!jsonData)
+                        needsPublicationCheck
                           ? 20
                           : undefined
                       }
@@ -630,7 +630,7 @@ export const DatasourcePreview = forwardRef<
                   <div className="border-border/40 bg-background/60 mr-2 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm backdrop-blur-md">
                     {(usesParquetFormat ||
                       (usesCsvFormat && !!jsonData) ||
-                      (needsPublicationCheck && !!jsonData)) && (
+                      needsPublicationCheck) && (
                       <Button
                         variant={viewMode === 'table' ? 'default' : 'ghost'}
                         size="sm"
