@@ -84,6 +84,7 @@ const SchemaGraphInner = forwardRef<SchemaGraphHandle, SchemaGraphProps>(
       (state) => state.nodesDraggable || state.elementsSelectable,
     );
     const lastLockedToastAtRef = useRef(0);
+    const previousInteractiveStateRef = useRef<boolean | null>(null);
 
     const nodeTypes = useMemo<NodeTypes>(
       () => ({
@@ -320,6 +321,24 @@ const SchemaGraphInner = forwardRef<SchemaGraphHandle, SchemaGraphProps>(
       },
       [isCanvasInteractive],
     );
+
+    useEffect(() => {
+      const previousState = previousInteractiveStateRef.current;
+      if (previousState === null) {
+        previousInteractiveStateRef.current = isCanvasInteractive;
+        return;
+      }
+
+      if (previousState !== isCanvasInteractive) {
+        toast.info(
+          isCanvasInteractive
+            ? 'Schema graph unlocked.'
+            : 'Schema graph locked.',
+        );
+      }
+
+      previousInteractiveStateRef.current = isCanvasInteractive;
+    }, [isCanvasInteractive]);
 
     useEffect(() => {
       if (typeof window === 'undefined') return;

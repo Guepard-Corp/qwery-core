@@ -90,7 +90,9 @@ export const Tables = memo(function Tables({
       orderedVisibleColumns[orderedVisibleColumns.length - 1] === column &&
         'rounded-tr-xl',
     );
-  const getColumnWidthStyle = (column: TableColumn): CSSProperties | undefined => {
+  const getColumnWidthStyle = (
+    column: TableColumn,
+  ): CSSProperties | undefined => {
     switch (column) {
       case 'columns':
         return { width: 100 };
@@ -351,12 +353,12 @@ export const Tables = memo(function Tables({
 
   return (
     <div className={containerClasses}>
-      <Table className="table-fixed w-full">
+      <Table className="w-full table-fixed">
         {renderColGroup()}
         {tableHeader()}
       </Table>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <Table className="table-fixed w-full">
+        <Table className="w-full table-fixed">
           {renderColGroup()}
           <TableBody>
             {tables.map((table, index) => renderRow(index, table))}

@@ -147,7 +147,7 @@ export function Columns({
         className,
       )}
     >
-      <Table className="table-fixed w-full">
+      <Table className="w-full table-fixed">
         {renderColGroup()}
         <TableHeader className="bg-muted/50 border-b">
           <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -203,7 +203,7 @@ export function Columns({
         </TableHeader>
       </Table>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <Table className="table-fixed w-full">
+        <Table className="w-full table-fixed">
           {renderColGroup()}
           <TableBody>
             {columns.map((column, index) => (

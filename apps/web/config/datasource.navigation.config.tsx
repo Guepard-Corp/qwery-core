@@ -10,7 +10,11 @@ import { createPath } from './qwery.navigation.config';
 
 const iconClasses = 'w-4';
 
-const getRoutes = (slug: string, projectSlug?: string) =>
+const getRoutes = (
+  slug: string,
+  projectSlug?: string,
+  onSettingsClick?: () => void,
+) =>
   [
     {
       label: 'common:routes.project',
@@ -56,14 +60,19 @@ const getRoutes = (slug: string, projectSlug?: string) =>
           path: createPath(pathsConfig.app.datasourceSettings, slug),
           Icon: <Settings className={iconClasses} />,
           end: true,
+          onClick: onSettingsClick,
         },
       ],
     },
   ] satisfies z.infer<typeof NavigationConfigSchema>['routes'];
 
-export function createNavigationConfig(slug: string, projectSlug?: string) {
+export function createNavigationConfig(
+  slug: string,
+  projectSlug?: string,
+  onSettingsClick?: () => void,
+) {
   return NavigationConfigSchema.parse({
-    routes: getRoutes(slug, projectSlug),
+    routes: getRoutes(slug, projectSlug, onSettingsClick),
   });
 }
 

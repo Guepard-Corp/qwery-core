@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { PanelRightOpen } from 'lucide-react';
 
@@ -19,6 +19,10 @@ import { AppLogo } from '~/components/app-logo';
 import { createNavigationConfig } from '~/config/datasource.navigation.config';
 import pathsConfig, { createPath } from '~/config/paths.config';
 import { useProject } from '~/lib/context/project-context';
+import { useWorkspace } from '~/lib/context/workspace-context';
+import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
+import { useGetExtension } from '~/lib/queries/use-get-extension';
+import { DatasourceConnectSheet } from '../../project/_components/datasource-connect-sheet';
 import { SidebarOrgSelector } from '../../project/_components/sidebar-org-selector';
 
 export const DatasourceSidebar = memo(function DatasourceSidebar() {
@@ -27,11 +31,33 @@ export const DatasourceSidebar = memo(function DatasourceSidebar() {
   const { toggleSidebar, state } = useSidebar();
   const isCollapsed = state === 'collapsed';
   const { projectSlug } = useProject();
+  const { repositories } = useWorkspace();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const navigationConfig = createNavigationConfig(slug, projectSlug);
+  const datasource = useGetDatasourceBySlug(
+    repositories.datasource,
+    slug ?? '',
+  );
+  const extension = useGetExtension(datasource.data?.datasource_provider ?? '');
+
+  const handleOpenSettings = useCallback(() => {
+    setIsSettingsOpen(true);
+  }, []);
+
+  const navigationConfig = createNavigationConfig(
+    slug,
+    projectSlug,
+    handleOpenSettings,
+  );
   const logoHref = projectSlug
     ? createPath(pathsConfig.app.projectDatasources, projectSlug)
     : pathsConfig.app.home;
+  const datasourceData = datasource.data;
+  const extensionData = extension.data;
+  const canRenderSettingsSheet = useMemo(
+    () => Boolean(isSettingsOpen && datasourceData && extensionData),
+    [isSettingsOpen, datasourceData, extensionData],
+  );
 
   const handleExpandClick = useCallback(() => {
     toggleSidebar();
@@ -107,6 +133,22 @@ export const DatasourceSidebar = memo(function DatasourceSidebar() {
       <SidebarFooter className="p-1.5">
         <AccountDropdownContainer />
       </SidebarFooter>
+
+      {canRenderSettingsSheet && datasourceData && extensionData && (
+        <DatasourceConnectSheet
+          open={isSettingsOpen}
+          onOpenChange={setIsSettingsOpen}
+          extensionId={datasourceData.datasource_provider}
+          projectSlug={projectSlug ?? ''}
+          extensionMeta={extensionData}
+          existingDatasource={datasourceData}
+          initialFormValues={
+            datasourceData.config as Record<string, unknown> | undefined
+          }
+          onSuccess={() => setIsSettingsOpen(false)}
+          onCancel={() => setIsSettingsOpen(false)}
+        />
+      )}
     </Sidebar>
   );
 });

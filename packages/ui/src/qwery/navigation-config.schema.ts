@@ -32,6 +32,7 @@ const RouteSubChild = z.object({
   path: z.string(),
   Icon: z.custom<React.ReactNode>().optional(),
   end: RouteMatchingEnd,
+  onClick: z.custom<() => void>().optional(),
   renderAction: z.custom<React.ReactNode>().optional(),
   title: z.string().optional(),
 });
@@ -54,6 +55,7 @@ const RouteChild = z.object({
   path: z.string(),
   Icon: z.custom<React.ReactNode>().optional(),
   end: RouteMatchingEnd,
+  onClick: z.custom<() => void>().optional(),
   children: z.array(RouteSubChild).default([]).optional(),
   collapsible: z.boolean().default(false).optional(),
   collapsed: z.boolean().default(false).optional(),

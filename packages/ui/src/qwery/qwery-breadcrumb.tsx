@@ -9,12 +9,12 @@ import {
   Plus,
   X,
   Database,
-  Folder,
+  FolderKanban,
   Building2,
   FileCode,
   MessageSquare,
+  Table,
 } from 'lucide-react';
-
 
 import {
   Command,
@@ -52,7 +52,8 @@ export type BreadcrumbEntityType =
   | 'project'
   | 'datasource'
   | 'notebook'
-  | 'conversation';
+  | 'conversation'
+  | 'table';
 
 export interface BreadcrumbNodeConfig {
   items: BreadcrumbNodeItem[];
@@ -235,13 +236,15 @@ export function NodeDropdown({
               ) : (
                 <div className="bg-muted/50 text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded">
                   {config.type === 'project' ? (
-                    <Folder className="h-3.5 w-3.5" aria-hidden />
+                    <FolderKanban className="h-3.5 w-3.5" aria-hidden />
                   ) : config.type === 'organization' ? (
                     <Building2 className="h-3.5 w-3.5" aria-hidden />
                   ) : config.type === 'notebook' ? (
                     <FileCode className="h-3.5 w-3.5" aria-hidden />
                   ) : config.type === 'conversation' ? (
                     <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                  ) : config.type === 'table' ? (
+                    <Table className="h-3.5 w-3.5" aria-hidden />
                   ) : (
                     <Database className="h-3.5 w-3.5" aria-hidden />
                   )}
@@ -331,7 +334,9 @@ export function NodeDropdown({
                             onSelect={() => handleSelect(item)}
                             className={cn(
                               'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
-                              isCurrent ? 'bg-accent/50 text-foreground' : 'hover:bg-muted/50',
+                              isCurrent
+                                ? 'bg-accent/50 text-foreground'
+                                : 'hover:bg-muted/50',
                             )}
                           >
                             <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
@@ -344,7 +349,7 @@ export function NodeDropdown({
                                       className={cn(
                                         'h-4 w-4 object-contain transition-transform group-hover:scale-110',
                                         shouldInvertIconFromSrc(item.icon) &&
-                                        'dark:invert',
+                                          'dark:invert',
                                       )}
                                       onError={() =>
                                         setBrokenIcons((prev) =>
@@ -352,15 +357,65 @@ export function NodeDropdown({
                                         )
                                       }
                                     />
+                                  ) : config.type === 'project' ? (
+                                    <FolderKanban
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'organization' ? (
+                                    <Building2
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'notebook' ? (
+                                    <FileCode
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'conversation' ? (
+                                    <MessageSquare
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'table' ? (
+                                    <Table
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
                                   ) : (
                                     <Database
-                                      className="text-muted-foreground h-3 w-3"
+                                      className="text-muted-foreground h-3.5 w-3.5"
                                       aria-hidden
                                     />
                                   )
+                                ) : config.type === 'project' ? (
+                                  <FolderKanban
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'organization' ? (
+                                  <Building2
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'notebook' ? (
+                                  <FileCode
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'conversation' ? (
+                                  <MessageSquare
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'table' ? (
+                                  <Table
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
                                 ) : (
                                   <Database
-                                    className="text-muted-foreground h-3 w-3"
+                                    className="text-muted-foreground h-3.5 w-3.5"
                                     aria-hidden
                                   />
                                 ))}
@@ -385,7 +440,10 @@ export function NodeDropdown({
                               )}
                             </div>
                             {isCurrent && (
-                              <Check className="text-primary ml-auto h-4 w-4 shrink-0" strokeWidth={2.5} />
+                              <Check
+                                className="text-primary ml-auto h-4 w-4 shrink-0"
+                                strokeWidth={2.5}
+                              />
                             )}
                             {renderBadge?.(item)}
                           </CommandItem>
@@ -442,10 +500,10 @@ export function GenericBreadcrumb({
           return [
             ...(index > 0
               ? [
-                <BreadcrumbSeparator key={`sep-${node.current?.id ?? index}`}>
-                  <ChevronRight className="h-4 w-4" />
-                </BreadcrumbSeparator>,
-              ]
+                  <BreadcrumbSeparator key={`sep-${node.current?.id ?? index}`}>
+                    <ChevronRight className="h-4 w-4" />
+                  </BreadcrumbSeparator>,
+                ]
               : []),
             <BreadcrumbItem key={node.current?.id ?? index}>
               <NodeDropdown
@@ -577,7 +635,7 @@ export function QweryBreadcrumb({
         viewAll: t('breadcrumb.viewAllProjects'),
         new: t('breadcrumb.newProject'),
       },
-      onSelect: onProjectSelect ?? (() => { }),
+      onSelect: onProjectSelect ?? (() => {}),
       onViewAll: onViewAllProjects,
       onNew: onNewProject,
       type: 'project',
@@ -611,10 +669,10 @@ export function QweryBreadcrumb({
             : t('breadcrumb.newDatasource'),
       },
       onSelect: isNotebook
-        ? (onNotebookSelect ?? (() => { }))
+        ? (onNotebookSelect ?? (() => {}))
         : isConversation
-          ? (onConversationSelect ?? (() => { }))
-          : (onDatasourceSelect ?? (() => { })),
+          ? (onConversationSelect ?? (() => {}))
+          : (onDatasourceSelect ?? (() => {})),
       onViewAll: isNotebook
         ? onViewAllNotebooks
         : isConversation
@@ -629,9 +687,9 @@ export function QweryBreadcrumb({
       compareBy: isNotebook || isConversation ? 'id' : 'slug',
       renderBadge: isNotebook
         ? (item) =>
-          unsavedNotebookIds.includes(item.id) ? (
-            <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
-          ) : null
+            unsavedNotebookIds.includes(item.id) ? (
+              <span className="h-2 w-2 shrink-0 rounded-full border border-[#ffcb51]/50 bg-[#ffcb51] shadow-sm" />
+            ) : null
         : undefined,
       isEditingTitle: object.isEditingTitle,
       editTitleValue: object.editTitleValue,

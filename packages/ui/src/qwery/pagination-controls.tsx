@@ -69,12 +69,6 @@ export function PaginationControls({
     }
   }, [isCustomMode]);
 
-  useEffect(() => {
-    if (!pageSizeOptions.includes(pageSize)) {
-      setCustomPageSize(pageSize);
-    }
-  }, [pageSize, pageSizeOptions]);
-
   const parsedCustomValue = Number.parseInt(customValue, 10);
   const isCustomValueInvalid =
     customValue.length > 0 &&
@@ -143,7 +137,7 @@ export function PaginationControls({
             {!isCustomMode ? (
               <div
                 className={cn(
-                  'relative flex w-full cursor-pointer select-none items-center justify-start rounded-sm py-1.5 pl-2 pr-8 text-left text-sm outline-none transition-colors',
+                  'relative flex w-full cursor-pointer items-center justify-start rounded-sm py-1.5 pr-8 pl-2 text-left text-sm transition-colors outline-none select-none',
                   isCustomSelected
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent hover:text-accent-foreground',
@@ -215,7 +209,7 @@ export function PaginationControls({
                     aria-invalid={isCustomValueInvalid}
                     placeholder={`Max ${MAX_CUSTOM_PAGE_SIZE.toLocaleString()}`}
                     className={cn(
-                      '[appearance:textfield] h-8 w-[140px] pr-14 text-xs shadow-none focus-visible:ring-1 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                      'h-8 w-[140px] [appearance:textfield] pr-14 text-xs shadow-none focus-visible:ring-1 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
                       isCustomValueInvalid &&
                         'border-red-500 focus-visible:ring-red-500',
                     )}
@@ -256,7 +250,7 @@ export function PaginationControls({
                   </button>
                   <button
                     type="button"
-                    className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-red-500"
+                    className="text-muted-foreground absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer hover:text-red-500"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => {
                       e.preventDefault();
