@@ -30,7 +30,7 @@ export const TableNode = (props: NodeProps) => {
         {targetPosition && (
           <Handle
             type="target"
-            id={nodeData.name}
+            id={props.id}
             position={targetPosition as Position}
             className={cn(hiddenNodeConnector)}
           />

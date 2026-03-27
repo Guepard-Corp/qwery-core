@@ -125,9 +125,13 @@ export const Tables = memo(function Tables({
     return num.toString();
   };
 
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
-    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    const safeQuery = escapeRegExp(query);
+    const parts = text.split(new RegExp(`(${safeQuery})`, 'gi'));
     return (
       <span>
         {parts.map((part, i) =>
