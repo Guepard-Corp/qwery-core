@@ -21,6 +21,28 @@ type SavedPositions = Record<
   }
 >;
 
+function getRankDirection(aspectRatio?: number): 'LR' | 'TB' {
+  if (!aspectRatio) return 'LR';
+  return aspectRatio < 1 ? 'TB' : 'LR';
+}
+
+function getNodeHandlePositions(rankdir: 'LR' | 'TB'): {
+  targetPosition: Position;
+  sourcePosition: Position;
+} {
+  if (rankdir === 'TB') {
+    return {
+      targetPosition: 'top' as Position,
+      sourcePosition: 'bottom' as Position,
+    };
+  }
+
+  return {
+    targetPosition: 'left' as Position,
+    sourcePosition: 'right' as Position,
+  };
+}
+
 export function getGraphDataFromMetadata(
   metadata: SchemaGraphMetadata | null | undefined,
   selectedSchemas: string[] | null,
@@ -130,10 +152,12 @@ export function getGraphDataFromMetadata(
       if (source) {
         edges.push({
           id: String(rel.id),
+          type: 'smoothstep',
           source,
           sourceHandle,
           target: foreignNodeId,
           targetHandle: foreignNodeId,
+          markerEnd: { type: 'arrowclosed' as const },
         });
       }
 
@@ -156,10 +180,12 @@ export function getGraphDataFromMetadata(
     if (source && target) {
       edges.push({
         id: String(rel.id),
+        type: 'smoothstep',
         source,
         sourceHandle,
         target,
         targetHandle,
+        markerEnd: { type: 'arrowclosed' as const },
       });
     }
   }
@@ -197,21 +223,33 @@ function findTablesHandleIds(
 export const getLayoutedElementsViaDagre = (
   nodes: Node<TableNodeData>[],
   edges: Edge[],
+  options?: { aspectRatio?: number },
 ) => {
+  const rankdir = getRankDirection(options?.aspectRatio);
+  const { sourcePosition, targetPosition } = getNodeHandlePositions(rankdir);
+
+  const connectedNodesSet = new Set<string>();
+  edges.forEach((edge) => {
+    connectedNodesSet.add(edge.source);
+    connectedNodesSet.add(edge.target);
+  });
+
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({
-    rankdir: 'LR',
-    align: 'UR',
-    nodesep: NODE_SEP,
-    ranksep: RANK_SEP,
+    rankdir,
+    align: 'DL',
+    nodesep: NODE_SEP * 2,
+    ranksep: RANK_SEP * 2,
   });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, {
-      width: TABLE_NODE_WIDTH / 2,
-      height: (TABLE_NODE_ROW_HEIGHT / 2) * (node.data.columns.length + 1),
-    });
+    if (connectedNodesSet.has(node.id)) {
+      dagreGraph.setNode(node.id, {
+        width: TABLE_NODE_WIDTH / 2,
+        height: (TABLE_NODE_ROW_HEIGHT / 2) * (node.data.columns.length + 1),
+      });
+    }
   });
 
   edges.forEach((edge) => {
@@ -220,22 +258,80 @@ export const getLayoutedElementsViaDagre = (
 
   dagre.layout(dagreGraph);
 
+  let maxX = 0;
+  let maxY = 0;
+
   nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id) as {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
+    if (connectedNodesSet.has(node.id)) {
+      const nodeWithPosition = dagreGraph.node(node.id) as {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
 
-    node.targetPosition = 'left' as Position;
-    node.sourcePosition = 'right' as Position;
+      node.targetPosition = targetPosition;
+      node.sourcePosition = sourcePosition;
 
-    node.position = {
-      x: nodeWithPosition.x - nodeWithPosition.width / 2,
-      y: nodeWithPosition.y - nodeWithPosition.height / 2,
-    };
+      node.position = {
+        x: nodeWithPosition.x - nodeWithPosition.width / 2,
+        y: nodeWithPosition.y - nodeWithPosition.height / 2,
+      };
+
+      maxX = Math.max(maxX, node.position.x + nodeWithPosition.width);
+      maxY = Math.max(maxY, node.position.y + nodeWithPosition.height);
+    }
   });
+
+  const isolatedNodes = nodes.filter((n) => !connectedNodesSet.has(n.id));
+
+  if (isolatedNodes.length > 0) {
+    const nodeWidth = TABLE_NODE_WIDTH / 2;
+    const paddingX = NODE_SEP * 2;
+    const paddingY = RANK_SEP * 2;
+
+    const baseAspectCols = Math.ceil(
+      Math.sqrt(isolatedNodes.length * (options?.aspectRatio || 1.5)),
+    );
+    let gridCols = Math.max(1, baseAspectCols);
+
+    if (maxX > 0) {
+      const colsByWidth = Math.max(
+        1,
+        Math.floor(maxX / (nodeWidth + paddingX)),
+      );
+      gridCols = Math.max(gridCols, colsByWidth);
+    }
+
+    let currentX = 0;
+    let currentY = maxY > 0 ? maxY + paddingY * 1.5 : 0;
+    let rowHeight = 0;
+    let colIndex = 0;
+
+    isolatedNodes.forEach((node) => {
+      node.targetPosition = targetPosition;
+      node.sourcePosition = sourcePosition;
+
+      const height =
+        (TABLE_NODE_ROW_HEIGHT / 2) * (node.data.columns.length + 1);
+
+      node.position = {
+        x: currentX,
+        y: currentY,
+      };
+
+      rowHeight = Math.max(rowHeight, height);
+      currentX += nodeWidth + paddingX;
+      colIndex++;
+
+      if (colIndex >= gridCols) {
+        colIndex = 0;
+        currentX = 0;
+        currentY += rowHeight + paddingY;
+        rowHeight = 0;
+      }
+    });
+  }
 
   return { nodes, edges };
 };
@@ -244,7 +340,10 @@ export const getLayoutedElementsViaLocalStorage = (
   nodes: Node<TableNodeData>[],
   edges: Edge[],
   positions: SavedPositions,
+  options?: { aspectRatio?: number },
 ) => {
+  const rankdir = getRankDirection(options?.aspectRatio);
+  const { sourcePosition, targetPosition } = getNodeHandlePositions(rankdir);
   const nodesWithNoSavedPositions = nodes.filter((n) => !(n.id in positions));
   let newNodeCount = 0;
   const basePosition: XYPosition = {
@@ -259,8 +358,8 @@ export const getLayoutedElementsViaLocalStorage = (
   nodes.forEach((node) => {
     const existingPosition = positions?.[node.id];
 
-    node.targetPosition = 'left' as Position;
-    node.sourcePosition = 'right' as Position;
+    node.targetPosition = targetPosition;
+    node.sourcePosition = sourcePosition;
 
     if (existingPosition) {
       node.position = existingPosition;

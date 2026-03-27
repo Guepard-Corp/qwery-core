@@ -19,6 +19,8 @@ export interface ContributesDatasource {
   schema?: unknown;
   docsUrl?: string | null;
   supportsPreview?: boolean;
+  previewUrlKind?: 'embeddable' | 'data-file' | 'connection';
+  previewDataFormat?: 'json' | 'parquet' | 'csv';
   tags?: string[];
   drivers?: string[];
 }

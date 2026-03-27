@@ -25,8 +25,14 @@ async function getDuckDB() {
 
   const worker = new Worker(bundle.mainWorker!);
   const logger = new duckdb.VoidLogger();
-  db = new duckdb.AsyncDuckDB(logger, worker);
-  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  const nextDb = new duckdb.AsyncDuckDB(logger, worker);
+  try {
+    await nextDb.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  } catch (err) {
+    worker.terminate();
+    throw err;
+  }
+  db = nextDb;
 
   return db;
 }
@@ -143,7 +149,12 @@ async function fetchData(
 
         return { data: rows, error: null };
       } catch (queryError: unknown) {
-        console.error(`DuckDB Browser ${format} Error:`, queryError);
+        void getLogger().then((logger) =>
+          logger.warn(
+            { err: queryError, format },
+            'DuckDB browser query failed',
+          ),
+        );
         const errorMessage =
           queryError instanceof Error ? queryError.message : '';
         if (

@@ -2,16 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ChevronDown, Check, Plus, X } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  Check,
+  Plus,
+  X,
+  Database,
+  FolderKanban,
+  Building2,
+  FileCode,
+  MessageSquare,
+  Table,
+} from 'lucide-react';
 
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from '../shadcn/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../shadcn/popover';
 import { Skeleton } from '../shadcn/skeleton';
@@ -25,12 +35,25 @@ import {
 } from '../shadcn/breadcrumb';
 import { Input } from '../shadcn/input';
 
+function shouldInvertIconFromSrc(src: string): boolean {
+  const s = src.toLowerCase();
+  return s.includes('json-online');
+}
+
 export interface BreadcrumbNodeItem {
   id: string;
   name: string;
   slug: string;
   icon?: string;
 }
+
+export type BreadcrumbEntityType =
+  | 'organization'
+  | 'project'
+  | 'datasource'
+  | 'notebook'
+  | 'conversation'
+  | 'table';
 
 export interface BreadcrumbNodeConfig {
   items: BreadcrumbNodeItem[];
@@ -53,6 +76,8 @@ export interface BreadcrumbNodeConfig {
   onEditTitleChange?: (value: string) => void;
   onEditTitleSubmit?: () => void;
   onEditTitleCancel?: () => void;
+  type?: BreadcrumbEntityType;
+  hideSlug?: boolean;
 }
 
 interface NodeDropdownProps {
@@ -82,6 +107,9 @@ export function NodeDropdown({
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [brokenIcons, setBrokenIcons] = useState<Set<string>>(() => new Set());
+
+  const isIconBroken = (src?: string) => (src ? brokenIcons.has(src) : false);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return items;
@@ -192,13 +220,37 @@ export function NodeDropdown({
               'hover:bg-muted/40 focus-visible:ring-ring cursor-pointer transition-colors focus-visible:ring-1 focus-visible:outline-none',
             )}
           >
-            {current.icon && (
-              <img
-                src={current.icon}
-                alt={current.name}
-                className="h-4 w-4 shrink-0 rounded object-contain"
-              />
-            )}
+            {current.icon ? (
+              !isIconBroken(current.icon) ? (
+                <img
+                  src={current.icon}
+                  alt={current.name}
+                  className={cn(
+                    'h-4 w-4 shrink-0 rounded object-contain',
+                    shouldInvertIconFromSrc(current.icon) && 'dark:invert',
+                  )}
+                  onError={() =>
+                    setBrokenIcons((prev) => new Set(prev).add(current.icon!))
+                  }
+                />
+              ) : (
+                <div className="bg-muted/50 text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded">
+                  {config.type === 'project' ? (
+                    <FolderKanban className="h-3.5 w-3.5" aria-hidden />
+                  ) : config.type === 'organization' ? (
+                    <Building2 className="h-3.5 w-3.5" aria-hidden />
+                  ) : config.type === 'notebook' ? (
+                    <FileCode className="h-3.5 w-3.5" aria-hidden />
+                  ) : config.type === 'conversation' ? (
+                    <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                  ) : config.type === 'table' ? (
+                    <Table className="h-3.5 w-3.5" aria-hidden />
+                  ) : (
+                    <Database className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                </div>
+              )
+            ) : null}
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <BreadcrumbPage className="truncate text-sm font-semibold">
                 {current.name}
@@ -211,44 +263,63 @@ export function NodeDropdown({
         )}
       </PopoverTrigger>
       <PopoverContent
-        className="border-border/50 z-[101] w-[340px] p-0 shadow-lg"
+        className="border-border bg-popover z-[101] w-[340px] overflow-hidden rounded-lg border p-0 shadow-xl"
         align="start"
+        sideOffset={8}
       >
-        <Command className="rounded-lg">
-          <div className="relative flex items-center border-b">
+        <Command shouldFilter={false} className="bg-transparent">
+          <div className="relative">
             <CommandInput
               placeholder={labels.search}
               value={search}
               onValueChange={setSearch}
-              className="h-10 border-b-0 pr-10"
+              className="h-9 border-none bg-transparent focus:ring-0"
+              suffix={
+                <div className="flex shrink-0 items-center gap-1.5 pr-2">
+                  {search.trim().length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSearch('');
+                      }}
+                      className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {onNew && (
+                    <button
+                      type="button"
+                      onClick={handleNew}
+                      className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-6 cursor-pointer items-center justify-center rounded transition-colors"
+                      title={labels.new}
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  )}
+                </div>
+              }
             />
-            {onNew && (
-              <button
-                type="button"
-                onClick={handleNew}
-                className="text-muted-foreground hover:text-primary hover:bg-accent absolute right-2 flex size-6 cursor-pointer items-center justify-center rounded-md transition-colors"
-                title={labels.new}
-              >
-                <Plus className="size-4" />
-              </button>
-            )}
           </div>
-          <div className="flex max-h-[360px] flex-col">
-            <CommandList className="min-h-0 flex-1 overflow-y-auto">
+          <div className="max-h-[340px] overflow-x-hidden overflow-y-auto">
+            <CommandList className="p-1">
               {isLoading ? (
-                <div className="p-2">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="mt-2 h-8 w-full" />
-                  <Skeleton className="mt-2 h-8 w-full" />
+                <div className="space-y-1.5 p-2">
+                  <Skeleton className="h-8 w-full rounded" />
+                  <Skeleton className="h-8 w-full rounded" />
+                  <Skeleton className="h-8 w-full rounded" />
                 </div>
               ) : (
                 <>
-                  <CommandEmpty>
-                    <span className="text-muted-foreground text-sm">
-                      {noResultsLabel}
-                    </span>
-                  </CommandEmpty>
-                  {filteredItems.length > 0 && (
+                  {filteredItems.length === 0 ? (
+                    <div className="py-6 text-center text-sm">
+                      <span className="text-muted-foreground text-xs font-medium">
+                        {noResultsLabel}
+                      </span>
+                    </div>
+                  ) : (
                     <CommandGroup>
                       {filteredItems.map((item) => {
                         const isCurrent =
@@ -262,30 +333,119 @@ export function NodeDropdown({
                             value={`${item.name} ${item.slug} ${item.id}`}
                             onSelect={() => handleSelect(item)}
                             className={cn(
-                              'cursor-pointer transition-colors',
-                              isCurrent &&
-                                'bg-primary/10 text-primary font-medium',
+                              'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
+                              isCurrent
+                                ? 'bg-accent/50 text-foreground'
+                                : 'hover:bg-muted/50',
                             )}
                           >
-                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                            <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
                               {renderIcon?.(item) ??
-                                (item.icon && (
-                                  <img
-                                    src={item.icon}
-                                    alt={item.name}
-                                    className="h-4 w-4 shrink-0 rounded object-contain"
+                                (item.icon ? (
+                                  !isIconBroken(item.icon) ? (
+                                    <img
+                                      src={item.icon}
+                                      alt=""
+                                      className={cn(
+                                        'h-4 w-4 object-contain transition-transform group-hover:scale-110',
+                                        shouldInvertIconFromSrc(item.icon) &&
+                                          'dark:invert',
+                                      )}
+                                      onError={() =>
+                                        setBrokenIcons((prev) =>
+                                          new Set(prev).add(item.icon!),
+                                        )
+                                      }
+                                    />
+                                  ) : config.type === 'project' ? (
+                                    <FolderKanban
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'organization' ? (
+                                    <Building2
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'notebook' ? (
+                                    <FileCode
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'conversation' ? (
+                                    <MessageSquare
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : config.type === 'table' ? (
+                                    <Table
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <Database
+                                      className="text-muted-foreground h-3.5 w-3.5"
+                                      aria-hidden
+                                    />
+                                  )
+                                ) : config.type === 'project' ? (
+                                  <FolderKanban
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'organization' ? (
+                                  <Building2
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'notebook' ? (
+                                  <FileCode
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'conversation' ? (
+                                  <MessageSquare
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : config.type === 'table' ? (
+                                  <Table
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <Database
+                                    className="text-muted-foreground h-3.5 w-3.5"
+                                    aria-hidden
                                   />
                                 ))}
-                              <span className="truncate text-sm">
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <span
+                                className={cn(
+                                  'truncate text-[11px] font-bold tracking-tight',
+                                  isCurrent
+                                    ? 'text-foreground'
+                                    : 'text-foreground/80',
+                                )}
+                              >
                                 {highlightSearchMatch(item.name, search, {
                                   highlightClassName: 'bg-[#ffcb51]/40',
                                 })}
                               </span>
-                              {renderBadge?.(item)}
-                              {isCurrent && (
-                                <Check className="text-primary ml-auto h-4 w-4 shrink-0" />
+                              {!config.hideSlug && (
+                                <span className="text-muted-foreground truncate text-[9px] font-medium tracking-widest uppercase">
+                                  {item.slug}
+                                </span>
                               )}
                             </div>
+                            {isCurrent && (
+                              <Check
+                                className="text-primary ml-auto h-4 w-4 shrink-0"
+                                strokeWidth={2.5}
+                              />
+                            )}
+                            {renderBadge?.(item)}
                           </CommandItem>
                         );
                       })}
@@ -295,17 +455,17 @@ export function NodeDropdown({
               )}
             </CommandList>
             {!isLoading && onViewAll && (
-              <div className="bg-muted/10 shrink-0 border-t">
-                <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={handleViewAll}
-                    className="hover:bg-accent cursor-pointer font-medium"
-                  >
-                    <span>{labels.viewAll}</span>
-                  </CommandItem>
-                </CommandGroup>
-              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleViewAll();
+                }}
+                className="text-muted-foreground hover:bg-muted/50 hover:text-foreground border-border/40 flex w-full cursor-pointer items-center justify-center gap-2 border-t px-3 py-2 text-sm font-medium transition-colors"
+              >
+                <span>{labels.viewAll}</span>
+              </button>
             )}
           </div>
         </Command>
@@ -317,12 +477,14 @@ export interface GenericBreadcrumbProps {
   nodes: BreadcrumbNodeConfig[];
   loadingLabel?: string;
   noResultsLabel?: string;
+  tailLabel?: string;
 }
 
 export function GenericBreadcrumb({
   nodes,
   loadingLabel,
   noResultsLabel,
+  tailLabel,
 }: GenericBreadcrumbProps) {
   const visibleNodes = nodes.filter((node) => node.current !== null);
 
@@ -334,7 +496,7 @@ export function GenericBreadcrumb({
     <Breadcrumb className="w-fit">
       <BreadcrumbList>
         {visibleNodes.flatMap((node, index) => {
-          const isLast = index === visibleNodes.length - 1;
+          const isLast = index === visibleNodes.length - 1 && !tailLabel;
           return [
             ...(index > 0
               ? [
@@ -353,6 +515,16 @@ export function GenericBreadcrumb({
             </BreadcrumbItem>,
           ];
         })}
+        {tailLabel ? (
+          <>
+            <BreadcrumbSeparator key="sep-tail">
+              <ChevronRight className="h-4 w-4" />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem key="tail">
+              <BreadcrumbPage>{tailLabel}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : null}
       </BreadcrumbList>
     </Breadcrumb>
   );
@@ -374,7 +546,7 @@ export interface QweryBreadcrumbProps {
     items: BreadcrumbNodeItem[];
     isLoading: boolean;
     current: BreadcrumbNodeItem | null;
-    type: 'datasource' | 'notebook' | 'conversation';
+    type: Exclude<BreadcrumbEntityType, 'organization' | 'project'>;
     isEditingTitle?: boolean;
     editTitleValue?: string;
     onEditTitleChange?: (value: string) => void;
@@ -403,6 +575,8 @@ export interface QweryBreadcrumbProps {
   onNewNotebook?: () => void;
   onNewChat?: () => void;
   unsavedNotebookIds?: string[];
+  tailLabel?: string;
+  extraNodes?: BreadcrumbNodeConfig[];
 }
 
 export function QweryBreadcrumb({
@@ -410,6 +584,8 @@ export function QweryBreadcrumb({
   organization,
   project,
   object,
+  tailLabel,
+  extraNodes,
   onOrganizationSelect,
   onProjectSelect,
   onDatasourceSelect,
@@ -443,6 +619,8 @@ export function QweryBreadcrumb({
       onSelect: onOrganizationSelect,
       onViewAll: onViewAllOrgs,
       onNew: onNewOrg,
+      type: 'organization',
+      hideSlug: true,
     });
   }
 
@@ -460,6 +638,8 @@ export function QweryBreadcrumb({
       onSelect: onProjectSelect ?? (() => {}),
       onViewAll: onViewAllProjects,
       onNew: onNewProject,
+      type: 'project',
+      hideSlug: true,
     });
   }
 
@@ -516,14 +696,16 @@ export function QweryBreadcrumb({
       onEditTitleChange: object.onEditTitleChange,
       onEditTitleSubmit: object.onEditTitleSubmit,
       onEditTitleCancel: object.onEditTitleCancel,
+      type: object.type,
     });
   }
 
   return (
     <GenericBreadcrumb
-      nodes={nodes}
+      nodes={[...nodes, ...(extraNodes ?? [])]}
       loadingLabel={t('breadcrumb.loading')}
       noResultsLabel={t('breadcrumb.noResults')}
+      tailLabel={tailLabel}
     />
   );
 }

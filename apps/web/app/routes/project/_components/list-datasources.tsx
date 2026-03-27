@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Layers,
   Plus,
+  Database,
   X,
   Play,
 } from 'lucide-react';
@@ -62,6 +63,7 @@ import { useWorkspace } from '~/lib/context/workspace-context';
 import { usePlayground } from '~/lib/mutations/use-playground';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 import { getErrorKey } from '~/lib/utils/error-key';
+import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -86,6 +88,9 @@ export function ListDatasources({
   const [groupByProvider, setGroupByProvider] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(),
+  );
+  const [failedProviderIcons, setFailedProviderIcons] = useState<Set<string>>(
+    () => new Set(),
   );
   const [sortCriterion, setSortCriterion] = useState<SortCriterion>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -505,7 +510,7 @@ export function ListDatasources({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="h-full px-8 py-6 lg:px-16 lg:py-6">
+        <div className="h-full px-8 pt-6 pb-24 lg:px-16 lg:pt-6 lg:pb-24">
           {filteredDatasources.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-foreground mb-2 text-base font-medium">
@@ -534,14 +539,27 @@ export function ListDatasources({
                       )}
                       <div className="flex items-center gap-2">
                         <div className="bg-muted/50 flex h-6 w-6 items-center justify-center rounded border p-1">
-                          {pluginLogoMap.has(provider) ? (
+                          {pluginLogoMap.has(provider) &&
+                          !failedProviderIcons.has(provider) ? (
                             <img
                               src={pluginLogoMap.get(provider)!}
                               alt={provider}
-                              className="h-full w-full object-contain"
+                              className={cn(
+                                'h-full w-full object-contain',
+                                shouldInvertDatasourceIcon(provider) &&
+                                  'dark:invert',
+                              )}
+                              onError={() =>
+                                setFailedProviderIcons((prev) =>
+                                  new Set(prev).add(provider),
+                                )
+                              }
                             />
                           ) : (
-                            <div className="bg-muted-foreground/20 h-2 w-2 rounded" />
+                            <Database
+                              className="text-muted-foreground/50 h-4 w-4"
+                              aria-hidden
+                            />
                           )}
                         </div>
                         <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
@@ -631,7 +649,12 @@ export function ListDatasources({
                                               alt={
                                                 datasource.datasource_provider
                                               }
-                                              className="h-full w-full object-contain"
+                                              className={cn(
+                                                'h-full w-full object-contain',
+                                                shouldInvertDatasourceIcon(
+                                                  datasource.datasource_provider,
+                                                ) && 'dark:invert',
+                                              )}
                                             />
                                           ) : (
                                             <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
@@ -773,7 +796,12 @@ export function ListDatasources({
                                 <img
                                   src={logo}
                                   alt={datasource.datasource_provider}
-                                  className="h-full w-full object-contain"
+                                  className={cn(
+                                    'h-full w-full object-contain',
+                                    shouldInvertDatasourceIcon(
+                                      datasource.datasource_provider,
+                                    ) && 'dark:invert',
+                                  )}
                                 />
                               ) : (
                                 <div className="bg-muted-foreground/20 h-4 w-4 rounded" />
@@ -832,7 +860,7 @@ export function ListDatasources({
       </div>
 
       {totalPages > 1 && !groupByProvider && (
-        <div className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-10 flex shrink-0 items-center justify-center pt-4 pb-8 backdrop-blur">
+        <div className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-10 mb-6 flex shrink-0 items-center justify-center pt-4 pb-8 backdrop-blur">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -844,7 +872,7 @@ export function ListDatasources({
               <ChevronLeftIcon className="h-4 w-4" />
               <span>Previous</span>
             </Button>
-            <div className="flex items-center gap-1 px-2">
+            <div className="flex items-center gap-1 p-2">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (page) => {
                   const showPage =

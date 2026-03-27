@@ -58,7 +58,7 @@ export const MessageContent = ({
   </div>
 );
 
-export type MessageActionsProps = ComponentProps<'div'>;
+export type MessageActionsProps = HTMLAttributes<HTMLDivElement>;
 
 export const MessageActions = ({
   className,
@@ -408,7 +408,7 @@ export function MessageAttachment({
   );
 }
 
-export type MessageAttachmentsProps = ComponentProps<'div'>;
+export type MessageAttachmentsProps = HTMLAttributes<HTMLDivElement>;
 
 export function MessageAttachments({
   children,
@@ -432,7 +432,7 @@ export function MessageAttachments({
   );
 }
 
-export type MessageToolbarProps = ComponentProps<'div'>;
+export type MessageToolbarProps = HTMLAttributes<HTMLDivElement>;
 
 export const MessageToolbar = ({
   className,

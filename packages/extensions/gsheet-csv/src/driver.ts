@@ -168,7 +168,14 @@ const discoverFirstGid = async (spreadsheetId: string): Promise<number | null> =
 };
 
 export function makeGSheetDriver(context: DriverContext): IDataSourceDriver {
-  const parsedConfig = schema.parse(context.config);
+  const configResult = schema.safeParse(context.config);
+  if (!configResult.success) {
+    const issue = configResult.error.issues[0];
+    throw new Error(
+      `Invalid gsheet-csv configuration: ${issue?.message ?? 'missing required fields'}. Expected { sharedLink: "https://docs.google.com/spreadsheets/d/..." }`,
+    );
+  }
+  const parsedConfig = configResult.data;
   const instanceMap = new Map<
     string,
     {

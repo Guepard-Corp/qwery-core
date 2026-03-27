@@ -30,7 +30,7 @@ export const TableNode = (props: NodeProps) => {
         {targetPosition && (
           <Handle
             type="target"
-            id={nodeData.name}
+            id={props.id}
             position={targetPosition as Position}
             className={cn(hiddenNodeConnector)}
           />
@@ -41,7 +41,11 @@ export const TableNode = (props: NodeProps) => {
 
   return (
     <div
-      className="bg-background overflow-hidden rounded-[4px] border-[0.5px] shadow-sm"
+      className={cn(
+        'bg-background overflow-hidden rounded-[4px] border-[0.5px] shadow-sm transition-all duration-300',
+        nodeData.isFocused &&
+          'border-primary ring-primary ring-2 ring-offset-2',
+      )}
       style={{ width: TABLE_NODE_WIDTH / 2 }}
     >
       <header
@@ -50,9 +54,15 @@ export const TableNode = (props: NodeProps) => {
           itemHeight,
         )}
       >
-        <div className="flex items-center gap-x-1">
-          <Table2 strokeWidth={1} size={12} className="text-muted-foreground" />
-          {nodeData.name}
+        <div className="flex min-w-0 flex-1 items-center gap-x-1 pr-2">
+          <Table2
+            strokeWidth={1}
+            size={12}
+            className="text-muted-foreground shrink-0"
+          />
+          <span className="truncate" title={nodeData.name}>
+            {nodeData.name}
+          </span>
         </div>
         {nodeData.id && (
           <Button
@@ -81,7 +91,6 @@ export const TableNode = (props: NodeProps) => {
           <div
             className={cn(
               'mx-2 flex items-center justify-start gap-[0.24rem] align-middle',
-              column.isPrimary && 'basis-1/5',
             )}
           >
             {column.isPrimary && (
@@ -113,13 +122,16 @@ export const TableNode = (props: NodeProps) => {
               />
             )}
           </div>
-          <div className="flex w-full items-center justify-between">
-            <span className="max-w-[85px] overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 pr-1">
+            <span className="truncate" title={column.name}>
               {column.name}
             </span>
-            <span className="text-muted-foreground inline-flex items-center justify-end gap-1 px-2 font-mono text-[0.4rem]">
-              <Brackets size={7} strokeWidth={1.5} className="flex-shrink-0" />
-              {column.format}
+            <span
+              className="text-muted-foreground flex shrink-0 items-center justify-end gap-1 font-mono text-[0.4rem]"
+              title={column.format}
+            >
+              <Brackets size={7} strokeWidth={1.5} className="shrink-0" />
+              <span className="max-w-[45px] truncate">{column.format}</span>
             </span>
           </div>
           {targetPosition && (

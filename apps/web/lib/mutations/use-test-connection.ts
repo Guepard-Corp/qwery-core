@@ -7,6 +7,7 @@ import {
 import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { resolveDriverOrThrow } from '~/lib/utils/datasource-driver';
+import { normalizeDatasourceConfigForProvider } from '~/lib/utils/datasource-utils';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 type TestConnectionResult = {
@@ -61,7 +62,10 @@ export function useTestConnection(
       }>('testConnection', {
         datasourceProvider: payload.datasource_provider,
         driverId: driver.id,
-        config: payload.config,
+        config: normalizeDatasourceConfigForProvider(
+          payload.datasource_provider,
+          payload.config,
+        ),
       });
 
       return {

@@ -65,6 +65,9 @@ function initDriverImportsFromFolders(basePaths?: string[]): void {
         schema: null,
         docsUrl: ds.docsUrl ?? null,
         supportsPreview: ds.supportsPreview === true,
+        previewUrlKind: ds.previewUrlKind,
+        previewDataFormat: ds.previewDataFormat,
+        tags: ds.tags,
         drivers: driverDescriptors.map((d) => ({
           id: d.id,
           name: d.name,

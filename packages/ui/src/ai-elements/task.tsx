@@ -7,7 +7,7 @@ import {
 } from '../shadcn/collapsible';
 import { cn } from '../lib/utils';
 import { ChevronDownIcon, ListTodo } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, HTMLAttributes } from 'react';
 
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'error';
 
@@ -25,7 +25,7 @@ const TASK_INDICATOR_DOT: Record<TaskStatus, string> = {
   error: 'bg-destructive',
 };
 
-export type TaskItemIndicatorProps = ComponentProps<'span'> & {
+export type TaskItemIndicatorProps = HTMLAttributes<HTMLSpanElement> & {
   status: TaskStatus;
 };
 
@@ -47,7 +47,7 @@ export const TaskItemIndicator = ({
   </span>
 );
 
-export type TaskItemFileProps = ComponentProps<'div'>;
+export type TaskItemFileProps = HTMLAttributes<HTMLDivElement>;
 
 export const TaskItemFile = ({
   children,
@@ -65,7 +65,7 @@ export const TaskItemFile = ({
   </div>
 );
 
-export type TaskItemProps = ComponentProps<'div'>;
+export type TaskItemProps = HTMLAttributes<HTMLDivElement>;
 
 export const TaskItem = ({ children, className, ...props }: TaskItemProps) => (
   <div className={cn('text-muted-foreground text-sm', className)} {...props}>

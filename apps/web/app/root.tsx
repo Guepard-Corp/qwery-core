@@ -136,13 +136,15 @@ export function ErrorBoundary(_props: Route.ErrorBoundaryProps) {
           {isRouteErrorResponse(error) && error.status === 404 ? (
             <NotFoundPage />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
-              <h1 className="mb-2 text-2xl font-bold">
-                <Trans i18nKey="common:errorPageHeading" />
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                <Trans i18nKey="common:genericErrorSubHeading" />
-              </p>
+            <div className="grid min-h-svh place-items-center px-6">
+              <div className="mx-auto w-full max-w-xl text-center">
+                <h1 className="mb-3 text-4xl font-bold tracking-tight sm:text-5xl">
+                  <Trans i18nKey="common:errorPageHeading" />
+                </h1>
+                <p className="text-muted-foreground text-base sm:text-lg">
+                  <Trans i18nKey="common:genericErrorSubHeading" />
+                </p>
+              </div>
             </div>
           )}
         </RootProviders>

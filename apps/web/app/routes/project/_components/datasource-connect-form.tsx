@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { z as zLib } from 'zod';
-import { Check, Loader2, Pencil, Shuffle, X } from 'lucide-react';
+import { Check, Database, Loader2, Pencil, Shuffle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Datasource, DatasourceKind } from '@qwery/domain/entities';
 import { GetProjectBySlugService } from '@qwery/domain/services';
@@ -204,6 +204,18 @@ export function DatasourceConnectForm({
     config: Record<string, unknown>;
   } | null>(null);
 
+  useEffect(() => {
+    if (
+      variant === 'sheet' &&
+      actionsContainerReady &&
+      actionsContainerRef?.current
+    ) {
+      setPortalTarget(actionsContainerRef.current);
+    } else {
+      setPortalTarget(null);
+    }
+  }, [variant, actionsContainerReady, actionsContainerRef]);
+
   const urlValidation = useMemo(() => {
     if (!extensionMeta?.supportsPreview) {
       return {
@@ -253,19 +265,8 @@ export function DatasourceConnectForm({
     onFormValidityChange(isFormValid);
   }, [isFormValid, onFormValidityChange]);
 
-  useEffect(() => {
-    if (
-      variant === 'sheet' &&
-      actionsContainerReady &&
-      actionsContainerRef?.current
-    ) {
-      setPortalTarget(actionsContainerRef.current);
-    } else {
-      setPortalTarget(null);
-    }
-  }, [variant, actionsContainerReady, actionsContainerRef]);
-
   const { t, i18n } = useTranslation('common');
+  const [iconFailed, setIconFailed] = useState(false);
   const { repositories, workspace } = useWorkspace();
   const datasourceRepository = repositories.datasource;
   const projectRepository = repositories.project;
@@ -714,14 +715,27 @@ export function DatasourceConnectForm({
         <header className="space-y-3 px-4">
           <div className="flex min-w-0 items-center gap-4">
             <div className="bg-muted/30 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl">
-              {extensionMeta.icon && (
-                <img
-                  src={extensionMeta.icon}
-                  alt={extensionMeta.name}
-                  className={cn(
-                    'h-9 w-9 object-contain',
-                    shouldInvertDatasourceIcon(extensionId) && 'dark:invert',
-                  )}
+              {extensionMeta.icon ? (
+                !iconFailed ? (
+                  <img
+                    src={extensionMeta.icon}
+                    alt={extensionMeta.name}
+                    className={cn(
+                      'h-9 w-9 object-contain',
+                      shouldInvertDatasourceIcon(extensionId) && 'dark:invert',
+                    )}
+                    onError={() => setIconFailed(true)}
+                  />
+                ) : (
+                  <Database
+                    className="text-muted-foreground/60 h-7 w-7"
+                    aria-hidden
+                  />
+                )
+              ) : (
+                <Database
+                  className="text-muted-foreground/60 h-7 w-7"
+                  aria-hidden
                 />
               )}
             </div>
@@ -878,7 +892,8 @@ export function DatasourceConnectForm({
                     Switch to Google Sheets
                   </Button>
                 </div>
-              ) : urlValidation.error ? (
+              ) : null}
+              {urlValidation.error ? (
                 <p
                   className="border-destructive/30 bg-destructive/5 text-destructive dark:border-destructive/40 dark:bg-destructive/10 mt-1 flex gap-2 rounded-md border px-3 py-1.5 text-xs leading-snug font-medium dark:text-red-300"
                   role="alert"

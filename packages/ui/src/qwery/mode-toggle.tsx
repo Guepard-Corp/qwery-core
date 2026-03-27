@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import * as React from 'react';
 
-import { Computer, Moon, Sun } from 'lucide-react';
+import { Check, Computer, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 import { cn } from '../lib/utils';
@@ -39,7 +39,7 @@ export function ModeToggle(props: { className?: string }) {
             setCookieTheme(mode);
           }}
         >
-          <Icon theme={mode} />
+          <Icon theme={mode} selected={isSelected} />
 
           <span>
             <Trans i18nKey={`common:${mode}Theme`} />
@@ -75,9 +75,10 @@ export function SubMenuModeToggle() {
 
         return (
           <DropdownMenuItem
-            className={cn('flex items-center space-x-2', {
-              'bg-muted': isSelected,
-            })}
+            className={cn(
+              'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
+              isSelected ? 'bg-accent/50 text-foreground' : 'hover:bg-muted/50',
+            )}
             key={mode}
             onClick={() => {
               setTheme?.(mode);
@@ -85,11 +86,25 @@ export function SubMenuModeToggle() {
               setSubmenuOpen(false);
             }}
           >
-            <Icon theme={mode} />
+            <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+              <Icon theme={mode} selected={isSelected} />
+            </div>
 
-            <span>
+            <span
+              className={cn(
+                'text-[12px] font-bold tracking-tight',
+                isSelected ? 'text-foreground' : 'text-foreground/80',
+              )}
+            >
               <Trans i18nKey={`common:${mode}Theme`} />
             </span>
+
+            {isSelected && (
+              <Check
+                className="text-primary ml-auto h-4 w-4 shrink-0"
+                strokeWidth={2.5}
+              />
+            )}
           </DropdownMenuItem>
         );
       }),
@@ -99,7 +114,7 @@ export function SubMenuModeToggle() {
   return (
     <DropdownMenuSub open={submenuOpen} onOpenChange={setSubmenuOpen}>
       <DropdownMenuSubTrigger
-        className="flex w-full items-center justify-between"
+        className="hover:bg-muted/50 flex w-full items-center justify-between rounded px-2 py-1.5 transition-colors"
         onPointerEnter={() => setSubmenuOpen(true)}
         onPointerLeave={(e) => {
           const relatedTarget = e.relatedTarget as HTMLElement;
@@ -108,9 +123,11 @@ export function SubMenuModeToggle() {
           }
         }}
       >
-        <span className="flex items-center space-x-2">
-          <Icon theme={resolvedTheme || theme || 'system'} />
-          <span>
+        <span className="flex items-center gap-2.5">
+          <span className="bg-muted/40 flex h-7 w-7 items-center justify-center rounded shadow-inner">
+            <Icon theme={resolvedTheme || theme || 'system'} selected={true} />
+          </span>
+          <span className="text-[12px] font-bold tracking-tight">
             <Trans i18nKey={'common:theme'} />
           </span>
         </span>
@@ -130,15 +147,23 @@ function setCookieTheme(theme: string) {
   document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
-function Icon({ theme }: { theme: string | undefined }) {
+function Icon({
+  theme,
+  selected,
+}: {
+  theme: string | undefined;
+  selected: boolean;
+}) {
+  const colorClass = selected ? 'text-[#ffcb51]' : 'text-muted-foreground';
+
   switch (theme) {
     case 'light':
-      return <Sun className="h-4" />;
+      return <Sun className={cn('h-3.5 w-3.5', colorClass)} />;
     case 'dark':
-      return <Moon className="h-4" />;
+      return <Moon className={cn('h-3.5 w-3.5', colorClass)} />;
     case 'system':
-      return <Computer className="h-4" />;
+      return <Computer className={cn('h-3.5 w-3.5', colorClass)} />;
     default:
-      return <Computer className="h-4" />;
+      return <Computer className={cn('h-3.5 w-3.5', colorClass)} />;
   }
 }

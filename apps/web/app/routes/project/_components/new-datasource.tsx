@@ -13,8 +13,8 @@ import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
 import { Trans } from '@qwery/ui/trans';
 import { cn } from '@qwery/ui/utils';
-import { GITHUB_URLS } from '@qwery/shared/github';
 import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
+import { GITHUB_URLS } from '~/lib/constants/github';
 
 import { DatasourceConnectSheet } from './datasource-connect-sheet';
 import { DatasourceExtension } from '@qwery/extensions-sdk';
