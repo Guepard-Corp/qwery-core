@@ -54,6 +54,8 @@ import {
 } from '~/lib/utils/datasource-navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { getConversationKey } from '~/lib/mutations/use-conversation';
+import { getConversationsByProjectKey } from '~/lib/queries/use-get-conversations-by-project';
+import { getMessagesByConversationSlugKey } from '~/lib/queries/use-get-messages';
 import { useConversationDatasourceSync } from '~/lib/hooks/use-conversation-datasource-sync';
 import { useConversationRenameToast } from '~/lib/hooks/use-conversation-rename-toast';
 import { useNotebookContext } from '~/lib/hooks/use-notebook-context';
@@ -275,7 +277,6 @@ export const AgentUIWrapper = forwardRef<
   const { data: conversation, isLoading: isConversationLoading } =
     useGetConversationBySlug(repositories.conversation, conversationSlug);
 
-  const interactionCountRef = useRef(0);
   const conversationRefreshTimeoutIdsRef = useRef<
     ReturnType<typeof setTimeout>[]
   >([]);
@@ -454,30 +455,39 @@ export const AgentUIWrapper = forwardRef<
   }, []);
 
   const scheduleConversationRefresh = useCallback(() => {
+    const invalidateConversationData = () => {
+      queryClient.invalidateQueries({
+        queryKey: getConversationKey(conversationSlug),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getMessagesByConversationSlugKey(conversationSlug),
+      });
+      if (datasourceProjectId) {
+        queryClient.invalidateQueries({
+          queryKey: getConversationsByProjectKey(datasourceProjectId),
+        });
+      }
+    };
+
     conversationRefreshTimeoutIdsRef.current.forEach((id) => {
       clearTimeout(id);
     });
     conversationRefreshTimeoutIdsRef.current = [];
 
-    const delays = [2000, 4000, 8000];
+    invalidateConversationData();
+
+    const delays = [750, 2000, 5000];
     delays.forEach((delay) => {
       const id = setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: getConversationKey(conversationSlug),
-        });
+        invalidateConversationData();
       }, delay);
       conversationRefreshTimeoutIdsRef.current.push(id);
     });
-  }, [queryClient, conversationSlug]);
+  }, [queryClient, conversationSlug, datasourceProjectId]);
 
   const handleEmitFinish = useCallback(() => {
     invalidateUsage(conversationSlug, workspace.userId);
-    interactionCountRef.current += 1;
-    const isFirst = interactionCountRef.current === 1;
-    const isFifth = interactionCountRef.current === 5;
-    if (isFirst || isFifth) {
-      scheduleConversationRefresh();
-    }
+    scheduleConversationRefresh();
   }, [
     invalidateUsage,
     conversationSlug,

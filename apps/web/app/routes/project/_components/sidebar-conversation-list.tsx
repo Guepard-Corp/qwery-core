@@ -51,7 +51,7 @@ import { type Conversation, ConfirmDeleteDialog } from '@qwery/ui/ai';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
 import { useProject } from '~/lib/context/project-context';
 import { useConversationListPrefsStore } from '~/lib/store/use-conversation-list-prefs';
-import { formatTimeAgo } from './sidebar-utils';
+import { formatTimeAgo, sortSidebarConversations } from './sidebar-utils';
 
 export interface SidebarConversationHistoryProps {
   conversations?: Conversation[];
@@ -126,9 +126,7 @@ export function SidebarConversationHistory({
 
   const {
     bookmarkedIds,
-    selectionOrder,
     toggleBookmark: storeToggleBookmark,
-    touchSelectionOrder,
   } = useConversationListPrefsStore();
   const bookmarkedIdsSet = useMemo(
     () => new Set(bookmarkedIds),
@@ -150,14 +148,8 @@ export function SidebarConversationHistory({
         conv.title.toLowerCase().includes(query),
       );
     }
-    return [...filtered].sort((a, b) => {
-      const aBookmarked = bookmarkedIdsSet.has(a.id);
-      const bBookmarked = bookmarkedIdsSet.has(b.id);
-      if (aBookmarked && !bBookmarked) return -1;
-      if (!aBookmarked && bBookmarked) return 1;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
-  }, [conversations, searchQuery, bookmarkedIdsSet]);
+    return filtered;
+  }, [conversations, searchQuery]);
 
   const currentConversation = useMemo(() => {
     if (!currentSlugFromUrl) return null;
@@ -173,22 +165,12 @@ export function SidebarConversationHistory({
     const unpinned = filteredConversations.filter(
       (c) => !bookmarkedIdsSet.has(c.id),
     );
-    const byUpdatedThenCreated = (
-      a: (typeof filteredConversations)[0],
-      b: (typeof filteredConversations)[0],
-    ) => {
-      const aTs = selectionOrder[a.id];
-      const bTs = selectionOrder[b.id];
-      if (aTs !== undefined && bTs !== undefined) return bTs - aTs;
-      if (aTs !== undefined) return -1;
-      if (bTs !== undefined) return 1;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    };
+
     return {
-      pinnedConversations: [...pinned].sort(byUpdatedThenCreated),
-      unpinnedConversations: [...unpinned].sort(byUpdatedThenCreated),
+      pinnedConversations: sortSidebarConversations(pinned),
+      unpinnedConversations: sortSidebarConversations(unpinned),
     };
-  }, [filteredConversations, bookmarkedIdsSet, selectionOrder]);
+  }, [filteredConversations, bookmarkedIdsSet]);
 
   const MAX_SIDEBAR_CHATS = 6;
   const limitedPinnedConversations = useMemo(
@@ -220,7 +202,6 @@ export function SidebarConversationHistory({
 
     if (trimmedValue !== currentTitle) {
       onConversationEdit?.(conversationId, trimmedValue);
-      touchSelectionOrder(conversationId);
     }
     setEditingId(null);
     setEditValue('');
@@ -690,7 +671,7 @@ export function SidebarConversationHistory({
                                             animatingIds.has(conversation.id) &&
                                               'animate-in fade-in-0 slide-in-from-left-2',
                                           )}
-                                          title={`${conversation.title} · ${formatTimeAgo(conversation.createdAt)}`}
+                                          title={`${conversation.title} · ${formatTimeAgo(conversation.updatedAt)}`}
                                         >
                                           {truncateChatTitle(
                                             conversation.title,

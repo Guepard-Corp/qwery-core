@@ -109,6 +109,7 @@ describe('CreateMessageService', () => {
     const conversationRepository = new MockConversationRepository();
 
     // Setup conversation
+    const originalUpdatedAt = new Date('2026-01-01T00:00:00.000Z');
     const conversation: Conversation = {
       id: conversationId,
       slug: conversationSlug,
@@ -117,7 +118,7 @@ describe('CreateMessageService', () => {
       title: 'Test Conversation',
       datasources: [],
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: originalUpdatedAt,
       createdBy: userId,
       updatedBy: userId,
     };
@@ -147,6 +148,17 @@ describe('CreateMessageService', () => {
     expect(result.createdBy).toBe(userId);
     expect(result.createdAt).toBeInstanceOf(Date);
     expect(result.updatedAt).toBeInstanceOf(Date);
+
+    const updatedConversation = await conversationRepository.findById(
+      conversationId,
+    );
+    expect(updatedConversation?.updatedAt.getTime()).toBe(
+      result.updatedAt.getTime(),
+    );
+    expect(updatedConversation?.updatedAt.getTime()).toBeGreaterThan(
+      originalUpdatedAt.getTime(),
+    );
+    expect(updatedConversation?.updatedBy).toBe(userId);
   });
 
   it('should create message with default empty metadata when not provided', async () => {

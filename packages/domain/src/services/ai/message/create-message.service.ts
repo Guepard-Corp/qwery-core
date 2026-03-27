@@ -44,6 +44,13 @@ export class CreateMessageService implements CreateMessageUseCase {
     const message = await this.messageRepository.create(
       newMessage as unknown as Message,
     );
+
+    await this.conversationRepository.update({
+      ...conversation,
+      updatedAt: message.updatedAt,
+      updatedBy: input.createdBy,
+    });
+
     return MessageOutput.new(message);
   }
 }

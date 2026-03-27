@@ -13,3 +13,33 @@ export function formatTimeAgo(date: Date): string {
   if (months < 12) return `${months}mo ago`;
   return `${Math.floor(months / 12)}y ago`;
 }
+
+type ConversationActivity = {
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+function getTimestamp(date?: Date) {
+  return date ? new Date(date).getTime() : 0;
+}
+
+export function sortSidebarConversations<T extends ConversationActivity>(
+  conversations: T[],
+): T[] {
+  return [...conversations].sort((a, b) => {
+    const aActivity = getTimestamp(a.updatedAt) || getTimestamp(a.createdAt);
+    const bActivity = getTimestamp(b.updatedAt) || getTimestamp(b.createdAt);
+
+    if (aActivity !== bActivity) {
+      return bActivity - aActivity;
+    }
+
+    const aUpdatedTimestamp = getTimestamp(a.updatedAt);
+    const bUpdatedTimestamp = getTimestamp(b.updatedAt);
+    if (aUpdatedTimestamp !== bUpdatedTimestamp) {
+      return bUpdatedTimestamp - aUpdatedTimestamp;
+    }
+
+    return getTimestamp(b.createdAt) - getTimestamp(a.createdAt);
+  });
+}
