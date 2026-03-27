@@ -129,7 +129,7 @@ export class MessagePersistenceService {
         const hasMetadata = Object.keys(mergedMetadata).length > 0;
         const metadataInput = hasMetadata ? { metadata: mergedMetadata } : {};
 
-        await useCase.execute({
+        const result = await useCase.execute({
           input: {
             content: convertUIMessageToContent(message),
             role: uiRoleToMessageRole(message.role),
@@ -138,6 +138,10 @@ export class MessagePersistenceService {
           },
           conversationSlug: this.conversationSlug,
         });
+
+        if (result.isFailure && result.error) {
+          errors.push(result.error);
+        }
       } catch (error) {
         // Check if error is due to duplicate (idempotency)
         if (

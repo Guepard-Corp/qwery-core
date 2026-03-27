@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { PaginatedResult, PaginationOptions } from '../../../../src/common';
 import type { Conversation, Message } from '../../../../src/entities';
 import { MessageRole } from '../../../../src/entities';
+import { ConversationNotFoundError } from '../../../../src/exceptions';
 import {
   IConversationRepository,
   IMessageRepository,
@@ -25,6 +27,18 @@ class MockMessageRepository implements IMessageRepository {
   async findByConversationId(conversationId: string) {
     const messages = Array.from(this.messages.values());
     return messages.filter((m) => m.conversationId === conversationId);
+  }
+
+  async findByConversationIdPaginated(
+    conversationId: string,
+    options: PaginationOptions,
+  ): Promise<PaginatedResult<Message>> {
+    const messages = await this.findByConversationId(conversationId);
+    return {
+      messages: messages.slice(0, options.limit),
+      nextCursor: null,
+      hasMore: false,
+    };
   }
 
   async create(entity: Message) {
@@ -121,6 +135,7 @@ describe('CreateMessageService', () => {
       updatedAt: originalUpdatedAt,
       createdBy: userId,
       updatedBy: userId,
+      isPublic: false,
     };
     await conversationRepository.create(conversation);
 
@@ -139,20 +154,22 @@ describe('CreateMessageService', () => {
       conversationSlug,
     });
 
-    expect(result).toBeDefined();
-    expect(result.id).toBeDefined();
-    expect(result.conversationId).toBe(conversationId);
-    expect(result.content).toEqual({ text: 'Hello, world!' });
-    expect(result.role).toBe(MessageRole.USER);
-    expect(result.metadata).toEqual({ source: 'web' });
-    expect(result.createdBy).toBe(userId);
-    expect(result.createdAt).toBeInstanceOf(Date);
-    expect(result.updatedAt).toBeInstanceOf(Date);
+    expect(result.isSuccess).toBe(true);
+    expect(result.isFailure).toBe(false);
+    expect(result.value).toBeDefined();
+    expect(result.value?.id).toBeDefined();
+    expect(result.value?.conversationId).toBe(conversationId);
+    expect(result.value?.content).toEqual({ text: 'Hello, world!' });
+    expect(result.value?.role).toBe(MessageRole.USER);
+    expect(result.value?.metadata).toEqual({ source: 'web' });
+    expect(result.value?.createdBy).toBe(userId);
+    expect(result.value?.createdAt).toBeInstanceOf(Date);
+    expect(result.value?.updatedAt).toBeInstanceOf(Date);
 
     const updatedConversation =
       await conversationRepository.findById(conversationId);
     expect(updatedConversation?.updatedAt.getTime()).toBe(
-      result.updatedAt.getTime(),
+      result.value?.updatedAt.getTime(),
     );
     expect(updatedConversation?.updatedAt.getTime()).toBeGreaterThan(
       originalUpdatedAt.getTime(),
@@ -175,6 +192,7 @@ describe('CreateMessageService', () => {
       updatedAt: new Date(),
       createdBy: userId,
       updatedBy: userId,
+      isPublic: false,
     };
     await conversationRepository.create(conversation);
 
@@ -192,7 +210,8 @@ describe('CreateMessageService', () => {
       conversationSlug,
     });
 
-    expect(result.metadata).toEqual({});
+    expect(result.isSuccess).toBe(true);
+    expect(result.value?.metadata).toEqual({});
   });
 
   it('should generate unique ids for different messages', async () => {
@@ -210,6 +229,7 @@ describe('CreateMessageService', () => {
       updatedAt: new Date(),
       createdBy: userId,
       updatedBy: userId,
+      isPublic: false,
     };
     await conversationRepository.create(conversation);
 
@@ -236,7 +256,7 @@ describe('CreateMessageService', () => {
       conversationSlug,
     });
 
-    expect(result1.id).not.toBe(result2.id);
+    expect(result1.value?.id).not.toBe(result2.value?.id);
   });
 
   it('should create messages with different roles', async () => {
@@ -254,6 +274,7 @@ describe('CreateMessageService', () => {
       updatedAt: new Date(),
       createdBy: userId,
       updatedBy: userId,
+      isPublic: false,
     };
     await conversationRepository.create(conversation);
 
@@ -289,8 +310,33 @@ describe('CreateMessageService', () => {
       conversationSlug,
     });
 
-    expect(userMessage.role).toBe(MessageRole.USER);
-    expect(agentMessage.role).toBe(MessageRole.ASSISTANT);
-    expect(systemMessage.role).toBe(MessageRole.SYSTEM);
+    expect(userMessage.value?.role).toBe(MessageRole.USER);
+    expect(agentMessage.value?.role).toBe(MessageRole.ASSISTANT);
+    expect(systemMessage.value?.role).toBe(MessageRole.SYSTEM);
+  });
+
+  it('returns a failure result when the conversation does not exist', async () => {
+    const messageRepository = new MockMessageRepository();
+    const conversationRepository = new MockConversationRepository();
+
+    const service = new CreateMessageService(
+      messageRepository,
+      conversationRepository,
+    );
+
+    const result = await service.execute({
+      input: {
+        content: { text: 'Missing conversation' },
+        role: MessageRole.USER,
+        createdBy: userId,
+      },
+      conversationSlug: 'missing-conversation',
+    });
+
+    expect(result.isSuccess).toBe(false);
+    expect(result.isFailure).toBe(true);
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeInstanceOf(ConversationNotFoundError);
+    expect(result.error?.conversationSlug).toBe('missing-conversation');
   });
 });

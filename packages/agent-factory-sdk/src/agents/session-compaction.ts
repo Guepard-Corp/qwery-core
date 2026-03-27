@@ -505,7 +505,7 @@ export async function create(input: CreateInput): Promise<void> {
     repositories.conversation,
   );
 
-  await useCase.execute({
+  const result = await useCase.execute({
     input: {
       content: {
         id: uuidv4(),
@@ -524,6 +524,13 @@ export async function create(input: CreateInput): Promise<void> {
     },
     conversationSlug,
   });
+
+  if (result.isFailure && result.error) {
+    logger.warn('[SessionCompaction] Failed to create compaction task', {
+      conversationSlug,
+      error: result.error.message,
+    });
+  }
 }
 
 export const SessionCompaction = {

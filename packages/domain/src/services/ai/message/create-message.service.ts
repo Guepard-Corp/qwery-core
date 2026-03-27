@@ -1,6 +1,6 @@
-import { Code } from '../../../common/code';
-import { DomainException } from '../../../exceptions';
+import { Result } from '../../../common';
 import { MessageEntity, Message } from '../../../entities';
+import { ConversationNotFoundError } from '../../../exceptions';
 import {
   IConversationRepository,
   IMessageRepository,
@@ -23,19 +23,13 @@ export class CreateMessageService implements CreateMessageUseCase {
   }: {
     input: CreateMessageInput;
     conversationSlug: string;
-  }): Promise<MessageOutput> {
-    // Resolve conversation ID from slug
+  }): Promise<Result<MessageOutput, ConversationNotFoundError>> {
     const conversation =
       await this.conversationRepository.findBySlug(conversationSlug);
     if (!conversation) {
-      throw DomainException.new({
-        code: Code.CONVERSATION_NOT_FOUND_ERROR,
-        overrideMessage: `Conversation with slug '${conversationSlug}' not found`,
-        data: { conversationSlug },
-      });
+      return Result.fail(new ConversationNotFoundError(conversationSlug));
     }
 
-    // Create message entity with conversationId
     const newMessage = MessageEntity.create({
       ...input,
       conversationId: conversation.id,
@@ -51,6 +45,6 @@ export class CreateMessageService implements CreateMessageUseCase {
       updatedBy: input.createdBy,
     });
 
-    return MessageOutput.new(message);
+    return Result.ok(MessageOutput.new(message));
   }
 }
