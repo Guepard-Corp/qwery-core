@@ -432,7 +432,9 @@ describe('discovery', () => {
     });
 
     it('falls back to src/driver.ts when dist driver is missing', () => {
-      const extDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qwery-driver-src-'));
+      const extDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'qwery-driver-src-'),
+      );
       try {
         fs.mkdirSync(path.join(extDir, 'src'), { recursive: true });
         fs.writeFileSync(
@@ -505,7 +507,9 @@ describe('discovery', () => {
     });
 
     it('falls back to src/schema.ts when dist schema is missing', () => {
-      const extDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qwery-schema-src-'));
+      const extDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'qwery-schema-src-'),
+      );
       try {
         fs.mkdirSync(path.join(extDir, 'src'), { recursive: true });
         fs.writeFileSync(
