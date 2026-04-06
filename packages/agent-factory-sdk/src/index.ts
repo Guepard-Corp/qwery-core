@@ -54,9 +54,9 @@ const baseModels = [
     value: 'ollama-cloud/gemini-3-flash-preview',
   },
   {
-    name: 'Ollama Cloud • Gemini 3 Pro (preview)',
-    shortName: 'Gemini 3 Pro',
-    value: 'ollama-cloud/gemini-3-pro-preview',
+    name: 'Ollama Cloud • Gemma 4 31B Cloud',
+    shortName: 'Gemma 4 31B',
+    value: 'ollama-cloud/gemma4:31b-cloud',
   },
   {
     name: 'Ollama Cloud • GLM 5',
@@ -74,9 +74,14 @@ const baseModels = [
     value: 'ollama-cloud/kimi-k2.5',
   },
   {
-    name: 'Ollama Cloud • MiniMax M2.5',
-    shortName: 'MiniMax M2.5',
-    value: 'ollama-cloud/minimax-m2.5',
+    name: 'Ollama Cloud • MiniMax M2.7',
+    shortName: 'MiniMax M2.7',
+    value: 'ollama-cloud/minimax-m2.7',
+  },
+  {
+    name: 'Ollama Cloud • Nemotron 3 Super',
+    shortName: 'Nemotron 3 Super',
+    value: 'ollama-cloud/nemotron-3-super',
   },
   {
     name: 'Ollama Cloud • Mistral Large 3 675B',
