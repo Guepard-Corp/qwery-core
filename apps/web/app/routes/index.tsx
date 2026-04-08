@@ -1,7 +1,10 @@
 import { redirect } from 'react-router';
 
 import pathsConfig from '~/config/paths.config';
+import { pageTitle } from '~/lib/page-title';
 import type { Route } from '~/types/app/routes/+types/index';
+
+export const meta = () => [{ title: pageTitle('Home') }];
 
 export const clientLoader = async (_args: Route.LoaderArgs) => {
   throw redirect(pathsConfig.app.organizations);

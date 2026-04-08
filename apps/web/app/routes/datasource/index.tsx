@@ -1,6 +1,9 @@
 import { Navigate, useParams } from 'react-router';
 
 import pathsConfig, { createPath } from '~/config/paths.config';
+import { pageTitle } from '~/lib/page-title';
+
+export const meta = () => [{ title: pageTitle('Datasource') }];
 
 export default function Datasource() {
   const params = useParams();

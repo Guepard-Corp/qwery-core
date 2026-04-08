@@ -16,6 +16,7 @@ import type { Route } from './+types/tables';
 import { getRepositoriesForLoader } from '~/lib/loaders/create-repositories';
 import { GetDatasourceBySlugService } from '@qwery/domain/services';
 import { DomainException } from '@qwery/domain/exceptions';
+import { pageTitle } from '~/lib/page-title';
 
 export async function clientLoader(args: Route.ClientLoaderArgs) {
   const slug = args.params.slug;
@@ -38,6 +39,16 @@ export async function clientLoader(args: Route.ClientLoaderArgs) {
     throw error;
   }
 }
+
+export const meta = ({ data }: Route.MetaArgs) => [
+  {
+    title: pageTitle(
+      data?.datasource?.name?.trim()
+        ? `Tables · ${data.datasource.name}`
+        : 'Tables',
+    ),
+  },
+];
 
 export default function TablesPage(props: Route.ComponentProps) {
   const params = useParams();
