@@ -3526,6 +3526,31 @@
           "output": 64000
         }
       },
+      "gemma4:31b": {
+        "id": "gemma4:31b",
+        "name": "gemma4:31b",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "knowledge": "2025-01",
+        "release_date": "2026-04-02",
+        "last_updated": "2026-04-08",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "limit": {
+          "context": 262144,
+          "output": 8192
+        }
+      },
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "glm-5.1",
