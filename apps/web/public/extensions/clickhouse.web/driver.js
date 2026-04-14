@@ -2346,6 +2346,28 @@ var require_Reflect = __commonJS({
 // packages/extensions/clickhouse-web/dist/driver.js
 var import_client_web = __toESM(require_dist2(), 1);
 
+// packages/extensions-sdk/src/datasource-input-limits.ts
+var DATASOURCE_INPUT_MAX_LENGTH = {
+  name: 80,
+  host: 255,
+  port: 5,
+  database: 128,
+  username: 128,
+  password: 512,
+  connectionString: 4096,
+  url: 2048,
+  sharedLink: 2048,
+  apiKey: 1024,
+  endpointUrl: 2048,
+  accessKeyId: 128,
+  secretAccessKey: 256,
+  sessionToken: 2048,
+  region: 64,
+  bucket: 63,
+  prefix: 1024,
+  patternList: 2048
+};
+
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -16186,6 +16208,14 @@ Code.INTERNAL_ERROR = {
   code: 500,
   message: "Internal error."
 };
+Code.BAD_GATEWAY_ERROR = {
+  code: 502,
+  message: "Bad gateway."
+};
+Code.SERVICE_UNAVAILABLE_ERROR = {
+  code: 503,
+  message: "Service unavailable."
+};
 Code.ENTITY_NOT_FOUND_ERROR = {
   code: 1e3,
   message: "Entity not found."
@@ -18828,7 +18858,8 @@ var FilePartSchema = external_exports.object({
 }).loose();
 var CompactionPartSchema = external_exports.object({
   type: external_exports.literal("compaction"),
-  auto: external_exports.boolean()
+  auto: external_exports.boolean(),
+  afterMessageId: external_exports.string().optional()
 }).loose();
 var SnapshotPartSchema = external_exports.object({
   type: external_exports.literal("snapshot"),
@@ -19949,11 +19980,11 @@ function extractConnectionUrl(config2, providerId) {
 }
 
 // packages/extensions/clickhouse-web/dist/schema.js
-var passwordField = external_exports.string().min(1).describe("secret:true").meta({
+var passwordField = external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.password).describe("secret:true").meta({
   description: "ClickHouse password",
   secret: true
 });
-var connectionUrlField = external_exports.url().min(1).describe("secret:true").meta({
+var connectionUrlField = external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.connectionString).url().describe("secret:true").meta({
   description: "ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)",
   placeholder: "clickhouse://user:pass@host:8123/default or http://host:8123",
   secret: true
@@ -19967,15 +19998,15 @@ var detailsSchema = external_exports.object({
     label: "Port",
     placeholder: "8123"
   }),
-  username: external_exports.string().default("default").meta({
+  username: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.username).default("default").meta({
     label: "Username",
     description: "ClickHouse user"
   }),
-  user: external_exports.string().default("default").optional().meta({
+  user: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.username).default("default").optional().meta({
     label: "User (alias for username)"
   }),
   password: passwordField.optional(),
-  database: external_exports.string().default("default").meta({
+  database: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.database).default("default").meta({
     label: "Database",
     description: "ClickHouse database name"
   })

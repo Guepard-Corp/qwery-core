@@ -2,10 +2,1149 @@
 // This file is bundled for browser use
 // It contains the Zod schema definition for the extension
 
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __decorateClass = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp(target, key, result);
+  return result;
+};
+
+// node_modules/.pnpm/reflect-metadata@0.2.2/node_modules/reflect-metadata/Reflect.js
+var require_Reflect = __commonJS({
+  "node_modules/.pnpm/reflect-metadata@0.2.2/node_modules/reflect-metadata/Reflect.js"() {
+    var Reflect2;
+    (function(Reflect3) {
+      (function(factory) {
+        var root = typeof globalThis === "object" ? globalThis : typeof global === "object" ? global : typeof self === "object" ? self : typeof this === "object" ? this : sloppyModeThis();
+        var exporter = makeExporter(Reflect3);
+        if (typeof root.Reflect !== "undefined") {
+          exporter = makeExporter(root.Reflect, exporter);
+        }
+        factory(exporter, root);
+        if (typeof root.Reflect === "undefined") {
+          root.Reflect = Reflect3;
+        }
+        function makeExporter(target, previous) {
+          return function(key, value) {
+            Object.defineProperty(target, key, { configurable: true, writable: true, value });
+            if (previous)
+              previous(key, value);
+          };
+        }
+        function functionThis() {
+          try {
+            return Function("return this;")();
+          } catch (_) {
+          }
+        }
+        function indirectEvalThis() {
+          try {
+            return (void 0, eval)("(function() { return this; })()");
+          } catch (_) {
+          }
+        }
+        function sloppyModeThis() {
+          return functionThis() || indirectEvalThis();
+        }
+      })(function(exporter, root) {
+        var hasOwn = Object.prototype.hasOwnProperty;
+        var supportsSymbol = typeof Symbol === "function";
+        var toPrimitiveSymbol = supportsSymbol && typeof Symbol.toPrimitive !== "undefined" ? Symbol.toPrimitive : "@@toPrimitive";
+        var iteratorSymbol = supportsSymbol && typeof Symbol.iterator !== "undefined" ? Symbol.iterator : "@@iterator";
+        var supportsCreate = typeof Object.create === "function";
+        var supportsProto = { __proto__: [] } instanceof Array;
+        var downLevel = !supportsCreate && !supportsProto;
+        var HashMap = {
+          // create an object in dictionary mode (a.k.a. "slow" mode in v8)
+          create: supportsCreate ? function() {
+            return MakeDictionary(/* @__PURE__ */ Object.create(null));
+          } : supportsProto ? function() {
+            return MakeDictionary({ __proto__: null });
+          } : function() {
+            return MakeDictionary({});
+          },
+          has: downLevel ? function(map2, key) {
+            return hasOwn.call(map2, key);
+          } : function(map2, key) {
+            return key in map2;
+          },
+          get: downLevel ? function(map2, key) {
+            return hasOwn.call(map2, key) ? map2[key] : void 0;
+          } : function(map2, key) {
+            return map2[key];
+          }
+        };
+        var functionPrototype = Object.getPrototypeOf(Function);
+        var _Map = typeof Map === "function" && typeof Map.prototype.entries === "function" ? Map : CreateMapPolyfill();
+        var _Set = typeof Set === "function" && typeof Set.prototype.entries === "function" ? Set : CreateSetPolyfill();
+        var _WeakMap = typeof WeakMap === "function" ? WeakMap : CreateWeakMapPolyfill();
+        var registrySymbol = supportsSymbol ? /* @__PURE__ */ Symbol.for("@reflect-metadata:registry") : void 0;
+        var metadataRegistry = GetOrCreateMetadataRegistry();
+        var metadataProvider = CreateMetadataProvider(metadataRegistry);
+        function decorate(decorators, target, propertyKey, attributes) {
+          if (!IsUndefined(propertyKey)) {
+            if (!IsArray(decorators))
+              throw new TypeError();
+            if (!IsObject(target))
+              throw new TypeError();
+            if (!IsObject(attributes) && !IsUndefined(attributes) && !IsNull(attributes))
+              throw new TypeError();
+            if (IsNull(attributes))
+              attributes = void 0;
+            propertyKey = ToPropertyKey(propertyKey);
+            return DecorateProperty(decorators, target, propertyKey, attributes);
+          } else {
+            if (!IsArray(decorators))
+              throw new TypeError();
+            if (!IsConstructor(target))
+              throw new TypeError();
+            return DecorateConstructor(decorators, target);
+          }
+        }
+        exporter("decorate", decorate);
+        function metadata(metadataKey, metadataValue) {
+          function decorator(target, propertyKey) {
+            if (!IsObject(target))
+              throw new TypeError();
+            if (!IsUndefined(propertyKey) && !IsPropertyKey(propertyKey))
+              throw new TypeError();
+            OrdinaryDefineOwnMetadata(metadataKey, metadataValue, target, propertyKey);
+          }
+          return decorator;
+        }
+        exporter("metadata", metadata);
+        function defineMetadata(metadataKey, metadataValue, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryDefineOwnMetadata(metadataKey, metadataValue, target, propertyKey);
+        }
+        exporter("defineMetadata", defineMetadata);
+        function hasMetadata(metadataKey, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryHasMetadata(metadataKey, target, propertyKey);
+        }
+        exporter("hasMetadata", hasMetadata);
+        function hasOwnMetadata(metadataKey, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryHasOwnMetadata(metadataKey, target, propertyKey);
+        }
+        exporter("hasOwnMetadata", hasOwnMetadata);
+        function getMetadata(metadataKey, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryGetMetadata(metadataKey, target, propertyKey);
+        }
+        exporter("getMetadata", getMetadata);
+        function getOwnMetadata(metadataKey, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryGetOwnMetadata(metadataKey, target, propertyKey);
+        }
+        exporter("getOwnMetadata", getOwnMetadata);
+        function getMetadataKeys(target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryMetadataKeys(target, propertyKey);
+        }
+        exporter("getMetadataKeys", getMetadataKeys);
+        function getOwnMetadataKeys(target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          return OrdinaryOwnMetadataKeys(target, propertyKey);
+        }
+        exporter("getOwnMetadataKeys", getOwnMetadataKeys);
+        function deleteMetadata(metadataKey, target, propertyKey) {
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          if (!IsObject(target))
+            throw new TypeError();
+          if (!IsUndefined(propertyKey))
+            propertyKey = ToPropertyKey(propertyKey);
+          var provider = GetMetadataProvider(
+            target,
+            propertyKey,
+            /*Create*/
+            false
+          );
+          if (IsUndefined(provider))
+            return false;
+          return provider.OrdinaryDeleteMetadata(metadataKey, target, propertyKey);
+        }
+        exporter("deleteMetadata", deleteMetadata);
+        function DecorateConstructor(decorators, target) {
+          for (var i = decorators.length - 1; i >= 0; --i) {
+            var decorator = decorators[i];
+            var decorated = decorator(target);
+            if (!IsUndefined(decorated) && !IsNull(decorated)) {
+              if (!IsConstructor(decorated))
+                throw new TypeError();
+              target = decorated;
+            }
+          }
+          return target;
+        }
+        function DecorateProperty(decorators, target, propertyKey, descriptor) {
+          for (var i = decorators.length - 1; i >= 0; --i) {
+            var decorator = decorators[i];
+            var decorated = decorator(target, propertyKey, descriptor);
+            if (!IsUndefined(decorated) && !IsNull(decorated)) {
+              if (!IsObject(decorated))
+                throw new TypeError();
+              descriptor = decorated;
+            }
+          }
+          return descriptor;
+        }
+        function OrdinaryHasMetadata(MetadataKey, O, P) {
+          var hasOwn2 = OrdinaryHasOwnMetadata(MetadataKey, O, P);
+          if (hasOwn2)
+            return true;
+          var parent = OrdinaryGetPrototypeOf(O);
+          if (!IsNull(parent))
+            return OrdinaryHasMetadata(MetadataKey, parent, P);
+          return false;
+        }
+        function OrdinaryHasOwnMetadata(MetadataKey, O, P) {
+          var provider = GetMetadataProvider(
+            O,
+            P,
+            /*Create*/
+            false
+          );
+          if (IsUndefined(provider))
+            return false;
+          return ToBoolean(provider.OrdinaryHasOwnMetadata(MetadataKey, O, P));
+        }
+        function OrdinaryGetMetadata(MetadataKey, O, P) {
+          var hasOwn2 = OrdinaryHasOwnMetadata(MetadataKey, O, P);
+          if (hasOwn2)
+            return OrdinaryGetOwnMetadata(MetadataKey, O, P);
+          var parent = OrdinaryGetPrototypeOf(O);
+          if (!IsNull(parent))
+            return OrdinaryGetMetadata(MetadataKey, parent, P);
+          return void 0;
+        }
+        function OrdinaryGetOwnMetadata(MetadataKey, O, P) {
+          var provider = GetMetadataProvider(
+            O,
+            P,
+            /*Create*/
+            false
+          );
+          if (IsUndefined(provider))
+            return;
+          return provider.OrdinaryGetOwnMetadata(MetadataKey, O, P);
+        }
+        function OrdinaryDefineOwnMetadata(MetadataKey, MetadataValue, O, P) {
+          var provider = GetMetadataProvider(
+            O,
+            P,
+            /*Create*/
+            true
+          );
+          provider.OrdinaryDefineOwnMetadata(MetadataKey, MetadataValue, O, P);
+        }
+        function OrdinaryMetadataKeys(O, P) {
+          var ownKeys = OrdinaryOwnMetadataKeys(O, P);
+          var parent = OrdinaryGetPrototypeOf(O);
+          if (parent === null)
+            return ownKeys;
+          var parentKeys = OrdinaryMetadataKeys(parent, P);
+          if (parentKeys.length <= 0)
+            return ownKeys;
+          if (ownKeys.length <= 0)
+            return parentKeys;
+          var set2 = new _Set();
+          var keys = [];
+          for (var _i = 0, ownKeys_1 = ownKeys; _i < ownKeys_1.length; _i++) {
+            var key = ownKeys_1[_i];
+            var hasKey = set2.has(key);
+            if (!hasKey) {
+              set2.add(key);
+              keys.push(key);
+            }
+          }
+          for (var _a2 = 0, parentKeys_1 = parentKeys; _a2 < parentKeys_1.length; _a2++) {
+            var key = parentKeys_1[_a2];
+            var hasKey = set2.has(key);
+            if (!hasKey) {
+              set2.add(key);
+              keys.push(key);
+            }
+          }
+          return keys;
+        }
+        function OrdinaryOwnMetadataKeys(O, P) {
+          var provider = GetMetadataProvider(
+            O,
+            P,
+            /*create*/
+            false
+          );
+          if (!provider) {
+            return [];
+          }
+          return provider.OrdinaryOwnMetadataKeys(O, P);
+        }
+        function Type2(x) {
+          if (x === null)
+            return 1;
+          switch (typeof x) {
+            case "undefined":
+              return 0;
+            case "boolean":
+              return 2;
+            case "string":
+              return 3;
+            case "symbol":
+              return 4;
+            case "number":
+              return 5;
+            case "object":
+              return x === null ? 1 : 6;
+            default:
+              return 6;
+          }
+        }
+        function IsUndefined(x) {
+          return x === void 0;
+        }
+        function IsNull(x) {
+          return x === null;
+        }
+        function IsSymbol(x) {
+          return typeof x === "symbol";
+        }
+        function IsObject(x) {
+          return typeof x === "object" ? x !== null : typeof x === "function";
+        }
+        function ToPrimitive(input, PreferredType) {
+          switch (Type2(input)) {
+            case 0:
+              return input;
+            case 1:
+              return input;
+            case 2:
+              return input;
+            case 3:
+              return input;
+            case 4:
+              return input;
+            case 5:
+              return input;
+          }
+          var hint = PreferredType === 3 ? "string" : PreferredType === 5 ? "number" : "default";
+          var exoticToPrim = GetMethod(input, toPrimitiveSymbol);
+          if (exoticToPrim !== void 0) {
+            var result = exoticToPrim.call(input, hint);
+            if (IsObject(result))
+              throw new TypeError();
+            return result;
+          }
+          return OrdinaryToPrimitive(input, hint === "default" ? "number" : hint);
+        }
+        function OrdinaryToPrimitive(O, hint) {
+          if (hint === "string") {
+            var toString_1 = O.toString;
+            if (IsCallable(toString_1)) {
+              var result = toString_1.call(O);
+              if (!IsObject(result))
+                return result;
+            }
+            var valueOf = O.valueOf;
+            if (IsCallable(valueOf)) {
+              var result = valueOf.call(O);
+              if (!IsObject(result))
+                return result;
+            }
+          } else {
+            var valueOf = O.valueOf;
+            if (IsCallable(valueOf)) {
+              var result = valueOf.call(O);
+              if (!IsObject(result))
+                return result;
+            }
+            var toString_2 = O.toString;
+            if (IsCallable(toString_2)) {
+              var result = toString_2.call(O);
+              if (!IsObject(result))
+                return result;
+            }
+          }
+          throw new TypeError();
+        }
+        function ToBoolean(argument) {
+          return !!argument;
+        }
+        function ToString(argument) {
+          return "" + argument;
+        }
+        function ToPropertyKey(argument) {
+          var key = ToPrimitive(
+            argument,
+            3
+            /* String */
+          );
+          if (IsSymbol(key))
+            return key;
+          return ToString(key);
+        }
+        function IsArray(argument) {
+          return Array.isArray ? Array.isArray(argument) : argument instanceof Object ? argument instanceof Array : Object.prototype.toString.call(argument) === "[object Array]";
+        }
+        function IsCallable(argument) {
+          return typeof argument === "function";
+        }
+        function IsConstructor(argument) {
+          return typeof argument === "function";
+        }
+        function IsPropertyKey(argument) {
+          switch (Type2(argument)) {
+            case 3:
+              return true;
+            case 4:
+              return true;
+            default:
+              return false;
+          }
+        }
+        function SameValueZero(x, y) {
+          return x === y || x !== x && y !== y;
+        }
+        function GetMethod(V, P) {
+          var func = V[P];
+          if (func === void 0 || func === null)
+            return void 0;
+          if (!IsCallable(func))
+            throw new TypeError();
+          return func;
+        }
+        function GetIterator(obj) {
+          var method = GetMethod(obj, iteratorSymbol);
+          if (!IsCallable(method))
+            throw new TypeError();
+          var iterator = method.call(obj);
+          if (!IsObject(iterator))
+            throw new TypeError();
+          return iterator;
+        }
+        function IteratorValue(iterResult) {
+          return iterResult.value;
+        }
+        function IteratorStep(iterator) {
+          var result = iterator.next();
+          return result.done ? false : result;
+        }
+        function IteratorClose(iterator) {
+          var f = iterator["return"];
+          if (f)
+            f.call(iterator);
+        }
+        function OrdinaryGetPrototypeOf(O) {
+          var proto = Object.getPrototypeOf(O);
+          if (typeof O !== "function" || O === functionPrototype)
+            return proto;
+          if (proto !== functionPrototype)
+            return proto;
+          var prototype = O.prototype;
+          var prototypeProto = prototype && Object.getPrototypeOf(prototype);
+          if (prototypeProto == null || prototypeProto === Object.prototype)
+            return proto;
+          var constructor = prototypeProto.constructor;
+          if (typeof constructor !== "function")
+            return proto;
+          if (constructor === O)
+            return proto;
+          return constructor;
+        }
+        function CreateMetadataRegistry() {
+          var fallback;
+          if (!IsUndefined(registrySymbol) && typeof root.Reflect !== "undefined" && !(registrySymbol in root.Reflect) && typeof root.Reflect.defineMetadata === "function") {
+            fallback = CreateFallbackProvider(root.Reflect);
+          }
+          var first;
+          var second;
+          var rest;
+          var targetProviderMap = new _WeakMap();
+          var registry2 = {
+            registerProvider,
+            getProvider,
+            setProvider
+          };
+          return registry2;
+          function registerProvider(provider) {
+            if (!Object.isExtensible(registry2)) {
+              throw new Error("Cannot add provider to a frozen registry.");
+            }
+            switch (true) {
+              case fallback === provider:
+                break;
+              case IsUndefined(first):
+                first = provider;
+                break;
+              case first === provider:
+                break;
+              case IsUndefined(second):
+                second = provider;
+                break;
+              case second === provider:
+                break;
+              default:
+                if (rest === void 0)
+                  rest = new _Set();
+                rest.add(provider);
+                break;
+            }
+          }
+          function getProviderNoCache(O, P) {
+            if (!IsUndefined(first)) {
+              if (first.isProviderFor(O, P))
+                return first;
+              if (!IsUndefined(second)) {
+                if (second.isProviderFor(O, P))
+                  return first;
+                if (!IsUndefined(rest)) {
+                  var iterator = GetIterator(rest);
+                  while (true) {
+                    var next = IteratorStep(iterator);
+                    if (!next) {
+                      return void 0;
+                    }
+                    var provider = IteratorValue(next);
+                    if (provider.isProviderFor(O, P)) {
+                      IteratorClose(iterator);
+                      return provider;
+                    }
+                  }
+                }
+              }
+            }
+            if (!IsUndefined(fallback) && fallback.isProviderFor(O, P)) {
+              return fallback;
+            }
+            return void 0;
+          }
+          function getProvider(O, P) {
+            var providerMap = targetProviderMap.get(O);
+            var provider;
+            if (!IsUndefined(providerMap)) {
+              provider = providerMap.get(P);
+            }
+            if (!IsUndefined(provider)) {
+              return provider;
+            }
+            provider = getProviderNoCache(O, P);
+            if (!IsUndefined(provider)) {
+              if (IsUndefined(providerMap)) {
+                providerMap = new _Map();
+                targetProviderMap.set(O, providerMap);
+              }
+              providerMap.set(P, provider);
+            }
+            return provider;
+          }
+          function hasProvider(provider) {
+            if (IsUndefined(provider))
+              throw new TypeError();
+            return first === provider || second === provider || !IsUndefined(rest) && rest.has(provider);
+          }
+          function setProvider(O, P, provider) {
+            if (!hasProvider(provider)) {
+              throw new Error("Metadata provider not registered.");
+            }
+            var existingProvider = getProvider(O, P);
+            if (existingProvider !== provider) {
+              if (!IsUndefined(existingProvider)) {
+                return false;
+              }
+              var providerMap = targetProviderMap.get(O);
+              if (IsUndefined(providerMap)) {
+                providerMap = new _Map();
+                targetProviderMap.set(O, providerMap);
+              }
+              providerMap.set(P, provider);
+            }
+            return true;
+          }
+        }
+        function GetOrCreateMetadataRegistry() {
+          var metadataRegistry2;
+          if (!IsUndefined(registrySymbol) && IsObject(root.Reflect) && Object.isExtensible(root.Reflect)) {
+            metadataRegistry2 = root.Reflect[registrySymbol];
+          }
+          if (IsUndefined(metadataRegistry2)) {
+            metadataRegistry2 = CreateMetadataRegistry();
+          }
+          if (!IsUndefined(registrySymbol) && IsObject(root.Reflect) && Object.isExtensible(root.Reflect)) {
+            Object.defineProperty(root.Reflect, registrySymbol, {
+              enumerable: false,
+              configurable: false,
+              writable: false,
+              value: metadataRegistry2
+            });
+          }
+          return metadataRegistry2;
+        }
+        function CreateMetadataProvider(registry2) {
+          var metadata2 = new _WeakMap();
+          var provider = {
+            isProviderFor: function(O, P) {
+              var targetMetadata = metadata2.get(O);
+              if (IsUndefined(targetMetadata))
+                return false;
+              return targetMetadata.has(P);
+            },
+            OrdinaryDefineOwnMetadata: OrdinaryDefineOwnMetadata2,
+            OrdinaryHasOwnMetadata: OrdinaryHasOwnMetadata2,
+            OrdinaryGetOwnMetadata: OrdinaryGetOwnMetadata2,
+            OrdinaryOwnMetadataKeys: OrdinaryOwnMetadataKeys2,
+            OrdinaryDeleteMetadata
+          };
+          metadataRegistry.registerProvider(provider);
+          return provider;
+          function GetOrCreateMetadataMap(O, P, Create) {
+            var targetMetadata = metadata2.get(O);
+            var createdTargetMetadata = false;
+            if (IsUndefined(targetMetadata)) {
+              if (!Create)
+                return void 0;
+              targetMetadata = new _Map();
+              metadata2.set(O, targetMetadata);
+              createdTargetMetadata = true;
+            }
+            var metadataMap = targetMetadata.get(P);
+            if (IsUndefined(metadataMap)) {
+              if (!Create)
+                return void 0;
+              metadataMap = new _Map();
+              targetMetadata.set(P, metadataMap);
+              if (!registry2.setProvider(O, P, provider)) {
+                targetMetadata.delete(P);
+                if (createdTargetMetadata) {
+                  metadata2.delete(O);
+                }
+                throw new Error("Wrong provider for target.");
+              }
+            }
+            return metadataMap;
+          }
+          function OrdinaryHasOwnMetadata2(MetadataKey, O, P) {
+            var metadataMap = GetOrCreateMetadataMap(
+              O,
+              P,
+              /*Create*/
+              false
+            );
+            if (IsUndefined(metadataMap))
+              return false;
+            return ToBoolean(metadataMap.has(MetadataKey));
+          }
+          function OrdinaryGetOwnMetadata2(MetadataKey, O, P) {
+            var metadataMap = GetOrCreateMetadataMap(
+              O,
+              P,
+              /*Create*/
+              false
+            );
+            if (IsUndefined(metadataMap))
+              return void 0;
+            return metadataMap.get(MetadataKey);
+          }
+          function OrdinaryDefineOwnMetadata2(MetadataKey, MetadataValue, O, P) {
+            var metadataMap = GetOrCreateMetadataMap(
+              O,
+              P,
+              /*Create*/
+              true
+            );
+            metadataMap.set(MetadataKey, MetadataValue);
+          }
+          function OrdinaryOwnMetadataKeys2(O, P) {
+            var keys = [];
+            var metadataMap = GetOrCreateMetadataMap(
+              O,
+              P,
+              /*Create*/
+              false
+            );
+            if (IsUndefined(metadataMap))
+              return keys;
+            var keysObj = metadataMap.keys();
+            var iterator = GetIterator(keysObj);
+            var k = 0;
+            while (true) {
+              var next = IteratorStep(iterator);
+              if (!next) {
+                keys.length = k;
+                return keys;
+              }
+              var nextValue = IteratorValue(next);
+              try {
+                keys[k] = nextValue;
+              } catch (e) {
+                try {
+                  IteratorClose(iterator);
+                } finally {
+                  throw e;
+                }
+              }
+              k++;
+            }
+          }
+          function OrdinaryDeleteMetadata(MetadataKey, O, P) {
+            var metadataMap = GetOrCreateMetadataMap(
+              O,
+              P,
+              /*Create*/
+              false
+            );
+            if (IsUndefined(metadataMap))
+              return false;
+            if (!metadataMap.delete(MetadataKey))
+              return false;
+            if (metadataMap.size === 0) {
+              var targetMetadata = metadata2.get(O);
+              if (!IsUndefined(targetMetadata)) {
+                targetMetadata.delete(P);
+                if (targetMetadata.size === 0) {
+                  metadata2.delete(targetMetadata);
+                }
+              }
+            }
+            return true;
+          }
+        }
+        function CreateFallbackProvider(reflect) {
+          var defineMetadata2 = reflect.defineMetadata, hasOwnMetadata2 = reflect.hasOwnMetadata, getOwnMetadata2 = reflect.getOwnMetadata, getOwnMetadataKeys2 = reflect.getOwnMetadataKeys, deleteMetadata2 = reflect.deleteMetadata;
+          var metadataOwner = new _WeakMap();
+          var provider = {
+            isProviderFor: function(O, P) {
+              var metadataPropertySet = metadataOwner.get(O);
+              if (!IsUndefined(metadataPropertySet) && metadataPropertySet.has(P)) {
+                return true;
+              }
+              if (getOwnMetadataKeys2(O, P).length) {
+                if (IsUndefined(metadataPropertySet)) {
+                  metadataPropertySet = new _Set();
+                  metadataOwner.set(O, metadataPropertySet);
+                }
+                metadataPropertySet.add(P);
+                return true;
+              }
+              return false;
+            },
+            OrdinaryDefineOwnMetadata: defineMetadata2,
+            OrdinaryHasOwnMetadata: hasOwnMetadata2,
+            OrdinaryGetOwnMetadata: getOwnMetadata2,
+            OrdinaryOwnMetadataKeys: getOwnMetadataKeys2,
+            OrdinaryDeleteMetadata: deleteMetadata2
+          };
+          return provider;
+        }
+        function GetMetadataProvider(O, P, Create) {
+          var registeredProvider = metadataRegistry.getProvider(O, P);
+          if (!IsUndefined(registeredProvider)) {
+            return registeredProvider;
+          }
+          if (Create) {
+            if (metadataRegistry.setProvider(O, P, metadataProvider)) {
+              return metadataProvider;
+            }
+            throw new Error("Illegal state.");
+          }
+          return void 0;
+        }
+        function CreateMapPolyfill() {
+          var cacheSentinel = {};
+          var arraySentinel = [];
+          var MapIterator = (
+            /** @class */
+            (function() {
+              function MapIterator2(keys, values, selector) {
+                this._index = 0;
+                this._keys = keys;
+                this._values = values;
+                this._selector = selector;
+              }
+              MapIterator2.prototype["@@iterator"] = function() {
+                return this;
+              };
+              MapIterator2.prototype[iteratorSymbol] = function() {
+                return this;
+              };
+              MapIterator2.prototype.next = function() {
+                var index = this._index;
+                if (index >= 0 && index < this._keys.length) {
+                  var result = this._selector(this._keys[index], this._values[index]);
+                  if (index + 1 >= this._keys.length) {
+                    this._index = -1;
+                    this._keys = arraySentinel;
+                    this._values = arraySentinel;
+                  } else {
+                    this._index++;
+                  }
+                  return { value: result, done: false };
+                }
+                return { value: void 0, done: true };
+              };
+              MapIterator2.prototype.throw = function(error48) {
+                if (this._index >= 0) {
+                  this._index = -1;
+                  this._keys = arraySentinel;
+                  this._values = arraySentinel;
+                }
+                throw error48;
+              };
+              MapIterator2.prototype.return = function(value) {
+                if (this._index >= 0) {
+                  this._index = -1;
+                  this._keys = arraySentinel;
+                  this._values = arraySentinel;
+                }
+                return { value, done: true };
+              };
+              return MapIterator2;
+            })()
+          );
+          var Map2 = (
+            /** @class */
+            (function() {
+              function Map3() {
+                this._keys = [];
+                this._values = [];
+                this._cacheKey = cacheSentinel;
+                this._cacheIndex = -2;
+              }
+              Object.defineProperty(Map3.prototype, "size", {
+                get: function() {
+                  return this._keys.length;
+                },
+                enumerable: true,
+                configurable: true
+              });
+              Map3.prototype.has = function(key) {
+                return this._find(
+                  key,
+                  /*insert*/
+                  false
+                ) >= 0;
+              };
+              Map3.prototype.get = function(key) {
+                var index = this._find(
+                  key,
+                  /*insert*/
+                  false
+                );
+                return index >= 0 ? this._values[index] : void 0;
+              };
+              Map3.prototype.set = function(key, value) {
+                var index = this._find(
+                  key,
+                  /*insert*/
+                  true
+                );
+                this._values[index] = value;
+                return this;
+              };
+              Map3.prototype.delete = function(key) {
+                var index = this._find(
+                  key,
+                  /*insert*/
+                  false
+                );
+                if (index >= 0) {
+                  var size = this._keys.length;
+                  for (var i = index + 1; i < size; i++) {
+                    this._keys[i - 1] = this._keys[i];
+                    this._values[i - 1] = this._values[i];
+                  }
+                  this._keys.length--;
+                  this._values.length--;
+                  if (SameValueZero(key, this._cacheKey)) {
+                    this._cacheKey = cacheSentinel;
+                    this._cacheIndex = -2;
+                  }
+                  return true;
+                }
+                return false;
+              };
+              Map3.prototype.clear = function() {
+                this._keys.length = 0;
+                this._values.length = 0;
+                this._cacheKey = cacheSentinel;
+                this._cacheIndex = -2;
+              };
+              Map3.prototype.keys = function() {
+                return new MapIterator(this._keys, this._values, getKey);
+              };
+              Map3.prototype.values = function() {
+                return new MapIterator(this._keys, this._values, getValue);
+              };
+              Map3.prototype.entries = function() {
+                return new MapIterator(this._keys, this._values, getEntry);
+              };
+              Map3.prototype["@@iterator"] = function() {
+                return this.entries();
+              };
+              Map3.prototype[iteratorSymbol] = function() {
+                return this.entries();
+              };
+              Map3.prototype._find = function(key, insert) {
+                if (!SameValueZero(this._cacheKey, key)) {
+                  this._cacheIndex = -1;
+                  for (var i = 0; i < this._keys.length; i++) {
+                    if (SameValueZero(this._keys[i], key)) {
+                      this._cacheIndex = i;
+                      break;
+                    }
+                  }
+                }
+                if (this._cacheIndex < 0 && insert) {
+                  this._cacheIndex = this._keys.length;
+                  this._keys.push(key);
+                  this._values.push(void 0);
+                }
+                return this._cacheIndex;
+              };
+              return Map3;
+            })()
+          );
+          return Map2;
+          function getKey(key, _) {
+            return key;
+          }
+          function getValue(_, value) {
+            return value;
+          }
+          function getEntry(key, value) {
+            return [key, value];
+          }
+        }
+        function CreateSetPolyfill() {
+          var Set2 = (
+            /** @class */
+            (function() {
+              function Set3() {
+                this._map = new _Map();
+              }
+              Object.defineProperty(Set3.prototype, "size", {
+                get: function() {
+                  return this._map.size;
+                },
+                enumerable: true,
+                configurable: true
+              });
+              Set3.prototype.has = function(value) {
+                return this._map.has(value);
+              };
+              Set3.prototype.add = function(value) {
+                return this._map.set(value, value), this;
+              };
+              Set3.prototype.delete = function(value) {
+                return this._map.delete(value);
+              };
+              Set3.prototype.clear = function() {
+                this._map.clear();
+              };
+              Set3.prototype.keys = function() {
+                return this._map.keys();
+              };
+              Set3.prototype.values = function() {
+                return this._map.keys();
+              };
+              Set3.prototype.entries = function() {
+                return this._map.entries();
+              };
+              Set3.prototype["@@iterator"] = function() {
+                return this.keys();
+              };
+              Set3.prototype[iteratorSymbol] = function() {
+                return this.keys();
+              };
+              return Set3;
+            })()
+          );
+          return Set2;
+        }
+        function CreateWeakMapPolyfill() {
+          var UUID_SIZE = 16;
+          var keys = HashMap.create();
+          var rootKey = CreateUniqueKey();
+          return (
+            /** @class */
+            (function() {
+              function WeakMap2() {
+                this._key = CreateUniqueKey();
+              }
+              WeakMap2.prototype.has = function(target) {
+                var table = GetOrCreateWeakMapTable(
+                  target,
+                  /*create*/
+                  false
+                );
+                return table !== void 0 ? HashMap.has(table, this._key) : false;
+              };
+              WeakMap2.prototype.get = function(target) {
+                var table = GetOrCreateWeakMapTable(
+                  target,
+                  /*create*/
+                  false
+                );
+                return table !== void 0 ? HashMap.get(table, this._key) : void 0;
+              };
+              WeakMap2.prototype.set = function(target, value) {
+                var table = GetOrCreateWeakMapTable(
+                  target,
+                  /*create*/
+                  true
+                );
+                table[this._key] = value;
+                return this;
+              };
+              WeakMap2.prototype.delete = function(target) {
+                var table = GetOrCreateWeakMapTable(
+                  target,
+                  /*create*/
+                  false
+                );
+                return table !== void 0 ? delete table[this._key] : false;
+              };
+              WeakMap2.prototype.clear = function() {
+                this._key = CreateUniqueKey();
+              };
+              return WeakMap2;
+            })()
+          );
+          function CreateUniqueKey() {
+            var key;
+            do
+              key = "@@WeakMap@@" + CreateUUID();
+            while (HashMap.has(keys, key));
+            keys[key] = true;
+            return key;
+          }
+          function GetOrCreateWeakMapTable(target, create) {
+            if (!hasOwn.call(target, rootKey)) {
+              if (!create)
+                return void 0;
+              Object.defineProperty(target, rootKey, { value: HashMap.create() });
+            }
+            return target[rootKey];
+          }
+          function FillRandomBytes(buffer, size) {
+            for (var i = 0; i < size; ++i)
+              buffer[i] = Math.random() * 255 | 0;
+            return buffer;
+          }
+          function GenRandomBytes(size) {
+            if (typeof Uint8Array === "function") {
+              var array2 = new Uint8Array(size);
+              if (typeof crypto !== "undefined") {
+                crypto.getRandomValues(array2);
+              } else if (typeof msCrypto !== "undefined") {
+                msCrypto.getRandomValues(array2);
+              } else {
+                FillRandomBytes(array2, size);
+              }
+              return array2;
+            }
+            return FillRandomBytes(new Array(size), size);
+          }
+          function CreateUUID() {
+            var data = GenRandomBytes(UUID_SIZE);
+            data[6] = data[6] & 79 | 64;
+            data[8] = data[8] & 191 | 128;
+            var result = "";
+            for (var offset = 0; offset < UUID_SIZE; ++offset) {
+              var byte = data[offset];
+              if (offset === 4 || offset === 6 || offset === 8)
+                result += "-";
+              if (byte < 16)
+                result += "0";
+              result += byte.toString(16).toLowerCase();
+            }
+            return result;
+          }
+        }
+        function MakeDictionary(obj) {
+          obj.__ = void 0;
+          delete obj.__;
+          return obj;
+        }
+      });
+    })(Reflect2 || (Reflect2 = {}));
+  }
+});
+
+// packages/extensions-sdk/src/datasource-input-limits.ts
+var DATASOURCE_INPUT_MAX_LENGTH = {
+  name: 80,
+  host: 255,
+  port: 5,
+  database: 128,
+  username: 128,
+  password: 512,
+  connectionString: 4096,
+  url: 2048,
+  sharedLink: 2048,
+  apiKey: 1024,
+  endpointUrl: 2048,
+  accessKeyId: 128,
+  secretAccessKey: 256,
+  sessionToken: 2048,
+  region: 64,
+  bucket: 63,
+  prefix: 1024,
+  patternList: 2048
 };
 
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/external.js
@@ -2099,12 +3238,12 @@ var $ZodCheckUpperCase = /* @__PURE__ */ $constructor("$ZodCheckUpperCase", (ins
 var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst, def) => {
   $ZodCheck.init(inst, def);
   const escapedRegex = escapeRegex(def.includes);
-  const pattern = new RegExp(typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex);
-  def.pattern = pattern;
+  const pattern2 = new RegExp(typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex);
+  def.pattern = pattern2;
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
     bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
-    bag.patterns.add(pattern);
+    bag.patterns.add(pattern2);
   });
   inst._zod.check = (payload) => {
     if (payload.value.includes(def.includes, def.position))
@@ -2122,12 +3261,12 @@ var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst,
 });
 var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (inst, def) => {
   $ZodCheck.init(inst, def);
-  const pattern = new RegExp(`^${escapeRegex(def.prefix)}.*`);
-  def.pattern ?? (def.pattern = pattern);
+  const pattern2 = new RegExp(`^${escapeRegex(def.prefix)}.*`);
+  def.pattern ?? (def.pattern = pattern2);
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
     bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
-    bag.patterns.add(pattern);
+    bag.patterns.add(pattern2);
   });
   inst._zod.check = (payload) => {
     if (payload.value.startsWith(def.prefix))
@@ -2145,12 +3284,12 @@ var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (i
 });
 var $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst, def) => {
   $ZodCheck.init(inst, def);
-  const pattern = new RegExp(`.*${escapeRegex(def.suffix)}$`);
-  def.pattern ?? (def.pattern = pattern);
+  const pattern2 = new RegExp(`.*${escapeRegex(def.suffix)}$`);
+  def.pattern ?? (def.pattern = pattern2);
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
     bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
-    bag.patterns.add(pattern);
+    bag.patterns.add(pattern2);
   });
   inst._zod.check = (payload) => {
     if (payload.value.endsWith(def.suffix))
@@ -3774,8 +4913,8 @@ var $ZodOptional = /* @__PURE__ */ $constructor("$ZodOptional", (inst, def) => {
     return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
   });
   defineLazy(inst._zod, "pattern", () => {
-    const pattern = def.innerType._zod.pattern;
-    return pattern ? new RegExp(`^(${cleanRegex(pattern.source)})?$`) : void 0;
+    const pattern2 = def.innerType._zod.pattern;
+    return pattern2 ? new RegExp(`^(${cleanRegex(pattern2.source)})?$`) : void 0;
   });
   inst._zod.parse = (payload, ctx) => {
     if (def.innerType._zod.optin === "optional") {
@@ -3803,8 +4942,8 @@ var $ZodNullable = /* @__PURE__ */ $constructor("$ZodNullable", (inst, def) => {
   defineLazy(inst._zod, "optin", () => def.innerType._zod.optin);
   defineLazy(inst._zod, "optout", () => def.innerType._zod.optout);
   defineLazy(inst._zod, "pattern", () => {
-    const pattern = def.innerType._zod.pattern;
-    return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
+    const pattern2 = def.innerType._zod.pattern;
+    return pattern2 ? new RegExp(`^(${cleanRegex(pattern2.source)}|null)$`) : void 0;
   });
   defineLazy(inst._zod, "values", () => {
     return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
@@ -10443,12 +11582,12 @@ function _length(length, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _regex(pattern, params) {
+function _regex(pattern2, params) {
   return new $ZodCheckRegex({
     check: "string_format",
     format: "regex",
     ...normalizeParams(params),
-    pattern
+    pattern: pattern2
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -11427,11 +12566,11 @@ var nanProcessor = (_schema, ctx, _json, _params) => {
 };
 var templateLiteralProcessor = (schema2, _ctx, json2, _params) => {
   const _json = json2;
-  const pattern = schema2._zod.pattern;
-  if (!pattern)
+  const pattern2 = schema2._zod.pattern;
+  if (!pattern2)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
-  _json.pattern = pattern.source;
+  _json.pattern = pattern2.source;
 };
 var fileProcessor = (schema2, _ctx, json2, _params) => {
   const _json = json2;
@@ -11617,8 +12756,8 @@ var recordProcessor = (schema2, ctx, _json, params) => {
       path: [...params.path, "patternProperties", "*"]
     });
     json2.patternProperties = {};
-    for (const pattern of patterns) {
-      json2.patternProperties[pattern.source] = valueSchema;
+    for (const pattern2 of patterns) {
+      json2.patternProperties[pattern2.source] = valueSchema;
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
@@ -13584,9 +14723,9 @@ function convertBaseSchema(schema2, ctx) {
         const patternProps = schema2.patternProperties;
         const patternKeys = Object.keys(patternProps);
         const looseRecords = [];
-        for (const pattern of patternKeys) {
-          const patternValue = convertSchema(patternProps[pattern], ctx);
-          const keySchema = z.string().regex(new RegExp(pattern));
+        for (const pattern2 of patternKeys) {
+          const patternValue = convertSchema(patternProps[pattern2], ctx);
+          const keySchema = z.string().regex(new RegExp(pattern2));
           looseRecords.push(z.looseRecord(keySchema, patternValue));
         }
         const schemasToIntersect = [];
@@ -13776,25 +14915,3725 @@ function date4(params) {
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/external.js
 config(en_default());
 
+// packages/extensions-sdk/src/types.ts
+var ExtensionScope = /* @__PURE__ */ ((ExtensionScope2) => {
+  ExtensionScope2["DATASOURCE"] = "datasource";
+  ExtensionScope2["DRIVER"] = "driver";
+  ExtensionScope2["HOOK"] = "hook";
+  ExtensionScope2["TOOL"] = "tool";
+  ExtensionScope2["AGENT"] = "agent";
+  ExtensionScope2["SKILL"] = "skill";
+  return ExtensionScope2;
+})(ExtensionScope || {});
+var PreviewUrlKindSchema = external_exports.enum([
+  "embeddable",
+  "data-file",
+  "connection"
+]);
+var PreviewDataFormatSchema = external_exports.enum(["json", "parquet", "csv"]);
+var ExtensionDefinitionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  icon: external_exports.string(),
+  description: external_exports.string().optional(),
+  tags: external_exports.array(external_exports.string()).optional(),
+  scope: external_exports.nativeEnum(ExtensionScope),
+  schema: external_exports.any().optional().nullable(),
+  docsUrl: external_exports.string().nullable().optional(),
+  supportsPreview: external_exports.boolean().optional(),
+  previewUrlKind: PreviewUrlKindSchema.optional(),
+  previewDataFormat: PreviewDataFormatSchema.optional()
+});
+var DriverRuntimeSchema = external_exports.enum(["node", "browser"]);
+var DriverExtensionSchema = external_exports.object({
+  id: external_exports.string(),
+  name: external_exports.string(),
+  description: external_exports.string().optional(),
+  runtime: DriverRuntimeSchema.optional(),
+  entry: external_exports.string().optional()
+});
+var DatasourceExtensionSchema = ExtensionDefinitionSchema.extend({
+  drivers: external_exports.array(DriverExtensionSchema)
+});
+
+// packages/domain/src/entities/index.ts
+var import_reflect_metadata = __toESM(require_Reflect(), 1);
+
+// packages/domain/src/common/code.ts
+var Code = class {
+};
+// Common
+Code.SUCCESS = {
+  code: 200,
+  message: "Success."
+};
+Code.BAD_REQUEST_ERROR = {
+  code: 400,
+  message: "Bad request."
+};
+Code.UNAUTHORIZED_ERROR = {
+  code: 401,
+  message: "Unauthorized error."
+};
+Code.WRONG_CREDENTIALS_ERROR = {
+  code: 402,
+  message: "Wrong Credentials."
+};
+Code.ACCESS_DENIED_ERROR = {
+  code: 403,
+  message: "Access denied."
+};
+Code.INTERNAL_ERROR = {
+  code: 500,
+  message: "Internal error."
+};
+Code.BAD_GATEWAY_ERROR = {
+  code: 502,
+  message: "Bad gateway."
+};
+Code.SERVICE_UNAVAILABLE_ERROR = {
+  code: 503,
+  message: "Service unavailable."
+};
+Code.ENTITY_NOT_FOUND_ERROR = {
+  code: 1e3,
+  message: "Entity not found."
+};
+Code.ENTITY_VALIDATION_ERROR = {
+  code: 1001,
+  message: "Entity validation error."
+};
+Code.USE_CASE_PORT_VALIDATION_ERROR = {
+  code: 1002,
+  message: "Use-case port validation error."
+};
+Code.VALUE_OBJECT_VALIDATION_ERROR = {
+  code: 1003,
+  message: "Value object validation error."
+};
+Code.ENTITY_ALREADY_EXISTS_ERROR = {
+  code: 1004,
+  message: "Entity already exists."
+};
+// Notebook - 2000-2099
+Code.NOTEBOOK_NOT_FOUND_ERROR = {
+  code: 2e3,
+  message: "Notebook not found."
+};
+Code.NOTEBOOK_ALREADY_EXISTS_ERROR = {
+  code: 2001,
+  message: "Notebook already exists."
+};
+Code.NOTEBOOK_UPDATE_ERROR = {
+  code: 2002,
+  message: "Notebook update error."
+};
+Code.NOTEBOOK_DELETE_ERROR = {
+  code: 2003,
+  message: "Notebook delete error."
+};
+Code.NOTEBOOK_GET_ERROR = {
+  code: 2004,
+  message: "Notebook get error."
+};
+Code.NOTEBOOK_GET_ALL_ERROR = {
+  code: 2005,
+  message: "Notebook get all error."
+};
+Code.NOTEBOOK_CREATE_ERROR = {
+  code: 2006,
+  message: "Notebook create error."
+};
+// User - 2100-2199
+Code.USER_NOT_FOUND_ERROR = {
+  code: 2100,
+  message: "User not found."
+};
+Code.USER_ALREADY_EXISTS_ERROR = {
+  code: 2101,
+  message: "User already exists."
+};
+Code.USER_UPDATE_ERROR = {
+  code: 2102,
+  message: "User update error."
+};
+Code.USER_DELETE_ERROR = {
+  code: 2103,
+  message: "User delete error."
+};
+Code.USER_GET_ERROR = {
+  code: 2104,
+  message: "User get error."
+};
+Code.USER_GET_ALL_ERROR = {
+  code: 2105,
+  message: "User get all error."
+};
+Code.USER_CREATE_ERROR = {
+  code: 2106,
+  message: "User create error."
+};
+// Workspace - 2200-2299
+Code.WORKSPACE_NOT_FOUND_ERROR = {
+  code: 2200,
+  message: "Workspace not found."
+};
+Code.WORKSPACE_UPDATE_ERROR = {
+  code: 2201,
+  message: "Workspace update error."
+};
+Code.WORKSPACE_GET_ERROR = {
+  code: 2203,
+  message: "Workspace get error."
+};
+Code.WORKSPACE_CREATE_ERROR = {
+  code: 2205,
+  message: "Workspace create error."
+};
+// Organization - 2300-2399
+Code.ORGANIZATION_NOT_FOUND_ERROR = {
+  code: 2300,
+  message: "Organization not found."
+};
+Code.ORGANIZATION_UPDATE_ERROR = {
+  code: 2301,
+  message: "Organization update error."
+};
+Code.ORGANIZATION_DELETE_ERROR = {
+  code: 2302,
+  message: "Organization delete error."
+};
+Code.ORGANIZATION_GET_ERROR = {
+  code: 2303,
+  message: "Organization get error."
+};
+Code.ORGANIZATION_GET_ALL_ERROR = {
+  code: 2304,
+  message: "Organization get all error."
+};
+Code.ORGANIZATION_CREATE_ERROR = {
+  code: 2305,
+  message: "Organization create error."
+};
+// Project - 2400-2499
+Code.PROJECT_NOT_FOUND_ERROR = {
+  code: 2400,
+  message: "Project not found."
+};
+Code.PROJECT_UPDATE_ERROR = {
+  code: 2401,
+  message: "Project update error."
+};
+Code.PROJECT_DELETE_ERROR = {
+  code: 2402,
+  message: "Project delete error."
+};
+Code.PROJECT_GET_ERROR = {
+  code: 2403,
+  message: "Project get error."
+};
+Code.PROJECT_GET_ALL_ERROR = {
+  code: 2404,
+  message: "Project get all error."
+};
+Code.PROJECT_CREATE_ERROR = {
+  code: 2405,
+  message: "Project create error."
+};
+// Datasource - 2500-2599
+Code.DATASOURCE_NOT_FOUND_ERROR = {
+  code: 2500,
+  message: "Datasource not found."
+};
+Code.DATASOURCE_ALREADY_EXISTS_ERROR = {
+  code: 2501,
+  message: "Datasource already exists."
+};
+Code.DATASOURCE_UPDATE_ERROR = {
+  code: 2502,
+  message: "Datasource update error."
+};
+Code.DATASOURCE_DELETE_ERROR = {
+  code: 2503,
+  message: "Datasource delete error."
+};
+Code.DATASOURCE_GET_ERROR = {
+  code: 2504,
+  message: "Datasource get error."
+};
+Code.DATASOURCE_GET_ALL_ERROR = {
+  code: 2505,
+  message: "Datasource get all error."
+};
+Code.DATASOURCE_CREATE_ERROR = {
+  code: 2506,
+  message: "Datasource create error."
+};
+// Agent - 2600-2699
+Code.AGENT_SESSION_NOT_FOUND_ERROR = {
+  code: 2600,
+  message: "Agent session not found."
+};
+Code.STATE_MACHINE_NOT_FOUND_ERROR = {
+  code: 2601,
+  message: "State machine not found."
+};
+Code.INVALID_STATE_TRANSITION_ERROR = {
+  code: 2602,
+  message: "Invalid state transition."
+};
+// Conversation - 2700-2799
+Code.CONVERSATION_NOT_FOUND_ERROR = {
+  code: 2700,
+  message: "Conversation not found."
+};
+Code.CONVERSATION_ALREADY_EXISTS_ERROR = {
+  code: 2701,
+  message: "Conversation already exists."
+};
+Code.CONVERSATION_UPDATE_ERROR = {
+  code: 2702,
+  message: "Conversation update error."
+};
+Code.CONVERSATION_DELETE_ERROR = {
+  code: 2703,
+  message: "Conversation delete error."
+};
+Code.CONVERSATION_GET_ERROR = {
+  code: 2704,
+  message: "Conversation get error."
+};
+Code.CONVERSATION_CREATE_ERROR = {
+  code: 2705,
+  message: "Conversation create error."
+};
+// Message - 2800-2899
+Code.MESSAGE_NOT_FOUND_ERROR = {
+  code: 2800,
+  message: "Message not found."
+};
+Code.MESSAGE_ALREADY_EXISTS_ERROR = {
+  code: 2801,
+  message: "Message already exists."
+};
+Code.MESSAGE_UPDATE_ERROR = {
+  code: 2802,
+  message: "Message update error."
+};
+Code.MESSAGE_DELETE_ERROR = {
+  code: 2803,
+  message: "Message delete error."
+};
+Code.MESSAGE_GET_ERROR = {
+  code: 2804,
+  message: "Message get error."
+};
+Code.MESSAGE_CREATE_ERROR = {
+  code: 2805,
+  message: "Message create error."
+};
+
+// packages/domain/src/common/exception.ts
+var Exception = class _Exception extends Error {
+  constructor(codeDescription, overrideMessage, data) {
+    super();
+    this.name = this.constructor.name;
+    this.code = codeDescription.code;
+    this.data = data;
+    this.message = overrideMessage || codeDescription.message;
+    Error.captureStackTrace(this, this.constructor);
+  }
+  static new(payload) {
+    return new _Exception(payload.code, payload.overrideMessage, payload.data);
+  }
+};
+
+// packages/domain/src/common/entity.ts
+var Entity = class {
+  constructor(schema2, id) {
+    this.schema = schema2;
+    this.id = id;
+  }
+  getId() {
+    if (typeof this.id === "undefined") {
+      throw Exception.new({
+        code: Code.ENTITY_VALIDATION_ERROR,
+        overrideMessage: `${this.constructor.name}: ID is empty.`
+      });
+    }
+    return this.id;
+  }
+  getData() {
+    const data = { id: this.id };
+    return data;
+  }
+  toDto() {
+    const data = this.getData();
+    const { schema: schema2, ...serializable } = data;
+    return serializable;
+  }
+  async validate() {
+    const data = this.getData();
+    const result = this.schema.safeParse(data);
+    if (!result.success) {
+      throw Exception.new({
+        code: Code.ENTITY_VALIDATION_ERROR,
+        data: result.error.format()
+      });
+    }
+  }
+};
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/enums/transformation-type.enum.js
+var TransformationType;
+(function(TransformationType2) {
+  TransformationType2[TransformationType2["PLAIN_TO_CLASS"] = 0] = "PLAIN_TO_CLASS";
+  TransformationType2[TransformationType2["CLASS_TO_PLAIN"] = 1] = "CLASS_TO_PLAIN";
+  TransformationType2[TransformationType2["CLASS_TO_CLASS"] = 2] = "CLASS_TO_CLASS";
+})(TransformationType || (TransformationType = {}));
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/MetadataStorage.js
+var MetadataStorage = (
+  /** @class */
+  (function() {
+    function MetadataStorage2() {
+      this._typeMetadatas = /* @__PURE__ */ new Map();
+      this._transformMetadatas = /* @__PURE__ */ new Map();
+      this._exposeMetadatas = /* @__PURE__ */ new Map();
+      this._excludeMetadatas = /* @__PURE__ */ new Map();
+      this._ancestorsMap = /* @__PURE__ */ new Map();
+    }
+    MetadataStorage2.prototype.addTypeMetadata = function(metadata) {
+      if (!this._typeMetadatas.has(metadata.target)) {
+        this._typeMetadatas.set(metadata.target, /* @__PURE__ */ new Map());
+      }
+      this._typeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    MetadataStorage2.prototype.addTransformMetadata = function(metadata) {
+      if (!this._transformMetadatas.has(metadata.target)) {
+        this._transformMetadatas.set(metadata.target, /* @__PURE__ */ new Map());
+      }
+      if (!this._transformMetadatas.get(metadata.target).has(metadata.propertyName)) {
+        this._transformMetadatas.get(metadata.target).set(metadata.propertyName, []);
+      }
+      this._transformMetadatas.get(metadata.target).get(metadata.propertyName).push(metadata);
+    };
+    MetadataStorage2.prototype.addExposeMetadata = function(metadata) {
+      if (!this._exposeMetadatas.has(metadata.target)) {
+        this._exposeMetadatas.set(metadata.target, /* @__PURE__ */ new Map());
+      }
+      this._exposeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    MetadataStorage2.prototype.addExcludeMetadata = function(metadata) {
+      if (!this._excludeMetadatas.has(metadata.target)) {
+        this._excludeMetadatas.set(metadata.target, /* @__PURE__ */ new Map());
+      }
+      this._excludeMetadatas.get(metadata.target).set(metadata.propertyName, metadata);
+    };
+    MetadataStorage2.prototype.findTransformMetadatas = function(target, propertyName, transformationType) {
+      return this.findMetadatas(this._transformMetadatas, target, propertyName).filter(function(metadata) {
+        if (!metadata.options)
+          return true;
+        if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+          return true;
+        if (metadata.options.toClassOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_CLASS || transformationType === TransformationType.PLAIN_TO_CLASS;
+        }
+        if (metadata.options.toPlainOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_PLAIN;
+        }
+        return true;
+      });
+    };
+    MetadataStorage2.prototype.findExcludeMetadata = function(target, propertyName) {
+      return this.findMetadata(this._excludeMetadatas, target, propertyName);
+    };
+    MetadataStorage2.prototype.findExposeMetadata = function(target, propertyName) {
+      return this.findMetadata(this._exposeMetadatas, target, propertyName);
+    };
+    MetadataStorage2.prototype.findExposeMetadataByCustomName = function(target, name) {
+      return this.getExposedMetadatas(target).find(function(metadata) {
+        return metadata.options && metadata.options.name === name;
+      });
+    };
+    MetadataStorage2.prototype.findTypeMetadata = function(target, propertyName) {
+      return this.findMetadata(this._typeMetadatas, target, propertyName);
+    };
+    MetadataStorage2.prototype.getStrategy = function(target) {
+      var excludeMap = this._excludeMetadatas.get(target);
+      var exclude = excludeMap && excludeMap.get(void 0);
+      var exposeMap = this._exposeMetadatas.get(target);
+      var expose = exposeMap && exposeMap.get(void 0);
+      if (exclude && expose || !exclude && !expose)
+        return "none";
+      return exclude ? "excludeAll" : "exposeAll";
+    };
+    MetadataStorage2.prototype.getExposedMetadatas = function(target) {
+      return this.getMetadata(this._exposeMetadatas, target);
+    };
+    MetadataStorage2.prototype.getExcludedMetadatas = function(target) {
+      return this.getMetadata(this._excludeMetadatas, target);
+    };
+    MetadataStorage2.prototype.getExposedProperties = function(target, transformationType) {
+      return this.getExposedMetadatas(target).filter(function(metadata) {
+        if (!metadata.options)
+          return true;
+        if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+          return true;
+        if (metadata.options.toClassOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_CLASS || transformationType === TransformationType.PLAIN_TO_CLASS;
+        }
+        if (metadata.options.toPlainOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_PLAIN;
+        }
+        return true;
+      }).map(function(metadata) {
+        return metadata.propertyName;
+      });
+    };
+    MetadataStorage2.prototype.getExcludedProperties = function(target, transformationType) {
+      return this.getExcludedMetadatas(target).filter(function(metadata) {
+        if (!metadata.options)
+          return true;
+        if (metadata.options.toClassOnly === true && metadata.options.toPlainOnly === true)
+          return true;
+        if (metadata.options.toClassOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_CLASS || transformationType === TransformationType.PLAIN_TO_CLASS;
+        }
+        if (metadata.options.toPlainOnly === true) {
+          return transformationType === TransformationType.CLASS_TO_PLAIN;
+        }
+        return true;
+      }).map(function(metadata) {
+        return metadata.propertyName;
+      });
+    };
+    MetadataStorage2.prototype.clear = function() {
+      this._typeMetadatas.clear();
+      this._exposeMetadatas.clear();
+      this._excludeMetadatas.clear();
+      this._ancestorsMap.clear();
+    };
+    MetadataStorage2.prototype.getMetadata = function(metadatas, target) {
+      var metadataFromTargetMap = metadatas.get(target);
+      var metadataFromTarget;
+      if (metadataFromTargetMap) {
+        metadataFromTarget = Array.from(metadataFromTargetMap.values()).filter(function(meta3) {
+          return meta3.propertyName !== void 0;
+        });
+      }
+      var metadataFromAncestors = [];
+      for (var _i = 0, _a2 = this.getAncestors(target); _i < _a2.length; _i++) {
+        var ancestor = _a2[_i];
+        var ancestorMetadataMap = metadatas.get(ancestor);
+        if (ancestorMetadataMap) {
+          var metadataFromAncestor = Array.from(ancestorMetadataMap.values()).filter(function(meta3) {
+            return meta3.propertyName !== void 0;
+          });
+          metadataFromAncestors.push.apply(metadataFromAncestors, metadataFromAncestor);
+        }
+      }
+      return metadataFromAncestors.concat(metadataFromTarget || []);
+    };
+    MetadataStorage2.prototype.findMetadata = function(metadatas, target, propertyName) {
+      var metadataFromTargetMap = metadatas.get(target);
+      if (metadataFromTargetMap) {
+        var metadataFromTarget = metadataFromTargetMap.get(propertyName);
+        if (metadataFromTarget) {
+          return metadataFromTarget;
+        }
+      }
+      for (var _i = 0, _a2 = this.getAncestors(target); _i < _a2.length; _i++) {
+        var ancestor = _a2[_i];
+        var ancestorMetadataMap = metadatas.get(ancestor);
+        if (ancestorMetadataMap) {
+          var ancestorResult = ancestorMetadataMap.get(propertyName);
+          if (ancestorResult) {
+            return ancestorResult;
+          }
+        }
+      }
+      return void 0;
+    };
+    MetadataStorage2.prototype.findMetadatas = function(metadatas, target, propertyName) {
+      var metadataFromTargetMap = metadatas.get(target);
+      var metadataFromTarget;
+      if (metadataFromTargetMap) {
+        metadataFromTarget = metadataFromTargetMap.get(propertyName);
+      }
+      var metadataFromAncestorsTarget = [];
+      for (var _i = 0, _a2 = this.getAncestors(target); _i < _a2.length; _i++) {
+        var ancestor = _a2[_i];
+        var ancestorMetadataMap = metadatas.get(ancestor);
+        if (ancestorMetadataMap) {
+          if (ancestorMetadataMap.has(propertyName)) {
+            metadataFromAncestorsTarget.push.apply(metadataFromAncestorsTarget, ancestorMetadataMap.get(propertyName));
+          }
+        }
+      }
+      return metadataFromAncestorsTarget.slice().reverse().concat((metadataFromTarget || []).slice().reverse());
+    };
+    MetadataStorage2.prototype.getAncestors = function(target) {
+      if (!target)
+        return [];
+      if (!this._ancestorsMap.has(target)) {
+        var ancestors = [];
+        for (var baseClass = Object.getPrototypeOf(target.prototype.constructor); typeof baseClass.prototype !== "undefined"; baseClass = Object.getPrototypeOf(baseClass.prototype.constructor)) {
+          ancestors.push(baseClass);
+        }
+        this._ancestorsMap.set(target, ancestors);
+      }
+      return this._ancestorsMap.get(target);
+    };
+    return MetadataStorage2;
+  })()
+);
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/storage.js
+var defaultMetadataStorage = new MetadataStorage();
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/utils/get-global.util.js
+function getGlobal() {
+  if (typeof globalThis !== "undefined") {
+    return globalThis;
+  }
+  if (typeof global !== "undefined") {
+    return global;
+  }
+  if (typeof window !== "undefined") {
+    return window;
+  }
+  if (typeof self !== "undefined") {
+    return self;
+  }
+}
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/utils/is-promise.util.js
+function isPromise(p) {
+  return p !== null && typeof p === "object" && typeof p.then === "function";
+}
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/TransformOperationExecutor.js
+var __spreadArray = function(to, from, pack) {
+  if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+    if (ar || !(i in from)) {
+      if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+      ar[i] = from[i];
+    }
+  }
+  return to.concat(ar || Array.prototype.slice.call(from));
+};
+function instantiateArrayType(arrayType) {
+  var array2 = new arrayType();
+  if (!(array2 instanceof Set) && !("push" in array2)) {
+    return [];
+  }
+  return array2;
+}
+var TransformOperationExecutor = (
+  /** @class */
+  (function() {
+    function TransformOperationExecutor2(transformationType, options) {
+      this.transformationType = transformationType;
+      this.options = options;
+      this.recursionStack = /* @__PURE__ */ new Set();
+    }
+    TransformOperationExecutor2.prototype.transform = function(source, value, targetType, arrayType, isMap, level) {
+      var _this = this;
+      if (level === void 0) {
+        level = 0;
+      }
+      if (Array.isArray(value) || value instanceof Set) {
+        var newValue_1 = arrayType && this.transformationType === TransformationType.PLAIN_TO_CLASS ? instantiateArrayType(arrayType) : [];
+        value.forEach(function(subValue, index) {
+          var subSource = source ? source[index] : void 0;
+          if (!_this.options.enableCircularCheck || !_this.isCircular(subValue)) {
+            var realTargetType = void 0;
+            if (typeof targetType !== "function" && targetType && targetType.options && targetType.options.discriminator && targetType.options.discriminator.property && targetType.options.discriminator.subTypes) {
+              if (_this.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                realTargetType = targetType.options.discriminator.subTypes.find(function(subType) {
+                  return subType.name === subValue[targetType.options.discriminator.property];
+                });
+                var options = { newObject: newValue_1, object: subValue, property: void 0 };
+                var newType = targetType.typeFunction(options);
+                realTargetType === void 0 ? realTargetType = newType : realTargetType = realTargetType.value;
+                if (!targetType.options.keepDiscriminatorProperty)
+                  delete subValue[targetType.options.discriminator.property];
+              }
+              if (_this.transformationType === TransformationType.CLASS_TO_CLASS) {
+                realTargetType = subValue.constructor;
+              }
+              if (_this.transformationType === TransformationType.CLASS_TO_PLAIN) {
+                subValue[targetType.options.discriminator.property] = targetType.options.discriminator.subTypes.find(function(subType) {
+                  return subType.value === subValue.constructor;
+                }).name;
+              }
+            } else {
+              realTargetType = targetType;
+            }
+            var value_1 = _this.transform(subSource, subValue, realTargetType, void 0, subValue instanceof Map, level + 1);
+            if (newValue_1 instanceof Set) {
+              newValue_1.add(value_1);
+            } else {
+              newValue_1.push(value_1);
+            }
+          } else if (_this.transformationType === TransformationType.CLASS_TO_CLASS) {
+            if (newValue_1 instanceof Set) {
+              newValue_1.add(subValue);
+            } else {
+              newValue_1.push(subValue);
+            }
+          }
+        });
+        return newValue_1;
+      } else if (targetType === String && !isMap) {
+        if (value === null || value === void 0)
+          return value;
+        return String(value);
+      } else if (targetType === Number && !isMap) {
+        if (value === null || value === void 0)
+          return value;
+        return Number(value);
+      } else if (targetType === Boolean && !isMap) {
+        if (value === null || value === void 0)
+          return value;
+        return Boolean(value);
+      } else if ((targetType === Date || value instanceof Date) && !isMap) {
+        if (value instanceof Date) {
+          return new Date(value.valueOf());
+        }
+        if (value === null || value === void 0)
+          return value;
+        return new Date(value);
+      } else if (!!getGlobal().Buffer && (targetType === Buffer || value instanceof Buffer) && !isMap) {
+        if (value === null || value === void 0)
+          return value;
+        return Buffer.from(value);
+      } else if (isPromise(value) && !isMap) {
+        return new Promise(function(resolve, reject) {
+          value.then(function(data) {
+            return resolve(_this.transform(void 0, data, targetType, void 0, void 0, level + 1));
+          }, reject);
+        });
+      } else if (!isMap && value !== null && typeof value === "object" && typeof value.then === "function") {
+        return value;
+      } else if (typeof value === "object" && value !== null) {
+        if (!targetType && value.constructor !== Object)
+          if (!Array.isArray(value) && value.constructor === Array) {
+          } else {
+            targetType = value.constructor;
+          }
+        if (!targetType && source)
+          targetType = source.constructor;
+        if (this.options.enableCircularCheck) {
+          this.recursionStack.add(value);
+        }
+        var keys = this.getKeys(targetType, value, isMap);
+        var newValue = source ? source : {};
+        if (!source && (this.transformationType === TransformationType.PLAIN_TO_CLASS || this.transformationType === TransformationType.CLASS_TO_CLASS)) {
+          if (isMap) {
+            newValue = /* @__PURE__ */ new Map();
+          } else if (targetType) {
+            newValue = new targetType();
+          } else {
+            newValue = {};
+          }
+        }
+        var _loop_1 = function(key2) {
+          if (key2 === "__proto__" || key2 === "constructor") {
+            return "continue";
+          }
+          var valueKey = key2;
+          var newValueKey = key2, propertyName = key2;
+          if (!this_1.options.ignoreDecorators && targetType) {
+            if (this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+              var exposeMetadata = defaultMetadataStorage.findExposeMetadataByCustomName(targetType, key2);
+              if (exposeMetadata) {
+                propertyName = exposeMetadata.propertyName;
+                newValueKey = exposeMetadata.propertyName;
+              }
+            } else if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN || this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+              var exposeMetadata = defaultMetadataStorage.findExposeMetadata(targetType, key2);
+              if (exposeMetadata && exposeMetadata.options && exposeMetadata.options.name) {
+                newValueKey = exposeMetadata.options.name;
+              }
+            }
+          }
+          var subValue = void 0;
+          if (this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+            subValue = value[valueKey];
+          } else {
+            if (value instanceof Map) {
+              subValue = value.get(valueKey);
+            } else if (value[valueKey] instanceof Function) {
+              subValue = value[valueKey]();
+            } else {
+              subValue = value[valueKey];
+            }
+          }
+          var type = void 0, isSubValueMap = subValue instanceof Map;
+          if (targetType && isMap) {
+            type = targetType;
+          } else if (targetType) {
+            var metadata_1 = defaultMetadataStorage.findTypeMetadata(targetType, propertyName);
+            if (metadata_1) {
+              var options = { newObject: newValue, object: value, property: propertyName };
+              var newType = metadata_1.typeFunction ? metadata_1.typeFunction(options) : metadata_1.reflectedType;
+              if (metadata_1.options && metadata_1.options.discriminator && metadata_1.options.discriminator.property && metadata_1.options.discriminator.subTypes) {
+                if (!(value[valueKey] instanceof Array)) {
+                  if (this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+                    type = metadata_1.options.discriminator.subTypes.find(function(subType) {
+                      if (subValue && subValue instanceof Object && metadata_1.options.discriminator.property in subValue) {
+                        return subType.name === subValue[metadata_1.options.discriminator.property];
+                      }
+                    });
+                    type === void 0 ? type = newType : type = type.value;
+                    if (!metadata_1.options.keepDiscriminatorProperty) {
+                      if (subValue && subValue instanceof Object && metadata_1.options.discriminator.property in subValue) {
+                        delete subValue[metadata_1.options.discriminator.property];
+                      }
+                    }
+                  }
+                  if (this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+                    type = subValue.constructor;
+                  }
+                  if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN) {
+                    if (subValue) {
+                      subValue[metadata_1.options.discriminator.property] = metadata_1.options.discriminator.subTypes.find(function(subType) {
+                        return subType.value === subValue.constructor;
+                      }).name;
+                    }
+                  }
+                } else {
+                  type = metadata_1;
+                }
+              } else {
+                type = newType;
+              }
+              isSubValueMap = isSubValueMap || metadata_1.reflectedType === Map;
+            } else if (this_1.options.targetMaps) {
+              this_1.options.targetMaps.filter(function(map2) {
+                return map2.target === targetType && !!map2.properties[propertyName];
+              }).forEach(function(map2) {
+                return type = map2.properties[propertyName];
+              });
+            } else if (this_1.options.enableImplicitConversion && this_1.transformationType === TransformationType.PLAIN_TO_CLASS) {
+              var reflectedType = Reflect.getMetadata("design:type", targetType.prototype, propertyName);
+              if (reflectedType) {
+                type = reflectedType;
+              }
+            }
+          }
+          var arrayType_1 = Array.isArray(value[valueKey]) ? this_1.getReflectedType(targetType, propertyName) : void 0;
+          var subSource = source ? source[valueKey] : void 0;
+          if (newValue.constructor.prototype) {
+            var descriptor = Object.getOwnPropertyDescriptor(newValue.constructor.prototype, newValueKey);
+            if ((this_1.transformationType === TransformationType.PLAIN_TO_CLASS || this_1.transformationType === TransformationType.CLASS_TO_CLASS) && // eslint-disable-next-line @typescript-eslint/unbound-method
+            (descriptor && !descriptor.set || newValue[newValueKey] instanceof Function))
+              return "continue";
+          }
+          if (!this_1.options.enableCircularCheck || !this_1.isCircular(subValue)) {
+            var transformKey = this_1.transformationType === TransformationType.PLAIN_TO_CLASS ? newValueKey : key2;
+            var finalValue = void 0;
+            if (this_1.transformationType === TransformationType.CLASS_TO_PLAIN) {
+              finalValue = value[transformKey];
+              finalValue = this_1.applyCustomTransformations(finalValue, targetType, transformKey, value, this_1.transformationType);
+              finalValue = value[transformKey] === finalValue ? subValue : finalValue;
+              finalValue = this_1.transform(subSource, finalValue, type, arrayType_1, isSubValueMap, level + 1);
+            } else {
+              if (subValue === void 0 && this_1.options.exposeDefaultValues) {
+                finalValue = newValue[newValueKey];
+              } else {
+                finalValue = this_1.transform(subSource, subValue, type, arrayType_1, isSubValueMap, level + 1);
+                finalValue = this_1.applyCustomTransformations(finalValue, targetType, transformKey, value, this_1.transformationType);
+              }
+            }
+            if (finalValue !== void 0 || this_1.options.exposeUnsetFields) {
+              if (newValue instanceof Map) {
+                newValue.set(newValueKey, finalValue);
+              } else {
+                newValue[newValueKey] = finalValue;
+              }
+            }
+          } else if (this_1.transformationType === TransformationType.CLASS_TO_CLASS) {
+            var finalValue = subValue;
+            finalValue = this_1.applyCustomTransformations(finalValue, targetType, key2, value, this_1.transformationType);
+            if (finalValue !== void 0 || this_1.options.exposeUnsetFields) {
+              if (newValue instanceof Map) {
+                newValue.set(newValueKey, finalValue);
+              } else {
+                newValue[newValueKey] = finalValue;
+              }
+            }
+          }
+        };
+        var this_1 = this;
+        for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
+          var key = keys_1[_i];
+          _loop_1(key);
+        }
+        if (this.options.enableCircularCheck) {
+          this.recursionStack.delete(value);
+        }
+        return newValue;
+      } else {
+        return value;
+      }
+    };
+    TransformOperationExecutor2.prototype.applyCustomTransformations = function(value, target, key, obj, transformationType) {
+      var _this = this;
+      var metadatas = defaultMetadataStorage.findTransformMetadatas(target, key, this.transformationType);
+      if (this.options.version !== void 0) {
+        metadatas = metadatas.filter(function(metadata) {
+          if (!metadata.options)
+            return true;
+          return _this.checkVersion(metadata.options.since, metadata.options.until);
+        });
+      }
+      if (this.options.groups && this.options.groups.length) {
+        metadatas = metadatas.filter(function(metadata) {
+          if (!metadata.options)
+            return true;
+          return _this.checkGroups(metadata.options.groups);
+        });
+      } else {
+        metadatas = metadatas.filter(function(metadata) {
+          return !metadata.options || !metadata.options.groups || !metadata.options.groups.length;
+        });
+      }
+      metadatas.forEach(function(metadata) {
+        value = metadata.transformFn({ value, key, obj, type: transformationType, options: _this.options });
+      });
+      return value;
+    };
+    TransformOperationExecutor2.prototype.isCircular = function(object2) {
+      return this.recursionStack.has(object2);
+    };
+    TransformOperationExecutor2.prototype.getReflectedType = function(target, propertyName) {
+      if (!target)
+        return void 0;
+      var meta3 = defaultMetadataStorage.findTypeMetadata(target, propertyName);
+      return meta3 ? meta3.reflectedType : void 0;
+    };
+    TransformOperationExecutor2.prototype.getKeys = function(target, object2, isMap) {
+      var _this = this;
+      var strategy = defaultMetadataStorage.getStrategy(target);
+      if (strategy === "none")
+        strategy = this.options.strategy || "exposeAll";
+      var keys = [];
+      if (strategy === "exposeAll" || isMap) {
+        if (object2 instanceof Map) {
+          keys = Array.from(object2.keys());
+        } else {
+          keys = Object.keys(object2);
+        }
+      }
+      if (isMap) {
+        return keys;
+      }
+      if (this.options.ignoreDecorators && this.options.excludeExtraneousValues && target) {
+        var exposedProperties = defaultMetadataStorage.getExposedProperties(target, this.transformationType);
+        var excludedProperties = defaultMetadataStorage.getExcludedProperties(target, this.transformationType);
+        keys = __spreadArray(__spreadArray([], exposedProperties, true), excludedProperties, true);
+      }
+      if (!this.options.ignoreDecorators && target) {
+        var exposedProperties = defaultMetadataStorage.getExposedProperties(target, this.transformationType);
+        if (this.transformationType === TransformationType.PLAIN_TO_CLASS) {
+          exposedProperties = exposedProperties.map(function(key) {
+            var exposeMetadata = defaultMetadataStorage.findExposeMetadata(target, key);
+            if (exposeMetadata && exposeMetadata.options && exposeMetadata.options.name) {
+              return exposeMetadata.options.name;
+            }
+            return key;
+          });
+        }
+        if (this.options.excludeExtraneousValues) {
+          keys = exposedProperties;
+        } else {
+          keys = keys.concat(exposedProperties);
+        }
+        var excludedProperties_1 = defaultMetadataStorage.getExcludedProperties(target, this.transformationType);
+        if (excludedProperties_1.length > 0) {
+          keys = keys.filter(function(key) {
+            return !excludedProperties_1.includes(key);
+          });
+        }
+        if (this.options.version !== void 0) {
+          keys = keys.filter(function(key) {
+            var exposeMetadata = defaultMetadataStorage.findExposeMetadata(target, key);
+            if (!exposeMetadata || !exposeMetadata.options)
+              return true;
+            return _this.checkVersion(exposeMetadata.options.since, exposeMetadata.options.until);
+          });
+        }
+        if (this.options.groups && this.options.groups.length) {
+          keys = keys.filter(function(key) {
+            var exposeMetadata = defaultMetadataStorage.findExposeMetadata(target, key);
+            if (!exposeMetadata || !exposeMetadata.options)
+              return true;
+            return _this.checkGroups(exposeMetadata.options.groups);
+          });
+        } else {
+          keys = keys.filter(function(key) {
+            var exposeMetadata = defaultMetadataStorage.findExposeMetadata(target, key);
+            return !exposeMetadata || !exposeMetadata.options || !exposeMetadata.options.groups || !exposeMetadata.options.groups.length;
+          });
+        }
+      }
+      if (this.options.excludePrefixes && this.options.excludePrefixes.length) {
+        keys = keys.filter(function(key) {
+          return _this.options.excludePrefixes.every(function(prefix) {
+            return key.substr(0, prefix.length) !== prefix;
+          });
+        });
+      }
+      keys = keys.filter(function(key, index, self2) {
+        return self2.indexOf(key) === index;
+      });
+      return keys;
+    };
+    TransformOperationExecutor2.prototype.checkVersion = function(since, until) {
+      var decision = true;
+      if (decision && since)
+        decision = this.options.version >= since;
+      if (decision && until)
+        decision = this.options.version < until;
+      return decision;
+    };
+    TransformOperationExecutor2.prototype.checkGroups = function(groups) {
+      if (!groups)
+        return true;
+      return this.options.groups.some(function(optionGroup) {
+        return groups.includes(optionGroup);
+      });
+    };
+    return TransformOperationExecutor2;
+  })()
+);
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/constants/default-options.constant.js
+var defaultOptions = {
+  enableCircularCheck: false,
+  enableImplicitConversion: false,
+  excludeExtraneousValues: false,
+  excludePrefixes: void 0,
+  exposeDefaultValues: false,
+  exposeUnsetFields: true,
+  groups: void 0,
+  ignoreDecorators: false,
+  strategy: void 0,
+  targetMaps: void 0,
+  version: void 0
+};
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/ClassTransformer.js
+var __assign = function() {
+  __assign = Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+      s = arguments[i];
+      for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+        t[p] = s[p];
+    }
+    return t;
+  };
+  return __assign.apply(this, arguments);
+};
+var ClassTransformer = (
+  /** @class */
+  (function() {
+    function ClassTransformer2() {
+    }
+    ClassTransformer2.prototype.instanceToPlain = function(object2, options) {
+      var executor = new TransformOperationExecutor(TransformationType.CLASS_TO_PLAIN, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(void 0, object2, void 0, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.classToPlainFromExist = function(object2, plainObject, options) {
+      var executor = new TransformOperationExecutor(TransformationType.CLASS_TO_PLAIN, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(plainObject, object2, void 0, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.plainToInstance = function(cls, plain, options) {
+      var executor = new TransformOperationExecutor(TransformationType.PLAIN_TO_CLASS, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(void 0, plain, cls, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.plainToClassFromExist = function(clsObject, plain, options) {
+      var executor = new TransformOperationExecutor(TransformationType.PLAIN_TO_CLASS, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(clsObject, plain, void 0, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.instanceToInstance = function(object2, options) {
+      var executor = new TransformOperationExecutor(TransformationType.CLASS_TO_CLASS, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(void 0, object2, void 0, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.classToClassFromExist = function(object2, fromObject, options) {
+      var executor = new TransformOperationExecutor(TransformationType.CLASS_TO_CLASS, __assign(__assign({}, defaultOptions), options));
+      return executor.transform(fromObject, object2, void 0, void 0, void 0, void 0);
+    };
+    ClassTransformer2.prototype.serialize = function(object2, options) {
+      return JSON.stringify(this.instanceToPlain(object2, options));
+    };
+    ClassTransformer2.prototype.deserialize = function(cls, json2, options) {
+      var jsonObject = JSON.parse(json2);
+      return this.plainToInstance(cls, jsonObject, options);
+    };
+    ClassTransformer2.prototype.deserializeArray = function(cls, json2, options) {
+      var jsonObject = JSON.parse(json2);
+      return this.plainToInstance(cls, jsonObject, options);
+    };
+    return ClassTransformer2;
+  })()
+);
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/decorators/exclude.decorator.js
+function Exclude(options) {
+  if (options === void 0) {
+    options = {};
+  }
+  return function(object2, propertyName) {
+    defaultMetadataStorage.addExcludeMetadata({
+      target: object2 instanceof Function ? object2 : object2.constructor,
+      propertyName,
+      options
+    });
+  };
+}
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/decorators/expose.decorator.js
+function Expose(options) {
+  if (options === void 0) {
+    options = {};
+  }
+  return function(object2, propertyName) {
+    defaultMetadataStorage.addExposeMetadata({
+      target: object2 instanceof Function ? object2 : object2.constructor,
+      propertyName,
+      options
+    });
+  };
+}
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/decorators/type.decorator.js
+function Type(typeFunction, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  return function(target, propertyName) {
+    var reflectedType = Reflect.getMetadata("design:type", target, propertyName);
+    defaultMetadataStorage.addTypeMetadata({
+      target: target.constructor,
+      propertyName,
+      reflectedType,
+      typeFunction,
+      options
+    });
+  };
+}
+
+// node_modules/.pnpm/class-transformer@0.5.1/node_modules/class-transformer/esm5/index.js
+var classTransformer = new ClassTransformer();
+function instanceToPlain(object2, options) {
+  return classTransformer.instanceToPlain(object2, options);
+}
+function plainToClass(cls, plain, options) {
+  return classTransformer.plainToInstance(cls, plain, options);
+}
+
+// node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm-browser/stringify.js
+var byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+
+// node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm-browser/rng.js
+var getRandomValues;
+var rnds8 = new Uint8Array(16);
+function rng() {
+  if (!getRandomValues) {
+    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
+    }
+    getRandomValues = crypto.getRandomValues.bind(crypto);
+  }
+  return getRandomValues(rnds8);
+}
+
+// node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm-browser/native.js
+var randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
+var native_default = { randomUUID };
+
+// node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm-browser/v4.js
+function v4(options, buf, offset) {
+  if (native_default.randomUUID && !buf && !options) {
+    return native_default.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? options.rng?.() ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  if (buf) {
+    offset = offset || 0;
+    if (offset < 0 || offset + 16 > buf.length) {
+      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+    }
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+    return buf;
+  }
+  return unsafeStringify(rnds);
+}
+var v4_default = v4;
+
+// node_modules/.pnpm/sqids@0.3.0/node_modules/sqids/esm/sqids.js
+var defaultOptions2 = {
+  alphabet: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  minLength: 0,
+  blocklist: /* @__PURE__ */ new Set([
+    "0rgasm",
+    "1d10t",
+    "1d1ot",
+    "1di0t",
+    "1diot",
+    "1eccacu10",
+    "1eccacu1o",
+    "1eccacul0",
+    "1eccaculo",
+    "1mbec11e",
+    "1mbec1le",
+    "1mbeci1e",
+    "1mbecile",
+    "a11upat0",
+    "a11upato",
+    "a1lupat0",
+    "a1lupato",
+    "aand",
+    "ah01e",
+    "ah0le",
+    "aho1e",
+    "ahole",
+    "al1upat0",
+    "al1upato",
+    "allupat0",
+    "allupato",
+    "ana1",
+    "ana1e",
+    "anal",
+    "anale",
+    "anus",
+    "arrapat0",
+    "arrapato",
+    "arsch",
+    "arse",
+    "ass",
+    "b00b",
+    "b00be",
+    "b01ata",
+    "b0ceta",
+    "b0iata",
+    "b0ob",
+    "b0obe",
+    "b0sta",
+    "b1tch",
+    "b1te",
+    "b1tte",
+    "ba1atkar",
+    "balatkar",
+    "bastard0",
+    "bastardo",
+    "batt0na",
+    "battona",
+    "bitch",
+    "bite",
+    "bitte",
+    "bo0b",
+    "bo0be",
+    "bo1ata",
+    "boceta",
+    "boiata",
+    "boob",
+    "boobe",
+    "bosta",
+    "bran1age",
+    "bran1er",
+    "bran1ette",
+    "bran1eur",
+    "bran1euse",
+    "branlage",
+    "branler",
+    "branlette",
+    "branleur",
+    "branleuse",
+    "c0ck",
+    "c0g110ne",
+    "c0g11one",
+    "c0g1i0ne",
+    "c0g1ione",
+    "c0gl10ne",
+    "c0gl1one",
+    "c0gli0ne",
+    "c0glione",
+    "c0na",
+    "c0nnard",
+    "c0nnasse",
+    "c0nne",
+    "c0u111es",
+    "c0u11les",
+    "c0u1l1es",
+    "c0u1lles",
+    "c0ui11es",
+    "c0ui1les",
+    "c0uil1es",
+    "c0uilles",
+    "c11t",
+    "c11t0",
+    "c11to",
+    "c1it",
+    "c1it0",
+    "c1ito",
+    "cabr0n",
+    "cabra0",
+    "cabrao",
+    "cabron",
+    "caca",
+    "cacca",
+    "cacete",
+    "cagante",
+    "cagar",
+    "cagare",
+    "cagna",
+    "cara1h0",
+    "cara1ho",
+    "caracu10",
+    "caracu1o",
+    "caracul0",
+    "caraculo",
+    "caralh0",
+    "caralho",
+    "cazz0",
+    "cazz1mma",
+    "cazzata",
+    "cazzimma",
+    "cazzo",
+    "ch00t1a",
+    "ch00t1ya",
+    "ch00tia",
+    "ch00tiya",
+    "ch0d",
+    "ch0ot1a",
+    "ch0ot1ya",
+    "ch0otia",
+    "ch0otiya",
+    "ch1asse",
+    "ch1avata",
+    "ch1er",
+    "ch1ng0",
+    "ch1ngadaz0s",
+    "ch1ngadazos",
+    "ch1ngader1ta",
+    "ch1ngaderita",
+    "ch1ngar",
+    "ch1ngo",
+    "ch1ngues",
+    "ch1nk",
+    "chatte",
+    "chiasse",
+    "chiavata",
+    "chier",
+    "ching0",
+    "chingadaz0s",
+    "chingadazos",
+    "chingader1ta",
+    "chingaderita",
+    "chingar",
+    "chingo",
+    "chingues",
+    "chink",
+    "cho0t1a",
+    "cho0t1ya",
+    "cho0tia",
+    "cho0tiya",
+    "chod",
+    "choot1a",
+    "choot1ya",
+    "chootia",
+    "chootiya",
+    "cl1t",
+    "cl1t0",
+    "cl1to",
+    "clit",
+    "clit0",
+    "clito",
+    "cock",
+    "cog110ne",
+    "cog11one",
+    "cog1i0ne",
+    "cog1ione",
+    "cogl10ne",
+    "cogl1one",
+    "cogli0ne",
+    "coglione",
+    "cona",
+    "connard",
+    "connasse",
+    "conne",
+    "cou111es",
+    "cou11les",
+    "cou1l1es",
+    "cou1lles",
+    "coui11es",
+    "coui1les",
+    "couil1es",
+    "couilles",
+    "cracker",
+    "crap",
+    "cu10",
+    "cu1att0ne",
+    "cu1attone",
+    "cu1er0",
+    "cu1ero",
+    "cu1o",
+    "cul0",
+    "culatt0ne",
+    "culattone",
+    "culer0",
+    "culero",
+    "culo",
+    "cum",
+    "cunt",
+    "d11d0",
+    "d11do",
+    "d1ck",
+    "d1ld0",
+    "d1ldo",
+    "damn",
+    "de1ch",
+    "deich",
+    "depp",
+    "di1d0",
+    "di1do",
+    "dick",
+    "dild0",
+    "dildo",
+    "dyke",
+    "encu1e",
+    "encule",
+    "enema",
+    "enf01re",
+    "enf0ire",
+    "enfo1re",
+    "enfoire",
+    "estup1d0",
+    "estup1do",
+    "estupid0",
+    "estupido",
+    "etr0n",
+    "etron",
+    "f0da",
+    "f0der",
+    "f0ttere",
+    "f0tters1",
+    "f0ttersi",
+    "f0tze",
+    "f0utre",
+    "f1ca",
+    "f1cker",
+    "f1ga",
+    "fag",
+    "fica",
+    "ficker",
+    "figa",
+    "foda",
+    "foder",
+    "fottere",
+    "fotters1",
+    "fottersi",
+    "fotze",
+    "foutre",
+    "fr0c10",
+    "fr0c1o",
+    "fr0ci0",
+    "fr0cio",
+    "fr0sc10",
+    "fr0sc1o",
+    "fr0sci0",
+    "fr0scio",
+    "froc10",
+    "froc1o",
+    "froci0",
+    "frocio",
+    "frosc10",
+    "frosc1o",
+    "frosci0",
+    "froscio",
+    "fuck",
+    "g00",
+    "g0o",
+    "g0u1ne",
+    "g0uine",
+    "gandu",
+    "go0",
+    "goo",
+    "gou1ne",
+    "gouine",
+    "gr0gnasse",
+    "grognasse",
+    "haram1",
+    "harami",
+    "haramzade",
+    "hund1n",
+    "hundin",
+    "id10t",
+    "id1ot",
+    "idi0t",
+    "idiot",
+    "imbec11e",
+    "imbec1le",
+    "imbeci1e",
+    "imbecile",
+    "j1zz",
+    "jerk",
+    "jizz",
+    "k1ke",
+    "kam1ne",
+    "kamine",
+    "kike",
+    "leccacu10",
+    "leccacu1o",
+    "leccacul0",
+    "leccaculo",
+    "m1erda",
+    "m1gn0tta",
+    "m1gnotta",
+    "m1nch1a",
+    "m1nchia",
+    "m1st",
+    "mam0n",
+    "mamahuev0",
+    "mamahuevo",
+    "mamon",
+    "masturbat10n",
+    "masturbat1on",
+    "masturbate",
+    "masturbati0n",
+    "masturbation",
+    "merd0s0",
+    "merd0so",
+    "merda",
+    "merde",
+    "merdos0",
+    "merdoso",
+    "mierda",
+    "mign0tta",
+    "mignotta",
+    "minch1a",
+    "minchia",
+    "mist",
+    "musch1",
+    "muschi",
+    "n1gger",
+    "neger",
+    "negr0",
+    "negre",
+    "negro",
+    "nerch1a",
+    "nerchia",
+    "nigger",
+    "orgasm",
+    "p00p",
+    "p011a",
+    "p01la",
+    "p0l1a",
+    "p0lla",
+    "p0mp1n0",
+    "p0mp1no",
+    "p0mpin0",
+    "p0mpino",
+    "p0op",
+    "p0rca",
+    "p0rn",
+    "p0rra",
+    "p0uff1asse",
+    "p0uffiasse",
+    "p1p1",
+    "p1pi",
+    "p1r1a",
+    "p1rla",
+    "p1sc10",
+    "p1sc1o",
+    "p1sci0",
+    "p1scio",
+    "p1sser",
+    "pa11e",
+    "pa1le",
+    "pal1e",
+    "palle",
+    "pane1e1r0",
+    "pane1e1ro",
+    "pane1eir0",
+    "pane1eiro",
+    "panele1r0",
+    "panele1ro",
+    "paneleir0",
+    "paneleiro",
+    "patakha",
+    "pec0r1na",
+    "pec0rina",
+    "pecor1na",
+    "pecorina",
+    "pen1s",
+    "pendej0",
+    "pendejo",
+    "penis",
+    "pip1",
+    "pipi",
+    "pir1a",
+    "pirla",
+    "pisc10",
+    "pisc1o",
+    "pisci0",
+    "piscio",
+    "pisser",
+    "po0p",
+    "po11a",
+    "po1la",
+    "pol1a",
+    "polla",
+    "pomp1n0",
+    "pomp1no",
+    "pompin0",
+    "pompino",
+    "poop",
+    "porca",
+    "porn",
+    "porra",
+    "pouff1asse",
+    "pouffiasse",
+    "pr1ck",
+    "prick",
+    "pussy",
+    "put1za",
+    "puta",
+    "puta1n",
+    "putain",
+    "pute",
+    "putiza",
+    "puttana",
+    "queca",
+    "r0mp1ba11e",
+    "r0mp1ba1le",
+    "r0mp1bal1e",
+    "r0mp1balle",
+    "r0mpiba11e",
+    "r0mpiba1le",
+    "r0mpibal1e",
+    "r0mpiballe",
+    "rand1",
+    "randi",
+    "rape",
+    "recch10ne",
+    "recch1one",
+    "recchi0ne",
+    "recchione",
+    "retard",
+    "romp1ba11e",
+    "romp1ba1le",
+    "romp1bal1e",
+    "romp1balle",
+    "rompiba11e",
+    "rompiba1le",
+    "rompibal1e",
+    "rompiballe",
+    "ruff1an0",
+    "ruff1ano",
+    "ruffian0",
+    "ruffiano",
+    "s1ut",
+    "sa10pe",
+    "sa1aud",
+    "sa1ope",
+    "sacanagem",
+    "sal0pe",
+    "salaud",
+    "salope",
+    "saugnapf",
+    "sb0rr0ne",
+    "sb0rra",
+    "sb0rrone",
+    "sbattere",
+    "sbatters1",
+    "sbattersi",
+    "sborr0ne",
+    "sborra",
+    "sborrone",
+    "sc0pare",
+    "sc0pata",
+    "sch1ampe",
+    "sche1se",
+    "sche1sse",
+    "scheise",
+    "scheisse",
+    "schlampe",
+    "schwachs1nn1g",
+    "schwachs1nnig",
+    "schwachsinn1g",
+    "schwachsinnig",
+    "schwanz",
+    "scopare",
+    "scopata",
+    "sexy",
+    "sh1t",
+    "shit",
+    "slut",
+    "sp0mp1nare",
+    "sp0mpinare",
+    "spomp1nare",
+    "spompinare",
+    "str0nz0",
+    "str0nza",
+    "str0nzo",
+    "stronz0",
+    "stronza",
+    "stronzo",
+    "stup1d",
+    "stupid",
+    "succh1am1",
+    "succh1ami",
+    "succhiam1",
+    "succhiami",
+    "sucker",
+    "t0pa",
+    "tapette",
+    "test1c1e",
+    "test1cle",
+    "testic1e",
+    "testicle",
+    "tette",
+    "topa",
+    "tr01a",
+    "tr0ia",
+    "tr0mbare",
+    "tr1ng1er",
+    "tr1ngler",
+    "tring1er",
+    "tringler",
+    "tro1a",
+    "troia",
+    "trombare",
+    "turd",
+    "twat",
+    "vaffancu10",
+    "vaffancu1o",
+    "vaffancul0",
+    "vaffanculo",
+    "vag1na",
+    "vagina",
+    "verdammt",
+    "verga",
+    "w1chsen",
+    "wank",
+    "wichsen",
+    "x0ch0ta",
+    "x0chota",
+    "xana",
+    "xoch0ta",
+    "xochota",
+    "z0cc01a",
+    "z0cc0la",
+    "z0cco1a",
+    "z0ccola",
+    "z1z1",
+    "z1zi",
+    "ziz1",
+    "zizi",
+    "zocc01a",
+    "zocc0la",
+    "zocco1a",
+    "zoccola"
+  ])
+};
+var Sqids = class {
+  constructor(options) {
+    var _a2, _b, _c;
+    const alphabet = (_a2 = options === null || options === void 0 ? void 0 : options.alphabet) !== null && _a2 !== void 0 ? _a2 : defaultOptions2.alphabet;
+    const minLength = (_b = options === null || options === void 0 ? void 0 : options.minLength) !== null && _b !== void 0 ? _b : defaultOptions2.minLength;
+    const blocklist = (_c = options === null || options === void 0 ? void 0 : options.blocklist) !== null && _c !== void 0 ? _c : defaultOptions2.blocklist;
+    if (new Blob([alphabet]).size !== alphabet.length) {
+      throw new Error("Alphabet cannot contain multibyte characters");
+    }
+    const minAlphabetLength = 3;
+    if (alphabet.length < minAlphabetLength) {
+      throw new Error(`Alphabet length must be at least ${minAlphabetLength}`);
+    }
+    if (new Set(alphabet).size !== alphabet.length) {
+      throw new Error("Alphabet must contain unique characters");
+    }
+    const minLengthLimit = 255;
+    if (typeof minLength !== "number" || minLength < 0 || minLength > minLengthLimit) {
+      throw new Error(`Minimum length has to be between 0 and ${minLengthLimit}`);
+    }
+    const filteredBlocklist = /* @__PURE__ */ new Set();
+    const alphabetChars = alphabet.toLowerCase().split("");
+    for (const word of blocklist) {
+      if (word.length >= 3) {
+        const wordLowercased = word.toLowerCase();
+        const wordChars = wordLowercased.split("");
+        const intersection2 = wordChars.filter((c) => alphabetChars.includes(c));
+        if (intersection2.length === wordChars.length) {
+          filteredBlocklist.add(wordLowercased);
+        }
+      }
+    }
+    this.alphabet = this.shuffle(alphabet);
+    this.minLength = minLength;
+    this.blocklist = filteredBlocklist;
+  }
+  encode(numbers) {
+    if (numbers.length === 0) {
+      return "";
+    }
+    const inRangeNumbers = numbers.filter((n) => n >= 0 && n <= this.maxValue());
+    if (inRangeNumbers.length !== numbers.length) {
+      throw new Error(`Encoding supports numbers between 0 and ${this.maxValue()}`);
+    }
+    return this.encodeNumbers(numbers);
+  }
+  decode(id) {
+    const ret = [];
+    if (id === "") {
+      return ret;
+    }
+    const alphabetChars = this.alphabet.split("");
+    for (const c of id.split("")) {
+      if (!alphabetChars.includes(c)) {
+        return ret;
+      }
+    }
+    const prefix = id.charAt(0);
+    const offset = this.alphabet.indexOf(prefix);
+    let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
+    alphabet = alphabet.split("").reverse().join("");
+    let slicedId = id.slice(1);
+    while (slicedId.length > 0) {
+      const separator = alphabet.slice(0, 1);
+      const chunks = slicedId.split(separator);
+      if (chunks.length > 0) {
+        if (chunks[0] === "") {
+          return ret;
+        }
+        ret.push(this.toNumber(chunks[0], alphabet.slice(1)));
+        if (chunks.length > 1) {
+          alphabet = this.shuffle(alphabet);
+        }
+      }
+      slicedId = chunks.slice(1).join(separator);
+    }
+    return ret;
+  }
+  encodeNumbers(numbers, increment = 0) {
+    if (increment > this.alphabet.length) {
+      throw new Error("Reached max attempts to re-generate the ID");
+    }
+    let offset = numbers.reduce((a, v, i) => this.alphabet[v % this.alphabet.length].codePointAt(0) + i + a, numbers.length) % this.alphabet.length;
+    offset = (offset + increment) % this.alphabet.length;
+    let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
+    const prefix = alphabet.charAt(0);
+    alphabet = alphabet.split("").reverse().join("");
+    const ret = [prefix];
+    for (let i = 0; i !== numbers.length; i++) {
+      const num = numbers[i];
+      ret.push(this.toId(num, alphabet.slice(1)));
+      if (i < numbers.length - 1) {
+        ret.push(alphabet.slice(0, 1));
+        alphabet = this.shuffle(alphabet);
+      }
+    }
+    let id = ret.join("");
+    if (this.minLength > id.length) {
+      id += alphabet.slice(0, 1);
+      while (this.minLength - id.length > 0) {
+        alphabet = this.shuffle(alphabet);
+        id += alphabet.slice(0, Math.min(this.minLength - id.length, alphabet.length));
+      }
+    }
+    if (this.isBlockedId(id)) {
+      id = this.encodeNumbers(numbers, increment + 1);
+    }
+    return id;
+  }
+  shuffle(alphabet) {
+    const chars = alphabet.split("");
+    for (let i = 0, j = chars.length - 1; j > 0; i++, j--) {
+      const r = (i * j + chars[i].codePointAt(0) + chars[j].codePointAt(0)) % chars.length;
+      [chars[i], chars[r]] = [chars[r], chars[i]];
+    }
+    return chars.join("");
+  }
+  toId(num, alphabet) {
+    const id = [];
+    const chars = alphabet.split("");
+    let result = num;
+    do {
+      id.unshift(chars[result % chars.length]);
+      result = Math.floor(result / chars.length);
+    } while (result > 0);
+    return id.join("");
+  }
+  toNumber(id, alphabet) {
+    const chars = alphabet.split("");
+    return id.split("").reduce((a, v) => a * chars.length + chars.indexOf(v), 0);
+  }
+  isBlockedId(id) {
+    const lowercaseId = id.toLowerCase();
+    for (const word of this.blocklist) {
+      if (word.length <= lowercaseId.length) {
+        if (lowercaseId.length <= 3 || word.length <= 3) {
+          if (lowercaseId === word) {
+            return true;
+          }
+        } else if (/\d/.test(word)) {
+          if (lowercaseId.startsWith(word) || lowercaseId.endsWith(word)) {
+            return true;
+          }
+        } else if (lowercaseId.includes(word)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  maxValue() {
+    return Number.MAX_SAFE_INTEGER;
+  }
+};
+
+// packages/domain/src/utils/shorten-id.ts
+var sqids = new Sqids({
+  alphabet: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  minLength: 10
+});
+function shortenId(id) {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(id);
+  let hash1 = 0;
+  let hash2 = 0;
+  let hash3 = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i];
+    hash1 = (hash1 << 5) - hash1 + byte | 0;
+    hash2 = hash2 * 33 + byte | 0;
+    hash3 = hash3 << 3 ^ hash3 >> 28 ^ byte | 0;
+  }
+  const MAX_SAFE = Number.MAX_SAFE_INTEGER;
+  const numbers = [
+    Math.abs(hash1) % MAX_SAFE,
+    Math.abs(hash2) % MAX_SAFE,
+    Math.abs(hash3) % MAX_SAFE
+  ];
+  const encoded = sqids.encode(numbers);
+  return encoded.slice(0, 10);
+}
+
+// packages/domain/src/utils/identity.generator.ts
+function generateIdentity() {
+  const id = v4_default();
+  const slug = shortenId(id);
+  return {
+    id,
+    slug
+  };
+}
+
+// packages/domain/src/entities/datasource.type.ts
+var DatasourceKind = /* @__PURE__ */ ((DatasourceKind2) => {
+  DatasourceKind2["EMBEDDED"] = "embedded";
+  DatasourceKind2["REMOTE"] = "remote";
+  return DatasourceKind2;
+})(DatasourceKind || {});
+var DatasourceSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the datasource"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
+  name: external_exports.string().min(1).max(255).describe("The name of the datasource"),
+  description: external_exports.string().min(1).max(1024).describe("The description of the datasource"),
+  slug: external_exports.string().min(1).describe("The slug of the datasource"),
+  datasource_provider: external_exports.string().min(1).describe("The provider of the datasource"),
+  datasource_driver: external_exports.string().describe("The driver of the datasource"),
+  datasource_kind: external_exports.nativeEnum(DatasourceKind).describe("The kind of the datasource"),
+  config: external_exports.object({}).passthrough(),
+  createdAt: external_exports.date().describe("The date and time the datasource was created"),
+  updatedAt: external_exports.date().describe("The date and time the datasource was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the datasource"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the datasource"),
+  isPublic: external_exports.boolean().default(false).describe("If true, this datasource is publicly viewable"),
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this datasource was remixed from another datasource")
+});
+var DatasourceEntity = class extends Entity {
+  static create(newDatasource) {
+    const { id, slug } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const datasource = {
+      id,
+      projectId: newDatasource.projectId,
+      name: newDatasource.name,
+      slug,
+      description: newDatasource.description || "",
+      datasource_provider: newDatasource.datasource_provider,
+      datasource_driver: newDatasource.datasource_driver,
+      datasource_kind: newDatasource.datasource_kind,
+      config: newDatasource.config || {},
+      createdAt: now,
+      updatedAt: now,
+      createdBy: newDatasource.createdBy,
+      updatedBy: newDatasource.createdBy,
+      isPublic: false
+    };
+    return plainToClass(DatasourceEntity, DatasourceSchema.parse(datasource));
+  }
+  static update(datasource, datasourceDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const updatedDatasource = {
+      ...datasource,
+      ...datasourceDTO.name && { name: datasourceDTO.name },
+      ...datasourceDTO.description && {
+        description: datasourceDTO.description
+      },
+      ...datasourceDTO.datasource_provider && {
+        datasource_provider: datasourceDTO.datasource_provider
+      },
+      ...datasourceDTO.datasource_driver && {
+        datasource_driver: datasourceDTO.datasource_driver
+      },
+      ...datasourceDTO.datasource_kind && {
+        datasource_kind: datasourceDTO.datasource_kind
+      },
+      ...datasourceDTO.config && { config: datasourceDTO.config },
+      ...datasourceDTO.updatedBy && { updatedBy: datasourceDTO.updatedBy },
+      updatedAt: date5
+    };
+    return plainToClass(
+      DatasourceEntity,
+      DatasourceSchema.parse(updatedDatasource)
+    );
+  }
+};
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "projectId", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "description", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "slug", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "datasource_provider", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "datasource_driver", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "datasource_kind", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "config", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], DatasourceEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], DatasourceEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "updatedBy", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "isPublic", 2);
+__decorateClass([
+  Expose()
+], DatasourceEntity.prototype, "remixedFrom", 2);
+DatasourceEntity = __decorateClass([
+  Exclude()
+], DatasourceEntity);
+
+// packages/domain/src/enums/cellType.ts
+var CellTypeSchema = external_exports.enum(["text", "query", "prompt", "code"]);
+
+// packages/domain/src/enums/runMode.ts
+var RunModeSchema = external_exports.enum(["default", "fixit"]);
+
+// packages/domain/src/entities/notebook.type.ts
+var CellSchema = external_exports.object({
+  query: external_exports.string().optional().describe("The query of the cell"),
+  cellType: external_exports.enum(CellTypeSchema.options).describe("The type of the cell"),
+  cellId: external_exports.number().int().min(1).describe("The cell identifier"),
+  datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the cell"),
+  isActive: external_exports.boolean().describe("Whether the cell is active"),
+  runMode: external_exports.enum(RunModeSchema.options).describe("The run mode of the cell"),
+  title: external_exports.string().optional().describe("The optional title of the cell")
+});
+var NotebookSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the notebook"),
+  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
+  title: external_exports.string().min(1).max(255).describe("The title of the notebook"),
+  description: external_exports.string().min(1).max(1024).optional().describe("The description of the notebook"),
+  slug: external_exports.string().min(1).describe("The slug of the notebook"),
+  version: external_exports.number().int().min(1).describe("The version of the notebook"),
+  createdAt: external_exports.date().describe("The date and time the notebook was created"),
+  updatedAt: external_exports.date().describe("The date and time the notebook was last updated"),
+  datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the Notebook"),
+  cells: external_exports.array(CellSchema),
+  createdBy: external_exports.string().uuid().optional().describe("The user who created the notebook"),
+  isPublic: external_exports.boolean().default(false).describe("If true, this notebook is publicly viewable"),
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe("If set, this notebook was remixed from another notebook")
+});
+var NotebookEntity = class extends Entity {
+  static create(newNotebook) {
+    const { id, slug } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const notebook = {
+      id,
+      projectId: newNotebook.projectId,
+      title: newNotebook.title,
+      description: newNotebook.description,
+      slug,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      datasources: [],
+      cells: [
+        {
+          cellId: 1,
+          cellType: "query",
+          query: "\n".repeat(9),
+          // 10 lines total (9 newlines + 1 empty line)
+          datasources: [],
+          isActive: true,
+          runMode: "default",
+          title: "Cell 1"
+        }
+      ],
+      isPublic: false
+    };
+    return plainToClass(NotebookEntity, NotebookSchema.parse(notebook));
+  }
+  static update(notebook, notebookDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const { cells, ...restDTO } = notebookDTO;
+    const updatedNotebook = {
+      ...notebook,
+      ...restDTO,
+      ...cells !== void 0 && { cells },
+      updatedAt: date5
+    };
+    const transformed = plainToClass(NotebookEntity, updatedNotebook);
+    const plainData = instanceToPlain(transformed);
+    return plainToClass(NotebookEntity, NotebookSchema.parse(plainData));
+  }
+};
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "projectId", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "title", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "description", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "slug", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "version", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], NotebookEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], NotebookEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "datasources", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "cells", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "isPublic", 2);
+__decorateClass([
+  Expose()
+], NotebookEntity.prototype, "remixedFrom", 2);
+NotebookEntity = __decorateClass([
+  Exclude()
+], NotebookEntity);
+
+// packages/domain/src/enums/workspace-mode.ts
+var WorkspaceModeEnum = /* @__PURE__ */ ((WorkspaceModeEnum2) => {
+  WorkspaceModeEnum2["SIMPLE"] = "simple";
+  WorkspaceModeEnum2["ADVANCED"] = "advanced";
+  return WorkspaceModeEnum2;
+})(WorkspaceModeEnum || {});
+var WorkspaceRuntimeEnum = /* @__PURE__ */ ((WorkspaceRuntimeEnum2) => {
+  WorkspaceRuntimeEnum2["DESKTOP"] = "desktop";
+  WorkspaceRuntimeEnum2["MOBILE"] = "mobile";
+  WorkspaceRuntimeEnum2["BROWSER"] = "browser";
+  return WorkspaceRuntimeEnum2;
+})(WorkspaceRuntimeEnum || {});
+
+// packages/domain/src/entities/workspace.type.ts
+var WorkspaceModeSchema = external_exports.nativeEnum(WorkspaceModeEnum);
+var WorkspaceRuntimeSchema = external_exports.nativeEnum(WorkspaceRuntimeEnum);
+var WorkspaceSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the workspace"),
+  userId: external_exports.uuid().describe("The id of the user"),
+  username: external_exports.string().min(1).max(255).default("anonymous").describe("The username of the user"),
+  organizationId: external_exports.string().uuid().optional().describe("The id of the organization"),
+  projectId: external_exports.uuid().optional().describe("The id of the project"),
+  isAnonymous: external_exports.boolean().default(true).describe("Whether the user is anonymous"),
+  mode: WorkspaceModeSchema.describe("The mode of the workspace"),
+  runtime: WorkspaceRuntimeSchema.describe("The runtime of the workspace")
+});
+
+// packages/domain/src/entities/organization.type.ts
+var OrganizationSchema = external_exports.object({
+  id: external_exports.uuid().describe("The id of the organization"),
+  name: external_exports.string().describe("The name of the organization"),
+  slug: external_exports.string().min(1).describe("The slug of the organization"),
+  userId: external_exports.string().uuid().describe("The id of the user who is the owner of the organization"),
+  // timestamps
+  createdAt: external_exports.date().describe("The date and time the organization was created"),
+  updatedAt: external_exports.date().describe("The date and time the organization was last updated"),
+  createdBy: external_exports.string().min(1).max(255).describe("The user who created the organization"),
+  updatedBy: external_exports.string().min(1).max(255).describe("The user who last updated the organization")
+});
+var OrganizationEntity = class extends Entity {
+  static create(newOrganization) {
+    const { id, slug } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const organization = {
+      id,
+      name: newOrganization.name,
+      slug,
+      userId: newOrganization.userId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: newOrganization.createdBy,
+      updatedBy: newOrganization.createdBy
+    };
+    return plainToClass(
+      OrganizationEntity,
+      OrganizationSchema.parse(organization)
+    );
+  }
+  static update(organization, organizationDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const updatedOrganization = {
+      ...organization,
+      ...organizationDTO.name && { name: organizationDTO.name },
+      ...organizationDTO.userId !== void 0 && {
+        userId: organizationDTO.userId
+      },
+      ...organizationDTO.updatedBy && {
+        updatedBy: organizationDTO.updatedBy
+      },
+      updatedAt: date5
+    };
+    return plainToClass(
+      OrganizationEntity,
+      OrganizationSchema.parse(updatedOrganization)
+    );
+  }
+};
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "slug", 2);
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "userId", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], OrganizationEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], OrganizationEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], OrganizationEntity.prototype, "updatedBy", 2);
+OrganizationEntity = __decorateClass([
+  Exclude()
+], OrganizationEntity);
+
+// packages/domain/src/entities/project.type.ts
+var ProjectSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the project"),
+  organizationId: external_exports.string().uuid().describe("The unique identifier for the organisation"),
+  name: external_exports.string().min(1).max(255).describe("The name of the project"),
+  slug: external_exports.string().min(1).describe("The slug of the project"),
+  description: external_exports.string().max(1024).optional().describe("The description of the project"),
+  status: external_exports.string().min(1).max(255).optional().describe("The status of the project"),
+  createdAt: external_exports.coerce.date().describe("The date and time the project was created"),
+  updatedAt: external_exports.coerce.date().describe("The date and time the project was last updated"),
+  createdBy: external_exports.string().min(1).max(255).describe("The user who created the project"),
+  updatedBy: external_exports.string().min(1).max(255).describe("The user who last updated the project")
+});
+var ProjectEntity = class extends Entity {
+  static create(newProject) {
+    const { id, slug } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const project = {
+      id,
+      organizationId: newProject.organizationId,
+      name: newProject.name,
+      slug,
+      description: newProject.description,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: newProject.createdBy,
+      updatedBy: newProject.createdBy
+    };
+    return plainToClass(ProjectEntity, ProjectSchema.parse(project));
+  }
+  static update(project, projectDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const updatedProject = {
+      ...project,
+      ...projectDTO.name && { name: projectDTO.name },
+      ...projectDTO.description !== void 0 && {
+        description: projectDTO.description
+      },
+      ...projectDTO.status && { status: projectDTO.status },
+      ...projectDTO.updatedBy && { updatedBy: projectDTO.updatedBy },
+      updatedAt: date5
+    };
+    return plainToClass(ProjectEntity, ProjectSchema.parse(updatedProject));
+  }
+};
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "organizationId", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "slug", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "description", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "status", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], ProjectEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], ProjectEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], ProjectEntity.prototype, "updatedBy", 2);
+ProjectEntity = __decorateClass([
+  Exclude()
+], ProjectEntity);
+
+// packages/domain/src/common/roles.ts
+var Roles = /* @__PURE__ */ ((Roles2) => {
+  Roles2["SUPER_ADMIN"] = "SUPER_ADMIN";
+  Roles2["ADMIN"] = "ADMIN";
+  Roles2["USER"] = "USER";
+  return Roles2;
+})(Roles || {});
+
+// packages/domain/src/entities/user.type.ts
+var UserRoleSchema = external_exports.nativeEnum(Roles).default("USER" /* USER */);
+var UserSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the user"),
+  username: external_exports.string().min(1).max(32).regex(/^[a-zA-Z0-9-]+$/, {
+    message: "Username must contain only alphanumeric characters and dashes"
+  }).describe("The name of the user (alphanumeric and dashes only)"),
+  role: UserRoleSchema.describe("The role of the user"),
+  createdAt: external_exports.date().describe("The date and time the user was created"),
+  updatedAt: external_exports.date().describe("The date and time the user was last updated")
+});
+
+// packages/domain/src/entities/playground.type.ts
+var PlaygroundDatasourceSchema = DatasourceSchema.omit({
+  id: true,
+  projectId: true,
+  slug: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  isPublic: true,
+  remixedFrom: true
+}).extend({
+  datasource_kind: external_exports.nativeEnum(DatasourceKind).describe("The kind of the datasource")
+});
+var PlaygroundSchema = external_exports.object({
+  id: external_exports.string().describe("The unique identifier for the playground"),
+  logo: external_exports.string().describe("The logo of the playground"),
+  name: external_exports.string().min(1).max(255).describe("The name of the playground"),
+  description: external_exports.string().min(1).max(1024).describe("The description of the playground"),
+  datasource: PlaygroundDatasourceSchema.describe(
+    "The datasource template for the playground"
+  )
+});
+
+// packages/domain/src/entities/template.type.ts
+var TemplateKindSchema = external_exports.enum([
+  "schema",
+  "query",
+  "notebook",
+  "prompt",
+  "dashboard",
+  "app",
+  "api",
+  "report"
+]);
+var TemplateSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the template"),
+  name: external_exports.string().min(1).max(255).describe("The name of the template"),
+  description: external_exports.string().min(1).max(1024).describe("The description of the template"),
+  slug: external_exports.string().min(1).describe("The slug of the template"),
+  kind: external_exports.enum(TemplateKindSchema.options).describe("The type of the template"),
+  version: external_exports.number().int().min(1).describe("The version of the template"),
+  createdAt: external_exports.date().describe("The date and time the template was created"),
+  updatedAt: external_exports.date().describe("The date and time the template was last updated"),
+  createdBy: external_exports.string().min(1).max(255).describe("The user who created the template"),
+  updatedBy: external_exports.string().min(1).max(255).describe("The user who last updated the template")
+});
+
+// packages/domain/src/entities/ai/agent.type.ts
+var AgentSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the agent"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  description: external_exports.string().min(1).max(1024).describe("The description of the agent"),
+  role: external_exports.string().min(1).max(255).describe("The role of the agent"),
+  capabilities: external_exports.array(external_exports.string()).describe("The capabilities of the agent"),
+  policies: external_exports.array(external_exports.string()).describe("The policies of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var AgentStateSchema = external_exports.object({
+  messages: external_exports.array(
+    external_exports.object({
+      role: external_exports.enum(["user", "assistant", "system"]),
+      content: external_exports.string()
+    })
+  )
+});
+var AgentEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], AgentEntity.prototype, "updatedBy", 2);
+AgentEntity = __decorateClass([
+  Exclude()
+], AgentEntity);
+
+// packages/domain/src/entities/ai/action.type.ts
+var ActionSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var ActionEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], ActionEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ActionEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], ActionEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], ActionEntity.prototype, "updatedAt", 2);
+ActionEntity = __decorateClass([
+  Exclude()
+], ActionEntity);
+
+// packages/domain/src/entities/ai/context.type.ts
+var ContextSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var ContextEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], ContextEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ContextEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], ContextEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], ContextEntity.prototype, "updatedAt", 2);
+ContextEntity = __decorateClass([
+  Exclude()
+], ContextEntity);
+
+// packages/domain/src/entities/ai/conversation.type.ts
+var ConversationSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  title: external_exports.string().describe("The title of the conversation"),
+  seedMessage: external_exports.string().optional().describe("The seed message for the conversation"),
+  taskId: external_exports.uuid().describe("The unique identifier for the task"),
+  projectId: external_exports.string().uuid().describe("The unique identifier for the project"),
+  slug: external_exports.string().describe("The slug of the conversation"),
+  datasources: external_exports.array(external_exports.string().min(1)).describe("The datasources to use for the conversation"),
+  createdAt: external_exports.date().describe("The date and time the conversation was created"),
+  updatedAt: external_exports.date().describe("The date and time the conversation was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the conversation"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the conversation"),
+  isPublic: external_exports.boolean().default(false).describe("If true, this conversation is publicly viewable"),
+  remixedFrom: external_exports.string().uuid().optional().nullable().describe(
+    "If set, this conversation was remixed from another conversation"
+  )
+});
+var ConversationEntity = class extends Entity {
+  static create(newConversation) {
+    const { id, slug } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const conversation = {
+      id,
+      projectId: newConversation.projectId,
+      taskId: newConversation.taskId,
+      title: newConversation.title,
+      seedMessage: newConversation.seedMessage,
+      slug,
+      datasources: newConversation.datasources || [],
+      createdAt: now,
+      updatedAt: now,
+      createdBy: newConversation.createdBy,
+      updatedBy: newConversation.createdBy,
+      isPublic: false
+    };
+    return plainToClass(
+      ConversationEntity,
+      ConversationSchema.parse(conversation)
+    );
+  }
+  static update(conversation, conversationDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const updatedConversation = {
+      ...conversation,
+      ...conversationDTO.title && { title: conversationDTO.title },
+      ...conversationDTO.datasources && {
+        datasources: conversationDTO.datasources
+      },
+      updatedAt: date5,
+      updatedBy: conversationDTO.updatedBy
+    };
+    const transformed = plainToClass(ConversationEntity, updatedConversation);
+    const plainData = instanceToPlain(transformed);
+    return plainToClass(
+      ConversationEntity,
+      ConversationSchema.parse(plainData)
+    );
+  }
+};
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "title", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "seedMessage", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "projectId", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "slug", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "datasources", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "taskId", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], ConversationEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose(),
+  Type(() => Date)
+], ConversationEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "updatedBy", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "isPublic", 2);
+__decorateClass([
+  Expose()
+], ConversationEntity.prototype, "remixedFrom", 2);
+ConversationEntity = __decorateClass([
+  Exclude()
+], ConversationEntity);
+
+// packages/domain/src/entities/ai/memory.type.ts
+var MemorySchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var MemoryEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], MemoryEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], MemoryEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], MemoryEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], MemoryEntity.prototype, "updatedAt", 2);
+MemoryEntity = __decorateClass([
+  Exclude()
+], MemoryEntity);
+
+// packages/domain/src/entities/ai/message.type.ts
+var MessageRole = /* @__PURE__ */ ((MessageRole2) => {
+  MessageRole2["USER"] = "user";
+  MessageRole2["ASSISTANT"] = "assistant";
+  MessageRole2["SYSTEM"] = "system";
+  return MessageRole2;
+})(MessageRole || {});
+var StepStartPartSchema = external_exports.object({
+  type: external_exports.literal("step-start")
+}).loose();
+var TextPartSchema = external_exports.object({
+  type: external_exports.literal("text"),
+  text: external_exports.string(),
+  state: external_exports.enum(["streaming", "done"]).optional(),
+  synthetic: external_exports.boolean().optional()
+}).loose();
+var TOOL_INVOCATION_STATES = [
+  "input-streaming",
+  "input-available",
+  "approval-requested",
+  "approval-responded",
+  "output-available",
+  "output-error",
+  "output-denied",
+  "output-streaming",
+  "partial-call",
+  "call"
+];
+var ToolInvocationPartSchema = external_exports.object({
+  type: external_exports.string().refine((t) => t.startsWith("tool-") || t === "dynamic-tool"),
+  state: external_exports.enum(TOOL_INVOCATION_STATES).optional(),
+  toolCallId: external_exports.string().optional(),
+  toolName: external_exports.string().optional(),
+  input: external_exports.record(external_exports.string(), external_exports.any()).optional(),
+  output: external_exports.unknown().optional(),
+  errorText: external_exports.string().optional(),
+  title: external_exports.string().optional(),
+  isError: external_exports.boolean().optional(),
+  compactedAt: external_exports.number().optional()
+}).loose();
+var ReasoningPartSchema = external_exports.object({
+  type: external_exports.literal("reasoning"),
+  text: external_exports.string(),
+  state: external_exports.enum(["streaming", "done"]).optional()
+}).loose();
+var FilePartSchema = external_exports.object({
+  type: external_exports.literal("file"),
+  mediaType: external_exports.string().optional(),
+  mime: external_exports.string().optional(),
+  filename: external_exports.string().optional(),
+  url: external_exports.string()
+}).refine((d) => !!(d.mediaType ?? d.mime), {
+  message: "File part must have mediaType or mime"
+}).loose();
+var CompactionPartSchema = external_exports.object({
+  type: external_exports.literal("compaction"),
+  auto: external_exports.boolean(),
+  afterMessageId: external_exports.string().optional()
+}).loose();
+var SnapshotPartSchema = external_exports.object({
+  type: external_exports.literal("snapshot"),
+  snapshot: external_exports.string()
+}).loose();
+var PatchPartSchema = external_exports.object({
+  type: external_exports.literal("patch"),
+  hash: external_exports.string(),
+  files: external_exports.array(external_exports.string())
+}).loose();
+var AgentPartSchema = external_exports.object({
+  type: external_exports.literal("agent"),
+  name: external_exports.string(),
+  source: external_exports.object({
+    value: external_exports.string(),
+    start: external_exports.number().int(),
+    end: external_exports.number().int()
+  }).optional()
+}).loose();
+var SubtaskPartSchema = external_exports.object({
+  type: external_exports.literal("subtask"),
+  prompt: external_exports.string(),
+  description: external_exports.string(),
+  agent: external_exports.string(),
+  modelId: external_exports.string().optional(),
+  providerId: external_exports.string().optional(),
+  command: external_exports.string().optional()
+}).loose();
+var RetryPartSchema = external_exports.object({
+  type: external_exports.literal("retry"),
+  attempt: external_exports.number(),
+  error: external_exports.record(external_exports.string(), external_exports.any()),
+  time: external_exports.object({
+    created: external_exports.number()
+  })
+}).loose();
+var StepFinishPartSchema = external_exports.object({
+  type: external_exports.literal("step-finish"),
+  reason: external_exports.string(),
+  snapshot: external_exports.string().optional(),
+  cost: external_exports.number(),
+  tokens: external_exports.object({
+    input: external_exports.number(),
+    output: external_exports.number(),
+    reasoning: external_exports.number(),
+    cache: external_exports.object({
+      read: external_exports.number(),
+      write: external_exports.number()
+    })
+  })
+}).loose();
+var ToolPartSchema = external_exports.object({
+  type: external_exports.literal("tool"),
+  callID: external_exports.string(),
+  tool: external_exports.string(),
+  state: external_exports.record(external_exports.string(), external_exports.any())
+}).loose();
+var MessageContentPartSchema = external_exports.union([
+  StepStartPartSchema,
+  TextPartSchema,
+  ReasoningPartSchema,
+  FilePartSchema,
+  ToolInvocationPartSchema,
+  ToolPartSchema,
+  CompactionPartSchema,
+  SnapshotPartSchema,
+  PatchPartSchema,
+  AgentPartSchema,
+  SubtaskPartSchema,
+  RetryPartSchema,
+  StepFinishPartSchema,
+  external_exports.object({ type: external_exports.string() }).loose()
+]);
+var MessageContentSchema = external_exports.object({
+  id: external_exports.string().optional(),
+  role: external_exports.string().optional(),
+  parts: external_exports.array(MessageContentPartSchema).optional()
+}).loose();
+var TokensSchema = external_exports.object({
+  input: external_exports.number(),
+  output: external_exports.number(),
+  reasoning: external_exports.number().optional(),
+  cache: external_exports.object({
+    read: external_exports.number(),
+    write: external_exports.number()
+  }).optional()
+}).loose();
+var MessageMetadataSchema = external_exports.object({
+  error: external_exports.unknown().optional(),
+  modelId: external_exports.string().optional(),
+  providerId: external_exports.string().optional(),
+  cost: external_exports.number().optional(),
+  tokens: TokensSchema.optional(),
+  parentId: external_exports.string().optional(),
+  finish: external_exports.string().optional(),
+  summary: external_exports.boolean().optional(),
+  path: external_exports.object({
+    cwd: external_exports.string(),
+    root: external_exports.string()
+  }).optional(),
+  agent: external_exports.string().optional()
+}).loose();
+var MessageSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  conversationId: external_exports.uuid().describe("The unique identifier for the conversation"),
+  content: MessageContentSchema.describe("The content of the message"),
+  role: external_exports.nativeEnum(MessageRole).describe("The role of the message"),
+  metadata: MessageMetadataSchema.describe("The metadata of the message"),
+  createdAt: external_exports.date().describe("The date and time the message was created"),
+  updatedAt: external_exports.date().describe("The date and time the message was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the message"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the message")
+});
+var MessageEntity = class extends Entity {
+  static create(newMessage) {
+    const { id } = generateIdentity();
+    const now = /* @__PURE__ */ new Date();
+    const message = {
+      id,
+      conversationId: newMessage.conversationId,
+      content: newMessage.content,
+      role: newMessage.role,
+      metadata: newMessage.metadata || {},
+      createdAt: now,
+      updatedAt: now,
+      createdBy: newMessage.createdBy,
+      updatedBy: newMessage.createdBy
+    };
+    return plainToClass(MessageEntity, MessageSchema.parse(message));
+  }
+  static update(message, messageDTO) {
+    const date5 = /* @__PURE__ */ new Date();
+    const updatedMessage = {
+      ...message,
+      ...messageDTO.content && { content: messageDTO.content },
+      ...messageDTO.metadata && { metadata: messageDTO.metadata },
+      updatedAt: date5,
+      updatedBy: messageDTO.updatedBy
+    };
+    return plainToClass(MessageEntity, MessageSchema.parse(updatedMessage));
+  }
+};
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "conversationId", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "content", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "role", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "metadata", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "updatedAt", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "createdBy", 2);
+__decorateClass([
+  Expose()
+], MessageEntity.prototype, "updatedBy", 2);
+MessageEntity = __decorateClass([
+  Exclude()
+], MessageEntity);
+
+// packages/domain/src/entities/ai/model.type.ts
+var ModelSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var ModelEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], ModelEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ModelEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], ModelEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], ModelEntity.prototype, "updatedAt", 2);
+ModelEntity = __decorateClass([
+  Exclude()
+], ModelEntity);
+
+// packages/domain/src/entities/ai/observation.type.ts
+var ObservationSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var ObservationEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], ObservationEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], ObservationEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], ObservationEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], ObservationEntity.prototype, "updatedAt", 2);
+ObservationEntity = __decorateClass([
+  Exclude()
+], ObservationEntity);
+
+// packages/domain/src/entities/ai/outcome.type.ts
+var OutcomeSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var OutcomeEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], OutcomeEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], OutcomeEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], OutcomeEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], OutcomeEntity.prototype, "updatedAt", 2);
+OutcomeEntity = __decorateClass([
+  Exclude()
+], OutcomeEntity);
+
+// packages/domain/src/entities/ai/plan.type.ts
+var PlanSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var PlanEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], PlanEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], PlanEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], PlanEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], PlanEntity.prototype, "updatedAt", 2);
+PlanEntity = __decorateClass([
+  Exclude()
+], PlanEntity);
+
+// packages/domain/src/entities/ai/prompt.type.ts
+var PromptSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var PromptEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], PromptEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], PromptEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], PromptEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], PromptEntity.prototype, "updatedAt", 2);
+PromptEntity = __decorateClass([
+  Exclude()
+], PromptEntity);
+
+// packages/domain/src/entities/ai/task.type.ts
+var TaskSchema = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var TaskEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], TaskEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], TaskEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], TaskEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], TaskEntity.prototype, "updatedAt", 2);
+TaskEntity = __decorateClass([
+  Exclude()
+], TaskEntity);
+
+// packages/domain/src/entities/ai/usage.type.ts
+var UsageSchema = external_exports.object({
+  id: external_exports.uuid().describe("Usage id"),
+  conversationId: external_exports.uuid().describe("The unique identifier for the conversation"),
+  projectId: external_exports.uuid().describe("The unique identifier for the project"),
+  organizationId: external_exports.uuid().describe("The unique identifier for the organization"),
+  userId: external_exports.uuid().describe("The unique identifier for the user"),
+  model: external_exports.string().describe("The name of the model"),
+  inputTokens: external_exports.number().describe("The total number of input tokens used").default(0),
+  outputTokens: external_exports.number().describe("The total number of output tokens used").default(0),
+  totalTokens: external_exports.number().describe("The total number of tokens used").default(0),
+  reasoningTokens: external_exports.number().describe("The total number of reasoning tokens used").default(0),
+  cachedInputTokens: external_exports.number().describe("The total number of cached input tokens used").default(0),
+  cost: external_exports.number().describe("The cost in USD for this usage").default(0),
+  contextSize: external_exports.number().describe("The used context size of the model").default(0),
+  creditsCap: external_exports.number().describe("The maximum number of credits capacity").default(0),
+  creditsUsed: external_exports.number().describe("The number of credits used").default(0),
+  cpu: external_exports.number().describe("The CPU usage in percentage").default(0),
+  memory: external_exports.number().describe("The memory usage in percentage").default(0),
+  network: external_exports.number().describe("The network usage in percentage").default(0),
+  gpu: external_exports.number().describe("The GPU usage in percentage").default(0),
+  storage: external_exports.number().describe("The storage usage in percentage").default(0),
+  timestamp: external_exports.date().default(/* @__PURE__ */ new Date()).describe("The timestamp of the usage")
+});
+var UsageCreateSchema = UsageSchema.extend({
+  id: external_exports.uuid().optional()
+});
+var UsageEntity = class extends Entity {
+  static new(usage) {
+    const parsed = UsageCreateSchema.parse(usage);
+    const withId = { ...parsed, id: parsed.id ?? v4_default() };
+    return plainToClass(UsageEntity, withId, {
+      excludeExtraneousValues: true
+    });
+  }
+};
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "conversationId", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "projectId", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "organizationId", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "userId", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "model", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "inputTokens", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "outputTokens", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "totalTokens", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "reasoningTokens", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "cachedInputTokens", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "cost", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "creditsCap", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "creditsUsed", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "cpu", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "memory", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "network", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "gpu", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "storage", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "contextSize", 2);
+__decorateClass([
+  Expose()
+], UsageEntity.prototype, "timestamp", 2);
+UsageEntity = __decorateClass([
+  Exclude()
+], UsageEntity);
+
+// packages/domain/src/entities/ai/todo.type.ts
+var TodoItemSchema = external_exports.object({
+  id: external_exports.string().describe("Unique identifier for the todo item"),
+  content: external_exports.string().describe("Brief description of the task"),
+  status: external_exports.enum(["pending", "in_progress", "completed", "cancelled"]).describe(
+    "Current status of the task: pending, in_progress, completed, cancelled"
+  ),
+  priority: external_exports.enum(["high", "medium", "low"]).describe("Priority level of the task: high, medium, low")
+});
+var TodoSchema = external_exports.array(TodoItemSchema);
+
+// packages/domain/src/entities/ai/workspace.type.ts
+var WorkspaceSchema2 = external_exports.object({
+  id: external_exports.uuid().describe("The unique identifier for the action"),
+  name: external_exports.string().min(1).max(255).describe("The name of the agent"),
+  createdAt: external_exports.date().describe("The date and time the agent was created"),
+  updatedAt: external_exports.date().describe("The date and time the agent was last updated"),
+  createdBy: external_exports.uuid().describe("The user who created the agent"),
+  updatedBy: external_exports.uuid().describe("The user who last updated the agent")
+});
+var WorkspaceEntity = class extends Entity {
+};
+__decorateClass([
+  Expose()
+], WorkspaceEntity.prototype, "id", 2);
+__decorateClass([
+  Expose()
+], WorkspaceEntity.prototype, "name", 2);
+__decorateClass([
+  Expose()
+], WorkspaceEntity.prototype, "createdAt", 2);
+__decorateClass([
+  Expose()
+], WorkspaceEntity.prototype, "updatedAt", 2);
+WorkspaceEntity = __decorateClass([
+  Exclude()
+], WorkspaceEntity);
+
+// packages/domain/src/entities/datasource-meta/columns.type.ts
+var ColumnZodSchema = external_exports.object({
+  id: external_exports.string(),
+  table_id: external_exports.number(),
+  schema: external_exports.string(),
+  table: external_exports.string(),
+  name: external_exports.string(),
+  ordinal_position: external_exports.number(),
+  data_type: external_exports.string(),
+  format: external_exports.string(),
+  is_identity: external_exports.boolean(),
+  identity_generation: external_exports.string().nullable(),
+  is_generated: external_exports.boolean(),
+  is_nullable: external_exports.boolean(),
+  is_updatable: external_exports.boolean(),
+  is_unique: external_exports.boolean(),
+  check: external_exports.string().nullable(),
+  default_value: external_exports.any().nullable(),
+  enums: external_exports.array(external_exports.string()),
+  comment: external_exports.string().nullable()
+}).passthrough();
+var ColumnArrayZodSchema = external_exports.array(ColumnZodSchema);
+
+// packages/domain/src/entities/datasource-meta/tables.type.ts
+var TablePrimaryKeyZodSchema = external_exports.object({
+  table_id: external_exports.number(),
+  name: external_exports.string(),
+  schema: external_exports.string(),
+  table_name: external_exports.string()
+});
+var TableRelationshipZodSchema = external_exports.object({
+  id: external_exports.number(),
+  constraint_name: external_exports.string(),
+  source_schema: external_exports.string(),
+  source_table_name: external_exports.string(),
+  source_column_name: external_exports.string(),
+  target_table_schema: external_exports.string(),
+  target_table_name: external_exports.string(),
+  target_column_name: external_exports.string()
+});
+var TableZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  rls_enabled: external_exports.boolean(),
+  rls_forced: external_exports.boolean(),
+  bytes: external_exports.number(),
+  size: external_exports.string(),
+  live_rows_estimate: external_exports.number(),
+  dead_rows_estimate: external_exports.number(),
+  comment: external_exports.string().nullable(),
+  primary_keys: external_exports.array(TablePrimaryKeyZodSchema),
+  relationships: external_exports.array(TableRelationshipZodSchema),
+  columns: ColumnArrayZodSchema.optional()
+}).passthrough();
+var TableArrayZodSchema = external_exports.array(TableZodSchema);
+
+// packages/domain/src/entities/datasource-meta/schema.type.ts
+var SchemaZod = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  owner: external_exports.string()
+}).passthrough();
+var SchemaArrayZod = external_exports.array(SchemaZod);
+var SchemaOptionalZod = external_exports.optional(SchemaZod);
+
+// packages/domain/src/entities/datasource-meta/extensions.type.ts
+var DatasourceExtensionZod = external_exports.object({
+  name: external_exports.string(),
+  schema: external_exports.string().nullable(),
+  default_version: external_exports.string(),
+  installed_version: external_exports.string().nullable(),
+  comment: external_exports.string()
+}).passthrough();
+var DatasourceExtensionArrayZod = external_exports.array(DatasourceExtensionZod);
+var DatasourceExtensionOptionalZod = external_exports.optional(
+  DatasourceExtensionZod
+);
+
+// packages/domain/src/entities/datasource-meta/version.type.ts
+var DatasourceVersionZodSchema = external_exports.object({
+  version: external_exports.string(),
+  version_number: external_exports.number(),
+  active_connections: external_exports.number(),
+  max_connections: external_exports.number()
+});
+
+// packages/domain/src/entities/datasource-meta/views.type.ts
+var ViewZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  is_updatable: external_exports.boolean(),
+  comment: external_exports.string().nullable(),
+  columns: ColumnArrayZodSchema.optional()
+}).passthrough();
+var ViewArrayZodSchema = external_exports.array(ViewZodSchema);
+var ViewOptionalZodSchema = external_exports.optional(ViewZodSchema);
+
+// packages/domain/src/entities/datasource-meta/functions.type.ts
+var FunctionZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  language: external_exports.string(),
+  definition: external_exports.string(),
+  complete_statement: external_exports.string(),
+  args: external_exports.array(
+    external_exports.object({
+      mode: external_exports.union([
+        external_exports.literal("in"),
+        external_exports.literal("out"),
+        external_exports.literal("inout"),
+        external_exports.literal("variadic"),
+        external_exports.literal("table")
+      ]),
+      name: external_exports.string(),
+      type_id: external_exports.number(),
+      has_default: external_exports.boolean()
+    })
+  ),
+  argument_types: external_exports.string(),
+  identity_argument_types: external_exports.string(),
+  return_type_id: external_exports.number(),
+  return_type: external_exports.string(),
+  return_type_relation_id: external_exports.union([external_exports.number(), external_exports.null()]),
+  is_set_returning_function: external_exports.boolean(),
+  config_params: external_exports.union([external_exports.record(external_exports.string(), external_exports.string()), external_exports.null()])
+}).passthrough();
+var FunctionArrayZodSchema = external_exports.array(FunctionZodSchema);
+var FunctionOptionalZodSchema = external_exports.optional(FunctionZodSchema);
+
+// packages/domain/src/entities/datasource-meta/column-privileges.type.ts
+var ColumnPrivilegeGrantZodSchema = external_exports.object({
+  grantor: external_exports.string(),
+  grantee: external_exports.string(),
+  privilege_type: external_exports.union([
+    external_exports.literal("SELECT"),
+    external_exports.literal("INSERT"),
+    external_exports.literal("UPDATE"),
+    external_exports.literal("REFERENCES")
+  ]),
+  is_grantable: external_exports.boolean()
+});
+var ColumnPrivilegesZodSchema = external_exports.object({
+  column_id: external_exports.string(),
+  relation_schema: external_exports.string(),
+  relation_name: external_exports.string(),
+  column_name: external_exports.string(),
+  privileges: external_exports.array(ColumnPrivilegeGrantZodSchema)
+});
+var ColumnPrivilegesArrayZodSchema = external_exports.array(
+  ColumnPrivilegesZodSchema
+);
+var _PrivilegeGrantZodSchema = external_exports.object({
+  columnId: external_exports.string(),
+  grantee: external_exports.string(),
+  privilegeType: external_exports.union([
+    external_exports.literal("ALL"),
+    external_exports.literal("SELECT"),
+    external_exports.literal("INSERT"),
+    external_exports.literal("UPDATE"),
+    external_exports.literal("REFERENCES")
+  ]),
+  isGrantable: external_exports.boolean().optional()
+});
+
+// packages/domain/src/entities/datasource-meta/foreign-tables.type.ts
+var ForeignTableZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  comment: external_exports.string().nullable(),
+  foreign_server_name: external_exports.string(),
+  foreign_data_wrapper_name: external_exports.string(),
+  foreign_data_wrapper_handler: external_exports.string(),
+  columns: ColumnArrayZodSchema.optional()
+});
+var ForeignTableArrayZodSchema = external_exports.array(ForeignTableZodSchema);
+var ForeignTableOptionalZodSchema = external_exports.optional(ForeignTableZodSchema);
+
+// packages/domain/src/entities/datasource-meta/indexes.type.ts
+var IndexZodSchema = external_exports.object({
+  id: external_exports.number(),
+  table_id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string().optional(),
+  is_unique: external_exports.boolean(),
+  is_primary: external_exports.boolean(),
+  index_definition: external_exports.string(),
+  access_method: external_exports.string(),
+  columns: external_exports.array(external_exports.string()).optional(),
+  comment: external_exports.string().nullable(),
+  index_attributes: external_exports.array(
+    external_exports.object({
+      attribute_number: external_exports.number().optional(),
+      attribute_name: external_exports.string(),
+      data_type: external_exports.string().optional()
+    })
+  ).optional()
+}).passthrough();
+var IndexArrayZodSchema = external_exports.array(IndexZodSchema);
+var IndexOptionalZodSchema = external_exports.optional(IndexZodSchema);
+
+// packages/domain/src/entities/datasource-meta/materialized-views.type.ts
+var MaterializedViewZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  is_populated: external_exports.boolean(),
+  comment: external_exports.string().nullable(),
+  columns: ColumnArrayZodSchema.optional()
+}).passthrough();
+var MaterializedViewArrayZodSchema = external_exports.array(
+  MaterializedViewZodSchema
+);
+var MaterializedViewOptionalZodSchema = external_exports.optional(
+  MaterializedViewZodSchema
+);
+
+// packages/domain/src/entities/datasource-meta/policies.type.ts
+var PolicyZodSchema = external_exports.object({
+  id: external_exports.number(),
+  schema: external_exports.string(),
+  table: external_exports.string(),
+  table_id: external_exports.number(),
+  name: external_exports.string(),
+  action: external_exports.union([external_exports.literal("PERMISSIVE"), external_exports.literal("RESTRICTIVE")]),
+  roles: external_exports.array(external_exports.string()),
+  command: external_exports.union([
+    external_exports.literal("SELECT"),
+    external_exports.literal("INSERT"),
+    external_exports.literal("UPDATE"),
+    external_exports.literal("DELETE"),
+    external_exports.literal("ALL")
+  ]),
+  definition: external_exports.union([external_exports.string(), external_exports.null()]),
+  check: external_exports.union([external_exports.string(), external_exports.null()])
+}).passthrough();
+var PolicyArrayZodSchema = external_exports.array(PolicyZodSchema);
+var PolicyOptionalZodSchema = external_exports.optional(PolicyZodSchema);
+
+// packages/domain/src/entities/datasource-meta/publications.type.ts
+var PublicationTableZodSchema = external_exports.object({
+  id: external_exports.number().optional(),
+  name: external_exports.string(),
+  schema: external_exports.string()
+}).passthrough();
+var PublicationZodSchema = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  owner: external_exports.string(),
+  publish_insert: external_exports.boolean(),
+  publish_update: external_exports.boolean(),
+  publish_delete: external_exports.boolean(),
+  publish_truncate: external_exports.boolean(),
+  tables: external_exports.array(PublicationTableZodSchema).nullable()
+}).passthrough();
+var PublicationArrayZodSchema = external_exports.array(PublicationZodSchema);
+var PublicationOptionalZodSchema = external_exports.optional(PublicationZodSchema);
+
+// packages/domain/src/entities/datasource-meta/roles.type.ts
+var RoleZodSchema = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  isSuperuser: external_exports.boolean(),
+  canCreateDb: external_exports.boolean(),
+  canCreateRole: external_exports.boolean(),
+  inheritRole: external_exports.boolean(),
+  canLogin: external_exports.boolean(),
+  isReplicationRole: external_exports.boolean(),
+  canBypassRls: external_exports.boolean(),
+  activeConnections: external_exports.number(),
+  connectionLimit: external_exports.number(),
+  validUntil: external_exports.union([external_exports.string(), external_exports.null()]),
+  config: external_exports.record(external_exports.string(), external_exports.string())
+}).passthrough();
+var RoleArrayZodSchema = external_exports.array(RoleZodSchema);
+var RoleOptionalZodSchema = external_exports.optional(RoleZodSchema);
+
+// packages/domain/src/entities/datasource-meta/table-privileges.type.ts
+var TablePrivilegesZodSchema = external_exports.object({
+  relation_id: external_exports.number(),
+  schema: external_exports.string(),
+  name: external_exports.string(),
+  kind: external_exports.union([
+    external_exports.literal("table"),
+    external_exports.literal("view"),
+    external_exports.literal("materialized_view"),
+    external_exports.literal("foreign_table"),
+    external_exports.literal("partitioned_table")
+  ]),
+  privileges: external_exports.array(
+    external_exports.object({
+      grantor: external_exports.string(),
+      grantee: external_exports.string(),
+      privilege_type: external_exports.union([
+        external_exports.literal("SELECT"),
+        external_exports.literal("INSERT"),
+        external_exports.literal("UPDATE"),
+        external_exports.literal("DELETE"),
+        external_exports.literal("TRUNCATE"),
+        external_exports.literal("REFERENCES"),
+        external_exports.literal("TRIGGER"),
+        external_exports.literal("MAINTAIN")
+      ]),
+      is_grantable: external_exports.boolean()
+    })
+  )
+}).passthrough();
+var TablePrivilegesArrayZodSchema = external_exports.array(TablePrivilegesZodSchema);
+var TablePrivilegesOptionalZodSchema = external_exports.optional(
+  TablePrivilegesZodSchema
+);
+
+// packages/domain/src/entities/datasource-meta/triggers.type.ts
+var TriggerZodSchema = external_exports.object({
+  id: external_exports.number(),
+  table_id: external_exports.number(),
+  name: external_exports.string(),
+  table: external_exports.string(),
+  schema: external_exports.string(),
+  events: external_exports.array(external_exports.string()),
+  function_name: external_exports.string(),
+  function_schema: external_exports.string().optional(),
+  condition: external_exports.string().nullable().optional(),
+  timing: external_exports.string().optional(),
+  orientation: external_exports.string().optional(),
+  function_args: external_exports.array(external_exports.string()).optional()
+}).passthrough();
+var TriggerArrayZodSchema = external_exports.array(TriggerZodSchema);
+var TriggerOptionalZodSchema = external_exports.optional(TriggerZodSchema);
+
+// packages/domain/src/entities/datasource-meta/types.type.ts
+var TypeZodSchema = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  schema: external_exports.string(),
+  format: external_exports.string(),
+  enums: external_exports.array(external_exports.string()),
+  attributes: external_exports.array(
+    external_exports.object({
+      name: external_exports.string(),
+      type_id: external_exports.number()
+    })
+  ),
+  comment: external_exports.string().nullable()
+}).passthrough();
+var TypeArrayZodSchema = external_exports.array(TypeZodSchema);
+var TypeOptionalZodSchema = external_exports.optional(TypeZodSchema);
+
+// packages/domain/src/entities/datasource-meta/config.type.ts
+var ConfigZodSchema = external_exports.object({
+  name: external_exports.string(),
+  setting: external_exports.string(),
+  category: external_exports.string(),
+  group: external_exports.string(),
+  subgroup: external_exports.string(),
+  unit: external_exports.string().nullable(),
+  short_desc: external_exports.string(),
+  extra_desc: external_exports.string().nullable(),
+  context: external_exports.string(),
+  vartype: external_exports.string(),
+  source: external_exports.string(),
+  min_val: external_exports.string().nullable(),
+  max_val: external_exports.string().nullable(),
+  enumvals: external_exports.array(external_exports.string()).nullable(),
+  boot_val: external_exports.string().nullable(),
+  reset_val: external_exports.string().nullable(),
+  sourcefile: external_exports.string().nullable(),
+  sourceline: external_exports.number().nullable(),
+  pending_restart: external_exports.boolean()
+}).passthrough();
+var ConfigArrayZodSchema = external_exports.array(ConfigZodSchema);
+var ConfigOptionalZodSchema = external_exports.optional(ConfigZodSchema);
+
+// packages/domain/src/entities/datasource-meta/metadata.type.ts
+var DatasourceMetadataZodSchema = external_exports.object({
+  version: external_exports.string(),
+  driver: external_exports.string(),
+  schemas: SchemaArrayZod,
+  tables: TableArrayZodSchema,
+  columns: ColumnArrayZodSchema,
+  views: ViewArrayZodSchema.optional(),
+  functions: FunctionArrayZodSchema.optional(),
+  indexes: IndexArrayZodSchema.optional(),
+  triggers: TriggerArrayZodSchema.optional(),
+  materializedViews: MaterializedViewArrayZodSchema.optional(),
+  types: TypeArrayZodSchema.optional(),
+  foreignTables: ForeignTableArrayZodSchema.optional(),
+  // Optional capabilities
+  policies: PolicyArrayZodSchema.optional(),
+  tablePrivileges: TablePrivilegesArrayZodSchema.optional(),
+  columnPrivileges: ColumnPrivilegesArrayZodSchema.optional(),
+  // Optional vendor/deployment components
+  config: ConfigArrayZodSchema.optional(),
+  publications: PublicationArrayZodSchema.optional(),
+  roles: RoleArrayZodSchema.optional(),
+  extensions: DatasourceExtensionArrayZod.optional()
+}).passthrough();
+
+// packages/domain/src/entities/datasource-meta/resultset.type.ts
+var ColumnTypeSchema = external_exports.enum([
+  "string",
+  "number",
+  "integer",
+  "boolean",
+  "date",
+  "datetime",
+  "timestamp",
+  "time",
+  "json",
+  "jsonb",
+  "array",
+  "blob",
+  "binary",
+  "uuid",
+  "decimal",
+  "float",
+  "null",
+  "unknown"
+]);
+var DatasourceResultStatSchema = external_exports.object({
+  rowsAffected: external_exports.number().int().min(0).describe("Number of rows affected by the query"),
+  rowsRead: external_exports.number().int().min(0).nullable().describe("Number of rows read during query execution"),
+  rowsWritten: external_exports.number().int().min(0).nullable().describe("Number of rows written during query execution"),
+  queryDurationMs: external_exports.number().min(0).nullable().describe("Query execution duration in milliseconds")
+}).passthrough();
+var ColumnHeaderSchema = external_exports.object({
+  /**
+   * The key of row data that this column represents.
+   */
+  name: external_exports.string().min(1).describe("The key of row data that this column represents"),
+  /**
+   * The display name of the column. This is the name that should be used when displaying the column to the user.
+   */
+  displayName: external_exports.string().min(1).describe("The display name of the column"),
+  /**
+   * The original type of the column returned from database driver.
+   * This is database-specific (e.g., 'VARCHAR', 'INTEGER', 'TIMESTAMP', 'BIGINT').
+   */
+  originalType: external_exports.string().nullable().describe("The original database-specific type of the column"),
+  /**
+   * Normalized type hint for client rendering and visualization.
+   * Frontend should use this to adapt visualization (e.g., date pickers for dates, number formatting for numbers).
+   */
+  type: ColumnTypeSchema.optional().describe(
+    "Normalized type hint for frontend visualization"
+  ),
+  /**
+   * Database name or schema name
+   */
+  schema: external_exports.string().optional().describe("Database name or schema name"),
+  /**
+   * The actual table name
+   */
+  table: external_exports.string().optional().describe("The actual table name"),
+  /**
+   * The original column name returned from database driver.
+   */
+  originalName: external_exports.string().optional().describe("The original column name returned from database driver"),
+  /**
+   * Indicate if this column is a primary key.
+   */
+  primaryKey: external_exports.boolean().optional().describe("Indicate if this column is a primary key"),
+  /**
+   * The column id in the table. Useful for Postgres and other databases that expose column OIDs.
+   */
+  columnId: external_exports.number().int().optional().describe("The column id in the table (useful for Postgres OIDs)"),
+  /**
+   * The table id in the database. Useful for Postgres and other databases that expose table OIDs.
+   */
+  tableId: external_exports.number().int().optional().describe("The table id in the database (useful for Postgres OIDs)")
+}).passthrough();
+var DatasourceRowSchema = external_exports.record(external_exports.string(), external_exports.unknown());
+var DatasourceResultSetZodSchema = external_exports.object({
+  rows: external_exports.array(DatasourceRowSchema).describe("Array of result rows"),
+  columns: external_exports.array(ColumnHeaderSchema).describe("Array of column metadata"),
+  stat: DatasourceResultStatSchema.describe("Query execution statistics")
+}).passthrough();
+
 // packages/extensions/s3/src/schema.ts
 var providerEnum = external_exports.enum(["aws", "digitalocean", "minio", "other"]);
 var formatEnum = external_exports.enum(["parquet", "json"]);
+var pattern = external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.patternList);
 var schema = external_exports.object({
   provider: providerEnum,
-  aws_access_key_id: external_exports.string().min(1),
-  aws_secret_access_key: external_exports.string().min(1).meta({
+  aws_access_key_id: external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.accessKeyId),
+  aws_secret_access_key: external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.secretAccessKey).meta({
     description: "Secret access key",
     secret: true
   }),
-  aws_session_token: external_exports.string().optional(),
-  region: external_exports.string().min(1),
-  endpoint_url: external_exports.string().url().optional(),
-  bucket: external_exports.string().min(1),
-  prefix: external_exports.string().default(""),
+  aws_session_token: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.sessionToken).optional(),
+  region: external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.region),
+  endpoint_url: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.endpointUrl).url().optional(),
+  bucket: external_exports.string().min(1).max(DATASOURCE_INPUT_MAX_LENGTH.bucket),
+  prefix: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.prefix).default(""),
   format: formatEnum,
-  includes: external_exports.array(external_exports.string()).optional(),
-  excludes: external_exports.array(external_exports.string()).optional()
+  includes: external_exports.array(pattern).optional(),
+  excludes: external_exports.array(pattern).optional()
 });
 export {
   schema
 };
+/*! Bundled license information:
+
+reflect-metadata/Reflect.js:
+  (*! *****************************************************************************
+  Copyright (C) Microsoft. All rights reserved.
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+  this file except in compliance with the License. You may obtain a copy of the
+  License at http://www.apache.org/licenses/LICENSE-2.0
+  
+  THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+  WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+  MERCHANTABLITY OR NON-INFRINGEMENT.
+  
+  See the Apache Version 2.0 License for specific language governing permissions
+  and limitations under the License.
+  ***************************************************************************** *)
+*/

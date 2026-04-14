@@ -7198,6 +7198,28 @@ ne2 = /* @__PURE__ */ new WeakMap(), te2 = /* @__PURE__ */ new WeakMap(), re2 = 
 var We2 = L5;
 u();
 
+// packages/extensions-sdk/src/datasource-input-limits.ts
+var DATASOURCE_INPUT_MAX_LENGTH = {
+  name: 80,
+  host: 255,
+  port: 5,
+  database: 128,
+  username: 128,
+  password: 512,
+  connectionString: 4096,
+  url: 2048,
+  sharedLink: 2048,
+  apiKey: 1024,
+  endpointUrl: 2048,
+  accessKeyId: 128,
+  secretAccessKey: 256,
+  sessionToken: 2048,
+  region: 64,
+  bucket: 63,
+  prefix: 1024,
+  patternList: 2048
+};
+
 // node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -21038,6 +21060,14 @@ Code.INTERNAL_ERROR = {
   code: 500,
   message: "Internal error."
 };
+Code.BAD_GATEWAY_ERROR = {
+  code: 502,
+  message: "Bad gateway."
+};
+Code.SERVICE_UNAVAILABLE_ERROR = {
+  code: 503,
+  message: "Service unavailable."
+};
 Code.ENTITY_NOT_FOUND_ERROR = {
   code: 1e3,
   message: "Entity not found."
@@ -23680,7 +23710,8 @@ var FilePartSchema = external_exports.object({
 }).loose();
 var CompactionPartSchema = external_exports.object({
   type: external_exports.literal("compaction"),
-  auto: external_exports.boolean()
+  auto: external_exports.boolean(),
+  afterMessageId: external_exports.string().optional()
 }).loose();
 var SnapshotPartSchema = external_exports.object({
   type: external_exports.literal("snapshot"),
@@ -24736,7 +24767,7 @@ function buildMetadataFromInformationSchema(options) {
 
 // packages/extensions/pglite/dist/schema.js
 var schema = external_exports.object({
-  database: external_exports.string().default("playground").meta({
+  database: external_exports.string().max(DATASOURCE_INPUT_MAX_LENGTH.database).default("playground").meta({
     label: "Database",
     description: "Database name",
     placeholder: "playground"
