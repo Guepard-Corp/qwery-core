@@ -11,28 +11,28 @@ type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
 };
 
 export const notebookMarkdownComponents: Components = {
-  h1: ({ className, ...props }) => (
+  h1: ({ className, node: _node, ref: _ref, ...props }) => (
     <h1
       {...props}
       className={cn('text-2xl leading-tight font-semibold', className)}
     />
   ),
-  h2: ({ className, ...props }) => (
+  h2: ({ className, node: _node, ref: _ref, ...props }) => (
     <h2
       {...props}
       className={cn('text-xl leading-tight font-semibold', className)}
     />
   ),
-  h3: ({ className, ...props }) => (
+  h3: ({ className, node: _node, ref: _ref, ...props }) => (
     <h3
       {...props}
       className={cn('text-lg leading-tight font-semibold', className)}
     />
   ),
-  p: ({ className, ...props }) => (
+  p: ({ className, node: _node, ref: _ref, ...props }) => (
     <p {...props} className={cn('my-2 text-sm leading-6', className)} />
   ),
-  a: ({ className, ...props }) => (
+  a: ({ className, node: _node, ref: _ref, ...props }) => (
     <a
       {...props}
       className={cn(
@@ -43,19 +43,19 @@ export const notebookMarkdownComponents: Components = {
       rel="noreferrer"
     />
   ),
-  ul: ({ className, ...props }) => (
+  ul: ({ className, node: _node, ref: _ref, ...props }) => (
     <ul
       {...props}
       className={cn('my-2 list-disc pl-6 text-sm leading-6', className)}
     />
   ),
-  ol: ({ className, ...props }) => (
+  ol: ({ className, node: _node, ref: _ref, ...props }) => (
     <ol
       {...props}
       className={cn('my-2 list-decimal pl-6 text-sm leading-6', className)}
     />
   ),
-  li: ({ className, ...props }) => (
+  li: ({ className, node: _node, ref: _ref, ...props }) => (
     <li
       {...props}
       className={cn(
@@ -64,7 +64,7 @@ export const notebookMarkdownComponents: Components = {
       )}
     />
   ),
-  blockquote: ({ className, ...props }) => (
+  blockquote: ({ className, node: _node, ref: _ref, ...props }) => (
     <blockquote
       {...props}
       className={cn(
@@ -73,7 +73,13 @@ export const notebookMarkdownComponents: Components = {
       )}
     />
   ),
-  code: ({ inline, className, children, ...props }: MarkdownCodeProps) => {
+  code: ({
+    inline,
+    className,
+    children,
+    node: _node,
+    ...props
+  }: MarkdownCodeProps) => {
     if (inline) {
       return (
         <code
@@ -100,7 +106,7 @@ export const notebookMarkdownComponents: Components = {
       </pre>
     );
   },
-  table: ({ className, ...props }) => (
+  table: ({ className, node: _node, ref: _ref, ...props }) => (
     <div className="my-4 w-full overflow-x-auto">
       <table
         {...props}

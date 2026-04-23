@@ -18,6 +18,7 @@ import {
 import { schema } from './schema';
 
 const VIEW_NAME = 'data';
+const DEFAULT_JSON_OPERATION_TIMEOUT_MS = DEFAULT_CONNECTION_TEST_TIMEOUT_MS;
 
 export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
   const parsedConfig = schema.parse(context.config);
@@ -84,8 +85,11 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
     },
 
     async metadata(): Promise<DatasourceMetadata> {
-      let conn: QueryEngineConnection | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
-      let shouldCloseConnection = false;
+      const metadataPromise = (async () => {
+        let conn:
+          | QueryEngineConnection
+          | Awaited<ReturnType<Awaited<ReturnType<typeof getInstance>>['connect']>>;
+        let shouldCloseConnection = false;
 
       const queryEngineConn = getQueryEngineConnection(context);
       if (queryEngineConn) {
@@ -94,101 +98,112 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
         const escapedUrl = escapeSqlStringLiteral(parsedConfig.url);
         const escapedViewName = VIEW_NAME.replace(/"/g, '""');
 
-        // Create view from JSON URL using read_json_auto in main engine
-        await conn.run(`
-          CREATE OR REPLACE VIEW "${escapedViewName}" AS
-          SELECT * FROM read_json_auto('${escapedUrl}')
-        `);
-      } else {
-        // Fallback for testConnection or when no connection provided - create temporary instance
-        const instance = await getInstance();
-        conn = await instance.connect();
-        shouldCloseConnection = true;
-      }
-
-      try {
-        // Get column information from the view using DESCRIBE
-        const describeReader = await conn.runAndReadAll(`DESCRIBE "${VIEW_NAME}"`);
-        await describeReader.readAll();
-        const describeRows = describeReader.getRowObjectsJS() as Array<{
-          column_name: string;
-          column_type: string;
-          null: string;
-        }>;
-
-        // Get row count for table size estimate
-        const countReader = await conn.runAndReadAll(
-          `SELECT COUNT(*) as count FROM "${VIEW_NAME}"`,
-        );
-        await countReader.readAll();
-        const countRows = countReader.getRowObjectsJS() as Array<{ count: bigint }>;
-        const rowCount = countRows[0]?.count ?? BigInt(0);
-
-        const tableId = 1;
-        const schemaName = 'main';
-
-        const tables = [
-          {
-            id: tableId,
-            schema: schemaName,
-            name: VIEW_NAME,
-            rls_enabled: false,
-            rls_forced: false,
-            bytes: 0,
-            size: String(rowCount),
-            live_rows_estimate: Number(rowCount),
-            dead_rows_estimate: 0,
-            comment: null,
-            primary_keys: [],
-            relationships: [],
-          },
-        ];
-
-        const columnMetadata = describeRows.map((col, idx) => ({
-          id: `${schemaName}.${VIEW_NAME}.${col.column_name}`,
-          table_id: tableId,
-          schema: schemaName,
-          table: VIEW_NAME,
-          name: col.column_name,
-          ordinal_position: idx + 1,
-          data_type: col.column_type,
-          format: col.column_type,
-          is_identity: false,
-          identity_generation: null,
-          is_generated: false,
-          is_nullable: col.null === 'YES',
-          is_updatable: false,
-          is_unique: false,
-          check: null,
-          default_value: null,
-          enums: [],
-          comment: null,
-        }));
-
-        const schemas = [
-          {
-            id: 1,
-            name: schemaName,
-            owner: 'unknown',
-          },
-        ];
-
-        return DatasourceMetadataZodSchema.parse({
-          version: '0.0.1',
-          driver: 'json-online.duckdb',
-          schemas,
-          tables,
-          columns: columnMetadata,
-        });
-      } catch (error) {
-        throw new Error(
-          `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      } finally {
-        if (shouldCloseConnection && 'closeSync' in conn && typeof conn.closeSync === 'function') {
-          conn.closeSync();
+          await conn.run(`
+            CREATE OR REPLACE VIEW "${escapedViewName}" AS
+            SELECT * FROM read_json_auto('${escapedUrl}')
+          `);
+        } else {
+          const instance = await getInstance();
+          conn = await instance.connect();
+          shouldCloseConnection = true;
         }
-      }
+
+        try {
+          const describeReader = await conn.runAndReadAll(
+            `DESCRIBE "${VIEW_NAME}"`,
+          );
+          await describeReader.readAll();
+          const describeRows = describeReader.getRowObjectsJS() as Array<{
+            column_name: string;
+            column_type: string;
+            null: string;
+          }>;
+
+          const countReader = await conn.runAndReadAll(
+            `SELECT COUNT(*) as count FROM "${VIEW_NAME}"`,
+          );
+          await countReader.readAll();
+          const countRows = countReader.getRowObjectsJS() as Array<{
+            count: bigint;
+          }>;
+          const rowCount = countRows[0]?.count ?? BigInt(0);
+
+          const tableId = 1;
+          const schemaName = 'main';
+
+          const tables = [
+            {
+              id: tableId,
+              schema: schemaName,
+              name: VIEW_NAME,
+              rls_enabled: false,
+              rls_forced: false,
+              bytes: 0,
+              size: String(rowCount),
+              live_rows_estimate: Number(rowCount),
+              dead_rows_estimate: 0,
+              comment: null,
+              primary_keys: [],
+              relationships: [],
+            },
+          ];
+
+          const columnMetadata = describeRows.map((col, idx) => ({
+            id: `${schemaName}.${VIEW_NAME}.${col.column_name}`,
+            table_id: tableId,
+            schema: schemaName,
+            table: VIEW_NAME,
+            name: col.column_name,
+            ordinal_position: idx + 1,
+            data_type: col.column_type,
+            format: col.column_type,
+            is_identity: false,
+            identity_generation: null,
+            is_generated: false,
+            is_nullable: col.null === 'YES',
+            is_updatable: false,
+            is_unique: false,
+            check: null,
+            default_value: null,
+            enums: [],
+            comment: null,
+          }));
+
+          const schemas = [
+            {
+              id: 1,
+              name: schemaName,
+              owner: 'unknown',
+            },
+          ];
+
+          return DatasourceMetadataZodSchema.parse({
+            version: '0.0.1',
+            driver: 'json-online.duckdb',
+            schemas,
+            tables,
+            columns: columnMetadata,
+          });
+        } catch (error) {
+          throw new Error(
+            `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        } finally {
+          if (
+            shouldCloseConnection &&
+            'closeSync' in conn &&
+            typeof conn.closeSync === 'function'
+          ) {
+            conn.closeSync();
+          }
+        }
+      })();
+
+      return withTimeout(
+        metadataPromise,
+        DEFAULT_JSON_OPERATION_TIMEOUT_MS,
+        `JSON metadata timed out after ${DEFAULT_JSON_OPERATION_TIMEOUT_MS}ms. Please verify the URL is reachable and returns valid JSON.`,
+      );
     },
 
     async query(sql: string): Promise<DatasourceResultSet> {
@@ -198,10 +213,20 @@ export function makeJsonDriver(context: DriverContext): IDataSourceDriver {
       const startTime = performance.now();
 
       try {
-        const resultReader = await conn.runAndReadAll(sql);
-        await resultReader.readAll();
-        const rows = resultReader.getRowObjectsJS() as Array<Record<string, unknown>>;
-        const columnNames = resultReader.columnNames();
+        const queryPromise = (async () => {
+          const resultReader = await conn.runAndReadAll(sql);
+          await resultReader.readAll();
+          const rows =
+            resultReader.getRowObjectsJS() as Array<Record<string, unknown>>;
+          const columnNames = resultReader.columnNames();
+          return { rows, columnNames };
+        })();
+
+        const { rows, columnNames } = await withTimeout(
+          queryPromise,
+          DEFAULT_JSON_OPERATION_TIMEOUT_MS,
+          `JSON query timed out after ${DEFAULT_JSON_OPERATION_TIMEOUT_MS}ms.`,
+        );
 
         const endTime = performance.now();
 

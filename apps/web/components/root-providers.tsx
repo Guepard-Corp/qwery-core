@@ -40,13 +40,12 @@ export function RootProviders(
     <Suspense>
       <I18nProvider settings={settings} resolver={i18nResolver}>
         <TelemetryProvider>
-          <Toaster
-            richColors={true}
-            theme={props.theme}
-            position="top-center"
-          />
-
           <ClientOnly>
+            <Toaster
+              richColors={true}
+              theme={props.theme}
+              position="top-center"
+            />
             <GlobalLoader displaySpinner={false} />
             <GlobalKeyHandler />
           </ClientOnly>

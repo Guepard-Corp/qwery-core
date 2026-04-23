@@ -33,16 +33,13 @@ export type AgentSessionPromptInput = {
   agentId?: string;
   /** Optional: called when a tool requests permission (e.g. webfetch). If not provided, ask is a no-op. */
   onAsk?: (req: AskRequest) => Promise<void>;
-  /** Optional: called when a tool reports progress (title, metadata). If not provided, metadata is a no-op. */
   onToolMetadata?: (input: {
     callId?: string;
     messageId?: string;
     title?: string;
     metadata?: Record<string, unknown>;
   }) => void | Promise<void>;
-  /** Optional: max steps for multi-step tool execution. Overrides agent steps. Default: 5. */
   maxSteps?: number;
-  /** Optional: MCP server URL (e.g. qwery server base + /mcp). When set, MCP tools are merged with agent tools. */
   mcpServerUrl?: string;
 };
 
@@ -64,9 +61,7 @@ function ensureTitle(_opts: {
   model: string;
   msgs: Message[];
   repositories: Repositories;
-}): void {
-  // Placeholder: actual title logic runs on stream close.
-}
+}): void {}
 
 function deriveState(msgs: Message[]) {
   const lastUser = msgs.findLast((m) => m.role === MessageRole.USER);

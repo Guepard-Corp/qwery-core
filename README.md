@@ -70,13 +70,51 @@ pnpm install
 # Start development server
 pnpm server:dev
 pnpm web:dev
-
-
 ```
 
 The web app will be available at `http://localhost:3000`
 
 **Using apps/web with apps/server**: To have the web app use the API server (file repositories) instead of in-app API routes, start the server (`pnpm --filter server dev`, port 4096) and set `VITE_API_URL=http://localhost:4096/api` in `apps/web/.env`. Then start the web app (`pnpm --filter web dev`). Flow: Web Browser → SSR/Loader → apps/server Hono.
+
+### Test with Ollama Cloud Free Models
+
+If you want to try the product without wiring a paid provider first, you can use `ollama-cloud` and point the app at one of its free models.
+
+1. Create an Ollama Cloud API key
+2. Copy `apps/server/.env.example` to `apps/server/.env`
+3. Copy `apps/web/.env.example` to `apps/web/.env`
+4. Add the `ollama-cloud` settings below to both files
+
+```dotenv
+AGENT_PROVIDER=ollama-cloud
+OLLAMA_API_KEY=your_ollama_cloud_api_key
+OLLAMA_MODEL=minimax-m2.7
+```
+
+Recommended free models for testing:
+
+- `minimax-m2.7`
+- `glm-5`
+
+Other free models currently available in the main list:
+
+- `nemotron-3-super`
+- `gemini-3-flash-preview`
+- `deepseek-v3.1:671b`
+- `gemma4:31b-cloud`
+- `gpt-oss:120b`
+- `kimi-k2.5`
+- `mistral-large-3:675b`
+- `qwen3.5:397b`
+
+You can swap `OLLAMA_MODEL` to any of those values. The app will route requests to `https://ollama.com/v1` when `AGENT_PROVIDER=ollama-cloud`.
+
+Then start the apps normally:
+
+```bash
+pnpm --filter server dev
+pnpm --filter web dev
+```
 
 ### Local connectivity fix (hostname pitfall)
 

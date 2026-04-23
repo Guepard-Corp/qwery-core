@@ -9,7 +9,12 @@ import {
 import { Progress } from '../shadcn/progress';
 import { cn } from '../lib/utils';
 import type { LanguageModelUsage } from 'ai';
-import { type ComponentProps, createContext, useContext } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  useContext,
+  ComponentPropsWithoutRef,
+} from 'react';
 import React from 'react';
 
 const PERCENT_MAX = 100;
@@ -143,7 +148,7 @@ export const ContextContent = ({
   />
 );
 
-export type ContextContentHeaderProps = ComponentProps<'div'>;
+export type ContextContentHeaderProps = ComponentPropsWithoutRef<'div'>;
 
 export const ContextContentHeader = ({
   children,
@@ -185,7 +190,7 @@ export const ContextContentHeader = ({
   );
 };
 
-export type ContextContentBodyProps = ComponentProps<'div'>;
+export type ContextContentBodyProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextContentBody = ({
   children,
@@ -197,7 +202,7 @@ export const ContextContentBody = ({
   </div>
 );
 
-export type ContextContentFooterProps = ComponentProps<'div'>;
+export type ContextContentFooterProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextContentFooter = ({
   children,
@@ -231,7 +236,7 @@ export const ContextContentFooter = ({
   );
 };
 
-export type ContextInputUsageProps = ComponentProps<'div'>;
+export type ContextInputUsageProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextInputUsage = ({
   className,
@@ -260,7 +265,7 @@ export const ContextInputUsage = ({
   );
 };
 
-export type ContextOutputUsageProps = ComponentProps<'div'>;
+export type ContextOutputUsageProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextOutputUsage = ({
   className,
@@ -289,7 +294,7 @@ export const ContextOutputUsage = ({
   );
 };
 
-export type ContextReasoningUsageProps = ComponentProps<'div'>;
+export type ContextReasoningUsageProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextReasoningUsage = ({
   className,
@@ -318,7 +323,7 @@ export const ContextReasoningUsage = ({
   );
 };
 
-export type ContextCacheUsageProps = ComponentProps<'div'>;
+export type ContextCacheUsageProps = React.ComponentPropsWithoutRef<'div'>;
 
 export const ContextCacheUsage = ({
   className,

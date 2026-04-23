@@ -153,8 +153,14 @@ export function PageTitle(props: React.PropsWithChildren) {
   );
 }
 
-export function PageHeaderActions(props: React.PropsWithChildren) {
-  return <div className={'flex items-center space-x-2'}>{props.children}</div>;
+export function PageHeaderActions(
+  props: React.PropsWithChildren<{ className?: string }>,
+) {
+  return (
+    <div className={cn('flex items-center space-x-2', props.className)}>
+      {props.children}
+    </div>
+  );
 }
 
 export function PageTopBar({

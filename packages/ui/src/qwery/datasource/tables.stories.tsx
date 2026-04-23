@@ -14,6 +14,7 @@ type Story = StoryObj<typeof Tables>;
 const mockTables = [
   {
     tableName: 'users',
+    schema: 'public',
     description: 'User accounts and authentication information',
     rowsEstimated: 1250000,
     sizeEstimated: '245 MB',
@@ -21,6 +22,7 @@ const mockTables = [
   },
   {
     tableName: 'orders',
+    schema: 'public',
     description: 'Customer orders and transaction records',
     rowsEstimated: 850000,
     sizeEstimated: '180 MB',
@@ -28,6 +30,7 @@ const mockTables = [
   },
   {
     tableName: 'products',
+    schema: 'public',
     description: null,
     rowsEstimated: 45000,
     sizeEstimated: '12 MB',
@@ -35,6 +38,7 @@ const mockTables = [
   },
   {
     tableName: 'order_items',
+    schema: 'public',
     description: 'Individual items within each order',
     rowsEstimated: 3200000,
     sizeEstimated: '420 MB',
@@ -42,6 +46,7 @@ const mockTables = [
   },
   {
     tableName: 'categories',
+    schema: 'public',
     description: 'Product categorization and taxonomy',
     rowsEstimated: 150,
     sizeEstimated: '45 KB',
@@ -82,6 +87,7 @@ export const ManyTables: Story = {
       ...mockTables,
       {
         tableName: 'invoices',
+        schema: 'public',
         description: 'Billing and invoice records',
         rowsEstimated: 500000,
         sizeEstimated: '95 MB',
@@ -89,6 +95,7 @@ export const ManyTables: Story = {
       },
       {
         tableName: 'payments',
+        schema: 'public',
         description: 'Payment transactions and history',
         rowsEstimated: 750000,
         sizeEstimated: '150 MB',
@@ -96,6 +103,7 @@ export const ManyTables: Story = {
       },
       {
         tableName: 'addresses',
+        schema: 'public',
         description: null,
         rowsEstimated: 200000,
         sizeEstimated: '38 MB',

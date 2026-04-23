@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -10,6 +11,7 @@ import {
   MessageCircleQuestion,
   User,
   Zap,
+  Check,
 } from 'lucide-react';
 
 import {
@@ -17,6 +19,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@qwery/ui/dropdown-menu';
 import { ProfileAvatar } from '@qwery/ui/profile-avatar';
@@ -39,6 +44,7 @@ export function AccountDropdown({
   const signedInAsLabel = 'Anonymous User';
   const pictureUrl = 'https://github.com/guepard.png';
   const currentMode = workspaceMode || 'simple';
+  const [workspaceSubmenuOpen, setWorkspaceSubmenuOpen] = React.useState(false);
 
   return (
     <DropdownMenu>
@@ -64,7 +70,7 @@ export function AccountDropdown({
         >
           <span
             data-test={'account-dropdown-display-name'}
-            className={'truncate text-sm'}
+            className={'truncate text-[13px] font-semibold'}
           >
             {displayName}
           </span>
@@ -79,50 +85,60 @@ export function AccountDropdown({
 
         <ChevronsUpDown
           className={
-            'text-muted-foreground mr-1 h-8 group-data-[minimized=true]:hidden'
+            'text-muted-foreground mr-1 h-4 w-4 shrink-0 group-data-[minimized=true]:hidden'
           }
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className={'xl:!min-w-[15rem]'}>
-        <DropdownMenuItem
-          className={'flex !h-10 items-start gap-2 rounded-none'}
-        >
-          <User className={'text-muted-foreground mt-0.5 h-5 shrink-0'} />
-          <div
-            className={'flex flex-col justify-start truncate text-left text-xs'}
-          >
-            <div className={'text-muted-foreground'}>
-              <Trans i18nKey={'common:signedInAs'} />
-            </div>
 
-            <div>
-              <span className={'block truncate'}>{signedInAsLabel}</span>
-            </div>
+      <DropdownMenuContent className={'w-[240px] p-1.5 xl:!min-w-[15rem]'}>
+        {/* Header: signed-in user */}
+        <div className="flex items-center gap-2.5 px-2 py-2">
+          <div className="bg-muted/40 flex h-8 w-8 shrink-0 items-center justify-center rounded shadow-inner">
+            <User className="text-muted-foreground h-3.5 w-3.5" />
           </div>
-        </DropdownMenuItem>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[12px] font-bold tracking-tight">
+              {displayName}
+            </span>
+            <span className="text-muted-foreground truncate text-[11px]">
+              <Trans i18nKey={'common:signedInAs'} /> {signedInAsLabel}
+            </span>
+          </div>
+        </div>
+
+        <DropdownMenuSeparator />
+
+        {/* Nav items */}
         <DropdownMenuItem asChild>
           <Link
-            className={'s-full flex items-center space-x-2'}
+            className={
+              'group hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors'
+            }
             to={paths.home}
           >
-            <Home className={'h-5'} />
-
-            <span>
+            <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+              <Home className="text-muted-foreground h-3.5 w-3.5" />
+            </div>
+            <span className="text-foreground/80 text-[12px] font-bold tracking-tight">
               <Trans i18nKey={'common:routes.home'} />
             </span>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
+
         <DropdownMenuItem asChild>
           <Link
-            className={'s-full flex items-center space-x-2'}
+            className={
+              'group hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors'
+            }
             to={'https://docs.guepard.run'}
             target={'_blank'}
           >
-            <MessageCircleQuestion className={'h-5'} />
-
-            <span>
+            <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+              <MessageCircleQuestion className="text-muted-foreground h-3.5 w-3.5" />
+            </div>
+            <span className="text-foreground/80 text-[12px] font-bold tracking-tight">
               <Trans i18nKey={'common:documentation'} />
             </span>
           </Link>
@@ -130,61 +146,137 @@ export function AccountDropdown({
 
         <DropdownMenuItem asChild>
           <Link
-            className={'s-full flex items-center space-x-2'}
+            className={
+              'group hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors'
+            }
             to={'https://guepard.featurebase.app/changelog'}
             target={'_blank'}
           >
-            <FileText className={'h-5'} />
-
-            <span>
+            <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+              <FileText className="text-muted-foreground h-3.5 w-3.5" />
+            </div>
+            <span className="text-foreground/80 text-[12px] font-bold tracking-tight">
               <Trans i18nKey={'common:changelog'} />
             </span>
           </Link>
         </DropdownMenuItem>
+
         <DropdownMenuSeparator />
         <SubMenuModeToggle />
         <DropdownMenuSeparator />
-        <div className="px-2 py-1.5">
-          <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
-            Workspace Mode
-          </p>
-          <div className="space-y-1">
-            <DropdownMenuItem
-              className={cn(
-                'flex cursor-pointer items-center gap-2',
-                currentMode === 'simple' && 'bg-accent',
-              )}
-              onClick={() => onWorkspaceModeChange?.('simple')}
-            >
-              <Zap
+
+        {/* Workspace Mode */}
+        <DropdownMenuSub
+          open={workspaceSubmenuOpen}
+          onOpenChange={setWorkspaceSubmenuOpen}
+        >
+          <DropdownMenuSubTrigger
+            className="flex w-full items-center justify-between"
+            onPointerEnter={() => setWorkspaceSubmenuOpen(true)}
+            onPointerLeave={(e) => {
+              const relatedTarget = e.relatedTarget as HTMLElement;
+              if (!relatedTarget?.closest('[role="menu"]')) {
+                setWorkspaceSubmenuOpen(false);
+              }
+            }}
+          >
+            <span className="flex items-center gap-2.5">
+              <span className="bg-muted/40 flex h-7 w-7 items-center justify-center rounded shadow-inner">
+                {currentMode === 'simple' ? (
+                  <Zap className="h-3.5 w-3.5 text-[#ffcb51]" />
+                ) : (
+                  <Code2 className="h-3.5 w-3.5 text-[#ffcb51]" />
+                )}
+              </span>
+              <span className="text-[12px] font-bold tracking-tight">
+                Workspace Mode
+              </span>
+            </span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="z-[999] min-w-[10rem]">
+            <div className="space-y-0.5">
+              <DropdownMenuItem
                 className={cn(
-                  'h-4 w-4',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
                   currentMode === 'simple'
-                    ? 'text-[#ffcb51]'
-                    : 'text-muted-foreground',
+                    ? 'bg-accent/50 text-foreground'
+                    : 'hover:bg-muted/50',
                 )}
-              />
-              <span>Simple mode</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className={cn(
-                'flex cursor-pointer items-center gap-2',
-                currentMode === 'advanced' && 'bg-accent',
-              )}
-              onClick={() => onWorkspaceModeChange?.('advanced')}
-            >
-              <Code2
+                onClick={() => {
+                  onWorkspaceModeChange?.('simple');
+                  setWorkspaceSubmenuOpen(false);
+                }}
+              >
+                <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+                  <Zap
+                    className={cn(
+                      'h-3.5 w-3.5',
+                      currentMode === 'simple'
+                        ? 'text-[#ffcb51]'
+                        : 'text-muted-foreground',
+                    )}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    'text-[12px] font-bold tracking-tight',
+                    currentMode === 'simple'
+                      ? 'text-foreground'
+                      : 'text-foreground/80',
+                  )}
+                >
+                  Simple mode
+                </span>
+                {currentMode === 'simple' && (
+                  <Check
+                    className="text-primary ml-auto h-4 w-4 shrink-0"
+                    strokeWidth={2.5}
+                  />
+                )}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
                 className={cn(
-                  'h-4 w-4',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
                   currentMode === 'advanced'
-                    ? 'text-[#ffcb51]'
-                    : 'text-muted-foreground',
+                    ? 'bg-accent/50 text-foreground'
+                    : 'hover:bg-muted/50',
                 )}
-              />
-              <span>Advanced mode</span>
-            </DropdownMenuItem>
-          </div>
-        </div>
+                onClick={() => {
+                  onWorkspaceModeChange?.('advanced');
+                  setWorkspaceSubmenuOpen(false);
+                }}
+              >
+                <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+                  <Code2
+                    className={cn(
+                      'h-3.5 w-3.5',
+                      currentMode === 'advanced'
+                        ? 'text-[#ffcb51]'
+                        : 'text-muted-foreground',
+                    )}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    'text-[12px] font-bold tracking-tight',
+                    currentMode === 'advanced'
+                      ? 'text-foreground'
+                      : 'text-foreground/80',
+                  )}
+                >
+                  Advanced mode
+                </span>
+                {currentMode === 'advanced' && (
+                  <Check
+                    className="text-primary ml-auto h-4 w-4 shrink-0"
+                    strokeWidth={2.5}
+                  />
+                )}
+              </DropdownMenuItem>
+            </div>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
   );

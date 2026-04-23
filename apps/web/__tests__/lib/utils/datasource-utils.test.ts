@@ -14,6 +14,7 @@ import {
 } from '~/lib/utils/datasource-utils';
 import {
   expandStoredConfigForFormDefaults,
+  canonicalConfigKeyForDirtyCheck,
   getConnectionValueKey,
 } from '~/lib/utils/datasource-connection-fields-utils';
 
@@ -35,6 +36,11 @@ describe('isGsheetLikeUrl', () => {
     expect(
       isGsheetLikeUrl('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'),
     ).toBe(true);
+  });
+
+  it('returns false for random tokens that look like IDs', () => {
+    expect(isGsheetLikeUrl('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9')).toBe(false);
+    expect(isGsheetLikeUrl('sk_test_51PZbq8Jx9Z2JbHfXabc123')).toBe(false);
   });
 
   it('returns false for non-Google hosts', () => {
@@ -416,5 +422,17 @@ describe('expandStoredConfigForFormDefaults', () => {
     });
     expect(out.url).toBe('https://x.com/f.json');
     expect(out.jsonUrl).toBe('https://x.com/f.json');
+  });
+});
+
+describe('canonicalConfigKeyForDirtyCheck', () => {
+  it('treats alias keys as equivalent (json-online url vs jsonUrl)', () => {
+    const a = canonicalConfigKeyForDirtyCheck('json-online', {
+      url: 'https://example.com/a.json',
+    });
+    const b = canonicalConfigKeyForDirtyCheck('json-online', {
+      jsonUrl: 'https://example.com/a.json',
+    });
+    expect(a).toBe(b);
   });
 });

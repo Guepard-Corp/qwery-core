@@ -8,6 +8,7 @@ import {
 import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import { normalizeDatasourceConfigForProvider } from '~/lib/utils/datasource-utils';
 import { datasourceMetadataKeys } from './datasource-metadata-keys';
 import { useGetDatasourceExtensions } from './use-get-extension';
 
@@ -66,7 +67,10 @@ export function useGetDatasourceMetadata(
         return driverCommand<DatasourceMetadata>('metadata', {
           datasourceProvider: datasource.datasource_provider,
           driverId: driver.id,
-          config: datasource.config,
+          config: normalizeDatasourceConfigForProvider(
+            datasource.datasource_provider,
+            datasource.config,
+          ),
         });
       }
 

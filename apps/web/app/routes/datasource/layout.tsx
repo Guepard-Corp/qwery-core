@@ -9,6 +9,7 @@ import { DatasourceSidebar } from './_components/datasource-sidebar';
 import { useWorkspace } from '~/lib/context/workspace-context';
 import { WorkspaceModeEnum } from '@qwery/domain/enums';
 import { ProjectProvider } from '~/lib/context/project-context';
+import { ProjectBreadcrumb } from '../project/_components/project-breadcrumb';
 
 export async function clientLoader(_args: Route.ClientLoaderArgs) {
   return {
@@ -31,7 +32,12 @@ function SidebarLayout(props: Route.ComponentProps & React.PropsWithChildren) {
           <PageFooter>
             <LayoutFooter />
           </PageFooter>
-          {props.children}
+          <div className="flex h-full flex-col">
+            <div className="bg-background w-fit px-6 pt-4 pb-3 lg:px-16 lg:pt-6">
+              <ProjectBreadcrumb />
+            </div>
+            <div className="flex-1 overflow-hidden">{props.children}</div>
+          </div>
         </Page>
       </SidebarProvider>
     </ProjectProvider>
@@ -47,7 +53,12 @@ function SimpleModeSidebarLayout(
         <PageFooter>
           <LayoutFooter />
         </PageFooter>
-        {props.children}
+        <div className="flex h-full flex-col">
+          <div className="bg-background w-fit px-6 pt-4 pb-3 lg:px-16 lg:pt-6">
+            <ProjectBreadcrumb />
+          </div>
+          <div className="flex-1 overflow-hidden">{props.children}</div>
+        </div>
       </Page>
     </ProjectProvider>
   );

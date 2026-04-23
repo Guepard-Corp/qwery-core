@@ -11,6 +11,7 @@ import {
 import { driverCommand } from '~/lib/repositories/api-client';
 import { getBrowserDriverInstance } from '~/lib/services/browser-driver';
 import { resolveDatasourceDriver } from '~/lib/utils/datasource-driver';
+import { normalizeDatasourceConfigForProvider } from '~/lib/utils/datasource-utils';
 import { useGetDatasourceExtensions } from '~/lib/queries/use-get-extension';
 
 type RunQueryPayload = {
@@ -80,7 +81,10 @@ export function useRunQuery(
         return driverCommand<DatasourceResultSet>('query', {
           datasourceProvider: datasource.datasource_provider,
           driverId: driver.id,
-          config: datasource.config,
+          config: normalizeDatasourceConfigForProvider(
+            datasource.datasource_provider,
+            datasource.config,
+          ),
           sql: query,
         });
       }

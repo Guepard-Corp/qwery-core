@@ -26,6 +26,7 @@ import {
 import { useGetDatasourcesByProjectId } from '~/lib/queries/use-get-datasources';
 import { useGetNotebooksByProjectId } from '~/lib/queries/use-get-notebook';
 import { useGetDatasourceBySlug } from '~/lib/queries/use-get-datasources';
+import { useGetDatasourceMetadata } from '~/lib/queries/use-get-datasource-metadata';
 import { useGetNotebook } from '~/lib/queries/use-get-notebook';
 import { useCreateNotebook } from '~/lib/mutations/use-notebook';
 import { useUpdateConversation } from '~/lib/mutations/use-conversation';
@@ -168,6 +169,8 @@ export function ProjectBreadcrumb() {
   // Detect current object (datasource or notebook)
   const isDatasourceRoute = location.pathname.startsWith('/ds/');
   const isNotebookRoute = location.pathname.startsWith('/notebook/');
+  const schemaParam = params.schema as string | undefined;
+  const tableNameParam = params.tableName as string | undefined;
   const objectSlug = isDatasourceRoute
     ? (params.slug as string)
     : isNotebookRoute
@@ -197,6 +200,9 @@ export function ProjectBreadcrumb() {
     objectSlug || '',
     { enabled: isDatasourceRoute },
   );
+  const datasourceMetadata = useGetDatasourceMetadata(currentDatasource.data, {
+    enabled: isDatasourceRoute && !!currentDatasource.data,
+  });
   const currentNotebook = useGetNotebook(
     repositories.notebook,
     objectSlug || '',
@@ -251,6 +257,65 @@ export function ProjectBreadcrumb() {
     currentDatasource.data,
     currentNotebook.data,
     pluginLogoMap,
+  ]);
+
+  const tableBreadcrumbLabel =
+    isDatasourceRoute && schemaParam && tableNameParam
+      ? decodeURIComponent(tableNameParam)
+      : undefined;
+
+  const schemaBreadcrumbNode = useMemo(() => {
+    if (!isDatasourceRoute) return undefined;
+    if (!schemaParam) return undefined;
+    const schemaName = decodeURIComponent(schemaParam);
+    const schemaItems = Array.from(
+      new Set((datasourceMetadata.data?.schemas ?? []).map((s) => s.name)),
+    )
+      .filter(Boolean)
+      .sort()
+      .map((name) => ({ id: name, slug: name, name }));
+
+    if (schemaItems.length === 0) return undefined;
+
+    const current = { id: schemaName, slug: schemaName, name: schemaName };
+    return {
+      items: schemaItems,
+      current,
+      isLoading: datasourceMetadata.isLoading,
+      labels: {
+        search: t('breadcrumb.searchSchemas', {
+          defaultValue: 'Search schemas',
+        }),
+        viewAll: t('breadcrumb.viewAllSchemas', {
+          defaultValue: 'View all schemas',
+        }),
+        new: t('breadcrumb.newSchema', { defaultValue: 'New schema' }),
+      },
+      onSelect: (item: BreadcrumbNodeItem) => {
+        if (!currentDatasource.data?.slug) return;
+        const nextSchema = encodeURIComponent(item.slug);
+        // Keep the user within the same table name (if present), switch schema.
+        const base = `/ds/${currentDatasource.data.slug}/tables`;
+        if (tableNameParam) {
+          const tableEncoded = encodeURIComponent(
+            decodeURIComponent(tableNameParam),
+          );
+          navigate(`${base}/${nextSchema}/${tableEncoded}`);
+          return;
+        }
+        navigate(`${base}/${nextSchema}`);
+      },
+      compareBy: 'slug' as const,
+    };
+  }, [
+    isDatasourceRoute,
+    schemaParam,
+    datasourceMetadata.data,
+    datasourceMetadata.isLoading,
+    currentDatasource.data,
+    tableNameParam,
+    navigate,
+    t,
   ]);
 
   const conversationItemsForBreadcrumb = useMemo(() => {
@@ -542,6 +607,8 @@ export function ProjectBreadcrumb() {
                 }
               : undefined
         }
+        tailLabel={tableBreadcrumbLabel}
+        extraNodes={schemaBreadcrumbNode ? [schemaBreadcrumbNode] : undefined}
         paths={{
           viewAllOrgs: pathsConfig.app.organizations,
           viewAllProjects: createPath(

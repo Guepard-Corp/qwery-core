@@ -149,5 +149,88 @@ describe('Server API – Datasources', () => {
       expect(last?.status).toBe(429);
       expect(last?.body).toEqual({ valid: false, error: 'Too many requests' });
     }, 20_000);
+
+    it('POST /api/datasources/validate-url blocks redirect to localhost', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'http://localhost:1234/data.json' },
+        }),
+      );
+
+      const res = await app.request(
+        'http://localhost/api/datasources/validate-url',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            url: 'https://example.com/redirect',
+            expectedFormat: 'json',
+          }),
+        },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { valid?: boolean; error?: string };
+      expect(body.valid).toBe(false);
+      expect(body.error).toMatch(/localhost|blocked|policy|not allowed/i);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('POST /api/datasources/validate-url caps reads (too large)', async () => {
+      const big = new Uint8Array(5 * 1024 * 1024 + 1);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(big, { status: 200 }),
+      );
+
+      const res = await app.request(
+        'http://localhost/api/datasources/validate-url',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            url: 'https://example.com/huge.csv',
+            expectedFormat: 'csv',
+          }),
+        },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { valid?: boolean; error?: string };
+      expect(body.valid).toBe(false);
+      expect(body.error).toMatch(/too large/i);
+    });
+
+    it('POST /api/datasources/validate-url times out', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+        const signal = (init as RequestInit | undefined)?.signal;
+        return new Promise<Response>((_resolve, reject) => {
+          if (!signal) return;
+          signal.addEventListener('abort', () => {
+            const e = new Error('Aborted');
+            (e as Error & { name: string }).name = 'AbortError';
+            reject(e);
+          });
+        });
+      });
+
+      const req = app.request('http://localhost/api/datasources/validate-url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          url: 'https://example.com/hang.json',
+          expectedFormat: 'json',
+        }),
+      });
+
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      const res = await req;
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { valid?: boolean; error?: string };
+      expect(body.valid).toBe(false);
+      expect(body.error).toMatch(/timed out/i);
+
+      vi.useRealTimers();
+    });
   });
 });

@@ -142,6 +142,7 @@ const DetailsFieldsGrid = React.memo(function DetailsFieldsGrid({
                   placeholder={placeholders.port}
                   maxLength={DATASOURCE_INPUT_MAX_LENGTH.port}
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   autoComplete="off"
                   className="bg-background/50"
                 />
@@ -330,40 +331,58 @@ export function DatasourceConnectionFields({
   );
 
   useEffect(() => {
-    if (
-      activeTab === 'connection' &&
-      debouncedConnectionString.trim() &&
-      config.showDetailsTab
-    ) {
+    if (debouncedConnectionString.trim() && config.showDetailsTab) {
       const parsed = parseConnectionString(
         debouncedConnectionString,
         extensionId,
       );
       if (parsed) {
         const currentValues = form.getValues();
-        form.setValue('host', parsed.host || currentValues.host || '', {
-          shouldValidate: false,
-        });
+        const shouldHydrate = (key: string) => {
+          if (form.getFieldState(key).isDirty) return false;
+          if (key === 'ssl') return true;
+          const v = currentValues[key];
+          return v === undefined || v === null || String(v).trim() === '';
+        };
+
+        if (parsed.host && shouldHydrate('host')) {
+          form.setValue('host', parsed.host, { shouldValidate: false });
+        }
         if (parsed.port) {
-          form.setValue('port', parsed.port, { shouldValidate: false });
+          if (shouldHydrate('port')) {
+            form.setValue('port', parsed.port, { shouldValidate: false });
+          }
         }
         if (parsed.database) {
-          form.setValue('database', parsed.database, { shouldValidate: false });
+          if (shouldHydrate('database')) {
+            form.setValue('database', parsed.database, {
+              shouldValidate: false,
+            });
+          }
         }
         if (parsed.username) {
-          form.setValue('username', parsed.username, { shouldValidate: false });
+          if (shouldHydrate('username')) {
+            form.setValue('username', parsed.username, {
+              shouldValidate: false,
+            });
+          }
         }
         if (parsed.password) {
-          form.setValue('password', parsed.password, { shouldValidate: false });
+          if (shouldHydrate('password')) {
+            form.setValue('password', parsed.password, {
+              shouldValidate: false,
+            });
+          }
         }
         if (parsed.ssl !== undefined && config.showSslToggle) {
-          form.setValue('ssl', parsed.ssl, { shouldValidate: false });
+          if (shouldHydrate('ssl')) {
+            form.setValue('ssl', parsed.ssl, { shouldValidate: false });
+          }
         }
       }
     }
   }, [
     debouncedConnectionString,
-    activeTab,
     extensionId,
     config.showDetailsTab,
     config.showSslToggle,
@@ -432,9 +451,38 @@ export function DatasourceConnectionFields({
     (connectionFieldKind === 'apiKey' ? 'API Key' : 'Connection String');
 
   const rootError = form.formState.errors._root?.message as string | undefined;
-  const { submitCount, touchedFields } = form.formState;
+  const { submitCount, touchedFields, dirtyFields } = form.formState;
   const showRootError =
     !!rootError && (submitCount > 0 || Object.keys(touchedFields).length > 0);
+
+  const dot = (
+    <span className="ml-1 inline-block size-1.5 rounded-full bg-[#ffcb51]" />
+  );
+
+  const isDetailsDirty = useMemo(() => {
+    if (!showTabs) return false;
+    for (const key of DETAILS_KEYS) {
+      if ((dirtyFields as Record<string, unknown> | undefined)?.[key]) {
+        return true;
+      }
+    }
+    if (
+      showSslToggle &&
+      (dirtyFields as Record<string, unknown> | undefined)?.ssl
+    ) {
+      return true;
+    }
+    return false;
+  }, [dirtyFields, showSslToggle, showTabs]);
+
+  const isConnectionDirty = useMemo(() => {
+    if (!showTabs) return false;
+    return Boolean(
+      (dirtyFields as Record<string, unknown> | undefined)?.[
+        connectionValueKey
+      ],
+    );
+  }, [dirtyFields, connectionValueKey, showTabs]);
 
   const content = (
     <div className={cn('space-y-4', className)}>
@@ -444,10 +492,12 @@ export function DatasourceConnectionFields({
             <TabsTrigger value="details" className="flex items-center gap-2">
               <Database className="size-3.5" />
               Parameters
+              {isDetailsDirty ? dot : null}
             </TabsTrigger>
             <TabsTrigger value="connection" className="flex items-center gap-2">
               <LinkIcon className="size-3.5" />
               {connectionFieldKind === 'apiKey' ? 'Key' : 'String'}
+              {isConnectionDirty ? dot : null}
             </TabsTrigger>
           </TabsList>
 

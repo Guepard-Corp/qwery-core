@@ -33,7 +33,7 @@ const detailsSchema = z.object({
       description: 'Database server hostname',
     }),
   port: z
-    .number()
+    .coerce.number()
     .int()
     .min(1)
     .max(65535)
@@ -75,9 +75,21 @@ const detailsSchema = z.object({
     }),
 });
 
-const urlSchema = z.object({
-  connectionUrl: connectionUrlField,
-});
+/** URL mode: either `connectionUrl` or legacy `connectionString` (same validation). */
+const urlSchema = z
+  .object({
+    connectionUrl: connectionUrlField.optional(),
+    connectionString: connectionUrlField.optional(),
+  })
+  .refine(
+    (v) =>
+      (typeof v.connectionUrl === 'string' && v.connectionUrl.length > 0) ||
+      (typeof v.connectionString === 'string' && v.connectionString.length > 0),
+    { message: 'connectionUrl or connectionString is required' },
+  )
+  .transform((v) => ({
+    connectionUrl: (v.connectionUrl ?? v.connectionString) as string,
+  }));
 
 export const schema = z.union([detailsSchema, urlSchema]);
 

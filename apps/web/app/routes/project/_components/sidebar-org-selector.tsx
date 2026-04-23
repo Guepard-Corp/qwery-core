@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Building2, ChevronsUpDown, Plus } from 'lucide-react';
+import { Building2, ChevronsUpDown, Plus, Check } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -178,15 +178,33 @@ export function SidebarOrgSelector() {
               <DropdownMenuItem
                 key={org.id}
                 className={cn(
-                  'flex cursor-pointer items-center gap-2',
-                  isCurrent && 'bg-accent',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 transition-colors',
+                  isCurrent
+                    ? 'bg-accent/50 text-foreground'
+                    : 'hover:bg-muted/50',
                 )}
                 onClick={() => handleSelect(org.slug)}
               >
-                <Building2 className="text-muted-foreground size-4 shrink-0" />
-                <span className="min-w-0 truncate" title={org.name ?? org.slug}>
-                  {truncateText(org.name ?? org.slug, 28)}
-                </span>
+                <div className="bg-muted/40 group-hover:bg-background flex h-7 w-7 shrink-0 items-center justify-center rounded shadow-inner">
+                  <Building2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span
+                    className={cn(
+                      'truncate text-[11px] font-bold tracking-tight',
+                      isCurrent ? 'text-foreground' : 'text-foreground/80',
+                    )}
+                    title={org.name ?? org.slug}
+                  >
+                    {truncateText(org.name ?? org.slug, 28)}
+                  </span>
+                </div>
+                {isCurrent && (
+                  <Check
+                    className="text-primary ml-auto h-4 w-4 shrink-0"
+                    strokeWidth={2.5}
+                  />
+                )}
               </DropdownMenuItem>
             );
           })}

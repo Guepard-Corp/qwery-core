@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Database,
   ChevronLeft,
@@ -35,6 +35,11 @@ export function DatasourceBadge({
   className,
 }: DatasourceBadgeProps) {
   const displayName = datasource.name || datasource.slug || datasource.id;
+  const [iconFailed, setIconFailed] = useState(false);
+  const effectiveIconUrl = useMemo(() => {
+    if (!iconUrl) return undefined;
+    return iconFailed ? undefined : iconUrl;
+  }, [iconUrl, iconFailed]);
 
   return (
     <HoverCard openDelay={200} closeDelay={100}>
@@ -49,15 +54,16 @@ export function DatasourceBadge({
           )}
         >
           <div className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-sm">
-            {iconUrl ? (
+            {effectiveIconUrl ? (
               <img
-                src={iconUrl}
+                src={effectiveIconUrl}
                 alt={displayName}
                 className={cn(
                   'h-3.5 w-3.5 object-contain transition-transform group-hover:scale-105',
                   shouldInvertDatasourceIcon(datasource.datasource_provider) &&
                     'dark:invert',
                 )}
+                onError={() => setIconFailed(true)}
               />
             ) : (
               <Database className="text-muted-foreground group-hover:text-foreground h-3 w-3 transition-colors" />
@@ -81,15 +87,16 @@ export function DatasourceBadge({
           className="flex items-start gap-4 transition-opacity hover:opacity-90"
         >
           <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-lg shadow-inner">
-            {iconUrl ? (
+            {effectiveIconUrl ? (
               <img
-                src={iconUrl}
+                src={effectiveIconUrl}
                 alt={datasource.name || datasource.slug || datasource.id}
                 className={cn(
                   'h-7 w-7 object-contain',
                   shouldInvertDatasourceIcon(datasource.datasource_provider) &&
                     'dark:invert',
                 )}
+                onError={() => setIconFailed(true)}
               />
             ) : (
               <Database className="text-muted-foreground h-6 w-6" />

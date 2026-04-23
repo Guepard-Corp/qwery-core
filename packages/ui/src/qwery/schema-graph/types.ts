@@ -23,6 +23,7 @@ export type TableNodeData = {
   schema?: string;
   ref?: string;
   isForeign: boolean;
+  isFocused?: boolean;
   columns: TableNodeColumn[];
 };
 

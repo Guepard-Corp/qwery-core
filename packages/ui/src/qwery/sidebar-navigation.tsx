@@ -435,6 +435,24 @@ export function SidebarNavigation({
                           const isActive = hasPath
                             ? isRouteActive(path, currentPath, end)
                             : false;
+                          const onClick =
+                            'onClick' in child ? child.onClick : undefined;
+
+                          if (onClick) {
+                            return (
+                              <SidebarMenuButton
+                                isActive={isActive}
+                                tooltip={translateKey(child.label)}
+                                onClick={onClick}
+                              >
+                                <div className={rowClassName}>
+                                  {iconNode}
+                                  {badgeWhenCollapsed}
+                                  {textNode}
+                                </div>
+                              </SidebarMenuButton>
+                            );
+                          }
 
                           return (
                             <SidebarMenuButton
@@ -502,47 +520,85 @@ export function SidebarNavigation({
                                             <div className="group/sub-item flex max-w-full min-w-0 items-center gap-1">
                                               <SidebarMenuSubButton
                                                 isActive={isActive}
-                                                asChild
+                                                asChild={!child.onClick}
                                                 className="min-w-0 flex-1"
+                                                onClick={child.onClick}
                                               >
-                                                <Link
-                                                  prefetch={'intent'}
-                                                  className={linkClassName}
-                                                  to={child.path}
-                                                  title={translateKey(
-                                                    'title' in child
-                                                      ? child.title
-                                                      : child.label,
-                                                  )}
-                                                >
-                                                  {child.Icon}
-
-                                                  <span
-                                                    className={spanClassName}
+                                                {child.onClick ? (
+                                                  <div
+                                                    className={linkClassName}
                                                   >
-                                                    <SidebarLabelText
-                                                      label={child.label}
-                                                      suffix={child.labelSuffix}
-                                                      truncate
-                                                      title={
-                                                        'title' in child
-                                                          ? child.title
-                                                          : child.label
-                                                      }
-                                                      hasUnsavedChanges={
-                                                        'hasUnsavedChanges' in
-                                                        child
-                                                          ? (child.hasUnsavedChanges as boolean)
-                                                          : undefined
-                                                      }
-                                                      badge={
-                                                        badgesByLabel?.[
-                                                          child.label
-                                                        ]
-                                                      }
-                                                    />
-                                                  </span>
-                                                </Link>
+                                                    {child.Icon}
+                                                    <span
+                                                      className={spanClassName}
+                                                    >
+                                                      <SidebarLabelText
+                                                        label={child.label}
+                                                        suffix={
+                                                          child.labelSuffix
+                                                        }
+                                                        truncate
+                                                        title={
+                                                          'title' in child
+                                                            ? child.title
+                                                            : child.label
+                                                        }
+                                                        hasUnsavedChanges={
+                                                          'hasUnsavedChanges' in
+                                                          child
+                                                            ? (child.hasUnsavedChanges as boolean)
+                                                            : undefined
+                                                        }
+                                                        badge={
+                                                          badgesByLabel?.[
+                                                            child.label
+                                                          ]
+                                                        }
+                                                      />
+                                                    </span>
+                                                  </div>
+                                                ) : (
+                                                  <Link
+                                                    prefetch={'intent'}
+                                                    className={linkClassName}
+                                                    to={child.path}
+                                                    title={translateKey(
+                                                      'title' in child
+                                                        ? child.title
+                                                        : child.label,
+                                                    )}
+                                                  >
+                                                    {child.Icon}
+
+                                                    <span
+                                                      className={spanClassName}
+                                                    >
+                                                      <SidebarLabelText
+                                                        label={child.label}
+                                                        suffix={
+                                                          child.labelSuffix
+                                                        }
+                                                        truncate
+                                                        title={
+                                                          'title' in child
+                                                            ? child.title
+                                                            : child.label
+                                                        }
+                                                        hasUnsavedChanges={
+                                                          'hasUnsavedChanges' in
+                                                          child
+                                                            ? (child.hasUnsavedChanges as boolean)
+                                                            : undefined
+                                                        }
+                                                        badge={
+                                                          badgesByLabel?.[
+                                                            child.label
+                                                          ]
+                                                        }
+                                                      />
+                                                    </span>
+                                                  </Link>
+                                                )}
                                               </SidebarMenuSubButton>
                                               <If
                                                 condition={child.renderAction}

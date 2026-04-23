@@ -1,11 +1,4 @@
-import { redirect } from 'react-router';
-
 import pathsConfig from '~/config/paths.config';
-import type { Route } from '~/types/app/routes/+types/index';
-
-export const clientLoader = async (_args: Route.LoaderArgs) => {
-  throw redirect(pathsConfig.app.organizations);
-};
 import { Skeleton } from '@qwery/ui/skeleton';
 import { LoadingSkeleton } from '@qwery/ui/loading-skeleton';
 import {
@@ -214,7 +207,7 @@ function LandingPage({
 
         <section className="space-y-4 pb-12">
           <Link to={pathsConfig.app.organizations} className="block">
-            <div className="[background:linear-gradient(45deg,theme(colors.background),theme(colors.card)_50%,theme(colors.background))_padding-box,conic-gradient(from_var(--border-angle),theme(colors.muted/.48)_80%,theme(colors.primary)_86%,theme(colors.primary/.80)_90%,theme(colors.primary)_94%,theme(colors.muted/.48))_border-box] w-full max-w-full [animation:border_4s_linear_infinite] cursor-pointer rounded-2xl border border-transparent p-6 transition-shadow hover:shadow-lg">
+            <div className="[background:linear-gradient(45deg,--theme(--color-background),--theme(--color-card)_50%,--theme(--color-background))_padding-box,conic-gradient(from_var(--border-angle),--theme(--color-muted/.48)_80%,--theme(--color-primary)_86%,--theme(--color-primary/.80)_90%,--theme(--color-primary)_94%,--theme(--color-muted/.48))_border-box] animate-border w-full max-w-full cursor-pointer rounded-2xl border border-transparent p-6 transition-shadow hover:shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Sparkles className="size-5 text-[#ffcb51]" />

@@ -173,12 +173,7 @@ export function createDatasourcesRoutes(
         if (err instanceof Error && err.name === 'AbortError') {
           return c.json({ error: 'Request timed out' }, 408);
         }
-        return c.json(
-          {
-            error: err instanceof Error ? err.message : 'Failed to fetch URL',
-          },
-          502,
-        );
+        return c.json({ error: 'Failed to fetch URL' }, 502);
       }
     } catch (error) {
       return handleDomainException(error);
@@ -314,7 +309,7 @@ export function createDatasourcesRoutes(
         }
         return c.json({
           valid: false,
-          error: err instanceof Error ? err.message : 'Failed to fetch URL',
+          error: 'Failed to fetch URL',
         });
       }
     } catch (error) {

@@ -163,6 +163,44 @@ export function asSubmitRecord(
   );
 }
 
+export function canonicalConfigKeyForDirtyCheck(
+  extensionId: string,
+  values: Record<string, unknown> | null | undefined,
+): string {
+  const expanded = expandStoredConfigForFormDefaults(
+    extensionId,
+    (values ?? {}) as Record<string, unknown>,
+    undefined,
+  );
+  if (
+    typeof expanded.jsonUrl === 'string' &&
+    typeof expanded.url === 'string' &&
+    expanded.jsonUrl === expanded.url
+  ) {
+    delete expanded.url;
+  }
+  if (
+    typeof expanded.sharedLink === 'string' &&
+    typeof expanded.url === 'string' &&
+    expanded.sharedLink === expanded.url
+  ) {
+    delete expanded.url;
+  }
+  if (
+    typeof expanded.connectionUrl === 'string' &&
+    typeof expanded.connectionString === 'string' &&
+    expanded.connectionUrl === expanded.connectionString
+  ) {
+    delete expanded.connectionString;
+  }
+  const submit = asSubmitRecord(expanded);
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(submit).sort(([a], [b]) => a.localeCompare(b)),
+    ),
+  );
+}
+
 export const DETAILS_KEYS = [
   'host',
   'port',

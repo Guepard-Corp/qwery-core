@@ -12,6 +12,27 @@ export type DatasourceExtensionMeta = Pick<
   'id' | 'supportsPreview' | 'previewUrlKind' | 'previewDataFormat'
 >;
 
+export function normalizeDatasourceConfigForProvider(
+  datasourceProvider: string,
+  config: unknown,
+): Record<string, unknown> {
+  if (!config || typeof config !== 'object') return {};
+  const cfg = config as Record<string, unknown>;
+
+  if (datasourceProvider === 'gsheet-csv') {
+    const sharedLink =
+      typeof cfg.sharedLink === 'string'
+        ? cfg.sharedLink
+        : typeof cfg.url === 'string'
+          ? cfg.url
+          : undefined;
+
+    return sharedLink !== undefined ? { ...cfg, sharedLink } : cfg;
+  }
+
+  return cfg;
+}
+
 const GSHEET_HOST_REGEX = /^(?:[a-z0-9-]+\.)?docs\.google\.com$/i;
 const GSHEET_PATH_REGEX = /^\/spreadsheets\/d\//;
 
@@ -35,7 +56,7 @@ export function isDataFileUrl(url: string | null | undefined): boolean {
 export function isGsheetLikeUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   const t = url.trim();
-  if (/^[a-zA-Z0-9-_]{20,}$/.test(t)) return true;
+  if (/^1[a-zA-Z0-9-_]{24,}$/.test(t)) return true;
   try {
     const parsed = new URL(t.startsWith('http') ? t : `https://${t}`);
     return (

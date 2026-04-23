@@ -3,7 +3,7 @@
 import { Button } from '../shadcn/button';
 import { cn } from '../lib/utils';
 import { ArrowDownIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, HTMLAttributes } from 'react';
 import { useCallback } from 'react';
 import { StickToBottom, useStickToBottomContext } from 'use-stick-to-bottom';
 
@@ -48,7 +48,7 @@ export const ConversationContent = ({
   />
 );
 
-export type ConversationEmptyStateProps = ComponentProps<'div'> & {
+export type ConversationEmptyStateProps = HTMLAttributes<HTMLDivElement> & {
   title?: string;
   description?: string;
   icon?: React.ReactNode;

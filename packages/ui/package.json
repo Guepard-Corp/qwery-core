@@ -194,6 +194,7 @@
     "./schema-graph": "./src/qwery/schema-graph/index.ts",
     "./qwery/datasource/tables": "./src/qwery/datasource/tables.tsx",
     "./qwery/datasource/columns": "./src/qwery/datasource/columns.tsx",
+    "./qwery/pagination-controls": "./src/qwery/pagination-controls.tsx",
     "./qwery/datasource": "./src/qwery/datasource/index.ts",
     "./qwery/notebook": "./src/qwery/notebook/index.ts",
     "./notebook": "./src/qwery/notebook/index.ts",

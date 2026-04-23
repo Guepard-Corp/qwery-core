@@ -200,7 +200,7 @@ export function EntityCard({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive dark:text-red-300 dark:focus:text-red-300"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               <Trans i18nKey="organizations:Delete" defaults="Delete" />

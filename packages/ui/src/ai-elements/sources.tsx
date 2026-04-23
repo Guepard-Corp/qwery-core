@@ -7,9 +7,13 @@ import {
 } from '../shadcn/collapsible';
 import { cn } from '../lib/utils';
 import { BookIcon, ChevronDownIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type {
+  AnchorHTMLAttributes,
+  ComponentProps,
+  HTMLAttributes,
+} from 'react';
 
-export type SourcesProps = ComponentProps<'div'>;
+export type SourcesProps = HTMLAttributes<HTMLDivElement>;
 
 export const Sources = ({ className, ...props }: SourcesProps) => (
   <Collapsible
@@ -57,7 +61,7 @@ export const SourcesContent = ({
   />
 );
 
-export type SourceProps = ComponentProps<'a'>;
+export type SourceProps = AnchorHTMLAttributes<HTMLAnchorElement>;
 
 export const Source = ({ href, title, children, ...props }: SourceProps) => (
   <a

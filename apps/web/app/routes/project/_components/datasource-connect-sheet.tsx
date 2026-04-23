@@ -1,16 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Datasource } from '@qwery/domain/entities';
-
-function stringifySorted(obj: Record<string, unknown>): string {
-  return JSON.stringify(
-    Object.fromEntries(
-      Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)),
-    ),
-  );
-}
 import type { DatasourcePreviewRef } from './datasource-preview';
 
-import { Check, Pencil, Shuffle, X } from 'lucide-react';
+import { Check, Database, Pencil, Shuffle, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle } from '@qwery/ui/sheet';
 import { Button } from '@qwery/ui/button';
 import { Input } from '@qwery/ui/input';
@@ -34,6 +26,10 @@ import { useGetExtension } from '~/lib/queries/use-get-extension';
 import type { ExtensionDefinition } from '@qwery/extensions-sdk';
 import { shouldInvertDatasourceIcon } from '@qwery/shared/utils';
 import { DATASOURCE_INPUT_MAX_LENGTH } from '~/lib/utils/datasource-form-config';
+import {
+  asSubmitRecord,
+  canonicalConfigKeyForDirtyCheck,
+} from '~/lib/utils/datasource-connection-fields-utils';
 
 const SHEET_OVERLAY_Z = 'z-[100]';
 const SHEET_CONTENT_Z = 'z-[101]';
@@ -70,6 +66,7 @@ export function DatasourceConnectSheet({
 }: DatasourceConnectSheetProps) {
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const [actionsReady, setActionsReady] = useState(false);
+  const [iconFailed, setIconFailed] = useState(false);
 
   const [datasourceName, setDatasourceName] = useState(
     () => existingDatasource?.name ?? generateRandomName(),
@@ -149,19 +146,21 @@ export function DatasourceConnectSheet({
     if (existingDatasource) {
       const nameChanged =
         datasourceName.trim() !== (existingDatasource.name ?? '').trim();
-      const a = formValues ?? null;
-      const b = existingDatasource.config ?? null;
       const configChanged =
-        a != null && b != null && stringifySorted(a) !== stringifySorted(b);
+        formValues != null &&
+        canonicalConfigKeyForDirtyCheck(extensionId, formValues) !==
+          canonicalConfigKeyForDirtyCheck(
+            extensionId,
+            (existingDatasource.config as Record<string, unknown> | null) ??
+              null,
+          );
       return nameChanged || configChanged;
     }
+
     return (
-      formValues !== null &&
-      Object.values(formValues).some(
-        (v) => v !== undefined && v !== null && v !== '',
-      )
+      formValues != null && Object.keys(asSubmitRecord(formValues)).length > 0
     );
-  }, [existingDatasource, datasourceName, formValues]);
+  }, [existingDatasource, datasourceName, extensionId, formValues]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && hasUnsavedChanges) {
@@ -213,14 +212,28 @@ export function DatasourceConnectSheet({
           >
             <div className="flex min-w-0 items-center gap-4">
               <div className="bg-muted/30 flex h-20 w-20 shrink-0 items-center justify-center rounded-xl">
-                {extensionMeta.icon && (
-                  <img
-                    src={extensionMeta.icon}
-                    alt={extensionMeta.name}
-                    className={cn(
-                      'h-16 w-16 object-contain',
-                      shouldInvertDatasourceIcon(extensionId) && 'dark:invert',
-                    )}
+                {extensionMeta.icon ? (
+                  !iconFailed ? (
+                    <img
+                      src={extensionMeta.icon}
+                      alt={extensionMeta.name}
+                      className={cn(
+                        'h-16 w-16 object-contain',
+                        shouldInvertDatasourceIcon(extensionId) &&
+                          'dark:invert',
+                      )}
+                      onError={() => setIconFailed(true)}
+                    />
+                  ) : (
+                    <Database
+                      className="text-muted-foreground/60 h-10 w-10"
+                      aria-hidden
+                    />
+                  )
+                ) : (
+                  <Database
+                    className="text-muted-foreground/60 h-10 w-10"
+                    aria-hidden
                   />
                 )}
               </div>
@@ -384,7 +397,7 @@ export function DatasourceConnectSheet({
         open={showExitConfirmation}
         onOpenChange={setShowExitConfirmation}
       >
-        <AlertDialogContent className="z-[110]" overlayClassName="z-[110]">
+        <AlertDialogContent className="z-110" overlayClassName="z-110">
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
