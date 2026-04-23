@@ -54,11 +54,6 @@ const baseModels = [
     value: 'ollama-cloud/devstral-small-2:24b',
   },
   {
-    name: 'Ollama Cloud • Gemma 4 31B Cloud',
-    shortName: 'Gemma 4 31B',
-    value: 'ollama-cloud/gemma4:31b-cloud',
-  },
-  {
     name: 'Ollama Cloud • Gemma 4 31B',
     shortName: 'Gemma 4 31B',
     value: 'ollama-cloud/gemma4:31b',
