@@ -91,19 +91,17 @@ OLLAMA_API_KEY=your_ollama_cloud_api_key
 OLLAMA_MODEL=minimax-m2.7
 ```
 
-Recommended free models for testing:
+Currently free models for testing:
 
-- `minimax-m2.7`
-- `glm-5`
-
-Other free models currently available in the main list:
-
-- `nemotron-3-super`
-- `gemini-3-flash-preview`
-- `deepseek-v3.1:671b`
+- `deepseek-v3.2`
+- `devstral-small-2:24b`
 - `gemma4:31b-cloud`
+- `gemma4:31b`
+- `glm-4.7`
 - `gpt-oss:120b`
-- `kimi-k2.5`
+- `minimax-m2.5`
+- `minimax-m2.7`
+- `nemotron-3-super`
 - `mistral-large-3:675b`
 - `qwen3.5:397b`
 
