@@ -95,7 +95,7 @@ Currently free models for testing:
 
 - `deepseek-v3.2`
 - `devstral-small-2:24b`
-- `gemma4:31b`
+- `gemma4:31b-cloud`
 - `glm-4.7`
 - `gpt-oss:120b`
 - `minimax-m2.5`

@@ -56,7 +56,7 @@ const baseModels = [
   {
     name: 'Ollama Cloud • Gemma 4 31B',
     shortName: 'Gemma 4 31B',
-    value: 'ollama-cloud/gemma4:31b',
+    value: 'ollama-cloud/gemma4:31b-cloud',
   },
   {
     name: 'Ollama Cloud • GLM 4.7',
