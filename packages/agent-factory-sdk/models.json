@@ -3455,14 +3455,14 @@
     "name": "Ollama Cloud",
     "doc": "https://docs.ollama.com/cloud",
     "models": {
-      "deepseek-v3.1:671b": {
-        "id": "deepseek-v3.1:671b",
-        "name": "deepseek-v3.1:671b",
+      "deepseek-v3.2": {
+        "id": "deepseek-v3.2",
+        "name": "deepseek-v3.2",
         "family": "deepseek",
         "attachment": false,
         "reasoning": true,
         "tool_call": true,
-        "release_date": "2025-08-21",
+        "release_date": "2025-06-15",
         "last_updated": "2026-01-19",
         "modalities": {
           "input": [
@@ -3475,41 +3475,17 @@
         "open_weights": true,
         "limit": {
           "context": 163840,
-          "output": 163840
-        }
-      },
-      "gemini-3-flash-preview": {
-        "id": "gemini-3-flash-preview",
-        "name": "gemini-3-flash-preview",
-        "family": "gemini-flash",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "knowledge": "2025-01",
-        "release_date": "2025-12-17",
-        "last_updated": "2026-01-19",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 1048576,
           "output": 65536
         }
       },
-      "gemini-3-pro-preview": {
-        "id": "gemini-3-pro-preview",
-        "name": "gemini-3-pro-preview",
-        "family": "gemini-pro",
+      "devstral-small-2:24b": {
+        "id": "devstral-small-2:24b",
+        "name": "devstral-small-2:24b",
+        "family": "devstral",
         "attachment": true,
-        "reasoning": true,
+        "reasoning": false,
         "tool_call": true,
-        "release_date": "2025-11-18",
+        "release_date": "2025-12-09",
         "last_updated": "2026-01-19",
         "modalities": {
           "input": [
@@ -3522,23 +3498,44 @@
         },
         "open_weights": true,
         "limit": {
-          "context": 1048576,
-          "output": 64000
+          "context": 262144,
+          "output": 262144
         }
       },
-      "glm-5": {
-        "id": "glm-5",
-        "name": "glm-5",
+      "gemma4:31b": {
+        "id": "gemma4:31b",
+        "name": "gemma4:31b",
+        "family": "gemma",
+        "knowledge": "2025-01",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "release_date": "2026-04-02",
+        "last_updated": "2026-04-08",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "limit": {
+          "context": 262144,
+          "output": 8192
+        }
+      },
+      "glm-4.7": {
+        "id": "glm-4.7",
+        "name": "glm-4.7",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
         "tool_call": true,
-        "release_date": "2026-02-11",
-        "last_updated": "2026-02-11",
-        "open_weights": true,
-        "interleaved": {
-          "field": "reasoning_content"
-        },
+        "release_date": "2025-12-22",
+        "last_updated": "2026-01-19",
         "modalities": {
           "input": [
             "text"
@@ -3547,6 +3544,7 @@
             "text"
           ]
         },
+        "open_weights": true,
         "limit": {
           "context": 202752,
           "output": 131072
@@ -3573,30 +3571,6 @@
         "limit": {
           "context": 131072,
           "output": 32768
-        }
-      },
-      "kimi-k2.5": {
-        "id": "kimi-k2.5",
-        "name": "kimi-k2.5",
-        "family": "kimi",
-        "attachment": true,
-        "reasoning": true,
-        "tool_call": true,
-        "release_date": "2026-01-27",
-        "last_updated": "2026-01-27",
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "limit": {
-          "context": 262144,
-          "output": 262144
         }
       },
       "minimax-m2.5": {
