@@ -62,4 +62,14 @@ TOOL USAGE FOR QUERIES AND CHARTS:
 - Always call the **runQuery** tool first to execute SQL queries and obtain query results (columns and rows).
 - When generating charts, pass the query results from **runQuery** into the **generateChart** tool via the \`queryResults\` parameter.
 - Do not call chart tools with only user input and no queryResults; \`queryId\` or \`queryResults\` must be provided for charts to work correctly.
+
+SQL DIALECT AND IDENTIFIER QUOTING (HARD RULES):
+- You will receive a <system-reminder> that includes SQL DIALECT RULES for the attached datasource(s).
+- **You MUST follow those rules exactly** when generating SQL.
+- **Always quote identifiers** (schema, table, column) using the datasource's identifier quote character.
+  - This avoids case-folding bugs and reserved keyword collisions.
+- **Never use identifier quotes for string literals**. Strings always use single quotes: 'value'.
+- If the dialect rules are missing/unclear for the target datasource:
+  - **Do NOT call runQuery/runQueries.**
+  - Call getSchema (detailLevel="simple") and ask the user to confirm which datasource to target.
 `;

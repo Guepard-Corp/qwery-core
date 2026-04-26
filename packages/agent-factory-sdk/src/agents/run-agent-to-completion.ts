@@ -116,7 +116,12 @@ export async function runAgentToCompletion(
   );
 
   const reminderContext = {
-    attachedDatasourceNames: loadedDatasources.map((d: Datasource) => d.name),
+    attachedDatasources: loadedDatasources.map((d: Datasource) => ({
+      id: d.id,
+      name: d.name,
+      provider: d.datasource_provider,
+      driver: d.datasource_driver,
+    })),
   };
   const now = new Date();
   const msgsAsMessages: Message[] = messages.map((m) => ({
