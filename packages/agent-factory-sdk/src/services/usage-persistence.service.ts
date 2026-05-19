@@ -62,16 +62,37 @@ export class UsagePersistenceService {
     const [providerId, modelId] = model.includes('/')
       ? model.split('/', 2)
       : ['', model];
-    const contextSize =
+    const catalogModel =
       providerId && modelId
         ? ((
             (catalog as Record<string, unknown>)[providerId] as
               | {
-                  models?: Record<string, { limit?: { context?: number } }>;
+                  models?: Record<
+                    string,
+                    {
+                      limit?: { context?: number };
+                      reasoning?: boolean;
+                    }
+                  >;
                 }
               | undefined
-          )?.models?.[modelId]?.limit?.context ?? 0)
-        : 0;
+          )?.models?.[modelId] ?? null)
+        : null;
+    const contextSize = catalogModel?.limit?.context ?? 0;
+    const inputTokens = usage.inputTokens ?? 0;
+    const reasoningTokens = usage.reasoningTokens ?? 0;
+    if (
+      catalogModel?.reasoning === true &&
+      reasoningTokens === 0 &&
+      inputTokens > 0
+    ) {
+      console.warn(
+        `[UsagePersistence] model "${model}" is flagged reasoning=true in models.json ` +
+          `but the provider reported 0 reasoning tokens (input=${inputTokens}, ` +
+          `output=${usage.outputTokens ?? 0}). Check that reasoning_effort is being ` +
+          `forwarded as providerOptions.`,
+      );
+    }
 
     const { cost } = getUsageFromCatalog(catalog, model, {
       inputTokens: usage.inputTokens ?? 0,

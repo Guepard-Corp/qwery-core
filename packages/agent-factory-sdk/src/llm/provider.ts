@@ -1,4 +1,10 @@
 import type { LanguageModel } from 'ai';
+
+// AI SDK's ProviderOptions = SharedV3ProviderOptions, which is structurally
+// `Record<string, Record<string, JSONValue>>`. We model that loosely here so
+// we don't need to add @ai-sdk/provider-utils as a direct dependency. The
+// streamText call site casts back to the SDK type when spreading.
+export type ProviderOptionsLoose = Record<string, Record<string, unknown>>;
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createAzure } from '@ai-sdk/azure';
@@ -6,6 +12,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 
 import modelsManifest from '../../models.json';
+
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
 export type Model = {
   providerID: string;
@@ -17,6 +25,8 @@ export type Model = {
     output: number;
     input?: number;
   };
+  reasoning?: boolean;
+  reasoningEffort?: ReasoningEffort;
 };
 
 type SDKWithLanguageModel = { languageModel(modelId: string): LanguageModel };
@@ -69,6 +79,13 @@ function buildProviders(
       const rawLimit = (m as ManifestModel).limit as
         | { context?: number; output?: number; input?: number }
         | undefined;
+      const reasoning = (m as ManifestModel).reasoning === true;
+      const manifestEffort = (m as ManifestModel).reasoning_effort;
+      const reasoningEffort = isReasoningEffort(manifestEffort)
+        ? manifestEffort
+        : reasoning && supportsOpenAIReasoningEffort(providerID, npm)
+          ? 'high'
+          : undefined;
       const model: Model = {
         providerID,
         id: modelKey,
@@ -83,6 +100,8 @@ function buildProviders(
               },
             }
           : {}),
+        ...(reasoning ? { reasoning: true } : {}),
+        ...(reasoningEffort ? { reasoningEffort } : {}),
       };
       models[modelKey] = model;
     }
@@ -94,6 +113,30 @@ function buildProviders(
     };
   }
   return providers;
+}
+
+function isReasoningEffort(value: unknown): value is ReasoningEffort {
+  return (
+    value === 'minimal' ||
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high'
+  );
+}
+
+const OPENAI_REASONING_PROVIDER_IDS = new Set([
+  'azure',
+  'openai',
+  'firmware',
+  '302ai',
+]);
+
+function supportsOpenAIReasoningEffort(
+  providerID: string,
+  npm: string,
+): boolean {
+  if (npm === '@ai-sdk/openai' || npm === '@ai-sdk/azure') return true;
+  return OPENAI_REASONING_PROVIDER_IDS.has(providerID);
 }
 
 const providers = buildProviders(modelsManifest as Manifest);
@@ -237,6 +280,21 @@ export const Provider = {
       }
     }
     throw new Error('No models available in models.json');
+  },
+
+  /**
+   * Returns AI-SDK `providerOptions` for the given model when it expects
+   * reasoning controls (e.g. OpenAI/Azure GPT-5 family). Returns undefined
+   * when the model has no reasoning configuration to propagate, so callers
+   * can spread the result without adding empty options.
+   */
+  getProviderOptions(model: Model): ProviderOptionsLoose | undefined {
+    const effort = model.reasoningEffort;
+    if (!effort) return undefined;
+    if (supportsOpenAIReasoningEffort(model.providerID, model.api.npm)) {
+      return { openai: { reasoningEffort: effort } };
+    }
+    return undefined;
   },
 
   async getLanguage(model: Model): Promise<LanguageModel> {

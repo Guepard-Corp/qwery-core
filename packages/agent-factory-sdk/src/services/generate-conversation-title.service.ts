@@ -1,6 +1,8 @@
 import { generateText } from 'ai';
-import { resolveModel, getDefaultModel } from './model-resolver';
+import { resolveModel } from './model-resolver';
 import { getLogger } from '@qwery/shared/logger';
+
+const TITLE_GENERATION_MODEL = 'azure/gpt-5-mini';
 
 const GENERATE_TITLE_PROMPT = (userMessage: string, agentResponse?: string) => {
   const basePrompt = `Based on the following conversation exchange, generate a concise, descriptive title for this conversation. The title should be:
@@ -37,7 +39,7 @@ export async function generateConversationTitle(
     });
 
     const generatePromise = generateText({
-      model: await resolveModel(getDefaultModel()),
+      model: await resolveModel(TITLE_GENERATION_MODEL),
       prompt: GENERATE_TITLE_PROMPT(userMessage, agentResponse),
     });
 
