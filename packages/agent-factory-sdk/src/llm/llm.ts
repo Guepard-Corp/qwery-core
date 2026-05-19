@@ -57,6 +57,7 @@ export const LLM = {
           : Provider.getDefaultModel()
         : (input.model ?? Provider.getDefaultModel());
     const language = await Provider.getLanguage(model);
+    const providerOptions = Provider.getProviderOptions(model);
 
     let system: string | undefined = input.system ?? input.systemPrompt;
     if (system === undefined) {
@@ -82,6 +83,13 @@ export const LLM = {
       model: language,
       ...(system !== undefined && system !== '' ? { system } : {}),
       ...(input.tools !== undefined ? { tools: input.tools } : {}),
+      ...(providerOptions !== undefined
+        ? {
+            providerOptions: providerOptions as Parameters<
+              typeof streamText
+            >[0]['providerOptions'],
+          }
+        : {}),
       abortSignal: input.abortSignal,
       maxRetries: input.maxRetries,
       temperature: input.temperature,
