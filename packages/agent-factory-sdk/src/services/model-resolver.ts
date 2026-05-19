@@ -144,7 +144,7 @@ export async function resolveModel(
  * - AGENT_PROVIDER or VITE_AGENT_PROVIDER
  *
  * Model name is determined from provider-specific env vars (checks both regular and VITE_ prefixed):
- * - Azure: AZURE_OPENAI_DEPLOYMENT or VITE_AZURE_OPENAI_DEPLOYMENT (defaults to "gpt-5.2-chat")
+ * - Azure: AZURE_OPENAI_DEPLOYMENT or VITE_AZURE_OPENAI_DEPLOYMENT (defaults to "gpt-5.3-codex")
  * - Ollama: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "deepseek-r1:8b")
  * - Ollama Cloud: OLLAMA_MODEL or VITE_OLLAMA_MODEL (defaults to "minimax-m2.7")
  * - WebLLM: WEBLLM_MODEL or VITE_WEBLLM_MODEL (defaults to "Llama-3.1-8B-Instruct-q4f32_1-MLC")
@@ -162,7 +162,7 @@ export function getDefaultModel(): string {
       modelName =
         getEnv('AZURE_OPENAI_DEPLOYMENT') ||
         getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
-        'gpt-5.2-chat';
+        'gpt-5.3-codex';
       break;
     case 'ollama':
       modelName =
@@ -200,7 +200,7 @@ export function getDefaultModel(): string {
       modelName =
         getEnv('AZURE_OPENAI_DEPLOYMENT') ||
         getEnv('VITE_AZURE_OPENAI_DEPLOYMENT') ||
-        'gpt-5.2-chat';
+        'gpt-5.3-codex';
       return `azure/${modelName}`;
   }
 
