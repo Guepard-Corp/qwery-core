@@ -370,7 +370,12 @@ export async function loop(input: AgentSessionPromptInput): Promise<Response> {
     );
 
     const reminderContext = {
-      attachedDatasourceNames: datasources.map((d: Datasource) => d.name),
+      attachedDatasources: datasources.map((d: Datasource) => ({
+        id: d.id,
+        name: d.name,
+        provider: d.datasource_provider,
+        driver: d.datasource_driver,
+      })),
     };
     insertReminders({
       messages: msgs,
