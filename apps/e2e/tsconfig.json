@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": true,
+    "composite": false,
+    // e2e is a noEmit test app imported by nothing; emitting declarations is
+    // meaningless and trips TS4094 on ink's render() result (private _lastFrame).
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["bun"]
+  },
+  "include": ["src/**/*"]
+}

@@ -1,96 +1,45 @@
-import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
+import { DATASOURCE_INPUT_MAX_LENGTH as L } from '@qwery/extension-sdk';
 import { z } from 'zod';
 
-const passwordField = z
-  .string()
-  .min(1)
-  .max(DATASOURCE_INPUT_MAX_LENGTH.password)
-  .describe('secret:true')
-  .meta({
-    description: 'MySQL password',
-    secret: true,
-  });
+// Connect-by-fields. Plain z.object (no .refine/.transform) so the TUI can read
+// `.shape` for the pick-variant step.
+const detailsSchema = z
+  .object({
+    host: z.string().min(1).max(L.host).meta({ label: 'Host', description: 'MySQL server hostname' }),
+    port: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(65535)
+      .default(3306)
+      .meta({ label: 'Port', placeholder: '3306' }),
+    username: z.string().min(1).max(L.username).meta({ label: 'Username', description: 'MySQL user' }),
+    password: z
+      .string()
+      .min(1)
+      .max(L.password)
+      .meta({ label: 'Password', description: 'MySQL password', secret: true }),
+    database: z
+      .string()
+      .min(1)
+      .max(L.database)
+      .meta({ label: 'Database', description: 'MySQL database name' }),
+    ssl: z.boolean().default(false).meta({ label: 'Enable SSL' }),
+  })
+  .meta({ label: 'Host & credentials' });
 
-const connectionUrlField = z
-  .string()
-  .min(1)
-  .max(DATASOURCE_INPUT_MAX_LENGTH.connectionString)
-  .url()
-  .describe('secret:true')
-  .meta({
-    description:
-      'MySQL connection string (mysql://user:pass@host:port/database)',
-    placeholder: 'mysql://user:pass@host:3306/db',
-    secret: true,
-  });
-
-const detailsSchema = z.object({
-  host: z
-    .string()
-    .min(1)
-    .max(DATASOURCE_INPUT_MAX_LENGTH.host)
-    .meta({
-      label: 'Host',
-      description: 'MySQL server hostname',
-    }),
-  port: z
-    .coerce.number()
-    .int()
-    .min(1)
-    .max(65535)
-    .default(3306)
-    .meta({
-      label: 'Port',
-      placeholder: '3306',
-    }),
-  username: z
-    .string()
-    .min(1)
-    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
-    .meta({
-      label: 'Username',
-      description: 'MySQL user',
-    }),
-  user: z
-    .string()
-    .min(1)
-    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
-    .optional()
-    .meta({
-      label: 'User (alias for username)',
-    }),
-  password: passwordField,
-  database: z
-    .string()
-    .min(1)
-    .max(DATASOURCE_INPUT_MAX_LENGTH.database)
-    .meta({
-      label: 'Database',
-      description: 'MySQL database name',
-    }),
-  ssl: z
-    .boolean()
-    .default(false)
-    .meta({
-      label: 'Enable SSL',
-      description: 'Enable SSL connection',
-    }),
-});
-
+// Connect-by-URL. Kept a plain z.object for the same TUI introspection reason.
 const urlSchema = z
   .object({
-    connectionUrl: connectionUrlField.optional(),
-    connectionString: connectionUrlField.optional(),
+    connectionUrl: z.string().min(1).max(L.connectionString).url().meta({
+      label: 'Connection URL',
+      description: 'MySQL connection string (mysql://user:pass@host:port/db)',
+      placeholder: 'mysql://user:pass@host:3306/db',
+      secret: true,
+    }),
   })
-  .refine(
-    (v) =>
-      (typeof v.connectionUrl === 'string' && v.connectionUrl.length > 0) ||
-      (typeof v.connectionString === 'string' && v.connectionString.length > 0),
-    { message: 'connectionUrl or connectionString is required' },
-  )
-  .transform((v) => ({
-    connectionUrl: (v.connectionUrl ?? v.connectionString) as string,
-  }));
+  .meta({ label: 'Connection URL' });
 
 export const schema = z.union([detailsSchema, urlSchema]);
 
+export type MysqlConfig = z.infer<typeof schema>;

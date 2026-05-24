@@ -1,0 +1,31 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`e2e: Tier 3 slash commands (overlays) /models opens the provider picker 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                  │
+│ Connect a provider                                                                           esc │
+│                                                                                                  │
+│ ↑/↓ navigate · enter select                                                                      │
+│                                                                                                  │
+│  ○ Azure OpenAI  cloud                                                                           │
+│    Azure-hosted OpenAI models. Supports both Chat Completions and the Responses API (gpt-5,      │
+│    o-series).                                                                                    │
+│                                                                                                  │
+│  ○ AWS Bedrock  cloud                                                                            │
+│  ○ Ollama (local)  local                                                                         │
+│  ○ Ollama Cloud  cloud                                                                           │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`e2e: Tier 3 slash commands (overlays) /datasources opens the datasources overlay 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                  │
+│ Datasources                                                                            esc close │
+│                                                                                                  │
+│ ↑/↓ navigate · n new · a attach/detach · d delete · esc close                                    │
+│                                                                                                  │
+│ No datasources configured yet. Press \`n\` to add one.                                             │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯"
+`;

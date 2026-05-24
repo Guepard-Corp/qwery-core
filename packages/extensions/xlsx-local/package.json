@@ -1,0 +1,36 @@
+{
+  "name": "@qwery/extension-xlsx-local",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "contributes": {
+    "datasources": [
+      {
+        "id": "xlsx-local",
+        "name": "Excel (local file)",
+        "description": "Read a local Excel (.xlsx) file from disk via DuckDB.",
+        "tags": ["Files"],
+        "icon": "📗",
+        "drivers": ["xlsx-local.duckdb"]
+      }
+    ],
+    "drivers": [
+      {
+        "id": "xlsx-local.duckdb",
+        "name": "DuckDB (Node)",
+        "description": "DuckDB-backed driver for local Excel files",
+        "runtime": "node",
+        "entry": "./src/driver.ts"
+      }
+    ]
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}

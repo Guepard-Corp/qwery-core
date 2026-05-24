@@ -1,45 +1,38 @@
-import { Client, type QueryResult as PgQueryResult } from 'pg';
-import type { ConnectionOptions } from 'tls';
-
-import type {
-  DriverContext,
-  IDataSourceDriver,
-  DatasourceResultSet,
-  PrimaryKeyRow,
-  ForeignKeyRow,
-} from '@qwery/extensions-sdk';
 import {
   buildMetadataFromInformationSchema,
-  extractConnectionUrl,
-  withTimeout,
+  type DatasourceMetadata,
+  type DatasourceResultSet,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
-} from '@qwery/extensions-sdk';
-
-import type { z } from 'zod';
-
+  type DriverAttachOptions,
+  type DriverAttachResult,
+  type DriverContext,
+  type DriverDetachOptions,
+  escapeSqlIdentifier,
+  escapeSqlStringLiteral,
+  extractConnectionUrl,
+  type ForeignKeyRow,
+  getQueryEngineConnection,
+  type IDataSourceDriver,
+  makeDriver,
+  type PrimaryKeyRow,
+  withTimeout,
+} from '@qwery/extension-sdk';
+import { Client, type QueryResult as PgQueryResult } from 'pg';
 import { schema } from './schema';
 
-type Config = z.infer<typeof schema>;
+const MAX_ATTACHED_TABLES = 50;
 
-export function buildPostgresConfig(config: Config) {
-  // Extract connection URL (either from connectionUrl or build from fields)
-  const connectionUrl = extractConnectionUrl(
-    config as Record<string, unknown>,
-    'postgresql',
-  );
-  return buildPgConfig(connectionUrl);
+function catalogNameFor(slug: string | undefined, id: string | undefined): string {
+  const seed = (slug ?? id ?? 'db').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  return `pg_${seed}`.slice(0, 60);
 }
 
+/** Translate a cleaned `postgresql://` URL into a `pg` client config. */
 function buildPgConfig(connectionUrl: string) {
   const url = new URL(connectionUrl);
   const sslmode = url.searchParams.get('sslmode');
-  const ssl: ConnectionOptions | undefined =
-    sslmode === 'require'
-      ? {
-        rejectUnauthorized: false,
-        checkServerIdentity: () => undefined,
-      }
-      : undefined;
+  const ssl =
+    sslmode === 'require' ? { rejectUnauthorized: false, checkServerIdentity: () => undefined } : undefined;
 
   return {
     user: url.username ? decodeURIComponent(url.username) : undefined,
@@ -51,17 +44,16 @@ function buildPgConfig(connectionUrl: string) {
   };
 }
 
-export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
+export const driverFactory = makeDriver((context: DriverContext): IDataSourceDriver => {
   const parsedConfig = schema.parse(context.config);
   const connectionUrl = extractConnectionUrl(parsedConfig as Record<string, unknown>, 'postgresql');
 
   const withClient = async <T>(
-    config: { connectionUrl: string },
     callback: (client: Client) => Promise<T>,
     timeoutMs: number = DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
   ): Promise<T> => {
     const clientPromise = (async () => {
-      const client = new Client(buildPgConfig(config.connectionUrl));
+      const client = new Client(buildPgConfig(connectionUrl));
       try {
         await client.connect();
         return await callback(client);
@@ -93,18 +85,14 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
 
   return {
     async testConnection(): Promise<void> {
-      await withClient(
-        { connectionUrl },
-        async (client) => {
-          await client.query('SELECT 1');
-        },
-        DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
-      );
+      await withClient(async (client) => {
+        await client.query('SELECT 1');
+      });
       context.logger?.info?.('postgres: testConnection ok');
     },
 
-    async metadata() {
-      const rows = await withClient({ connectionUrl }, async (client) => {
+    async metadata(): Promise<DatasourceMetadata> {
+      const rows = await withClient(async (client) => {
         const result = await client.query<{
           table_schema: string;
           table_name: string;
@@ -126,7 +114,7 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
         return result.rows;
       });
 
-      const primaryKeyRows = await withClient({ connectionUrl }, async (client) => {
+      const primaryKeyRows = await withClient(async (client) => {
         const result = await client.query<{
           table_schema: string;
           table_name: string;
@@ -146,7 +134,7 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
         return result.rows;
       });
 
-      const foreignKeyRows = await withClient({ connectionUrl }, async (client) => {
+      const foreignKeyRows = await withClient(async (client) => {
         const result = await client.query<{
           constraint_name: string;
           source_schema: string;
@@ -186,10 +174,7 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
     },
 
     async query(sql: string): Promise<DatasourceResultSet> {
-      const { rows, rowCount, fields } = (await withClient(
-        { connectionUrl },
-        (client) => client.query(sql),
-      )) as PgQueryResult;
+      const { rows, rowCount, fields } = (await withClient((client) => client.query(sql))) as PgQueryResult;
 
       return {
         columns: collectColumns(fields),
@@ -198,13 +183,75 @@ export function makePostgresDriver(context: DriverContext): IDataSourceDriver {
       };
     },
 
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error('postgresql: queryEngineConnection is required in DriverContext');
+      }
+      const catalog = catalogNameFor(options.datasourceSlug, options.datasourceId);
+
+      // Install/load the DuckDB postgres scanner and (re)attach the catalog in
+      // read-only mode so the agent cannot accidentally mutate the upstream DB.
+      await conn.run('INSTALL postgres;');
+      await conn.run('LOAD postgres;');
+      // Idempotent: detach a stale catalog with the same name from a previous run.
+      try {
+        await conn.run(`DETACH ${catalog};`);
+      } catch {
+        /* nothing was attached — fine */
+      }
+      await conn.run(
+        `ATTACH '${escapeSqlStringLiteral(connectionUrl)}' AS ${catalog} (TYPE postgres, READ_ONLY);`,
+      );
+
+      // List user tables in the upstream Postgres via `pg` (the extension's
+      // own driver). We could query DuckDB's information_schema once attached,
+      // but pg gives us richer error messages on auth/network issues and is
+      // already used by `metadata()`.
+      const tableRows = await withClient(async (client) => {
+        const result = await client.query<{ table_schema: string; table_name: string }>(
+          `SELECT table_schema, table_name
+             FROM information_schema.tables
+            WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+              AND table_type = 'BASE TABLE'
+            ORDER BY table_schema, table_name
+            LIMIT ${MAX_ATTACHED_TABLES + 1};`,
+        );
+        return result.rows;
+      });
+      if (tableRows.length > MAX_ATTACHED_TABLES) {
+        context.logger?.warn?.(
+          `postgresql: ${tableRows.length} tables found, only the first ${MAX_ATTACHED_TABLES} are surfaced to the agent`,
+        );
+      }
+      const tables = tableRows.slice(0, MAX_ATTACHED_TABLES).map((row) => ({
+        schema: row.table_schema,
+        table: row.table_name,
+        path: `"${escapeSqlIdentifier(catalog)}"."${escapeSqlIdentifier(row.table_schema)}"."${escapeSqlIdentifier(row.table_name)}"`,
+      }));
+      context.logger?.info?.(
+        `postgresql: attached '${connectionUrl.replace(/:[^:@/]*@/, ':***@')}' as ${catalog} (${tables.length} table${tables.length === 1 ? '' : 's'})`,
+      );
+      return { tables };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) {
+        throw new Error('postgresql: queryEngineConnection is required in DriverContext');
+      }
+      const catalog = catalogNameFor(options.datasourceSlug, options.datasourceId);
+      try {
+        await conn.run(`DETACH ${catalog};`);
+      } catch {
+        /* already detached */
+      }
+    },
+
     async close() {
       context.logger?.info?.('postgres: closed');
     },
   };
-}
+});
 
-// Expose a stable factory export for the runtime loader
-export const driverFactory = makePostgresDriver;
 export default driverFactory;
-

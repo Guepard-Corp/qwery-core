@@ -1,5 +1,5 @@
-import { CodeDescription } from './code';
-import { Optional } from './common-types';
+import type { CodeDescription } from './code';
+import type { Optional } from './common-types';
 
 export type CreateExceptionPayload<TData> = {
   code: CodeDescription;
@@ -12,11 +12,7 @@ export class Exception<TData> extends Error {
 
   public readonly data: Optional<TData>;
 
-  private constructor(
-    codeDescription: CodeDescription,
-    overrideMessage?: string,
-    data?: TData,
-  ) {
+  private constructor(codeDescription: CodeDescription, overrideMessage?: string, data?: TData) {
     super();
 
     this.name = this.constructor.name;
@@ -24,12 +20,13 @@ export class Exception<TData> extends Error {
     this.data = data;
     this.message = overrideMessage || codeDescription.message;
 
-    Error.captureStackTrace(this, this.constructor);
+    const captureStackTrace = (
+      Error as { captureStackTrace?: (target: object, ctor: (...args: never[]) => unknown) => void }
+    ).captureStackTrace;
+    if (captureStackTrace) captureStackTrace(this, this.constructor as (...args: never[]) => unknown);
   }
 
-  public static new<TData>(
-    payload: CreateExceptionPayload<TData>,
-  ): Exception<TData> {
+  public static new<TData>(payload: CreateExceptionPayload<TData>): Exception<TData> {
     return new Exception(payload.code, payload.overrideMessage, payload.data);
   }
 }

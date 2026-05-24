@@ -1,0 +1,45 @@
+{
+  "name": "@qwery/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "qwery": "./src/main.tsx"
+  },
+  "exports": {
+    "./app": "./src/app.tsx",
+    "./services": "./src/services.tsx"
+  },
+  "scripts": {
+    "start": "bun run src/main.tsx",
+    "dev": "bun --watch run src/main.tsx"
+  },
+  "dependencies": {
+    "@qwery/application": "workspace:*",
+    "@qwery/agent-factory-sdk": "workspace:*",
+    "@qwery/adapter-branching-gfs": "workspace:*",
+    "@qwery/adapter-compute-duckdb": "workspace:*",
+    "@qwery/adapter-llm-aisdk": "workspace:*",
+    "@qwery/adapter-model-catalog-http": "workspace:*",
+    "@qwery/adapter-persistence-sqlite": "workspace:*",
+    "@qwery/adapter-semantic-inprocess": "workspace:*",
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
+    "@qwery/telemetry": "workspace:*",
+    "@qwery/extension-csv-local": "workspace:*",
+    "@qwery/extension-xlsx-local": "workspace:*",
+    "@qwery/extension-parquet": "workspace:*",
+    "@qwery/extension-postgresql": "workspace:*",
+    "@qwery/extension-csv-online": "workspace:*",
+    "@qwery/extension-json-online": "workspace:*",
+    "@qwery/extension-gsheet-csv": "workspace:*",
+    "@qwery/extension-s3": "workspace:*",
+    "@qwery/extension-duckdb": "workspace:*",
+    "@qwery/extension-mysql": "workspace:*",
+    "@qwery/extension-clickhouse-node": "workspace:*",
+    "ai": "^6.0.191",
+    "ink": "^7.0.3",
+    "ink-spinner": "^5.0.0",
+    "react": "^19.2.6"
+  }
+}

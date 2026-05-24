@@ -3,6 +3,7 @@ export type CodeDescription = {
   message: string;
 };
 
+// biome-ignore lint/complexity/noStaticOnlyClass: intentional namespaced registry of error codes (Code.X)
 export class Code {
   // Common
 

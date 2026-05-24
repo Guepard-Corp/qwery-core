@@ -1,77 +1,21 @@
 {
   "name": "@qwery/telemetry",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "clean": "git clean -xdf .turbo node_modules",
-    "format": "prettier --check \"**/*.{ts,tsx}\"",
-    "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
-    "lint:fix": "eslint --cache --cache-location ./node_modules/.cache/eslint --fix .",
-    "typecheck": "tsc --noEmit"
-  },
+  "version": "0.0.1",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./otel": "./src/otel/index.ts",
-    "./otel/utils": "./src/otel/utils.ts",
-    "./otel/agent-helpers": "./src/otel/agent-helpers.ts",
-    "./otel/node": "./src/otel/node/index.ts",
-    "./node": "./src/otel/node/index.ts",
-    "./providers/node": "./src/providers/node.ts",
-    "./events/agent.events": "./src/events/agent.events.ts",
-    "./events/cli.events": "./src/events/cli.events.ts",
-    "./events/web.events": "./src/events/web.events.ts",
-    "./events/desktop.events": "./src/events/desktop.events.ts",
-    "./opentelemetry": "./src/otel/index.ts",
-    "./opentelemetry/telemetry-utils": "./src/otel/utils.ts",
-    "./opentelemetry/node": "./src/otel/node/index.ts"
+    "./events": "./src/events/index.ts"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.2",
+    "@qwery/domain": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.208.0",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.208.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-metrics": "^2.2.0",
     "@opentelemetry/sdk-node": "^0.208.0",
-    "@opentelemetry/sdk-trace-base": "^2.2.0",
-    "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "@posthog/react": "^1.4.0",
-    "dotenv": "^16.6.1",
-    "posthog-js": "^1.292.0",
-    "sentry": "^0.1.2",
-    "uuid": "^11.0.3"
-  },
-  "devDependencies": {
-    "@qwery/eslint-config": "workspace:*",
-    "@qwery/i18n": "workspace:*",
-    "@qwery/prettier-config": "workspace:*",
-    "@qwery/tailwind-config": "workspace:*",
-    "@qwery/tsconfig": "workspace:*",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "eslint": "^9.39.0",
-    "lucide-react": "^0.552.0",
-    "next-themes": "0.4.6",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "react-hook-form": "^7.66.0",
-    "react-i18next": "^16.2.3",
-    "sonner": "^2.0.7",
-    "zod": "catalog:"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
-  },
-  "prettier": "@qwery/prettier-config",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "src/*"
-      ]
-    }
+    "@sentry/node": "^10.53.1",
+    "posthog-node": "^5.35.1"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "name": "@qwery/adapter-persistence-sqlite",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*"
+  }
+}

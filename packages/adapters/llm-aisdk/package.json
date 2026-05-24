@@ -1,0 +1,15 @@
+{
+  "name": "@qwery/adapter-llm-aisdk",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "@ai-sdk/amazon-bedrock": "^4.0.108",
+    "@ai-sdk/azure": "^3.0.66",
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "ai": "^6.0.191"
+  }
+}

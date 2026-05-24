@@ -31,11 +31,7 @@ export function shortenId(id: string): string {
   // Ensure all values are positive and within safe integer range
   // Use modulo to keep within reasonable bounds for Sqids
   const MAX_SAFE = Number.MAX_SAFE_INTEGER;
-  const numbers = [
-    Math.abs(hash1) % MAX_SAFE,
-    Math.abs(hash2) % MAX_SAFE,
-    Math.abs(hash3) % MAX_SAFE,
-  ];
+  const numbers = [Math.abs(hash1) % MAX_SAFE, Math.abs(hash2) % MAX_SAFE, Math.abs(hash3) % MAX_SAFE];
 
   // Encode with minLength 10 - will return at least 10 characters (typically 14+)
   const encoded = sqids.encode(numbers);

@@ -1,0 +1,12 @@
+{
+  "name": "@qwery/adapter-compute-duckdb",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "@duckdb/node-api": "1.5.3-r.1"
+  }
+}

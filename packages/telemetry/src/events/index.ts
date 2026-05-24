@@ -1,9 +1,2 @@
-// PostHog events
-export * from './notebook_events';
-export * from './project_events';
-
-// OpenTelemetry events
-export * from './agent.events';
-export * from './cli.events';
-export * from './desktop.events';
-export * from './web.events';
+export { AGENT_EVENTS, type AgentEventName } from './agent.events';
+export { CLI_EVENTS, type CliEventName } from './cli.events';

@@ -1,8 +1,8 @@
 ![Guepard](/resources/guepard-cover.png)
 
 <div align="center">
-    <h1>The Boring Qwery Platform - Connect and query anything</h1>
-    <br />  
+    <h1>Qwery: the AI data agent in your terminal</h1>
+    <br />
     <p align="center">
     <a href="https://youtu.be/WlOkLnoY2h8?si=hb6-7kLhlOvVL1u6">
         <img src="https://img.shields.io/badge/Watch-YouTube-%23ffcb51?logo=youtube&logoColor=black" alt="Watch on YouTube" />
@@ -10,14 +10,14 @@
     <a href="https://discord.gg/nCXAsUd3hm">
         <img src="https://img.shields.io/badge/Join-Community-%23ffcb51?logo=discord&logoColor=black" alt="Join our Community" />
     </a>
-    <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/build_and_test.yml" target="_blank">
+    <a href="https://github.com/Guepard-Corp/qwery-core/actions/workflows/ci.yml" target="_blank">
         <img src="https://img.shields.io/github/actions/workflow/status/Guepard-Corp/qwery-core/ci.yml?branch=main" alt="Build">
     </a>
     <a href="https://github.com/Guepard-Corp/qwery-core/blob/main/LICENCE" target="_blank">
-        <img src="https://img.shields.io/badge/license-ELv2-blue.svg" alt="License" />
+        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
     </a>
-    <a href="https://nodejs.org/" target="_blank">
-        <img src="https://img.shields.io/badge/node-%3E%3D22.x-brightgreen" alt="Node Version" />
+    <a href="https://bun.sh/" target="_blank">
+        <img src="https://img.shields.io/badge/bun-%3E%3D1.3-brightgreen" alt="Bun Version" />
     </a>
     <a href="https://github.com/Guepard-Corp/qwery-core/pulls" target="_blank">
         <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
@@ -29,174 +29,114 @@
 
 🚧 This project is under active development and not yet suitable for production use. Expect breaking changes, incomplete features, and evolving APIs.
 
-# Qwery Platform - The Vision
+# Qwery: The Vision
 
-Qwery is the most capable platform for querying and visualizing data without requiring any prior technical knowledge in data engineering. Using natural language in any supported language, Qwery seamlessly integrates with hundreds of datasources, automatically generates optimized queries, and delivers outcomes across multiple targets including result sets, dashboards, data apps, reports, and APIs.
+Qwery is an AI data analyst that lives in your terminal. Ask questions in plain language; Qwery connects to your datasources, generates the SQL, runs it locally, and answers, without you ever leaving the keyboard.
 
-### Getting Started
+It pairs two agents (a **DataAgent** for analysis and a **CodingAgent** for building scripts and apps) behind a single TUI.
 
-1. **Choose your environment**: Download the desktop application or connect to the [Qwery Cloud Platform](https://app.qwery.run)
-2. **Connect your data**: Link to your databases, APIs, or other datasources
-3. **Start querying**: Use natural language to query your datasources instantly
-4. **Work with AI agents**: Press `CMD/CTRL + L` to collaborate with intelligent agents that assist with your data workflows
+### Privacy by design
+
+Row-level data never leaves your machine and is never sent to the LLM. Queries run in a local query engine; the model only ever sees schemas, aggregate scalars, and locally-rendered output. Destructive operations are protected by [GFS](https://github.com/Guepard-Corp/gfs) ("git for databases"): the agent can branch and snapshot a database before touching it.
 
 ## 🌟 Features
 
-- **Natural Language Querying**: Ask questions in plain language, get SQL automatically
-- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB, DuckDB, ClickHouse, SQL Server, and more
-- **AI-Powered Agents**: Intelligent assistants that help with data workflows (CMD/CTRL + L)
-- **Visual Data Apps**: Build dashboards and data applications without code
-- **Desktop & Cloud**: Run locally or use our cloud platform
-- **Template Library**: Pre-built notebooks, queries, and dashboards
-- **Extensible**: Plugin system for custom datasources and integrations
+- **Natural-language querying**: ask in plain language, get SQL automatically.
+- **Privacy-preserving**: a local query engine keeps row data on your machine; only schemas/aggregates reach the LLM.
+- **Two agents**: a DataAgent (analysis) and a CodingAgent (build/edit scripts and apps).
+- **GFS safety net**: branch/commit/time-travel a database before destructive operations.
+- **Many datasources via extensions**: PostgreSQL, MySQL, ClickHouse, DuckDB, CSV (local & online), Parquet, JSON, Google Sheets, S3, Excel (.xlsx).
+- **Bring your own model**: configure any provider in-app via `/models` (Ollama local & cloud, Azure OpenAI, AWS Bedrock, and any OpenAI-compatible endpoint).
+- **Extensible**: an extension SDK for custom datasources.
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js >= 22.x
-- pnpm >= 10.x
-
-### Installation
+### Install (recommended)
 
 ```bash
-# Clone the repository
+curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-agent/main/install | bash
+```
+
+This installs `qwery` (and the GFS engine) under `~/.qwery` and adds it to your `PATH`. Then just run:
+
+```bash
+qwery
+```
+
+Once in the TUI, press `/models` to connect a provider. No API keys live in environment variables; provider configuration is stored under `~/.qwery`.
+
+> **Try it for free with Ollama:** install [Ollama](https://ollama.com), pull a tool-capable model (e.g. `ollama pull qwen3-coder:30b`), then in `/models` pick **Ollama (local)** and point it at `http://localhost:11434/v1`.
+
+### Run from source
+
+Prerequisites: [Bun](https://bun.sh) >= 1.3.
+
+```bash
 git clone https://github.com/Guepard-Corp/qwery-core.git
 cd qwery-core
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm server:dev
-pnpm web:dev
-```
-
-The web app will be available at `http://localhost:3000`
-
-**Using apps/web with apps/server**: To have the web app use the API server (file repositories) instead of in-app API routes, start the server (`pnpm --filter server dev`, port 4096) and set `VITE_API_URL=http://localhost:4096/api` in `apps/web/.env`. Then start the web app (`pnpm --filter web dev`). Flow: Web Browser → SSR/Loader → apps/server Hono.
-
-### Test with Ollama Cloud Free Models
-
-If you want to try the product without wiring a paid provider first, you can use `ollama-cloud` and point the app at one of its free models.
-
-1. Create an Ollama Cloud API key
-2. Copy `apps/server/.env.example` to `apps/server/.env`
-3. Copy `apps/web/.env.example` to `apps/web/.env`
-4. Add the `ollama-cloud` settings below to both files
-
-```dotenv
-AGENT_PROVIDER=ollama-cloud
-OLLAMA_API_KEY=your_ollama_cloud_api_key
-OLLAMA_MODEL=minimax-m2.7
-```
-
-Currently free models for testing:
-
-- `deepseek-v3.2`
-- `devstral-small-2:24b`
-- `gemma4:31b-cloud`
-- `glm-4.7`
-- `gpt-oss:120b`
-- `minimax-m2.5`
-- `minimax-m2.7`
-- `nemotron-3-super`
-- `mistral-large-3:675b`
-- `qwen3.5:397b`
-
-You can swap `OLLAMA_MODEL` to any of those values. The app will route requests to `https://ollama.com/v1` when `AGENT_PROVIDER=ollama-cloud`.
-
-Then start the apps normally:
-
-```bash
-pnpm --filter server dev
-pnpm --filter web dev
-```
-
-### Local connectivity fix (hostname pitfall)
-
-On some systems, the `HOSTNAME` environment variable contains your PC name (for example `my-laptop`) instead of a bind address, which can make the server unreachable from other devices.
-
-To force a proper bind address, set `HOSTNAME` explicitly before starting the server.
-
-Example:
-
-```bash
-HOSTNAME=0.0.0.0 pnpm --filter server dev
-```
-
-Use `0.0.0.0` when you want the server reachable from your local network.
-
-### Desktop Application
-
-```bash
-# Build and run desktop app
-pnpm desktop:dev
+bun install
+bun start        # launch the TUI (use `bun dev` for --watch)
 ```
 
 ## 🛠️ Development
 
-### Monorepo Structure
+### Monorepo structure
 
-This is a Turborepo monorepo with the following structure:
+A Bun + Turborepo monorepo with a hexagonal architecture (see [AGENTS.md](AGENTS.md)):
 
-- `apps/web` - Main React Router SaaS application
-- `apps/desktop` - Desktop application (Electron)
-- `packages/features/*` - Feature packages
-- `packages/` - Shared packages and utilities
-- `tooling/` - Build tools and development scripts
+- `apps/cli`: the Ink TUI (primary adapter)
+- `apps/e2e`: end-to-end tests driving the real TUI
+- `evals/`: real-model evaluation suite (NL→SQL correctness, etc.)
+- `packages/domain`: entities, value objects, and ports (no I/O)
+- `packages/application`: use cases orchestrating the domain
+- `packages/agent-factory-sdk`: the agent loop, tools, and compaction
+- `packages/adapters/*`: `compute-duckdb`, `llm-aisdk`, `persistence-sqlite`, `model-catalog-http`, `branching-gfs`, `semantic-inprocess`
+- `packages/extension-sdk` + `packages/extensions/*`: datasource extensions
+- `tooling/`: dependency-cruiser, privacy and coverage checks
 
-### Development Commands
+### Commands
 
 ```bash
-# Start all apps in development mode
-pnpm dev
+bun start                 # launch the TUI
+bun dev                   # launch with --watch
 
-# Start specific app
-pnpm --filter server dev     # Server app
-pnpm --filter web dev        # Web app (port 3000)
-pnpm desktop:dev             # Desktop app (Tauri)
-pnpm --filter tui dev        # Terminal app
+bun run lint              # Biome lint + format check (bun run lint:fix to apply)
+bun run typecheck         # tsc -b
+bun test                  # unit + component tests (bun:test)
+bun run check:arch        # hexagonal boundaries (dependency-cruiser)
+bun run check:privacy     # privacy invariant (no row data crosses the LLM line)
+bun run coverage          # test coverage + ADR #16 tiered gate
+bun run check:all         # lint + typecheck + arch + privacy + coverage
 
-# Code Quality
-pnpm format:fix              # Auto-fix formatting
-pnpm lint:fix                # Auto-fix linting issues
-pnpm typecheck               # Type checking
-pnpm check                   # Run all quality checks (format, lint, typecheck, build, test)
-
-# Build
-pnpm build                   # Build all packages
-
-# Testing
-pnpm test                    # Run all tests
+cd apps/e2e && bun test   # TUI end-to-end tests
+cd evals && bun run evals # real-model evals (defaults to a local Ollama; skips if none)
 ```
 
-### Code Quality Standards
+### Code quality standards
 
-- **TypeScript**: Strict type checking, avoid `any` types
-- **Linting**: ESLint with strict rules
-- **Formatting**: Prettier with consistent style
-- **Testing**: Vitest for unit tests, Playwright for E2E
+- **TypeScript**: strict typing, no `any`.
+- **Lint & format**: [Biome](https://biomejs.dev).
+- **Architecture**: hexagonal boundaries enforced by `dependency-cruiser`.
+- **Tests**: `bun:test` for unit/component, `apps/e2e` for end-to-end, `evals/` for real-model checks.
 
-Always run `pnpm check` before committing to ensure all quality checks pass.
+Run `bun run check:all` before committing.
 
 ## 📚 Documentation
 
 - [Contributing Guide](CONTRIBUTING.md)
-- [Pull Request Guide](docs/contribution/pull-request-guide.md)
-- [Desktop App Documentation](docs/desktop.md)
-- [RFCs](docs/rfcs/)
+- [Agent & contributor guidelines](AGENTS.md)
+- [E2E test plan](apps/e2e/PLAN.md)
 
 ## 🤝 Contributing
 
 We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-### Before Submitting
+### Before submitting
 
-1. Run `pnpm check` to ensure all quality checks pass
-2. Make sure your code follows our [TypeScript guidelines](AGENTS.md#typescript)
-3. Write tests for new features
-4. Update documentation as needed
+1. Run `bun run check:all` to ensure all quality checks pass.
+2. Follow our [TypeScript guidelines](AGENTS.md).
+3. Write tests for new features (a change without tests is incomplete).
+4. Update documentation as needed.
 
 ### Resources
 
@@ -205,7 +145,7 @@ We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to
 - Check [AGENTS.md](AGENTS.md) for development guidelines
 - Join our [Discord community](https://discord.gg/nCXAsUd3hm)
 
-## 💬 Join Qwery Community
+## 💬 Join the Qwery Community
 
 - **Discord**: [Join our Discord](https://discord.gg/nCXAsUd3hm) for discussions and support
 - **GitHub Issues**: Report bugs and request features
@@ -213,7 +153,7 @@ We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to
 
 ## 📄 License
 
-This project uses the Elastic License 2.0 (ELv2). See the [LICENSE](LICENCE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENCE) file for details.
 
 ## 🙏 Thank You
 

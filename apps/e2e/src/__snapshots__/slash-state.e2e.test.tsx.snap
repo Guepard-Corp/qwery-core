@@ -1,0 +1,67 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`e2e: Tier 2 slash commands /layout toggles split → focus (TabBar appears) 1`] = `
+" qwery · v0.0.1
+ ▸ Chat    Results  Tab: switch · Ctrl+C: quit
+ ─────────────────────────────────────────────
+
+ Ask me about data. Try: "what is in data/sales.csv?" or "top 3 countries by revenue".
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
+ │ ›                                                                                              │
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+  no provider · /models  DataAgent                                                           ready"
+`;
+
+exports[`e2e: Tier 2 slash commands /clear removes prior chat entries 1`] = `
+" qwery · v0.0.1
+ Chat                                             │ Results
+                                                  │
+                                                  │
+ Ask me about data. Try: "what is in              │ No result yet.
+ data/sales.csv?" or "top 3 countries by          │ ⌃R last present · ⌃I last schema · ⌃L toggle
+ revenue".                                        │ SQL view
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+ ╭──────────────────────────────────────────────╮ │
+ │ ›                                            │ │
+ ╰──────────────────────────────────────────────╯ │
+  no provider · /models  DataAgent        ready   │"
+`;

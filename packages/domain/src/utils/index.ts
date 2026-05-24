@@ -1,3 +1,3 @@
 export * from './identity.generator';
-export * from './schema-secrets';
+export * from './model-cost';
 export * from './shorten-id';

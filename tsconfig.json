@@ -1,27 +1,30 @@
 {
-  "compilerOptions": {
-    "target": "es2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "allowJs": true,
-    "checkJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "noUncheckedIndexedAccess": true
-  },
-  "exclude": [
-    "node_modules"
+  "files": [],
+  "references": [
+    { "path": "packages/domain" },
+    { "path": "packages/application" },
+    { "path": "packages/telemetry" },
+    { "path": "packages/agent-factory-sdk" },
+    { "path": "packages/extension-sdk" },
+    { "path": "packages/adapters/branching-gfs" },
+    { "path": "packages/adapters/compute-duckdb" },
+    { "path": "packages/adapters/llm-aisdk" },
+    { "path": "packages/adapters/persistence-sqlite" },
+    { "path": "packages/adapters/model-catalog-http" },
+    { "path": "packages/adapters/semantic-inprocess" },
+    { "path": "packages/extensions/csv-local" },
+    { "path": "packages/extensions/xlsx-local" },
+    { "path": "packages/extensions/parquet" },
+    { "path": "packages/extensions/postgresql" },
+    { "path": "packages/extensions/csv-online" },
+    { "path": "packages/extensions/json-online" },
+    { "path": "packages/extensions/gsheet-csv" },
+    { "path": "packages/extensions/s3" },
+    { "path": "packages/extensions/duckdb" },
+    { "path": "packages/extensions/mysql" },
+    { "path": "packages/extensions/clickhouse-node" },
+    { "path": "apps/cli" },
+    { "path": "apps/e2e" },
+    { "path": "evals" }
   ]
 }

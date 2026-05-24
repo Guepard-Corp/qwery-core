@@ -1,0 +1,133 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
+" qwery · v0.0.1
+ Chat                                             │ Results
+                                                  │
+                                                  │
+ Slash commands: /models, /datasources, /agents,  │ No result yet.
+ /context, /data, /code, /auto, /layout, /resume, │ ⌃R last present · ⌃I last schema · ⌃L toggle
+  /clear, /help, /logs, /update, /quit.           │ SQL view
+ Hotkeys: Tab (switch view, focus mode), Ctrl+B   │
+ (toggle split), Ctrl+R (last data), Ctrl+I (last │
+  schema), Ctrl+L (toggle SQL view), Ctrl+C       │
+ (quit), ↑/↓ (history).                           │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+ ╭──────────────────────────────────────────────╮ │
+ │ ›                                            │ │
+ ╰──────────────────────────────────────────────╯ │
+  no provider · /models  DataAgent        ready   │"
+`;
+
+exports[`e2e: Tier 1 slash commands /data → "Agent routing pinned to: DataAgent." 1`] = `
+" qwery · v0.0.1
+ Chat                                             │ Results
+                                                  │
+                                                  │
+ Agent routing pinned to: DataAgent.              │ No result yet.
+                                                  │ ⌃R last present · ⌃I last schema · ⌃L toggle
+                                                  │ SQL view
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+ ╭──────────────────────────────────────────────╮ │
+ │ ›                                            │ │
+ ╰──────────────────────────────────────────────╯ │
+  no provider · /models  DataAgent ·pinnedready   │"
+`;
+
+exports[`e2e: Tier 1 slash commands /code → "Agent routing pinned to: CodingAgent." 1`] = `
+" qwery · v0.0.1
+ Chat                                             │ Results
+                                                  │
+                                                  │
+ Agent routing pinned to: CodingAgent.            │ No result yet.
+                                                  │ ⌃R last present · ⌃I last schema · ⌃L toggle
+                                                  │ SQL view
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+ ╭──────────────────────────────────────────────╮ │
+ │ ›                                            │ │
+ ╰──────────────────────────────────────────────╯ │
+  no provider · /models CodingAgen ·pinnedready   │
+                                                  │"
+`;
+
+exports[`e2e: Tier 1 slash commands /auto → "Agent routing pinned to: auto (heuristic)." 1`] = `
+" qwery · v0.0.1
+ Chat                                             │ Results
+                                                  │
+                                                  │
+ Agent routing pinned to: auto (heuristic).       │ No result yet.
+                                                  │ ⌃R last present · ⌃I last schema · ⌃L toggle
+                                                  │ SQL view
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+                                                  │
+ ╭──────────────────────────────────────────────╮ │
+ │ ›                                            │ │
+ ╰──────────────────────────────────────────────╯ │
+  no provider · /models  DataAgent        ready   │"
+`;

@@ -1,233 +1,191 @@
-import { createConnection, type Connection } from 'mysql2/promise';
-import type { z } from 'zod';
-
-import type {
-  DriverContext,
-  IDataSourceDriver,
-  DatasourceResultSet,
-  DatasourceMetadata,
-} from '@qwery/extensions-sdk';
 import {
   buildMetadataFromInformationSchema,
-  extractConnectionUrl,
-  withTimeout,
+  type DatasourceMetadata,
+  type DatasourceResultSet,
   DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
-} from '@qwery/extensions-sdk';
-
+  type DriverAttachOptions,
+  type DriverAttachResult,
+  type DriverContext,
+  type DriverDetachOptions,
+  escapeSqlIdentifier,
+  escapeSqlStringLiteral,
+  extractConnectionUrl,
+  getQueryEngineConnection,
+  type IDataSourceDriver,
+  type InformationSchemaRow,
+  makeDriver,
+  withTimeout,
+} from '@qwery/extension-sdk';
+import { type Connection, createConnection } from 'mysql2/promise';
 import { schema } from './schema';
 
-type Config = z.infer<typeof schema>;
+const MAX_ATTACHED_TABLES = 50;
+const escId = escapeSqlIdentifier;
+const escStr = escapeSqlStringLiteral;
 
-export function buildMysqlConfigFromFields(fields: Config) {
-  // Extract connection URL (either from connectionUrl or build from fields)
-  const connectionUrl = extractConnectionUrl(
-    fields as Record<string, unknown>,
-    'mysql',
-  );
-  return buildMysqlConfig(connectionUrl);
+export function catalogNameFor(slug?: string, id?: string): string {
+  const seed = (slug ?? id ?? 'db').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  return `mysql_${seed}`.slice(0, 60);
 }
 
-function buildMysqlConfig(connectionUrl: string) {
-  // Handle mysql:// URL format
-  if (connectionUrl.startsWith('mysql://')) {
-    const url = new URL(connectionUrl);
-    const ssl = url.searchParams.get('ssl') === 'true';
-
-    return {
-      user: url.username ? decodeURIComponent(url.username) : undefined,
-      password: url.password ? decodeURIComponent(url.password) : undefined,
-      host: url.hostname,
-      port: url.port ? Number(url.port) : 3306,
-      database: url.pathname ? url.pathname.replace(/^\//, '') || undefined : undefined,
-      ssl: ssl
-        ? {
-          rejectUnauthorized: false,
-        }
-        : undefined,
-    };
-  }
-
-  // Handle space-separated format (for backward compatibility with DuckDB format)
-  // Format: "host=... port=... user=... password=... database=..."
-  const config: {
-    user?: string;
-    password?: string;
-    host?: string;
-    port?: number;
-    database?: string;
-    ssl?: { rejectUnauthorized: boolean };
-  } = {};
-
-  const parts = connectionUrl.split(/\s+/);
-  for (const part of parts) {
-    const [key, ...valueParts] = part.split('=');
-    const value = valueParts.join('=');
-    if (key && value) {
-      switch (key.toLowerCase()) {
-        case 'host':
-          config.host = value;
-          break;
-        case 'port':
-          config.port = Number(value) || 3306;
-          break;
-        case 'user':
-        case 'username':
-          config.user = value;
-          break;
-        case 'password':
-          config.password = value;
-          break;
-        case 'database':
-        case 'db':
-          config.database = value;
-          break;
-        case 'ssl':
-          if (value === 'true') {
-            config.ssl = { rejectUnauthorized: false };
-          }
-          break;
-      }
-    }
-  }
-
+/** Translate a `mysql://` URL into a `mysql2` connection config (native data access). */
+export function buildMysqlConfig(connectionUrl: string) {
+  const url = new URL(connectionUrl);
+  const ssl = url.searchParams.get('ssl') === 'true';
   return {
-    user: config.user,
-    password: config.password,
-    host: config.host || 'localhost',
-    port: config.port || 3306,
-    database: config.database,
-    ssl: config.ssl,
+    host: url.hostname,
+    port: url.port ? Number(url.port) : 3306,
+    user: url.username ? decodeURIComponent(url.username) : undefined,
+    password: url.password ? decodeURIComponent(url.password) : undefined,
+    database: url.pathname ? url.pathname.replace(/^\//, '') || undefined : undefined,
+    ssl: ssl ? { rejectUnauthorized: false } : undefined,
   };
 }
 
-export function makeMysqlDriver(context: DriverContext): IDataSourceDriver {
+/**
+ * The DuckDB `mysql` scanner wants a libmysql DSN (`host=… port=… user=…`),
+ * NOT a `mysql://` URL (unlike the postgres scanner). Used only by `attach`,
+ * which federates into the host query engine.
+ */
+export function buildMysqlAttachDsn(connectionUrl: string): string {
+  const url = new URL(connectionUrl);
+  const parts = [`host=${url.hostname}`, `port=${url.port || '3306'}`];
+  if (url.username) parts.push(`user=${decodeURIComponent(url.username)}`);
+  if (url.password) parts.push(`password=${decodeURIComponent(url.password)}`);
+  const db = url.pathname.replace(/^\//, '');
+  if (db) parts.push(`database=${db}`);
+  return parts.join(' ');
+}
+
+// testConnection / metadata / query are NATIVE (mysql2). attach / detach federate
+// the source into whatever query engine the host runs (DuckDB here, via the
+// mysql scanner) — that is a query-engine concern, not native data access.
+export const driverFactory = makeDriver((context: DriverContext): IDataSourceDriver => {
   const parsedConfig = schema.parse(context.config);
   const connectionUrl = extractConnectionUrl(parsedConfig as Record<string, unknown>, 'mysql');
 
   const withConnection = async <T>(
-    config: { connectionUrl: string },
     callback: (connection: Connection) => Promise<T>,
     timeoutMs: number = DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
   ): Promise<T> => {
-    const connectionPromise = (async () => {
-      const connection = await createConnection(buildMysqlConfig(config.connectionUrl));
+    const promise = (async () => {
+      const connection = await createConnection(buildMysqlConfig(connectionUrl));
       try {
         return await callback(connection);
       } finally {
-        await connection.end();
+        await connection.end().catch(() => undefined);
       }
     })();
-
-    return withTimeout(
-      connectionPromise,
-      timeoutMs,
-      `MySQL connection operation timed out after ${timeoutMs}ms`,
-    );
+    return withTimeout(promise, timeoutMs, `MySQL connection operation timed out after ${timeoutMs}ms`);
   };
-
-  const collectColumns = (fields: Array<{ name: string; type: number }>) =>
-    fields.map((field) => ({
-      name: field.name,
-      displayName: field.name,
-      originalType: String(field.type),
-    }));
-
-  const queryStat = (rowCount: number | null) => ({
-    rowsAffected: rowCount ?? 0,
-    rowsRead: rowCount ?? 0,
-    rowsWritten: 0,
-    queryDurationMs: null,
-  });
 
   return {
     async testConnection(): Promise<void> {
-      await withConnection(
-        { connectionUrl },
-        async (connection) => {
-          await connection.query('SELECT 1');
-        },
-        DEFAULT_CONNECTION_TEST_TIMEOUT_MS,
-      );
+      await withConnection((c) => c.query('SELECT 1'));
       context.logger?.info?.('mysql: testConnection ok');
     },
 
     async metadata(): Promise<DatasourceMetadata> {
-      const rows = await withConnection({ connectionUrl }, async (connection) => {
-        const [results] = await connection.query(`
-          SELECT table_schema,
-                 table_name,
-                 column_name,
-                 data_type,
-                 ordinal_position,
-                 is_nullable
-          FROM information_schema.columns
-          WHERE table_schema NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
-            AND table_schema IS NOT NULL
-            AND table_name IS NOT NULL
-            AND column_name IS NOT NULL
-            AND data_type IS NOT NULL
-            AND ordinal_position IS NOT NULL
-          ORDER BY table_schema, table_name, ordinal_position;
-        `);
-        return Array.isArray(results) ? results : [];
+      const results = await withConnection(async (connection) => {
+        const [rows] = await connection.query(
+          `SELECT table_schema, table_name, column_name, data_type, ordinal_position, is_nullable
+             FROM information_schema.columns
+            WHERE table_schema NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+            ORDER BY table_schema, table_name, ordinal_position;`,
+        );
+        return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
       });
 
-      const getValue = (row: Record<string, unknown>, key: string): unknown => {
-        return row[key] ?? row[key.toUpperCase()];
-      };
+      // MySQL may upper- or lower-case information_schema columns; read both.
+      const val = (row: Record<string, unknown>, key: string): unknown => row[key] ?? row[key.toUpperCase()];
+      const rows: InformationSchemaRow[] = results
+        .map((row) => ({
+          table_schema: String(val(row, 'table_schema') ?? '').trim(),
+          table_name: String(val(row, 'table_name') ?? '').trim(),
+          column_name: String(val(row, 'column_name') ?? '').trim(),
+          data_type: String(val(row, 'data_type') ?? '').trim(),
+          ordinal_position: Number(val(row, 'ordinal_position') ?? 0),
+          is_nullable: String(val(row, 'is_nullable') ?? 'NO').trim(),
+        }))
+        .filter((r) => r.table_schema && r.table_name && r.column_name && r.ordinal_position > 0);
 
-      const normalizedRows = (rows as Array<Record<string, unknown>>).map((row) => ({
-        table_schema: String(getValue(row, 'table_schema') ?? '').trim(),
-        table_name: String(getValue(row, 'table_name') ?? '').trim(),
-        column_name: String(getValue(row, 'column_name') ?? '').trim(),
-        data_type: String(getValue(row, 'data_type') ?? '').trim(),
-        ordinal_position: Number(getValue(row, 'ordinal_position') ?? 0),
-        is_nullable: String(getValue(row, 'is_nullable') ?? 'NO').trim(),
-      })).filter(
-        (r) => r.table_schema && r.table_name && r.column_name && r.data_type && r.ordinal_position > 0,
-      );
-
-      return buildMetadataFromInformationSchema({
-        driver: 'mysql',
-        rows: normalizedRows,
-      });
+      return buildMetadataFromInformationSchema({ driver: 'mysql', rows });
     },
 
     async query(sql: string): Promise<DatasourceResultSet> {
       const startTime = Date.now();
-      const result = await withConnection({ connectionUrl }, (connection) =>
-        connection.query(sql),
-      );
-      const endTime = Date.now();
-
-      // mysql2 returns [rows, fields] as a tuple
-      const [rows, fields] = result as [unknown[], Array<{ name: string; type: number }>];
-      const rowArray = Array.isArray(rows) ? rows : [];
-      const fieldArray = Array.isArray(fields) ? fields : [];
-
-      // Try to get affectedRows from the result if available
-      const affectedRows =
-        (result as unknown as { affectedRows?: number })?.affectedRows ?? rowArray.length;
-
+      const [rows, fields] = await withConnection((c) => c.query(sql));
+      const durationMs = Date.now() - startTime;
+      const rowArray = Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
+      const fieldArray = (Array.isArray(fields) ? fields : []) as Array<{ name: string; type?: number }>;
       return {
-        columns: collectColumns(fieldArray),
-        rows: rowArray as Array<Record<string, unknown>>,
+        columns: fieldArray.map((f) => ({
+          name: f.name,
+          displayName: f.name,
+          originalType: f.type != null ? String(f.type) : null,
+        })),
+        rows: rowArray,
         stat: {
-          rowsAffected: affectedRows,
+          rowsAffected: rowArray.length,
           rowsRead: rowArray.length,
-          rowsWritten: affectedRows,
-          queryDurationMs: endTime - startTime,
+          rowsWritten: 0,
+          queryDurationMs: durationMs,
         },
       };
     },
 
-    async close() {
+    async attach(options: DriverAttachOptions): Promise<DriverAttachResult> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) throw new Error('mysql: queryEngineConnection is required to attach');
+      const catalog = catalogNameFor(options.datasourceSlug, options.datasourceId);
+      await conn.run('INSTALL mysql;');
+      await conn.run('LOAD mysql;');
+      try {
+        await conn.run(`DETACH ${catalog};`);
+      } catch {
+        /* nothing attached — fine */
+      }
+      await conn.run(
+        `ATTACH '${escStr(buildMysqlAttachDsn(connectionUrl))}' AS ${catalog} (TYPE mysql, READ_ONLY);`,
+      );
+
+      const tableRows = await withConnection(async (connection) => {
+        const [rows] = await connection.query(
+          `SELECT table_schema, table_name
+             FROM information_schema.tables
+            WHERE table_schema NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+              AND table_type = 'BASE TABLE'
+            ORDER BY table_schema, table_name
+            LIMIT ${MAX_ATTACHED_TABLES + 1};`,
+        );
+        return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
+      });
+      const val = (row: Record<string, unknown>, key: string): string =>
+        String(row[key] ?? row[key.toUpperCase()] ?? '');
+      const tables = tableRows.slice(0, MAX_ATTACHED_TABLES).map((r) => {
+        const tSchema = val(r, 'table_schema');
+        const tName = val(r, 'table_name');
+        return {
+          schema: tSchema,
+          table: tName,
+          path: `"${escId(catalog)}"."${escId(tSchema)}"."${escId(tName)}"`,
+        };
+      });
+      context.logger?.info?.(`mysql: attached as ${catalog} (${tables.length} tables)`);
+      return { tables };
+    },
+
+    async detach(options: DriverDetachOptions): Promise<void> {
+      const conn = getQueryEngineConnection(context);
+      if (!conn) throw new Error('mysql: queryEngineConnection is required to detach');
+      const catalog = catalogNameFor(options.datasourceSlug, options.datasourceId);
+      await conn.run(`DETACH ${catalog};`).catch(() => undefined);
+    },
+
+    async close(): Promise<void> {
       context.logger?.info?.('mysql: closed');
     },
   };
-}
+});
 
-// Expose a stable factory export for the runtime loader
-export const driverFactory = makeMysqlDriver;
 export default driverFactory;
-

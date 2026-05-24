@@ -1,0 +1,6 @@
+[test]
+# Coverage is opt-in via `--coverage` (keeps the fast inner loop fast). When on,
+# emit both a human summary and lcov for the tiered gate (tooling/coverage-gate.ts, ADR #16).
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+coverageSkipTestFiles = true

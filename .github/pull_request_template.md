@@ -62,7 +62,7 @@ What's the end result for users?
 ## Checklist
 - [ ] Code follows project style guidelines
 - [ ] Self-review completed
-- [ ] Tests pass locally (`pnpm test`)
-- [ ] Lint passes (`pnpm lint:fix`)
-- [ ] Type check passes (`pnpm typecheck`)
+- [ ] Tests pass locally (`bun test`)
+- [ ] Lint passes (`bun run lint:fix`)
+- [ ] Type check passes (`bun run typecheck`)
 - [ ] This PR can be safely reverted if needed

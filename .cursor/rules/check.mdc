@@ -1,6 +1,0 @@
----
-globs:
-alwaysApply: true
----
-
-- At the end of each task, when writing code, always run pnpm check and fix issues.

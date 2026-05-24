@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Enable version updates for npm
+  # JS/TS dependencies (Bun reads package.json; the npm ecosystem updates it).
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -10,15 +10,15 @@ updates:
     labels:
       - "dependencies"
       - "automated"
+    # Conventional Commits — commitlint rejects emoji prefixes.
     commit-message:
-      prefix: "⬆️"
+      prefix: "chore"
       include: "scope"
     ignore:
-      # Ignore major version updates for now (manual review needed)
+      # Major bumps need manual review.
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -27,5 +27,5 @@ updates:
       - "dependencies"
       - "github-actions"
     commit-message:
-      prefix: "⬆️"
-
+      prefix: "chore"
+      include: "scope"

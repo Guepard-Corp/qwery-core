@@ -1,0 +1,21 @@
+import { z } from 'zod';
+
+const ColumnPrivilegeGrantZodSchema = z.object({
+  grantor: z.string(),
+  grantee: z.string(),
+  privilege_type: z.union([
+    z.literal('SELECT'),
+    z.literal('INSERT'),
+    z.literal('UPDATE'),
+    z.literal('REFERENCES'),
+  ]),
+  is_grantable: z.boolean(),
+});
+const ColumnPrivilegesZodSchema = z.object({
+  column_id: z.string(),
+  relation_schema: z.string(),
+  relation_name: z.string(),
+  column_name: z.string(),
+  privileges: z.array(ColumnPrivilegeGrantZodSchema),
+});
+export const ColumnPrivilegesArrayZodSchema = z.array(ColumnPrivilegesZodSchema);

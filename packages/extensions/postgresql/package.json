@@ -1,21 +1,11 @@
 {
   "name": "@qwery/extension-postgresql",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
-  "main": "./dist/driver.js",
-  "types": "./dist/driver.d.ts",
   "exports": {
-    ".": {
-      "bun": "./dist/driver.js",
-      "types": "./dist/driver.d.ts",
-      "default": "./dist/driver.js"
-    }
-  },
-  "scripts": {
-    "lint": "echo \"no lint configured\"",
-    "test": "vitest run --coverage --passWithNoTests",
-    "build": "tsc -p tsconfig.build.json"
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./schema": "./src/schema.ts"
   },
   "contributes": {
     "datasources": [
@@ -23,167 +13,27 @@
         "id": "postgresql",
         "name": "PostgreSQL",
         "description": "Connect to PostgreSQL databases",
-        "tags": [
-          "SQL"
-        ],
-        "icon": "media/postgresql.svg",
-        "drivers": [
-          "postgresql.default"
-        ],
+        "tags": ["SQL"],
+        "icon": "🐘",
+        "drivers": ["postgresql.default"],
         "docsUrl": "https://www.postgresql.org/docs/current/libpq-connect.html"
       },
       {
         "id": "postgresql-supabase",
         "name": "Supabase",
         "description": "Connect to Supabase databases",
-        "tags": [
-          "SQL",
-          "SaaS"
-        ],
-        "icon": "media/supabase-logo-wordmark--dark.svg",
-        "schema": {
-          "type": "object",
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "description": "Supabase server hostname"
-                },
-                "port": {
-                  "type": "number",
-                  "description": "Supabase server port",
-                  "default": 5432
-                },
-                "username": {
-                  "type": "string",
-                  "description": "Supabase username"
-                },
-                "user": {
-                  "type": "string",
-                  "description": "Supabase username (alias for username)"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "Supabase password secret:true",
-                  "format": "password"
-                },
-                "database": {
-                  "type": "string",
-                  "description": "Supabase database name"
-                },
-                "sslmode": {
-                  "type": "string",
-                  "enum": [
-                    "disable",
-                    "require",
-                    "prefer",
-                    "verify-ca",
-                    "verify-full"
-                  ],
-                  "description": "SSL mode",
-                  "default": "prefer"
-                }
-              },
-              "required": [
-                "host"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "connectionUrl": {
-                  "type": "string",
-                  "description": "Supabase connection string (postgresql://user:pass@host:port/db) secret:true"
-                }
-              },
-              "required": [
-                "connectionUrl"
-              ]
-            }
-          ]
-        },
-        "drivers": [
-          "postgresql.default"
-        ],
+        "tags": ["SQL", "SaaS"],
+        "icon": "⚡",
+        "drivers": ["postgresql.default"],
         "docsUrl": "https://supabase.com/docs/guides/database/connecting-to-postgres"
       },
       {
         "id": "postgresql-neon",
         "name": "Neon",
         "description": "Connect to Neon databases",
-        "tags": [
-          "SQL",
-          "SaaS"
-        ],
-        "icon": "media/neon-logo-dark-color.svg",
-        "schema": {
-          "type": "object",
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "description": "Neon server hostname"
-                },
-                "port": {
-                  "type": "number",
-                  "description": "Neon server port",
-                  "default": 5432
-                },
-                "username": {
-                  "type": "string",
-                  "description": "Neon username"
-                },
-                "user": {
-                  "type": "string",
-                  "description": "Neon username (alias for username)"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "Neon password secret:true",
-                  "format": "password"
-                },
-                "database": {
-                  "type": "string",
-                  "description": "Neon database name"
-                },
-                "sslmode": {
-                  "type": "string",
-                  "enum": [
-                    "disable",
-                    "require",
-                    "prefer",
-                    "verify-ca",
-                    "verify-full"
-                  ],
-                  "description": "SSL mode",
-                  "default": "prefer"
-                }
-              },
-              "required": [
-                "host"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "connectionUrl": {
-                  "type": "string",
-                  "description": "Neon connection string (postgresql://user:pass@host:port/db) secret:true"
-                }
-              },
-              "required": [
-                "connectionUrl"
-              ]
-            }
-          ]
-        },
-        "drivers": [
-          "postgresql.default"
-        ],
+        "tags": ["SQL", "SaaS"],
+        "icon": "🌿",
+        "drivers": ["postgresql.default"],
         "docsUrl": "https://neon.tech/docs/connect/connect-intro"
       }
     ],
@@ -193,18 +43,17 @@
         "name": "PostgreSQL (Node)",
         "description": "Default Node runtime PostgreSQL driver",
         "runtime": "node",
-        "entry": "./dist/driver.js"
+        "entry": "./src/driver.ts"
       }
     ]
   },
   "dependencies": {
-    "@qwery/extensions-sdk": "workspace:*",
-    "pg": "^8.13.1",
-    "zod": "catalog:"
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.10",
-    "@vitest/coverage-istanbul": "catalog:",
-    "vitest": "catalog:"
+    "@types/pg": "^8.20.0"
   }
 }

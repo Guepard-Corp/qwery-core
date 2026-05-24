@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# qwery installer — downloads the platform tarball from GitHub Releases and
+# installs it under ~/.qwery (ADR #9, #36). Modeled on the GFS installer.
+#
+#   curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-agent/main/install | bash
+#   curl -fsSL .../install | bash -s -- --version 0.1.0
+#   ./install --archive dist-release/qwery-macos-aarch64.tar.gz   # local tarball
+
+APP=qwery
+REPO="Guepard-Corp/qwery-agent"
+
+INSTALL_ROOT="$HOME/.qwery"
+BIN_DIR="$INSTALL_ROOT/bin"
+LIB_DIR="$INSTALL_ROOT/lib"
+
+MUTED='\033[0;2m'
+RED='\033[0;31m'
+ORANGE='\033[38;5;214m'
+NC='\033[0m'
+
+usage() {
+    cat <<EOF
+qwery installer
+
+Usage: install [options]
+
+Options:
+    -h, --help               Show this help
+    -v, --version <version>  Install a specific version (e.g. 0.1.0)
+    -a, --archive <path>     Install from a local tarball instead of downloading
+        --no-modify-path     Don't touch shell config files
+        --no-gfs             Skip installing GFS (the database branching engine)
+EOF
+}
+
+requested_version="${VERSION:-}"
+archive_path=""
+no_modify_path=false
+install_gfs=true
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -v|--version)
+            [[ -n "${2:-}" ]] || { echo -e "${RED}--version requires an argument${NC}"; exit 1; }
+            requested_version="$2"; shift 2 ;;
+        -a|--archive)
+            [[ -n "${2:-}" ]] || { echo -e "${RED}--archive requires a path${NC}"; exit 1; }
+            archive_path="$2"; shift 2 ;;
+        --no-modify-path) no_modify_path=true; shift ;;
+        --no-gfs) install_gfs=false; shift ;;
+        *) echo -e "${ORANGE}Warning: unknown option '$1'${NC}" >&2; shift ;;
+    esac
+done
+
+# --- platform detection -----------------------------------------------------
+raw_os=$(uname -s)
+case "$raw_os" in
+    Darwin*) os="macos" ;;
+    Linux*) os="linux" ;;
+    MINGW*|MSYS*|CYGWIN*) os="windows" ;;
+    *) os="unknown" ;;
+esac
+
+arch=$(uname -m)
+[[ "$arch" == "arm64" ]] && arch="aarch64"
+# x86_64 stays as-is.
+if [[ "$os" == "macos" && "$arch" == "x86_64" ]]; then
+    # Detect Rosetta so Intel-emulated shells still get the arm64 build.
+    if [[ "$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)" == "1" ]]; then
+        arch="aarch64"
+    fi
+fi
+
+combo="$os-$arch"
+case "$combo" in
+    macos-aarch64|macos-x86_64|linux-x86_64|linux-aarch64) ;;
+    windows-*)
+        echo -e "${RED}Windows is not supported yet. See ${REPO} for status.${NC}"; exit 1 ;;
+    *)
+        echo -e "${RED}Unsupported OS/arch: $combo${NC}"; exit 1 ;;
+esac
+
+release_name="$APP-$os-$arch"
+filename="$release_name.tar.gz"
+
+for tool in curl tar gzip; do
+    command -v "$tool" >/dev/null 2>&1 || { echo -e "${RED}Error: '$tool' is required but not installed.${NC}"; exit 1; }
+done
+
+# --- resolve version + URL --------------------------------------------------
+if [[ -n "$archive_path" ]]; then
+    [[ -f "$archive_path" ]] || { echo -e "${RED}Archive not found: $archive_path${NC}"; exit 1; }
+    specific_version="local"
+elif [[ -z "$requested_version" ]]; then
+    url="https://github.com/$REPO/releases/latest/download/$filename"
+    specific_version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+        | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1)
+    [[ -n "$specific_version" ]] || { echo -e "${RED}Failed to fetch latest version${NC}"; exit 1; }
+else
+    requested_version="${requested_version#v}"
+    url="https://github.com/$REPO/releases/download/v${requested_version}/$filename"
+    specific_version="$requested_version"
+fi
+
+# Short-circuit if the requested version is already installed.
+if [[ "$specific_version" != "local" && -f "$INSTALL_ROOT/version" ]]; then
+    if [[ "$(cat "$INSTALL_ROOT/version")" == "$specific_version" ]]; then
+        echo -e "${MUTED}qwery ${NC}$specific_version${MUTED} already installed.${NC}"
+        exit 0
+    fi
+fi
+
+# --- fetch + install --------------------------------------------------------
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/qwery_install.XXXXXX")
+trap 'rm -rf "$tmp_dir"' EXIT
+
+if [[ -n "$archive_path" ]]; then
+    echo -e "${MUTED}Installing ${NC}qwery${MUTED} from ${NC}$archive_path"
+    cp "$archive_path" "$tmp_dir/$filename"
+else
+    echo -e "${MUTED}Installing ${NC}qwery ${MUTED}version ${NC}$specific_version"
+    curl -# -fL --connect-timeout 30 --max-time 600 -o "$tmp_dir/$filename" "$url" || {
+        echo -e "${RED}Download failed.${NC} The release may not have a build for $combo."
+        echo -e "${MUTED}See: https://github.com/$REPO/releases${NC}"
+        exit 1
+    }
+fi
+
+if ! gzip -t "$tmp_dir/$filename" 2>/dev/null; then
+    echo -e "${RED}Downloaded file is not a valid archive (no build for $combo?).${NC}"
+    echo -e "${MUTED}See: https://github.com/$REPO/releases${NC}"
+    exit 1
+fi
+
+tar -xzf "$tmp_dir/$filename" -C "$tmp_dir"
+extracted="$tmp_dir/$release_name"
+[[ -f "$extracted/bin/qwery" ]] || { echo -e "${RED}Archive layout unexpected: missing bin/qwery${NC}"; exit 1; }
+
+mkdir -p "$BIN_DIR" "$LIB_DIR"
+install -m 755 "$extracted/bin/qwery" "$BIN_DIR/qwery"
+rm -rf "$LIB_DIR"/*
+cp -R "$extracted/lib/." "$LIB_DIR/"
+chmod 755 "$LIB_DIR/qwery-bin"
+echo "$specific_version" > "$INSTALL_ROOT/version"
+
+# --- PATH -------------------------------------------------------------------
+add_to_path() {
+    local config_file="$1" line="$2"
+    if grep -Fxq "$line" "$config_file" 2>/dev/null; then
+        return 0
+    elif [[ -w "$config_file" || ! -e "$config_file" ]]; then
+        printf '\n# qwery\n%s\n' "$line" >> "$config_file"
+        echo -e "${MUTED}Added qwery to \$PATH in ${NC}$config_file"
+    else
+        echo -e "${ORANGE}Add this to your shell config manually:${NC}\n  $line"
+    fi
+}
+
+if [[ "$no_modify_path" != "true" && ":$PATH:" != *":$BIN_DIR:"* ]]; then
+    current_shell=$(basename "${SHELL:-bash}")
+    case "$current_shell" in
+        fish) add_to_path "$HOME/.config/fish/config.fish" "fish_add_path $BIN_DIR" ;;
+        zsh)  add_to_path "${ZDOTDIR:-$HOME}/.zshrc" "export PATH=\"$BIN_DIR:\$PATH\"" ;;
+        *)    add_to_path "$HOME/.bashrc" "export PATH=\"$BIN_DIR:\$PATH\"" ;;
+    esac
+fi
+
+if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_ACTIONS}" == "true" ]]; then
+    echo "$BIN_DIR" >> "$GITHUB_PATH"
+fi
+
+# --- GFS (database branching engine, ADR #11) -------------------------------
+# qwery uses GFS as its safety net for destructive operations on databases.
+# It is bundled by chaining into the GFS installer — best-effort: a GFS install
+# failure must not fail the qwery install.
+if [[ "$install_gfs" == "true" ]]; then
+    if command -v gfs >/dev/null 2>&1; then
+        echo -e "${MUTED}GFS already installed ($(gfs version 2>/dev/null | head -1)).${NC}"
+    else
+        echo -e "${MUTED}Installing ${NC}GFS${MUTED} (database branching engine)...${NC}"
+        if ! curl -fsSL https://gfs.guepard.run/install | bash; then
+            echo -e "${ORANGE}GFS install failed — qwery works without it, but database branching will be disabled.${NC}"
+            echo -e "${MUTED}Install later: https://gfs.guepard.run/install${NC}"
+        fi
+    fi
+fi
+
+echo -e ""
+echo -e "${ORANGE}qwery${NC} ${MUTED}installed to ${NC}$BIN_DIR/qwery"
+echo -e ""
+echo -e "  qwery            ${MUTED}# launch the TUI${NC}"
+echo -e ""
+echo -e "${MUTED}Open a new shell (or 'source' your config) so \$PATH picks it up.${NC}"
+echo -e "${MUTED}More: https://github.com/$REPO${NC}"
