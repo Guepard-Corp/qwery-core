@@ -407,6 +407,41 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     ],
   );
 
+  const regenerateWithDefaults = useCallback(
+    (options?: Parameters<typeof regenerate>[0]) => {
+      const selectedForRequest =
+        getDatasourcesForSend?.() ?? selectedDatasources;
+      const requestDatasources =
+        selectedForRequest && selectedForRequest.length > 0
+          ? selectedForRequest
+          : undefined;
+      const body = (options?.body ?? {}) as Record<string, unknown>;
+
+      return regenerate({
+        ...(options ?? {}),
+        body: {
+          ...body,
+          model: body.model ?? effectiveModel,
+          webSearch: body.webSearch ?? state.webSearch,
+          searchEngine:
+            body.searchEngine ??
+            preferredSearchEngineProp ??
+            preferredSearchEngine,
+          datasources: body.datasources ?? requestDatasources,
+        },
+      });
+    },
+    [
+      effectiveModel,
+      getDatasourcesForSend,
+      preferredSearchEngine,
+      preferredSearchEngineProp,
+      regenerate,
+      selectedDatasources,
+      state.webSearch,
+    ],
+  );
+
   // Play notification sound when agent response completes
   useCompletionSound(status);
 
@@ -756,7 +791,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     setEditDatasources([]);
     setEditWarningDialog({ open: false, messageId: '', messageText: '' });
 
-    regenerate();
+    regenerateWithDefaults();
     scrollToBottomRef.current?.();
   }, [
     editingMessageId,
@@ -765,7 +800,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     messages,
     setMessages,
     onMessageUpdate,
-    regenerate,
+    regenerateWithDefaults,
     scrollToBottomRef,
   ]);
 
@@ -863,7 +898,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
 
     setTimeout(() => {
-      regenerate();
+      regenerateWithDefaults();
       scrollToBottomRef.current?.();
     }, 0);
   }, [
@@ -873,7 +908,7 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     setMessages,
     onMessageUpdate,
     messages,
-    regenerate,
+    regenerateWithDefaults,
     scrollToBottomRef,
   ]);
 
@@ -928,12 +963,12 @@ function QweryAgentUIContent(props: QweryAgentUIProps) {
     }
 
     setTimeout(() => {
-      regenerate();
+      regenerateWithDefaults();
       scrollToBottomRef.current?.();
     }, 0);
   }, [
     messages,
-    regenerate,
+    regenerateWithDefaults,
     setMessages,
     scrollToBottomRef,
     selectedDatasources,
