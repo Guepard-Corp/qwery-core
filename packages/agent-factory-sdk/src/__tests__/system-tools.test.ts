@@ -37,6 +37,19 @@ describe('resolveSafePath', () => {
     expect(p).toContain('.qwery/cache');
   });
 
+  test('accepts user-level skills and agents under ~/.qwery', () => {
+    const skill = resolveSafePath(path.join(homedir(), '.qwery', 'skills', 'use-gfs-cli', 'SKILL.md'));
+    expect(skill).toContain('.qwery/skills');
+    const agent = resolveSafePath(path.join(homedir(), '.qwery', 'agents', 'foo.md'));
+    expect(agent).toContain('.qwery/agents');
+  });
+
+  test('refuses qwery secrets (master key, db, config)', () => {
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', '.master.key'))).toThrow(/outside|Allowed/);
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', 'qwery.sqlite'))).toThrow(/outside|Allowed/);
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', 'config.json'))).toThrow(/outside|Allowed/);
+  });
+
   test('refuses /etc/passwd', () => {
     expect(() => resolveSafePath('/etc/passwd')).toThrow(/outside/);
   });
@@ -135,7 +148,7 @@ describe('runBash', () => {
 
   test('rejects a command that reads qwery secrets before spawning', async () => {
     await expect(runBash('sqlite3 ~/.qwery/qwery.sqlite "SELECT config FROM datasources"')).rejects.toThrow(
-      /private directory/,
+      /blocked/,
     );
   });
 });
@@ -148,10 +161,16 @@ describe('assertBashCommandAllowed — ~/.qwery guard', () => {
     `cat ${path.join(homedir(), '.qwery', 'config.json')}`,
     'find ~/.qwery -name "*.json"',
     'cp /tmp/x ~/.qwery/.master.key',
+    // "agent" dirs that are nonetheless sensitive — must stay blocked.
+    'cat ~/.qwery/mcp.json',
+    'cat ~/.qwery/settings.json',
+    'cat ~/.qwery/sessions/last.json',
+    'cat ~/.qwery/storage/artifact/result.json',
+    'cat ~/.qwery/memory/notes.md',
   ];
   for (const cmd of blocked) {
     test(`blocks: ${cmd.slice(0, 40)}`, () => {
-      expect(() => assertBashCommandAllowed(cmd)).toThrow(/private directory/);
+      expect(() => assertBashCommandAllowed(cmd)).toThrow(/blocked/);
     });
   }
 
@@ -159,7 +178,14 @@ describe('assertBashCommandAllowed — ~/.qwery guard', () => {
     'ls -la',
     'git status',
     'bun test',
-    'cat ~/.qwery/cache/models.json', // cache subdir is permitted
+    'cat ~/.qwery/cache/models.json', // benign subdirs are permitted
+    'cat ~/.qwery/skills/use-gfs-cli/SKILL.md',
+    'ls ~/.qwery/agents',
+    'tail ~/.qwery/logs/qwery.log',
+    'cat ~/.qwery/commands/foo.md',
+    'cat ~/.qwery/hooks/pre.sh',
+    'cat ~/.qwery/prompts/x.md',
+    'ls ~/.qwery/plugins',
     'echo "no qwery here"',
     'cat package.json',
   ];

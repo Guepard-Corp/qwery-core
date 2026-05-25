@@ -5,10 +5,41 @@ import path from 'node:path';
 
 const HOME = homedir();
 const WORKSPACE_ROOT = process.cwd();
-/** qwery's private state dir: master key, persistence DB, config. */
+/** qwery's private state dir: master key, persistence DB, config, plus benign subdirs. */
 const QWERY_HOME = path.join(HOME, '.qwery');
-const CACHE_ROOT = path.join(QWERY_HOME, 'cache');
-const ALLOWED_ROOTS = [WORKSPACE_ROOT, CACHE_ROOT];
+/**
+ * Subdirs of `~/.qwery` that ARE legitimate for tools to read: user-authored
+ * agent assets (skills, agents, commands, hooks, prompts, templates, plugins,
+ * output-styles, themes, statusline), the analysis cache, and logs. Listing
+ * here is deny-by-default + allowlist — everything else under `~/.qwery` stays
+ * blocked, so a new file never leaks by omission.
+ *
+ * NEVER add a name that can hold secrets or the user's data. Off-limits, even
+ * though they are "agent" dirs:
+ *   - config.json / settings.json / settings.local.json (env, keys, perms)
+ *   - mcp.json / mcp/ (MCP server env tokens — classic leak vector)
+ *   - sessions/ projects/ history/ transcripts/ conversations/ (chat logs:
+ *     secrets the user typed in other sessions)
+ *   - storage/ (artifacts = query results = row-level data, ADR #28)
+ *   - credentials/ auth/ tokens/ keys/, .master.key, *.sqlite*, anonymous-id
+ *   - memory/ (handled separately — do not allowlist here)
+ */
+const QWERY_OPEN_SUBDIRS = [
+  'cache',
+  'skills',
+  'agents',
+  'logs',
+  'commands',
+  'hooks',
+  'prompts',
+  'templates',
+  'output-styles',
+  'themes',
+  'statusline',
+  'plugins',
+] as const;
+const QWERY_OPEN_PATHS = QWERY_OPEN_SUBDIRS.map((d) => path.join(QWERY_HOME, d));
+const ALLOWED_ROOTS = [WORKSPACE_ROOT, ...QWERY_OPEN_PATHS];
 
 export const BASH_TIMEOUT_MS = 30_000;
 export const BASH_MAX_OUTPUT_BYTES = 64 * 1024;
@@ -17,53 +48,55 @@ export const WRITE_MAX_BYTES = 1_000_000;
 
 /**
  * `~/.qwery` holds the AES master key, the persistence DB (encrypted datasource
- * credentials), and config. `bash` must never touch it: otherwise the LLM can
- * exfiltrate the very secrets the vault exists to hide (read the master key +
- * the ciphertext + the open-source algorithm = full decryption). The `read`
- * tool already refuses these paths via `resolveSafePath`; `bash` needs its own
- * guard. The cache subdir stays accessible. Agents must use the datasource and
- * GFS tools instead of poking qwery's internals.
+ * credentials), config, and the telemetry id. `bash` must never read those:
+ * otherwise the LLM can exfiltrate the very secrets the vault exists to hide
+ * (master key + ciphertext + open-source algorithm = full decryption). Benign
+ * subdirs (skills/agents/cache/logs) stay accessible so the agent can `read`
+ * user-level skills and agents. Deny-by-default, allowlist the benign.
  */
-const QWERY_GUARD_MESSAGE =
-  "bash: access to qwery's private directory (~/.qwery) is blocked — it holds the master key and encrypted datasource credentials. Never read it. Use the datasource tools (datasourceList / datasourceTest / datasourceAttach) and the GFS tools instead.";
+const QWERY_GUARD_MESSAGE = `bash: access to qwery's private files under ~/.qwery is blocked — they hold the master key and encrypted datasource credentials. Use the datasource tools (datasourceList / datasourceTest / datasourceAttach) and the GFS tools instead. (Reading ~/.qwery/{${QWERY_OPEN_SUBDIRS.join(',')}} is allowed.)`;
 
 /**
  * Best-effort static guard, applied on every platform. It is the only FS guard
  * where the OS sandbox is unavailable (non-darwin), and defense-in-depth where
- * it is. Matches references to `~/.qwery` (absolute, `~`, or `$HOME`) that are
- * not the cache subdir, plus the master key by name.
+ * it is. Blocks references to `~/.qwery` that are NOT one of the benign subdirs,
+ * plus the master key by name.
  */
 export function assertBashCommandAllowed(command: string): void {
+  const benign = QWERY_OPEN_SUBDIRS.join('|');
   const refsQweryPrivate =
-    /\.qwery\/(?!cache(?:\/|\b))/.test(command) || /\.qwery\/?(?:\s|$|;|&|\|)/.test(command);
+    new RegExp(`\\.qwery\\/(?!(?:${benign})(?:\\/|\\b))`).test(command) ||
+    /\.qwery\/?(?:\s|$|;|&|\|)/.test(command);
   const refsMasterKey = /\.master\.key\b/.test(command);
   if (refsQweryPrivate || refsMasterKey) throw new Error(QWERY_GUARD_MESSAGE);
 }
 
 /**
- * macOS kernel-enforced sandbox profile: allow everything, then deny read+write
- * on `~/.qwery` while re-allowing its `cache` subdir. Unlike the static guard,
- * this cannot be bypassed with env vars, encoding, or indirection.
+ * macOS kernel-enforced sandbox profile: allow everything, deny read+write on
+ * `~/.qwery`, then re-allow the benign subdirs. Unlike the static guard, this
+ * cannot be bypassed with env vars, encoding, or indirection.
  */
 const SANDBOX_AVAILABLE = process.platform === 'darwin' && existsSync('/usr/bin/sandbox-exec');
 const SANDBOX_PROFILE = [
   '(version 1)',
   '(allow default)',
   `(deny file-read* file-write* (subpath "${QWERY_HOME}"))`,
-  `(allow file-read* file-write* (subpath "${CACHE_ROOT}"))`,
+  ...QWERY_OPEN_PATHS.map((p) => `(allow file-read* file-write* (subpath "${p}"))`),
 ].join('\n');
 
 /**
  * Linux kernel-enforced equivalent via bubblewrap: pass the whole filesystem
  * through (`--dev-bind / /`) so legitimate tooling keeps working, then overlay
- * an empty tmpfs on `~/.qwery` to hide the master key / DB / config, re-binding
- * only the `cache` subdir. Mirrors the macOS deny.
+ * an empty tmpfs on `~/.qwery` to hide the secrets, re-binding the benign
+ * subdirs. Mirrors the macOS deny.
  */
 const BWRAP_BIN = '/usr/bin/bwrap';
 
 export function bwrapArgs(command: string): string[] {
   const args = ['--dev-bind', '/', '/', '--tmpfs', QWERY_HOME];
-  if (existsSync(CACHE_ROOT)) args.push('--bind', CACHE_ROOT, CACHE_ROOT);
+  for (const p of QWERY_OPEN_PATHS) {
+    if (existsSync(p)) args.push('--bind', p, p);
+  }
   args.push('--', 'bash', '-c', command);
   return args;
 }
@@ -92,17 +125,16 @@ function detectBwrap(): Promise<boolean> {
 }
 
 /**
- * Resolve a user-supplied path inside one of the allowed roots (workspace or
- * `~/.qwery/cache`). Throws if the resolved path escapes both roots. ADR #18.
+ * Resolve a user-supplied path inside one of the allowed roots: the workspace,
+ * or the benign `~/.qwery` subdirs (cache, skills, agents, logs). Throws if the
+ * resolved path escapes them all — notably qwery's secrets. ADR #18.
  */
 export function resolveSafePath(input: string): string {
   const resolved = path.resolve(WORKSPACE_ROOT, input);
   for (const root of ALLOWED_ROOTS) {
     if (resolved === root || resolved.startsWith(root + path.sep)) return resolved;
   }
-  throw new Error(
-    `Path "${input}" resolves outside the workspace and cache roots. Allowed roots: ${ALLOWED_ROOTS.join(', ')}`,
-  );
+  throw new Error(`Path "${input}" resolves outside the allowed roots. Allowed: ${ALLOWED_ROOTS.join(', ')}`);
 }
 
 export interface BashResult {
