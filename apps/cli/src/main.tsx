@@ -1,8 +1,10 @@
+import { realpathSync } from 'node:fs';
 import { createGfsBranching } from '@qwery/adapter-branching-gfs';
 import { createDuckDBCompute } from '@qwery/adapter-compute-duckdb';
 import { createAiSdkLLM } from '@qwery/adapter-llm-aisdk';
 import { createHttpModelCatalog } from '@qwery/adapter-model-catalog-http';
 import { createSqlitePersistence } from '@qwery/adapter-persistence-sqlite';
+import { Project as ProjectUseCases } from '@qwery/application';
 import { createTelemetry } from '@qwery/telemetry';
 import { CLI_EVENTS } from '@qwery/telemetry/events';
 import { render } from 'ink';
@@ -45,6 +47,12 @@ const attachedDatasources = createAttachedDatasourcesRegistry({
   logger,
   telemetry,
 });
+// Resolve (or lazily create) the project for the current working directory.
+// `realpathSync` canonicalizes the path so symlinked cwds map to one project.
+const currentProject = await ProjectUseCases.resolveCurrentProject(
+  { projectRepo: persistence.projectRepo },
+  realpathSync(process.cwd()),
+);
 const services: AppServices = {
   compute,
   llm: createAiSdkLLM(configStore),
@@ -55,11 +63,13 @@ const services: AppServices = {
   messageRepo: persistence.messageRepo,
   usageRepo: persistence.usageRepo,
   datasourceRepo: persistence.datasourceRepo,
+  projectRepo: persistence.projectRepo,
   modelCatalog: createHttpModelCatalog(),
   attachedDatasources,
   vault: persistence.vault,
   branching,
   updater: createUpdater({ logger, currentGfsVersion: () => branching.version() }),
+  currentProject,
 };
 
 telemetry.trackEvent(CLI_EVENTS.SESSION_STARTED);

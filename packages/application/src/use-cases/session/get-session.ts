@@ -25,3 +25,7 @@ export async function listSessionsByDatasource(
 ): Promise<Session[]> {
   return deps.sessionRepo.findByDatasourceId(datasourceId);
 }
+
+export async function listSessionsByProject(deps: SessionRepoDeps, projectId: string): Promise<Session[]> {
+  return deps.sessionRepo.findByProjectId(projectId);
+}

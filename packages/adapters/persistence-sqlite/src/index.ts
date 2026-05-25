@@ -1,6 +1,7 @@
 import type {
   IDatasourceRepository,
   IMessageRepository,
+  IProjectRepository,
   ISecretVault,
   ISessionRepository,
   IUsageRepository,
@@ -8,12 +9,14 @@ import type {
 import { SqliteDatasourceRepository } from './datasource.repository';
 import { type DrizzleDb, openDatabase } from './db';
 import { SqliteMessageRepository } from './message.repository';
+import { SqliteProjectRepository } from './project.repository';
 import { SqliteSessionRepository } from './session.repository';
 import { SqliteUsageRepository } from './usage.repository';
 
 export { SqliteDatasourceRepository } from './datasource.repository';
 export { type DrizzleDb, defaultDbPath, openDatabase } from './db';
 export { SqliteMessageRepository } from './message.repository';
+export { SqliteProjectRepository } from './project.repository';
 export { SqliteSessionRepository } from './session.repository';
 export { SqliteUsageRepository } from './usage.repository';
 
@@ -24,6 +27,7 @@ export interface SqlitePersistence {
   messageRepo: IMessageRepository;
   usageRepo: IUsageRepository;
   datasourceRepo: IDatasourceRepository;
+  projectRepo: IProjectRepository;
 }
 
 export interface CreateSqlitePersistenceOptions {
@@ -46,5 +50,6 @@ export function createSqlitePersistence(opts: CreateSqlitePersistenceOptions): S
     messageRepo: new SqliteMessageRepository(db),
     usageRepo: new SqliteUsageRepository(db),
     datasourceRepo: new SqliteDatasourceRepository(db, opts.vault),
+    projectRepo: new SqliteProjectRepository(db),
   };
 }

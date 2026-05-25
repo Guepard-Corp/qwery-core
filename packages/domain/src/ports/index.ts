@@ -10,6 +10,7 @@ export { type LLMProvider, type Model, NoLLMProviderError } from './llm';
 export type { Logger, LogLevel } from './logger';
 export * from './message-repository';
 export type { IModelCatalog } from './model-catalog';
+export * from './project-repository';
 export * from './secret-vault';
 export {
   type ConceptMatch,

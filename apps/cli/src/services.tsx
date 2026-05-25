@@ -5,11 +5,13 @@ import type {
   IDatasourceRepository,
   IMessageRepository,
   IModelCatalog,
+  IProjectRepository,
   ISecretVault,
   ISessionRepository,
   IUsageRepository,
   LLMProvider,
   Logger,
+  Project,
   Telemetry,
 } from '@qwery/domain';
 import type React from 'react';
@@ -27,11 +29,14 @@ export interface AppServices {
   messageRepo: IMessageRepository;
   usageRepo: IUsageRepository;
   datasourceRepo: IDatasourceRepository;
+  projectRepo: IProjectRepository;
   modelCatalog: IModelCatalog;
   attachedDatasources: AttachedDatasourcesRegistry;
   vault: ISecretVault;
   branching: Branching;
   updater: Updater;
+  /** The project for the current working directory (resolved at startup). */
+  currentProject: Project;
 }
 
 const ServicesContext = createContext<AppServices | null>(null);

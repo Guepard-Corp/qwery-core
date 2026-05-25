@@ -23,16 +23,24 @@ function fmtWhen(d: Date): string {
 }
 
 export function ResumeOverlay({ onResume, onClose }: ResumeOverlayProps) {
-  const { sessionRepo, logger } = useServices();
+  const { sessionRepo, logger, currentProject } = useServices();
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [cursor, setCursor] = useState(0);
   const [windowStart, setWindowStart] = useState(0);
+  // Default to the current project's sessions; toggle to see every project's.
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    SessionUseCases.listSessions({ sessionRepo })
+    const load = showAll
+      ? SessionUseCases.listSessions({ sessionRepo })
+      : SessionUseCases.listSessionsByProject({ sessionRepo }, currentProject.id);
+    load
       .then((list) => {
-        if (!cancelled) setSessions(list);
+        if (cancelled) return;
+        setSessions(list);
+        setCursor(0);
+        setWindowStart(0);
       })
       .catch((err) => {
         logger.error('resume.list.error', { message: err instanceof Error ? err.message : String(err) });
@@ -41,11 +49,15 @@ export function ResumeOverlay({ onResume, onClose }: ResumeOverlayProps) {
     return () => {
       cancelled = true;
     };
-  }, [sessionRepo, logger]);
+  }, [sessionRepo, logger, currentProject, showAll]);
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
     if (key.escape) {
       onClose();
+      return;
+    }
+    if (input === 'a') {
+      setShowAll((v) => !v);
       return;
     }
     if (!sessions || sessions.length === 0) return;
@@ -58,9 +70,12 @@ export function ResumeOverlay({ onResume, onClose }: ResumeOverlayProps) {
       setCursor(next);
       if (next >= windowStart + VISIBLE) setWindowStart(next - VISIBLE + 1);
     } else if (key.return) {
-      onResume(sessions[cursor]!.id);
+      const chosen = sessions[cursor];
+      if (chosen) onResume(chosen.id);
     }
   });
+
+  const scopeLabel = showAll ? 'all projects' : currentProject.name;
 
   if (sessions === null) {
     return (
@@ -74,11 +89,15 @@ export function ResumeOverlay({ onResume, onClose }: ResumeOverlayProps) {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1} paddingY={1}>
         <Box justifyContent="space-between">
-          <Text bold>Resume a session</Text>
+          <Text bold>Resume a session · {scopeLabel}</Text>
           <Text dimColor>esc</Text>
         </Box>
         <Box marginTop={1}>
-          <Text dimColor>No past sessions yet. Send a message to start one.</Text>
+          <Text dimColor>
+            {showAll
+              ? 'No past sessions yet. Send a message to start one.'
+              : 'No sessions in this project yet. Press a to see all projects.'}
+          </Text>
         </Box>
       </Box>
     );
@@ -89,12 +108,13 @@ export function ResumeOverlay({ onResume, onClose }: ResumeOverlayProps) {
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1} paddingY={1}>
       <Box justifyContent="space-between">
-        <Text bold>Resume a session</Text>
+        <Text bold>Resume a session · {scopeLabel}</Text>
         <Text dimColor>esc</Text>
       </Box>
       <Box marginY={1}>
         <Text dimColor>
-          ↑/↓ navigate · enter to resume · {sessions.length} session{sessions.length === 1 ? '' : 's'}
+          ↑/↓ navigate · enter to resume · a: {showAll ? 'this project' : 'all projects'} · {sessions.length}{' '}
+          session{sessions.length === 1 ? '' : 's'}
         </Text>
       </Box>
       {windowStart > 0 && <Text dimColor> ↑ {windowStart} earlier</Text>}
