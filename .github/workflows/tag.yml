@@ -1,0 +1,81 @@
+name: Tag
+
+# Manual release cutter: bumps the version in package.json, commits it to main,
+# creates an annotated `vX.Y.Z` tag, and kicks off the Release workflow on that
+# tag. Run it from the Actions tab ("Run workflow") and pick the bump level.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Semantic version bump'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write # push the bump commit + tag
+  actions: write # dispatch the Release workflow
+
+jobs:
+  tag:
+    name: Bump version & tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: ver
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=${NEW}" >> "$GITHUB_OUTPUT"
+          echo "Bumping ${CURRENT} → ${NEW} (${{ inputs.bump }})"
+
+      - name: Write package.json version
+        env:
+          NEW: ${{ steps.ver.outputs.version }}
+        run: |
+          # Targeted replace of the top-level "version" — no reformatting churn.
+          node <<'EOF'
+          const fs = require('fs');
+          const f = 'package.json';
+          const out = fs
+            .readFileSync(f, 'utf8')
+            .replace(/("version":\s*")[^"]*(")/, (_m, a, b) => a + process.env.NEW + b);
+          fs.writeFileSync(f, out);
+          EOF
+          grep -m1 '"version"' package.json
+
+      - name: Commit, tag and push
+        env:
+          NEW: ${{ steps.ver.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          # --no-verify: CI runner has no git hooks installed; skip the local guards.
+          git commit --no-verify -m "chore(release): v${NEW}"
+          git tag -a "v${NEW}" -m "Release ${NEW}"
+          git push origin HEAD:main
+          git push origin "v${NEW}"
+
+      - name: Trigger the Release workflow on the new tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.ver.outputs.version }}
+        # A tag pushed with GITHUB_TOKEN does NOT fire `on: push: tags`, so we
+        # dispatch Release explicitly on the new tag ref — its `if:
+        # startsWith(github.ref, 'refs/tags/')` then passes and the release runs.
+        run: gh workflow run release.yml --ref "v${NEW}"
