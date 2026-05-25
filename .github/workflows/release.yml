@@ -28,8 +28,6 @@ jobs:
           # the host and emits qwery-<os>-<arch>.tar.gz accordingly.
           - platform: macos-aarch64
             os: macos-14
-          - platform: macos-x86_64
-            os: macos-13
           - platform: linux-x86_64
             os: ubuntu-22.04
           - platform: linux-aarch64
