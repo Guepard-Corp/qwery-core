@@ -54,7 +54,7 @@ Row-level data never leaves your machine and is never sent to the LLM. Queries r
 ### Install (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-agent/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-core/main/install | bash
 ```
 
 This installs `qwery` (and the GFS engine) under `~/.qwery` and adds it to your `PATH`. Then just run:

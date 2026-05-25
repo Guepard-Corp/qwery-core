@@ -4,12 +4,12 @@ set -euo pipefail
 # qwery installer — downloads the platform tarball from GitHub Releases and
 # installs it under ~/.qwery (ADR #9, #36). Modeled on the GFS installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-agent/main/install | bash
+#   curl -fsSL https://raw.githubusercontent.com/Guepard-Corp/qwery-core/main/install | bash
 #   curl -fsSL .../install | bash -s -- --version 0.1.0
 #   ./install --archive dist-release/qwery-macos-aarch64.tar.gz   # local tarball
 
 APP=qwery
-REPO="Guepard-Corp/qwery-agent"
+REPO="Guepard-Corp/qwery-core"
 
 INSTALL_ROOT="$HOME/.qwery"
 BIN_DIR="$INSTALL_ROOT/bin"
