@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomBytes } from 'node:crypto';
-import { existsSync, promises as fs, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, promises as fs, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createSecretVault, type MasterKeyring } from '../secret-vault';
@@ -32,8 +32,8 @@ let dir: string;
 let keyPath: string;
 
 beforeEach(() => {
-  dir = path.join(tmpdir(), `qwery-vault-${randomBytes(6).toString('hex')}`);
-  mkdirSync(dir, { recursive: true });
+  // mkdtempSync creates a unique 0700 dir atomically — no predictable temp path.
+  dir = mkdtempSync(path.join(tmpdir(), 'qwery-vault-'));
   keyPath = path.join(dir, '.master.key');
 });
 
