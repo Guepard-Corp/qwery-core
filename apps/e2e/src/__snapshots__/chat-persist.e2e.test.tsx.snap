@@ -1,7 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`e2e: chat turn persists to a real sqlite DB a prompt + mock reply are written to sqlite and a session is created 1`] = `
-" qwery · v0.0.1
+" qwery · v0.0.0-e2e
  Chat                                             │ Results
                                                   │
                                                   │

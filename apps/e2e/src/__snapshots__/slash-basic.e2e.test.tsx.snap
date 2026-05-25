@@ -1,7 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
-" qwery · v0.0.1
+" qwery · v0.0.0-e2e
  Chat                                             │ Results
                                                   │
                                                   │
@@ -34,7 +34,7 @@ exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
 `;
 
 exports[`e2e: Tier 1 slash commands /data → "Agent routing pinned to: DataAgent." 1`] = `
-" qwery · v0.0.1
+" qwery · v0.0.0-e2e
  Chat                                             │ Results
                                                   │
                                                   │
@@ -67,7 +67,7 @@ exports[`e2e: Tier 1 slash commands /data → "Agent routing pinned to: DataAgen
 `;
 
 exports[`e2e: Tier 1 slash commands /code → "Agent routing pinned to: CodingAgent." 1`] = `
-" qwery · v0.0.1
+" qwery · v0.0.0-e2e
  Chat                                             │ Results
                                                   │
                                                   │
@@ -100,7 +100,7 @@ exports[`e2e: Tier 1 slash commands /code → "Agent routing pinned to: CodingAg
 `;
 
 exports[`e2e: Tier 1 slash commands /auto → "Agent routing pinned to: auto (heuristic)." 1`] = `
-" qwery · v0.0.1
+" qwery · v0.0.0-e2e
  Chat                                             │ Results
                                                   │
                                                   │
