@@ -58,7 +58,7 @@ jobs:
       - name: Checkout (for the install script)
         uses: actions/checkout@v4
       - name: Download all tarballs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Create Release
