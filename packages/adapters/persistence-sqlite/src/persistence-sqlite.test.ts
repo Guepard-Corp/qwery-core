@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import {
   createDatasource,
   createMessage,
+  createProject,
   createSession,
   createUsage,
   type ISecretVault,
@@ -244,6 +245,76 @@ describe('SqliteMessageRepository — extra paths', () => {
     await p.messageRepo.create(m);
     expect(await p.messageRepo.delete(m.id)).toBe(true);
     expect(await p.messageRepo.findById(m.id)).toBeNull();
+  });
+});
+
+describe('SqliteProjectRepository', () => {
+  test('create / findBySlug / findById and slug derives from path', async () => {
+    const proj = createProject({ path: '/Users/jane/work/qwery-core' });
+    expect(proj.slug).toBe('-Users-jane-work-qwery-core');
+    expect(proj.name).toBe('qwery-core');
+    await p.projectRepo.create(proj);
+
+    expect((await p.projectRepo.findBySlug(proj.slug))?.id).toBe(proj.id);
+    expect((await p.projectRepo.findById(proj.id))?.path).toBe('/Users/jane/work/qwery-core');
+    expect(await p.projectRepo.findBySlug('-nope')).toBeNull();
+  });
+
+  test('attach / list / detach datasources is many-to-many and idempotent', async () => {
+    const a = createProject({ path: '/a' });
+    const b = createProject({ path: '/b' });
+    await p.projectRepo.create(a);
+    await p.projectRepo.create(b);
+    const ds = createDatasource({
+      name: 'PG',
+      datasource_provider: 'postgresql',
+      datasource_driver: 'pg',
+      config: {},
+    });
+    await p.datasourceRepo.create(ds);
+
+    await p.projectRepo.attachDatasource(a.id, ds.id);
+    await p.projectRepo.attachDatasource(a.id, ds.id); // idempotent
+    await p.projectRepo.attachDatasource(b.id, ds.id);
+
+    expect(await p.projectRepo.listDatasourceIds(a.id)).toEqual([ds.id]);
+    const owners = await p.projectRepo.findByDatasourceId(ds.id);
+    expect(owners.map((x) => x.id).sort()).toEqual([a.id, b.id].sort());
+
+    await p.projectRepo.detachDatasource(a.id, ds.id);
+    expect(await p.projectRepo.listDatasourceIds(a.id)).toEqual([]);
+    expect((await p.projectRepo.findByDatasourceId(ds.id)).map((x) => x.id)).toEqual([b.id]);
+  });
+
+  test('delete removes the project and its attachments', async () => {
+    const proj = createProject({ path: '/c' });
+    await p.projectRepo.create(proj);
+    const ds = createDatasource({
+      name: 'X',
+      datasource_provider: 'csv',
+      datasource_driver: 'duckdb',
+      config: {},
+    });
+    await p.datasourceRepo.create(ds);
+    await p.projectRepo.attachDatasource(proj.id, ds.id);
+
+    expect(await p.projectRepo.delete(proj.id)).toBe(true);
+    expect(await p.projectRepo.findById(proj.id)).toBeNull();
+    expect(await p.projectRepo.findByDatasourceId(ds.id)).toHaveLength(0);
+  });
+});
+
+describe('SqliteSessionRepository — project scoping', () => {
+  test('findByProjectId returns only sessions of that project', async () => {
+    const proj = createProject({ path: '/proj' });
+    await p.projectRepo.create(proj);
+    await p.sessionRepo.create(createSession({ title: 'scoped', projectId: proj.id }));
+    await p.sessionRepo.create(createSession({ title: 'orphan' })); // no project
+
+    const scoped = await p.sessionRepo.findByProjectId(proj.id);
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0]?.title).toBe('scoped');
+    expect(scoped[0]?.projectId).toBe(proj.id);
   });
 });
 

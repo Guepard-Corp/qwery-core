@@ -8,6 +8,7 @@ type Row = typeof sessions.$inferSelect;
 function toEntity(r: Row): Session {
   return {
     id: r.id,
+    projectId: r.projectId ?? undefined,
     title: r.title,
     seedMessage: r.seedMessage ?? undefined,
     slug: r.slug,
@@ -20,6 +21,7 @@ function toEntity(r: Row): Session {
 function toRow(s: Session) {
   return {
     id: s.id,
+    projectId: s.projectId ?? null,
     title: s.title,
     seedMessage: s.seedMessage ?? null,
     slug: s.slug,
@@ -66,6 +68,16 @@ export class SqliteSessionRepository extends ISessionRepository {
       .where(
         sql`EXISTS (SELECT 1 FROM json_each(${sessions.datasources}) je WHERE je.value = ${datasourceId})`,
       )
+      .orderBy(desc(sessions.updatedAt))
+      .all();
+    return rows.map(toEntity);
+  }
+
+  async findByProjectId(projectId: string): Promise<Session[]> {
+    const rows = this.db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.projectId, projectId))
       .orderBy(desc(sessions.updatedAt))
       .all();
     return rows.map(toEntity);

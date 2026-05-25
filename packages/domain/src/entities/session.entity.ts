@@ -8,6 +8,7 @@ import { generateIdentity } from '../utils/identity.generator';
  */
 export const SessionSchema = z.object({
   id: z.uuid().describe('The unique identifier for the session'),
+  projectId: z.uuid().optional().describe('The project (working directory) this session belongs to'),
   title: z.string().describe('The title of the session'),
   seedMessage: z.string().optional().describe('The first prompt that started the session'),
   slug: z.string().describe('Short shareable id'),
@@ -20,6 +21,7 @@ export type Session = z.infer<typeof SessionSchema>;
 
 export const CreateSessionInputSchema = z.object({
   title: z.string().min(1),
+  projectId: z.uuid().optional(),
   seedMessage: z.string().optional(),
   datasources: z.array(z.string().min(1)).optional(),
 });
@@ -41,6 +43,7 @@ export function createSession(input: CreateSessionInput): Session {
   return SessionSchema.parse({
     id,
     slug,
+    projectId: input.projectId,
     title: input.title,
     seedMessage: input.seedMessage,
     datasources: input.datasources ?? [],

@@ -8,16 +8,18 @@ import type {
   IDatasourceRepository,
   IMessageRepository,
   IModelCatalog,
+  IProjectRepository,
   ISecretVault,
   ISessionRepository,
   IUsageRepository,
   LLMProvider,
   Logger,
   Message,
+  Project,
   Session,
   Usage,
 } from '@qwery/domain';
-import { NullTelemetry } from '@qwery/domain';
+import { createProject, NullTelemetry } from '@qwery/domain';
 import { MockLanguageModelV3, simulateReadableStream } from 'ai/test';
 
 /**
@@ -58,6 +60,45 @@ class InMemorySessionRepo implements ISessionRepository {
   }
   shortenId(id: string) {
     return id.slice(0, 8);
+  }
+  async findByDatasourceId() {
+    return [];
+  }
+  async findByProjectId() {
+    return [];
+  }
+}
+
+class InMemoryProjectRepo implements IProjectRepository {
+  private store = new Map<string, Project>();
+  async findAll() {
+    return [...this.store.values()];
+  }
+  async findById(id: string) {
+    return this.store.get(id) ?? null;
+  }
+  async findBySlug(slug: string) {
+    for (const p of this.store.values()) if (p.slug === slug) return p;
+    return null;
+  }
+  async create(entity: Project) {
+    this.store.set(entity.id, entity);
+    return entity;
+  }
+  async update(entity: Project) {
+    this.store.set(entity.id, entity);
+    return entity;
+  }
+  async delete(id: string) {
+    return this.store.delete(id);
+  }
+  shortenId(id: string) {
+    return id.slice(0, 8);
+  }
+  async attachDatasource() {}
+  async detachDatasource() {}
+  async listDatasourceIds() {
+    return [];
   }
   async findByDatasourceId() {
     return [];
@@ -221,6 +262,7 @@ export function makeMockServices(opts: MockServicesOptions = {}): AppServices {
     messageRepo: emptyRepo<Message>() as unknown as IMessageRepository,
     usageRepo: emptyRepo<Usage>() as unknown as IUsageRepository,
     datasourceRepo: emptyRepo<Datasource>() as unknown as IDatasourceRepository,
+    projectRepo: new InMemoryProjectRepo(),
     modelCatalog,
     attachedDatasources,
     vault,
@@ -228,6 +270,7 @@ export function makeMockServices(opts: MockServicesOptions = {}): AppServices {
     branching: createGfsBranching({ run: async () => ({ stdout: '', stderr: '', exitCode: 1 }) }),
     // No-op updater by default: no network, nothing staged. Override per test.
     updater: { checkAndStage: async () => [] },
+    currentProject: createProject({ path: '/test/project' }),
   };
 
   if (persistence === 'sqlite-memory') {
@@ -236,6 +279,7 @@ export function makeMockServices(opts: MockServicesOptions = {}): AppServices {
     base.messageRepo = sqlite.messageRepo;
     base.usageRepo = sqlite.usageRepo;
     base.datasourceRepo = sqlite.datasourceRepo;
+    base.projectRepo = sqlite.projectRepo;
     base.vault = sqlite.vault;
     base.compute = createDuckDBCompute();
   }

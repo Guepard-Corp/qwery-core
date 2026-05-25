@@ -109,6 +109,7 @@ export function App() {
     branching,
     updater,
     telemetry,
+    currentProject,
   } = services;
   const termRows = stdout?.rows ?? 30;
   const termCols = stdout?.columns ?? 80;
@@ -182,12 +183,12 @@ export function App() {
     if (sessionId.current) return sessionId.current;
     const s = await SessionUseCases.createSession(
       { sessionRepo },
-      { title: `Session ${new Date().toISOString()}` },
+      { title: `Session ${new Date().toISOString()}`, projectId: currentProject.id },
     );
     sessionId.current = s.id;
-    logger.info('session.created', { sessionId: s.id, slug: s.slug });
+    logger.info('session.created', { sessionId: s.id, slug: s.slug, projectId: currentProject.id });
     return s.id;
-  }, [sessionRepo, logger]);
+  }, [sessionRepo, logger, currentProject]);
 
   useEffect(() => {
     ensureSession().catch((err) => {

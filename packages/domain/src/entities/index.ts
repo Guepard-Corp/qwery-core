@@ -2,6 +2,7 @@ export * from './agent.entity';
 export * from './artifact.entity';
 export * from './datasource.entity';
 export * from './message.entity';
+export * from './project.entity';
 export * from './session.entity';
 export * from './task.entity';
 export * from './todo.entity';

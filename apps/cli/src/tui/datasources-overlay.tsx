@@ -1,8 +1,8 @@
-import { Datasource as DatasourceUseCases } from '@qwery/application';
-import type { Datasource } from '@qwery/domain';
+import { Datasource as DatasourceUseCases, Project as ProjectUseCases } from '@qwery/application';
+import type { Datasource, Project } from '@qwery/domain';
 import { type DatasourceExtension, ExtensionsRegistry } from '@qwery/extension-sdk';
 import { Box, Text, useInput } from 'ink';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AttachState } from '../infra/datasources';
 import { useServices } from '../services';
 
@@ -141,21 +141,59 @@ function extractVariants(extension: DatasourceExtension): Variant[] {
 }
 
 export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayProps) {
-  const { datasourceRepo, attachedDatasources, logger, vault } = useServices();
+  const { datasourceRepo, projectRepo, currentProject, attachedDatasources, logger, vault } = useServices();
   const [mode, setMode] = useState<Mode>({ kind: 'list', cursor: 0 });
   const [datasources, setDatasources] = useState<Datasource[]>([]);
   const [attachStates, setAttachStates] = useState<AttachState[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  // Datasource ids attached to the current project, and the projects each
+  // datasource belongs to (for the badges). Default view shows only the
+  // current project's datasources; `t` reveals every datasource.
+  const [projectDsIds, setProjectDsIds] = useState<Set<string>>(new Set());
+  const [projectsByDs, setProjectsByDs] = useState<Record<string, Project[]>>({});
+  const [showAll, setShowAll] = useState(false);
+
+  const refreshProjects = useCallback(
+    async (all: Datasource[]) => {
+      const ids = await projectRepo.listDatasourceIds(currentProject.id);
+      setProjectDsIds(new Set(ids));
+      const pairs = await Promise.all(
+        all.map(async (d) => [d.id, await projectRepo.findByDatasourceId(d.id)] as const),
+      );
+      setProjectsByDs(Object.fromEntries(pairs));
+    },
+    [projectRepo, currentProject],
+  );
 
   useEffect(() => {
-    void datasourceRepo.findAll().then(setDatasources);
+    void datasourceRepo.findAll().then((all) => {
+      setDatasources(all);
+      void refreshProjects(all);
+    });
     return attachedDatasources.subscribe(setAttachStates);
-  }, [datasourceRepo, attachedDatasources]);
+  }, [datasourceRepo, attachedDatasources, refreshProjects]);
 
   const extensions = useMemo(() => ExtensionsRegistry.listDatasources(), []);
 
+  // The datasources shown in the list: the current project's, or all of them.
+  const visibleDatasources = useMemo(
+    () => (showAll ? datasources : datasources.filter((d) => projectDsIds.has(d.id))),
+    [showAll, datasources, projectDsIds],
+  );
+
   function attachStateFor(id: string): AttachState | undefined {
     return attachStates.find((s) => s.datasource.id === id);
+  }
+
+  async function toggleProjectAttach(ds: Datasource): Promise<void> {
+    if (projectDsIds.has(ds.id)) {
+      await ProjectUseCases.detachDatasourceFromProject({ projectRepo }, currentProject.id, ds.id);
+      setStatus(`Detached ${ds.name} from ${currentProject.name}`);
+    } else {
+      await ProjectUseCases.attachDatasourceToProject({ projectRepo }, currentProject.id, ds.id);
+      setStatus(`Attached ${ds.name} to ${currentProject.name}`);
+    }
+    await refreshProjects(datasources);
   }
 
   async function triggerAttach(ds: Datasource): Promise<void> {
@@ -196,17 +234,27 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
     }
 
     if (mode.kind === 'list') {
+      const selectedDs = visibleDatasources[mode.cursor];
       if (key.upArrow) setMode({ kind: 'list', cursor: Math.max(0, mode.cursor - 1) });
       else if (key.downArrow)
-        setMode({ kind: 'list', cursor: Math.min(Math.max(0, datasources.length - 1), mode.cursor + 1) });
-      else if (input === 'n') setMode({ kind: 'pick-extension', cursor: 0 });
-      else if (input === 'a' && datasources[mode.cursor]) {
-        // `a` toggles: detach an already-attached datasource, otherwise attach it.
-        const ds = datasources[mode.cursor]!;
-        if (attachStateFor(ds.id)?.status === 'attached') void triggerDetach(ds);
-        else void triggerAttach(ds);
-      } else if (input === 'd' && datasources[mode.cursor]) {
-        setMode({ kind: 'confirm-delete', datasource: datasources[mode.cursor]!, cursor: mode.cursor });
+        setMode({
+          kind: 'list',
+          cursor: Math.min(Math.max(0, visibleDatasources.length - 1), mode.cursor + 1),
+        });
+      else if (input === 't') {
+        // Toggle between the current project's datasources and all of them.
+        setShowAll((v) => !v);
+        setMode({ kind: 'list', cursor: 0 });
+      } else if (input === 'n') setMode({ kind: 'pick-extension', cursor: 0 });
+      else if (input === 'a' && selectedDs) {
+        // `a` toggles compute attach: detach an attached datasource, else attach.
+        if (attachStateFor(selectedDs.id)?.status === 'attached') void triggerDetach(selectedDs);
+        else void triggerAttach(selectedDs);
+      } else if (input === 'p' && selectedDs) {
+        // `p` toggles membership of the datasource in the current project.
+        void toggleProjectAttach(selectedDs);
+      } else if (input === 'd' && selectedDs) {
+        setMode({ kind: 'confirm-delete', datasource: selectedDs, cursor: mode.cursor });
       }
       return;
     }
@@ -218,9 +266,14 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
       if (input === 'y' || input === 'Y') {
         void (async () => {
           await attachedDatasources.detach(ds);
+          // Remove the datasource's project memberships so no join rows dangle.
+          for (const p of projectsByDs[ds.id] ?? []) {
+            await ProjectUseCases.detachDatasourceFromProject({ projectRepo }, p.id, ds.id);
+          }
           await datasourceRepo.delete(ds.id);
           const next = await datasourceRepo.findAll();
           setDatasources(next);
+          await refreshProjects(next);
           setMode({ kind: 'list', cursor: Math.min(previousCursor, Math.max(0, next.length - 1)) });
           setStatus(`Deleted ${ds.name}`);
         })();
@@ -326,8 +379,11 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
         },
       );
       logger.info('datasource.created', { id: ds.id, driver: driverReg.id });
+      // A datasource created from within a project is attached to it by default.
+      await ProjectUseCases.attachDatasourceToProject({ projectRepo }, currentProject.id, ds.id);
       const refreshed = await datasourceRepo.findAll();
       setDatasources(refreshed);
+      await refreshProjects(refreshed);
       setMode({ kind: 'list', cursor: 0 });
       await triggerAttach(ds);
     } catch (err) {
@@ -361,7 +417,14 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
       )}
 
       {mode.kind === 'list' && (
-        <ListMode datasources={datasources} cursor={mode.cursor} attachStateFor={attachStateFor} />
+        <ListMode
+          datasources={visibleDatasources}
+          cursor={mode.cursor}
+          attachStateFor={attachStateFor}
+          projectsByDs={projectsByDs}
+          currentProject={currentProject}
+          showAll={showAll}
+        />
       )}
       {mode.kind === 'pick-extension' && <PickExtensionMode extensions={extensions} cursor={mode.cursor} />}
       {mode.kind === 'pick-variant' && <PickVariantMode mode={mode} />}
@@ -375,18 +438,32 @@ function ListMode({
   datasources,
   cursor,
   attachStateFor,
+  projectsByDs,
+  currentProject,
+  showAll,
 }: {
   datasources: Datasource[];
   cursor: number;
   attachStateFor: (id: string) => AttachState | undefined;
+  projectsByDs: Record<string, Project[]>;
+  currentProject: Project;
+  showAll: boolean;
 }) {
+  const scopeLabel = showAll ? 'all datasources' : currentProject.name;
   return (
     <Box flexDirection="column">
-      <Box marginY={1}>
-        <Text dimColor>↑/↓ navigate · n new · a attach/detach · d delete · esc close</Text>
+      <Box marginY={1} flexDirection="column">
+        <Text dimColor>↑/↓ navigate · n new · a attach/detach · p project · d delete · esc close</Text>
+        <Text dimColor>
+          showing {scopeLabel} · t: {showAll ? 'this project only' : 'show all'}
+        </Text>
       </Box>
       {datasources.length === 0 ? (
-        <Text dimColor>No datasources configured yet. Press `n` to add one.</Text>
+        <Text dimColor>
+          {showAll
+            ? 'No datasources configured yet. Press `n` to add one.'
+            : `No datasources in ${currentProject.name}. Press \`n\` to add one, or \`t\` to see all and \`p\` to attach.`}
+        </Text>
       ) : (
         datasources.map((ds, i) => {
           const state = attachStateFor(ds.id);
@@ -398,6 +475,8 @@ function ListMode({
                 : 'detached';
           const color = state?.status === 'attached' ? 'green' : state?.status === 'error' ? 'red' : 'gray';
           const selected = i === cursor;
+          const projects = projectsByDs[ds.id] ?? [];
+          const projectNames = projects.map((p) => p.name).join(', ');
           return (
             <Box key={ds.id} flexDirection="column">
               <Box>
@@ -409,6 +488,7 @@ function ListMode({
               </Box>
               <Box paddingLeft={1}>
                 <Text color={color}>{statusLabel}</Text>
+                <Text dimColor> · projects: {projects.length > 0 ? projectNames : 'none'}</Text>
               </Box>
             </Box>
           );

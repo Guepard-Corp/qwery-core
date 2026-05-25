@@ -1,4 +1,4 @@
-import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
  * Drizzle schema mirroring the original raw-SQL `SCHEMA_V1`: timestamps are
@@ -16,6 +16,8 @@ export const sessions = sqliteTable(
   'sessions',
   {
     id: text('id').primaryKey(),
+    // Nullable: sessions created before project scoping have no project.
+    projectId: text('project_id'),
     title: text('title').notNull(),
     seedMessage: text('seed_message'),
     slug: text('slug').notNull(),
@@ -24,7 +26,11 @@ export const sessions = sqliteTable(
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
-  (t) => [index('idx_sessions_updated_at').on(t.updatedAt), index('idx_sessions_slug').on(t.slug)],
+  (t) => [
+    index('idx_sessions_updated_at').on(t.updatedAt),
+    index('idx_sessions_slug').on(t.slug),
+    index('idx_sessions_project').on(t.projectId),
+  ],
 );
 
 export const messages = sqliteTable(
@@ -81,5 +87,33 @@ export const datasources = sqliteTable(
   (t) => [index('idx_datasources_updated_at').on(t.updatedAt), index('idx_datasources_slug').on(t.slug)],
 );
 
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    // Slugified canonical cwd; unique so each directory maps to one project.
+    slug: text('slug').notNull(),
+    path: text('path').notNull(),
+    name: text('name').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('idx_projects_slug').on(t.slug)],
+);
+
+/** Many-to-many join between projects and datasources. */
+export const projectDatasources = sqliteTable(
+  'project_datasources',
+  {
+    projectId: text('project_id').notNull(),
+    datasourceId: text('datasource_id').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.projectId, t.datasourceId] }),
+    index('idx_project_datasources_datasource').on(t.datasourceId),
+  ],
+);
+
 /** Aggregate handed to `drizzle(db, { schema })` for typed relational queries. */
-export const schema = { sessions, messages, usage, datasources };
+export const schema = { sessions, messages, usage, datasources, projects, projectDatasources };
