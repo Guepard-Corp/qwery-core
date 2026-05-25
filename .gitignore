@@ -15,3 +15,6 @@ apps/e2e/artifacts/
 
 # TS incremental build info
 *.tsbuildinfo
+
+# GFS
+.gfs

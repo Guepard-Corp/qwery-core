@@ -1,6 +1,5 @@
 export * as Agent from './agent';
 export * as Artifact from './artifact';
-export * as Branching from './branching';
 export * as Datasource from './datasource';
 export * as Message from './message';
 export * as Project from './project';

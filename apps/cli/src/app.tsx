@@ -838,7 +838,6 @@ export function App() {
             registry: {
               datasourceRepo,
               usageRepo,
-              branching,
               getAttachState: (id) => attachedDatasources.get(id),
               attachDatasource: async (id) => {
                 const ds = await datasourceRepo.findById(id);
