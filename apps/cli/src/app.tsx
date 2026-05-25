@@ -46,6 +46,7 @@ import {
   trackUpdateCheck,
 } from './infra/telemetry-actions';
 import type { UpdateOutcome } from './infra/updater';
+import { getAppVersion } from './infra/version';
 import { useServices } from './services';
 import { AgentsOverlay } from './tui/agents-overlay';
 import { ChatView } from './tui/chat-view';
@@ -111,6 +112,8 @@ export function App() {
   } = services;
   const termRows = stdout?.rows ?? 30;
   const termCols = stdout?.columns ?? 80;
+  // Real app version (baked at build, or ~/.qwery/version); 'dev' when unknown.
+  const appVersion = useMemo(() => getAppVersion(), []);
   const [activeTab, setActiveTab] = useState<TabKey>('chat');
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [streaming, setStreaming] = useState<string>('');
@@ -1018,7 +1021,9 @@ export function App() {
         <Text color="cyan" bold>
           qwery
         </Text>
-        <Text dimColor> · v0.0.1{gfsVersion ? ` (with GFS v${gfsVersion})` : ''}</Text>
+        <Text
+          dimColor
+        >{` · ${appVersion ? `v${appVersion}` : 'dev'}${gfsVersion ? ` (with GFS v${gfsVersion})` : ''}`}</Text>
       </Box>
       {layoutMode === 'split' ? (
         <Box flexDirection="row" flexGrow={1} overflow="hidden">

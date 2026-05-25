@@ -5,6 +5,10 @@ import { render } from 'ink-testing-library';
 import { type MockServicesOptions, makeMockServices } from './mock-services';
 import { captureFrame } from './screenshot';
 
+// Pin the app version so the rendered header is deterministic in snapshots,
+// regardless of the machine's baked QWERY_VERSION or installed ~/.qwery/version.
+process.env.QWERY_VERSION = '0.0.0-e2e';
+
 const DOWN_ARROW = '\x1B[B';
 
 export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
