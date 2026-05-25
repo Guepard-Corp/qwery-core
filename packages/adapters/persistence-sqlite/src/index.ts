@@ -1,4 +1,3 @@
-import type { Database } from 'bun:sqlite';
 import type {
   IDatasourceRepository,
   IMessageRepository,
@@ -7,19 +6,19 @@ import type {
   IUsageRepository,
 } from '@qwery/domain';
 import { SqliteDatasourceRepository } from './datasource.repository';
-import { openDatabase } from './db';
+import { type DrizzleDb, openDatabase } from './db';
 import { SqliteMessageRepository } from './message.repository';
 import { SqliteSessionRepository } from './session.repository';
 import { SqliteUsageRepository } from './usage.repository';
 
 export { SqliteDatasourceRepository } from './datasource.repository';
-export { defaultDbPath, openDatabase } from './db';
+export { type DrizzleDb, defaultDbPath, openDatabase } from './db';
 export { SqliteMessageRepository } from './message.repository';
 export { SqliteSessionRepository } from './session.repository';
 export { SqliteUsageRepository } from './usage.repository';
 
 export interface SqlitePersistence {
-  db: Database;
+  db: DrizzleDb;
   vault: ISecretVault;
   sessionRepo: ISessionRepository;
   messageRepo: IMessageRepository;
