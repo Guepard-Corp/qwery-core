@@ -2,92 +2,61 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { type BunSQLiteDatabase, drizzle } from 'drizzle-orm/bun-sqlite';
+import { migrations } from './migrations';
+import { schema } from './schema';
 
-/** Bump when the schema changes; `migrate` applies steps up to this version. */
-const SCHEMA_VERSION = 1;
-
-const SCHEMA_V1 = `
-CREATE TABLE IF NOT EXISTS sessions (
-  id          TEXT PRIMARY KEY,
-  title       TEXT NOT NULL,
-  seed_message TEXT,
-  slug        TEXT NOT NULL,
-  datasources TEXT NOT NULL DEFAULT '[]', -- JSON array of datasource ids
-  created_at  TEXT NOT NULL,              -- ISO 8601
-  updated_at  TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions (updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sessions_slug ON sessions (slug);
-
-CREATE TABLE IF NOT EXISTS messages (
-  id          TEXT PRIMARY KEY,
-  session_id  TEXT NOT NULL,
-  role        TEXT NOT NULL,
-  content     TEXT NOT NULL,              -- JSON
-  metadata    TEXT NOT NULL DEFAULT '{}', -- JSON
-  created_at  TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages (session_id, created_at);
-
-CREATE TABLE IF NOT EXISTS usage (
-  id                 TEXT PRIMARY KEY,
-  session_id         TEXT,
-  message_id         TEXT,
-  model              TEXT NOT NULL,
-  input_tokens       INTEGER NOT NULL DEFAULT 0,
-  output_tokens      INTEGER NOT NULL DEFAULT 0,
-  total_tokens       INTEGER NOT NULL DEFAULT 0,
-  reasoning_tokens   INTEGER NOT NULL DEFAULT 0,
-  cached_input_tokens INTEGER NOT NULL DEFAULT 0,
-  cache_write_tokens INTEGER NOT NULL DEFAULT 0,
-  cost_usd           REAL NOT NULL DEFAULT 0,
-  input_cost_usd     REAL NOT NULL DEFAULT 0,
-  output_cost_usd    REAL NOT NULL DEFAULT 0,
-  duration_ms        INTEGER NOT NULL DEFAULT 0,
-  context_size       INTEGER NOT NULL DEFAULT 0,
-  timestamp          TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_usage_session_timestamp ON usage (session_id, timestamp);
-
-CREATE TABLE IF NOT EXISTS datasources (
-  id                  TEXT PRIMARY KEY,
-  name                TEXT NOT NULL,
-  description         TEXT NOT NULL DEFAULT '',
-  slug                TEXT NOT NULL,
-  datasource_provider TEXT NOT NULL,
-  datasource_driver   TEXT NOT NULL,
-  config              TEXT NOT NULL DEFAULT '{}', -- JSON (may hold enc:v1: handles)
-  created_at          TEXT NOT NULL,
-  updated_at          TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_datasources_updated_at ON datasources (updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_datasources_slug ON datasources (slug);
-`;
+/** The Drizzle handle the repositories query against, typed with the schema. */
+export type DrizzleDb = BunSQLiteDatabase<typeof schema>;
 
 export function defaultDbPath(): string {
   return process.env.QWERY_DB_PATH ?? join(homedir(), '.qwery', 'qwery.sqlite');
 }
 
-function migrate(db: Database): void {
-  const row = db.query('PRAGMA user_version').get() as { user_version: number };
-  if (row.user_version >= SCHEMA_VERSION) return;
-  db.transaction(() => {
-    if (row.user_version < 1) db.exec(SCHEMA_V1);
-    db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-  })();
+/**
+ * Applies any not-yet-recorded embedded migrations, in order, each in its own
+ * transaction. Tags are tracked in `_qwery_migrations`.
+ *
+ * The baseline (`0000_init`) uses `CREATE TABLE IF NOT EXISTS`, so on databases
+ * created by the pre-Drizzle adapter (tables already present under
+ * `PRAGMA user_version = 1`) it is a harmless no-op that simply records the tag;
+ * on a fresh database it creates the full schema (ADR #35).
+ */
+function runMigrations(db: Database): void {
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS _qwery_migrations (
+       tag        TEXT PRIMARY KEY,
+       applied_at TEXT NOT NULL
+     )`,
+  );
+  const applied = new Set(
+    (db.query('SELECT tag FROM _qwery_migrations').all() as { tag: string }[]).map((r) => r.tag),
+  );
+  for (const m of migrations) {
+    if (applied.has(m.tag)) continue;
+    db.transaction(() => {
+      // Statements are separated by `--> statement-breakpoint` lines, which are
+      // SQL line comments; `exec` runs the whole script in one call.
+      db.exec(m.sql);
+      db.run('INSERT INTO _qwery_migrations (tag, applied_at) VALUES (?, ?)', [
+        m.tag,
+        new Date().toISOString(),
+      ]);
+    })();
+  }
 }
 
 /**
- * Opens (creating if needed) the SQLite database and applies migrations.
- * WAL + `busy_timeout` give cross-process readers and a retrying writer, which
- * the previous file adapter's in-process-only lock could not (ADR #35).
+ * Opens (creating if needed) the SQLite database, applies migrations, and
+ * returns a Drizzle handle. WAL + `busy_timeout` give cross-process readers and
+ * a retrying writer, which the previous file adapter's in-process-only lock
+ * could not (ADR #35).
  */
-export function openDatabase(dbPath = defaultDbPath()): Database {
+export function openDatabase(dbPath = defaultDbPath()): DrizzleDb {
   if (dbPath !== ':memory:') mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new Database(dbPath, { create: true });
-  db.exec('PRAGMA journal_mode = WAL');
-  db.exec('PRAGMA busy_timeout = 5000');
-  migrate(db);
-  return db;
+  const sqlite = new Database(dbPath, { create: true });
+  sqlite.exec('PRAGMA journal_mode = WAL');
+  sqlite.exec('PRAGMA busy_timeout = 5000');
+  runMigrations(sqlite);
+  return drizzle(sqlite, { schema });
 }

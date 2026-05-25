@@ -1,4 +1,3 @@
-import type { Database } from 'bun:sqlite';
 import {
   type Datasource,
   IDatasourceRepository,
@@ -6,18 +5,11 @@ import {
   type Nullable,
   type RepositoryFindOptions,
 } from '@qwery/domain';
+import { desc, eq } from 'drizzle-orm';
+import type { DrizzleDb } from './db';
+import { datasources } from './schema';
 
-interface Row {
-  id: string;
-  name: string;
-  description: string;
-  slug: string;
-  datasource_provider: string;
-  datasource_driver: string;
-  config: string;
-  created_at: string;
-  updated_at: string;
-}
+type Row = typeof datasources.$inferSelect;
 
 function toEntity(r: Row): Datasource {
   return {
@@ -25,17 +17,31 @@ function toEntity(r: Row): Datasource {
     name: r.name,
     description: r.description,
     slug: r.slug,
-    datasource_provider: r.datasource_provider,
-    datasource_driver: r.datasource_driver,
+    datasource_provider: r.datasourceProvider,
+    datasource_driver: r.datasourceDriver,
     config: JSON.parse(r.config) as Datasource['config'],
-    createdAt: new Date(r.created_at),
-    updatedAt: new Date(r.updated_at),
+    createdAt: new Date(r.createdAt),
+    updatedAt: new Date(r.updatedAt),
+  };
+}
+
+function toRow(d: Datasource) {
+  return {
+    id: d.id,
+    name: d.name,
+    description: d.description,
+    slug: d.slug,
+    datasourceProvider: d.datasource_provider,
+    datasourceDriver: d.datasource_driver,
+    config: JSON.stringify(d.config),
+    createdAt: d.createdAt.toISOString(),
+    updatedAt: d.updatedAt.toISOString(),
   };
 }
 
 export class SqliteDatasourceRepository extends IDatasourceRepository {
   constructor(
-    private readonly db: Database,
+    private readonly db: DrizzleDb,
     private readonly vault: ISecretVault,
   ) {
     super();
@@ -45,18 +51,22 @@ export class SqliteDatasourceRepository extends IDatasourceRepository {
     const limit = options?.limit ?? -1;
     const offset = options?.offset ?? 0;
     const rows = this.db
-      .query('SELECT * FROM datasources ORDER BY updated_at DESC LIMIT ? OFFSET ?')
-      .all(limit, offset) as Row[];
+      .select()
+      .from(datasources)
+      .orderBy(desc(datasources.updatedAt))
+      .limit(limit)
+      .offset(offset)
+      .all();
     return rows.map(toEntity);
   }
 
   async findById(id: string): Promise<Nullable<Datasource>> {
-    const row = this.db.query('SELECT * FROM datasources WHERE id = ?').get(id) as Row | null;
+    const row = this.db.select().from(datasources).where(eq(datasources.id, id)).get();
     return row ? toEntity(row) : null;
   }
 
   async findBySlug(slug: string): Promise<Nullable<Datasource>> {
-    const row = this.db.query('SELECT * FROM datasources WHERE slug = ? LIMIT 1').get(slug) as Row | null;
+    const row = this.db.select().from(datasources).where(eq(datasources.slug, slug)).limit(1).get();
     return row ? toEntity(row) : null;
   }
 
@@ -69,8 +79,12 @@ export class SqliteDatasourceRepository extends IDatasourceRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const res = this.db.run('DELETE FROM datasources WHERE id = ?', [id]);
-    return res.changes > 0;
+    const deleted = this.db
+      .delete(datasources)
+      .where(eq(datasources.id, id))
+      .returning({ id: datasources.id })
+      .all();
+    return deleted.length > 0;
   }
 
   async revealSecrets(config: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -86,22 +100,9 @@ export class SqliteDatasourceRepository extends IDatasourceRepository {
   }
 
   private upsert(d: Datasource): Datasource {
-    this.db.run(
-      `INSERT OR REPLACE INTO datasources (
-        id, name, description, slug, datasource_provider, datasource_driver, config, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        d.id,
-        d.name,
-        d.description,
-        d.slug,
-        d.datasource_provider,
-        d.datasource_driver,
-        JSON.stringify(d.config),
-        d.createdAt.toISOString(),
-        d.updatedAt.toISOString(),
-      ],
-    );
+    const row = toRow(d);
+    const { id: _id, ...rest } = row;
+    this.db.insert(datasources).values(row).onConflictDoUpdate({ target: datasources.id, set: rest }).run();
     return d;
   }
 }
