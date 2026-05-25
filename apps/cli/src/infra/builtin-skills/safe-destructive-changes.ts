@@ -17,8 +17,8 @@ way that is hard to undo: bulk \`UPDATE\`/\`DELETE\` without a tight \`WHERE\`,
 
 Never run a destructive statement directly against the live branch. Do it on a
 GFS branch first, inspect the result, and only then keep or discard it. GFS
-("Guepard File System") is qwery's git-for-data sandbox — that is exactly what
-it is for.
+("Git For database Systems") is qwery's git-for-data sandbox — that is exactly
+what it is for.
 
 ## Workflow
 
