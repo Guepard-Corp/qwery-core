@@ -43,8 +43,7 @@ export function assertBashCommandAllowed(command: string): void {
 /**
  * macOS kernel-enforced sandbox profile: allow everything, then deny read+write
  * on `~/.qwery` while re-allowing its `cache` subdir. Unlike the static guard,
- * this cannot be bypassed with env vars, encoding, or indirection. Linux
- * hardening (bubblewrap) is a follow-up; until then the static guard stands.
+ * this cannot be bypassed with env vars, encoding, or indirection.
  */
 const SANDBOX_AVAILABLE = process.platform === 'darwin' && existsSync('/usr/bin/sandbox-exec');
 const SANDBOX_PROFILE = [
@@ -53,6 +52,44 @@ const SANDBOX_PROFILE = [
   `(deny file-read* file-write* (subpath "${QWERY_HOME}"))`,
   `(allow file-read* file-write* (subpath "${CACHE_ROOT}"))`,
 ].join('\n');
+
+/**
+ * Linux kernel-enforced equivalent via bubblewrap: pass the whole filesystem
+ * through (`--dev-bind / /`) so legitimate tooling keeps working, then overlay
+ * an empty tmpfs on `~/.qwery` to hide the master key / DB / config, re-binding
+ * only the `cache` subdir. Mirrors the macOS deny.
+ */
+const BWRAP_BIN = '/usr/bin/bwrap';
+
+export function bwrapArgs(command: string): string[] {
+  const args = ['--dev-bind', '/', '/', '--tmpfs', QWERY_HOME];
+  if (existsSync(CACHE_ROOT)) args.push('--bind', CACHE_ROOT, CACHE_ROOT);
+  args.push('--', 'bash', '-c', command);
+  return args;
+}
+
+/**
+ * Probe bwrap once, memoized. We don't just check the binary exists: user
+ * namespaces are disabled on some kernels and inside some containers, and the
+ * recipe must actually run. So we run the real recipe on a trivial command and
+ * verify its output. If anything fails, we fall back to the static guard only
+ * (no regression — bwrap is used only where it provably works).
+ */
+let bwrapProbe: Promise<boolean> | null = null;
+function detectBwrap(): Promise<boolean> {
+  if (process.platform !== 'linux' || !existsSync(BWRAP_BIN)) return Promise.resolve(false);
+  if (bwrapProbe) return bwrapProbe;
+  bwrapProbe = new Promise<boolean>((resolveProbe) => {
+    let out = '';
+    const probe = spawn(BWRAP_BIN, bwrapArgs("printf '__bwrap_ok__'"));
+    probe.stdout.on('data', (c: Buffer) => {
+      out += c.toString('utf-8');
+    });
+    probe.on('error', () => resolveProbe(false));
+    probe.on('close', (code) => resolveProbe(code === 0 && out.includes('__bwrap_ok__')));
+  });
+  return bwrapProbe;
+}
 
 /**
  * Resolve a user-supplied path inside one of the allowed roots (workspace or
@@ -82,15 +119,22 @@ export interface BashResult {
  * process is killed after `BASH_TIMEOUT_MS`.
  *
  * FS access to `~/.qwery` (secrets) is blocked two ways: a static guard
- * (`assertBashCommandAllowed`, every platform) and, on macOS, a kernel-enforced
- * `sandbox-exec` profile. The command otherwise has normal filesystem access so
- * legitimate tooling (git, bun, build steps) keeps working (ADR #18).
+ * (`assertBashCommandAllowed`, every platform) and a kernel-enforced sandbox —
+ * `sandbox-exec` on macOS, bubblewrap on Linux when available. The command
+ * otherwise has normal filesystem access so legitimate tooling (git, bun, build
+ * steps) keeps working (ADR #18).
  */
 export async function runBash(command: string): Promise<BashResult> {
   assertBashCommandAllowed(command);
-  const [bin, args] = SANDBOX_AVAILABLE
-    ? (['sandbox-exec', ['-p', SANDBOX_PROFILE, 'bash', '-c', command]] as const)
-    : (['bash', ['-c', command]] as const);
+  let bin = 'bash';
+  let args: string[] = ['-c', command];
+  if (SANDBOX_AVAILABLE) {
+    bin = 'sandbox-exec';
+    args = ['-p', SANDBOX_PROFILE, 'bash', '-c', command];
+  } else if (await detectBwrap()) {
+    bin = BWRAP_BIN;
+    args = bwrapArgs(command);
+  }
   return new Promise((resolvePromise, reject) => {
     const child = spawn(bin, args, { cwd: WORKSPACE_ROOT });
     const stdoutChunks: Buffer[] = [];

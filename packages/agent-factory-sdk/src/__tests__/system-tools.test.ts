@@ -6,6 +6,7 @@ import {
   assertBashCommandAllowed,
   BASH_MAX_OUTPUT_BYTES,
   BASH_TIMEOUT_MS,
+  bwrapArgs,
   READ_MAX_BYTES,
   readFileSafe,
   resolveSafePath,
@@ -167,4 +168,20 @@ describe('assertBashCommandAllowed — ~/.qwery guard', () => {
       expect(() => assertBashCommandAllowed(cmd)).not.toThrow();
     });
   }
+});
+
+describe('bwrapArgs — Linux sandbox recipe', () => {
+  test('masks ~/.qwery with a tmpfs and isolates the command', () => {
+    const args = bwrapArgs("printf 'x'");
+    const qweryHome = path.join(homedir(), '.qwery');
+    // The qwery private dir is overlaid with an empty tmpfs.
+    const ti = args.indexOf('--tmpfs');
+    expect(ti).toBeGreaterThanOrEqual(0);
+    expect(args[ti + 1]).toBe(qweryHome);
+    // The command runs after the `--` separator, via bash -c.
+    const sep = args.indexOf('--');
+    expect(args.slice(sep)).toEqual(['--', 'bash', '-c', "printf 'x'"]);
+    // Whole filesystem is passed through so legit tooling still works.
+    expect(args.slice(0, 3)).toEqual(['--dev-bind', '/', '/']);
+  });
 });
