@@ -3,8 +3,10 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import {
+  assertBashCommandAllowed,
   BASH_MAX_OUTPUT_BYTES,
   BASH_TIMEOUT_MS,
+  bwrapArgs,
   READ_MAX_BYTES,
   readFileSafe,
   resolveSafePath,
@@ -33,6 +35,19 @@ describe('resolveSafePath', () => {
   test('accepts a path inside ~/.qwery/cache', () => {
     const p = resolveSafePath(path.join(homedir(), '.qwery', 'cache', 'x'));
     expect(p).toContain('.qwery/cache');
+  });
+
+  test('accepts user-level skills and agents under ~/.qwery', () => {
+    const skill = resolveSafePath(path.join(homedir(), '.qwery', 'skills', 'use-gfs-cli', 'SKILL.md'));
+    expect(skill).toContain('.qwery/skills');
+    const agent = resolveSafePath(path.join(homedir(), '.qwery', 'agents', 'foo.md'));
+    expect(agent).toContain('.qwery/agents');
+  });
+
+  test('refuses qwery secrets (master key, db, config)', () => {
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', '.master.key'))).toThrow(/outside|Allowed/);
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', 'qwery.sqlite'))).toThrow(/outside|Allowed/);
+    expect(() => resolveSafePath(path.join(homedir(), '.qwery', 'config.json'))).toThrow(/outside|Allowed/);
   });
 
   test('refuses /etc/passwd', () => {
@@ -129,5 +144,70 @@ describe('runBash', () => {
 
   test('BASH_TIMEOUT_MS is a positive number', () => {
     expect(BASH_TIMEOUT_MS).toBeGreaterThan(0);
+  });
+
+  test('rejects a command that reads qwery secrets before spawning', async () => {
+    await expect(runBash('sqlite3 ~/.qwery/qwery.sqlite "SELECT config FROM datasources"')).rejects.toThrow(
+      /blocked/,
+    );
+  });
+});
+
+describe('assertBashCommandAllowed — ~/.qwery guard', () => {
+  const blocked = [
+    'cat ~/.qwery/.master.key',
+    'sqlite3 ~/.qwery/qwery.sqlite "SELECT config FROM datasources"',
+    'cat ~/.qwery/config.json | python3 -c "import sys"',
+    `cat ${path.join(homedir(), '.qwery', 'config.json')}`,
+    'find ~/.qwery -name "*.json"',
+    'cp /tmp/x ~/.qwery/.master.key',
+    // "agent" dirs that are nonetheless sensitive — must stay blocked.
+    'cat ~/.qwery/mcp.json',
+    'cat ~/.qwery/settings.json',
+    'cat ~/.qwery/sessions/last.json',
+    'cat ~/.qwery/storage/artifact/result.json',
+    'cat ~/.qwery/memory/notes.md',
+  ];
+  for (const cmd of blocked) {
+    test(`blocks: ${cmd.slice(0, 40)}`, () => {
+      expect(() => assertBashCommandAllowed(cmd)).toThrow(/blocked/);
+    });
+  }
+
+  const allowed = [
+    'ls -la',
+    'git status',
+    'bun test',
+    'cat ~/.qwery/cache/models.json', // benign subdirs are permitted
+    'cat ~/.qwery/skills/use-gfs-cli/SKILL.md',
+    'ls ~/.qwery/agents',
+    'tail ~/.qwery/logs/qwery.log',
+    'cat ~/.qwery/commands/foo.md',
+    'cat ~/.qwery/hooks/pre.sh',
+    'cat ~/.qwery/prompts/x.md',
+    'ls ~/.qwery/plugins',
+    'echo "no qwery here"',
+    'cat package.json',
+  ];
+  for (const cmd of allowed) {
+    test(`allows: ${cmd.slice(0, 40)}`, () => {
+      expect(() => assertBashCommandAllowed(cmd)).not.toThrow();
+    });
+  }
+});
+
+describe('bwrapArgs — Linux sandbox recipe', () => {
+  test('masks ~/.qwery with a tmpfs and isolates the command', () => {
+    const args = bwrapArgs("printf 'x'");
+    const qweryHome = path.join(homedir(), '.qwery');
+    // The qwery private dir is overlaid with an empty tmpfs.
+    const ti = args.indexOf('--tmpfs');
+    expect(ti).toBeGreaterThanOrEqual(0);
+    expect(args[ti + 1]).toBe(qweryHome);
+    // The command runs after the `--` separator, via bash -c.
+    const sep = args.indexOf('--');
+    expect(args.slice(sep)).toEqual(['--', 'bash', '-c', "printf 'x'"]);
+    // Whole filesystem is passed through so legit tooling still works.
+    expect(args.slice(0, 3)).toEqual(['--dev-bind', '/', '/']);
   });
 });

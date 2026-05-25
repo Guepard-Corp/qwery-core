@@ -24,7 +24,7 @@ import { App } from './app';
 import { createFileConfigStore } from './infra/config';
 import { createAttachedDatasourcesRegistry } from './infra/datasources';
 import { createFileLogger } from './infra/logger';
-import { createFileSecretVault } from './infra/secret-vault';
+import { createSecretVault } from './infra/secret-vault';
 import { getAnonymousId } from './infra/telemetry';
 import { createUpdater } from './infra/updater';
 import { type AppServices, ServicesProvider } from './services';
@@ -36,8 +36,9 @@ const logger = createFileLogger();
 // QWERY_TELEMETRY_ENABLED=false. The rest of the app only sees `services.telemetry`.
 const telemetry = createTelemetry({ serviceName: 'qwery-cli', distinctId: getAnonymousId() });
 // The vault is built here (composition root) and injected into the persistence
-// adapter so the adapter depends on no other adapter (ADR #35).
-const vault = createFileSecretVault();
+// adapter so the adapter depends on no other adapter (ADR #35). The master key
+// lives in the OS keyring (file fallback), migrating any legacy on-disk key.
+const vault = createSecretVault();
 const persistence = createSqlitePersistence({ vault });
 const compute = createDuckDBCompute();
 const branching = createGfsBranching();
