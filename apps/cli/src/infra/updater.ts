@@ -155,7 +155,7 @@ export function createUpdater(deps: UpdaterDeps = {}): Updater {
   const specs: ArtifactSpec[] = [
     {
       app: 'qwery',
-      repo: 'Guepard-Corp/qwery-agent',
+      repo: 'Guepard-Corp/qwery-core',
       current: () => getAppVersion(),
       // Tarball is `<app>-<os>-<arch>/{bin,lib}`; we stage only lib/ (ADR #37).
       layout(extractDir, slotDir) {

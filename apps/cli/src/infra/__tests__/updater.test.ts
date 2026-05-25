@@ -67,7 +67,7 @@ describe('createUpdater.checkAndStage', () => {
   const fetchImpl = (async (url: string | URL) => {
     const u = String(url);
     if (u.includes('/releases/latest')) {
-      const tag = u.includes('qwery-agent') ? 'v0.2.0' : 'v0.1.14';
+      const tag = u.includes('qwery-core') ? 'v0.2.0' : 'v0.1.14';
       return new Response(JSON.stringify({ tag_name: tag }), { status: 200 });
     }
     if (u.endsWith('.tar.gz')) return new Response(new Uint8Array([0x1f, 0x8b, 0x00]), { status: 200 });
