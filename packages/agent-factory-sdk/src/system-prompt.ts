@@ -112,14 +112,25 @@ export interface SystemPromptContext {
   agentPreamble?: string;
 }
 
+export type SystemPromptSegmentKey = 'preamble' | 'subagents' | 'skills' | 'datasources' | 'apps';
+
+export interface SystemPromptSegment {
+  key: SystemPromptSegmentKey;
+  label: string;
+  /** Number of items the segment lists (subagents, skills, datasources, apps). */
+  count: number;
+  text: string;
+}
+
 /**
- * Build the system prompt with two dynamic prefixes:
- *   - Attached datasources: column metadata only, never row values (ADR #28).
- *   - Existing local apps under `apps/<slug>/`: slugs + immediate file lists so
- *     the LLM can update an existing app without re-asking the user for paths.
+ * The dynamic blocks prepended to SYSTEM_PROMPT, in order. Exposed so callers
+ * (e.g. the /context overlay) can attribute prompt tokens per block without
+ * duplicating the formatting — `buildSystemPrompt` joins these with the base
+ * prompt. Same dynamic prefixes as before: datasources expose column metadata
+ * only, never row values (ADR #28); apps expose slugs + immediate file lists.
  */
-export function buildSystemPrompt(context: SystemPromptContext = {}): string {
-  const blocks: string[] = [];
+export function systemPromptSegments(context: SystemPromptContext = {}): SystemPromptSegment[] {
+  const segments: SystemPromptSegment[] = [];
   const datasources = context.datasources ?? [];
   const apps = context.apps ?? [];
   const skills = context.skills ?? [];
@@ -130,7 +141,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
   const subagents = context.subagents;
   const preamble = context.agentPreamble?.trim();
 
-  if (preamble) blocks.push(preamble);
+  if (preamble) segments.push({ key: 'preamble', label: 'Agent preamble', count: 1, text: preamble });
 
   if (subagents !== undefined) {
     const lines: string[] = [
@@ -148,7 +159,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
     lines.push(
       'Ad-hoc: omit `name` and pass `prompt` (the subagent role), optional `baseAgent` ("data"|"code"), and optional `tools` whitelist. Use this for one-off delegations that do not warrant a persisted file.',
     );
-    blocks.push(lines.join('\n'));
+    segments.push({ key: 'subagents', label: 'Subagents', count: subagents.length, text: lines.join('\n') });
   }
 
   if (skills.length > 0) {
@@ -158,7 +169,7 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
     for (const skill of skills) {
       lines.push(`- ${skill.name} — ${skill.description} (file: ${skill.path})`);
     }
-    blocks.push(lines.join('\n'));
+    segments.push({ key: 'skills', label: 'Skills', count: skills.length, text: lines.join('\n') });
   }
 
   if (datasources.length > 0) {
@@ -175,7 +186,12 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
         lines.push(`- ${ds.name} (${ds.provider}): ${t.path} — columns: ${cols}`);
       }
     }
-    blocks.push(lines.join('\n'));
+    segments.push({
+      key: 'datasources',
+      label: 'Datasources',
+      count: datasources.length,
+      text: lines.join('\n'),
+    });
   }
 
   if (apps.length > 0) {
@@ -186,9 +202,15 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       const fileList = app.files.length === 0 ? '(empty)' : app.files.join(', ');
       lines.push(`- apps/${app.slug}/ — ${fileList}${app.truncated ? ' …' : ''}`);
     }
-    blocks.push(lines.join('\n'));
+    segments.push({ key: 'apps', label: 'Apps', count: apps.length, text: lines.join('\n') });
   }
 
+  return segments;
+}
+
+/** Build the full system prompt: dynamic segments joined with the base prompt. */
+export function buildSystemPrompt(context: SystemPromptContext = {}): string {
+  const blocks = systemPromptSegments(context).map((s) => s.text);
   if (blocks.length === 0) return SYSTEM_PROMPT;
   return `${blocks.join('\n\n')}\n\n${SYSTEM_PROMPT}`;
 }

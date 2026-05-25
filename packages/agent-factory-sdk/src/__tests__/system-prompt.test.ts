@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildSystemPrompt, SYSTEM_PROMPT } from '../system-prompt';
+import { buildSystemPrompt, SYSTEM_PROMPT, systemPromptSegments } from '../system-prompt';
 
 describe('buildSystemPrompt', () => {
   test('returns SYSTEM_PROMPT unchanged when no context is provided', () => {
@@ -89,5 +89,33 @@ describe('buildSystemPrompt', () => {
     });
     expect(out).toContain('sql-optimizer [data] — Optimises SQL');
     expect(out).toContain('reviewer — Reviews diffs');
+  });
+});
+
+describe('systemPromptSegments', () => {
+  test('returns no segments for an empty context', () => {
+    expect(systemPromptSegments()).toEqual([]);
+  });
+
+  test('reports each block with its key and item count, joining back to buildSystemPrompt', () => {
+    const ctx = {
+      agentPreamble: 'You are the data agent.',
+      skills: [
+        { name: 'a', description: 'da', path: '/a' },
+        { name: 'b', description: 'db', path: '/b' },
+      ],
+      subagents: [{ name: 'x', description: 'dx' }],
+      apps: [{ slug: 'dash', files: ['index.html'], truncated: false }],
+    };
+    const segs = systemPromptSegments(ctx);
+    const byKey = Object.fromEntries(segs.map((s) => [s.key, s]));
+    expect(byKey.preamble?.count).toBe(1);
+    expect(byKey.subagents?.count).toBe(1);
+    expect(byKey.skills?.count).toBe(2);
+    expect(byKey.apps?.count).toBe(1);
+    expect(byKey.datasources).toBeUndefined(); // none provided
+
+    // The segments joined with the base prompt reconstruct buildSystemPrompt.
+    expect(`${segs.map((s) => s.text).join('\n\n')}\n\n${SYSTEM_PROMPT}`).toBe(buildSystemPrompt(ctx));
   });
 });

@@ -1,9 +1,11 @@
 import {
   type AgentSpec,
   type AttachedDatasourceSummary,
-  buildSystemPrompt,
   type LocalAppSummary,
   type SkillSummary,
+  type SubagentInfo,
+  SYSTEM_PROMPT,
+  systemPromptSegments,
 } from '@qwery/agent-factory-sdk';
 import type { ModelMessage } from 'ai';
 import { Box, Text, useInput } from 'ink';
@@ -18,8 +20,15 @@ interface ContextOverlayProps {
   datasources: AttachedDatasourceSummary[];
   apps: LocalAppSummary[];
   skills: SkillSummary[];
+  subagents: SubagentInfo[];
   loadedTools: string[];
   onClose: () => void;
+}
+
+/** A labelled token line inside the System-prompt breakdown. */
+interface PromptPart {
+  label: string;
+  tokens: number;
 }
 
 interface Category {
@@ -88,6 +97,7 @@ export function ContextOverlay({
   datasources,
   apps,
   skills,
+  subagents,
   loadedTools,
   onClose,
 }: ContextOverlayProps) {
@@ -97,15 +107,28 @@ export function ContextOverlay({
 
   const limit = contextLimit ?? 200_000;
 
-  const categories = useMemo<Category[]>(() => {
-    // System prompt with the same context blocks runAgent injects.
-    const fullPrompt = buildSystemPrompt({
+  const scopedSkills = useMemo(
+    () => skills.filter((s) => !s.agent || s.agent === 'all' || s.agent === agent.id),
+    [skills, agent],
+  );
+
+  const { categories, promptParts } = useMemo(() => {
+    // Same dynamic blocks runAgent injects, but attributed per segment so the
+    // System-prompt total breaks down into base + skills + subagents + …
+    const segments = systemPromptSegments({
       datasources,
       apps,
-      skills: skills.filter((s) => !s.agent || s.agent === 'all' || s.agent === agent.id),
+      skills: scopedSkills,
+      subagents,
       agentPreamble: agent.promptPreamble,
     });
-    const promptTokens = tokensOf(fullPrompt);
+    const baseTokens = tokensOf(SYSTEM_PROMPT);
+    const parts: PromptPart[] = [{ label: 'base prompt', tokens: baseTokens }];
+    for (const seg of segments) {
+      const suffix = seg.key === 'preamble' ? '' : ` (${seg.count})`;
+      parts.push({ label: `${seg.label.toLowerCase()}${suffix}`, tokens: tokensOf(seg.text) });
+    }
+    const promptTokens = parts.reduce((acc, p) => acc + p.tokens, 0);
 
     // Active tool roster = agent's core tools + 3 navigators + already-loaded.
     const activeTools = new Set<string>([
@@ -120,12 +143,13 @@ export function ContextOverlay({
 
     const messageTokens = estimateMessageTokens(messages);
 
-    return [
+    const cats: Category[] = [
       { key: 'prompt', label: 'System prompt', color: 'cyan', tokens: promptTokens },
       { key: 'tools', label: 'Active tools', color: 'magenta', tokens: toolTokens },
       { key: 'messages', label: 'Messages', color: 'green', tokens: messageTokens },
     ];
-  }, [agent, datasources, apps, skills, loadedTools, messages]);
+    return { categories: cats, promptParts: parts };
+  }, [agent, datasources, apps, scopedSkills, subagents, loadedTools, messages]);
 
   const used = categories.reduce((acc, c) => acc + c.tokens, 0);
   const free = Math.max(0, limit - used);
@@ -218,10 +242,30 @@ export function ContextOverlay({
       </Box>
 
       <Box marginTop={1} flexDirection="column">
+        <Text bold>System prompt breakdown</Text>
+        {promptParts.map((p) => (
+          <Box key={p.label}>
+            <Text dimColor>{`  ${p.label}`.padEnd(22)}</Text>
+            <Text dimColor>
+              {fmt(p.tokens).padStart(6)} ({pct(p.tokens)})
+            </Text>
+          </Box>
+        ))}
+      </Box>
+
+      <Box marginTop={1} flexDirection="column">
         <Text dimColor>Active agent: {agent.label}</Text>
         <Text dimColor>
           Last turn input: {fmt(lastTurnInputTokens)} tokens
           {contextLimit ? ` (${pct(lastTurnInputTokens)})` : ''}
+        </Text>
+        <Text dimColor>
+          Skills ({scopedSkills.length}):{' '}
+          {scopedSkills.length > 0 ? scopedSkills.map((s) => s.name).join(', ') : 'none'}
+        </Text>
+        <Text dimColor>
+          Subagents ({subagents.length}):{' '}
+          {subagents.length > 0 ? subagents.map((s) => s.name).join(', ') : 'none'}
         </Text>
         {loadedTools.length > 0 && <Text dimColor>Loaded lazy tools: {loadedTools.join(', ')}</Text>}
       </Box>
