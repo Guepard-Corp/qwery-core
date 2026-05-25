@@ -94,7 +94,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Build linux-x86_64 tarball
         run: bun run build:release
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ci-build-linux-x86_64
           path: dist-release/*.tar.gz
