@@ -14,13 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security policy
 - Pull request templates
 - Issue templates (Bug Report, Enhancement)
+- ✨ GFS database branching (a safety layer letting the agent snapshot/branch a datasource before destructive operations): `Branching` domain port, destructive-SQL classifier, `guardedWrite` use case, and a `branching-gfs` adapter wrapping the `gfs` CLI. The TUI header shows the detected GFS version; the install script also installs GFS.
+- ✨ TUI end-to-end test suite (`apps/e2e`): renders the real Ink app via `ink-testing-library` against mocked services, with in-memory and real `sqlite`/DuckDB tiers. Produces HTML "screenshots" + a gallery and a screenshot-on-failure. Covers slash commands (`/context`, `/models`, `/datasources`, `/agents`, `/resume`, `/layout`, `/clear`, `/update`, …) and non-slash flows (chat persistence, `runQuery` tool call on real DuckDB, `!cmd` shell, Ctrl+C abort, input history/autocomplete).
+- ✨ LLM eval harness (`evals/`): runs critical scenarios against a real model (Ollama by default, any OpenAI-compatible endpoint via env) with machine-checked pass-rates over multiple runs. Seeded with an NL→SQL golden-answer eval.
+- Tiered test-coverage gate (`tooling/coverage-gate.ts`) enforcing ADR #16 thresholds, with lcov capture and an HTML report (`bun run coverage:html`).
 
 ### Changed
 - Updated README with comprehensive documentation
+- 🚨 Rebuild Qwery from a React Router 7 web app + Tauri/Electron desktop into an agentic terminal UI (TUI) on Bun, Ink, DuckDB, and a hexagonal architecture.
+- Migrate the CI/CD pipeline from pnpm/Node/Tauri to Bun (CI, CodeQL, release tarballs, Dependabot).
+- Retarget the issue templates and CLI header to the data-agent / coding-agent taxonomy.
 
 ### Deprecated
 
 ### Removed
+- 🚨 React Router web application and Tauri/Electron desktop packaging (replaced by the TUI).
 
 ### Fixed
 

@@ -1,13 +1,10 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { Code } from './code';
-import { Optional } from './common-types';
+import type { Optional } from './common-types';
 import { Exception } from './exception';
 
-export class Entity<
-  TIdentifier extends string | number,
-  TSchema extends z.ZodTypeAny = z.ZodTypeAny,
-> {
+export class Entity<TIdentifier extends string | number, TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   protected id: Optional<TIdentifier>;
   protected schema: TSchema;
 

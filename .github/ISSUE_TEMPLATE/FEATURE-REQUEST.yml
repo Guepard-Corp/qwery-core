@@ -44,16 +44,13 @@ body:
       description: "Which area of Qwery does this feature relate to?"
       multiple: true
       options:
+        - CLI / TUI
+        - Data Agent
+        - Coding Agent
         - Query Generation
-        - AI Agents
         - Datasources / Connectors
-        - Dashboards
-        - Notebooks
-        - Data Apps
-        - Desktop Application
-        - Web Application
-        - API
-        - Templates
+        - Extensions / SDK
+        - Compute Engine
         - Documentation
         - Other
     validations:

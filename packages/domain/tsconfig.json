@@ -1,12 +1,10 @@
 {
-  "extends": "@qwery/tsconfig/base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "moduleResolution": "bundler",
-    "noEmit": true,
-    "experimentalDecorators": true
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["bun"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"]
 }
-

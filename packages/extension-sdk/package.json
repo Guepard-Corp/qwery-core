@@ -1,0 +1,12 @@
+{
+  "name": "@qwery/extension-sdk",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}

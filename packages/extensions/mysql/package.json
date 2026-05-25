@@ -1,55 +1,16 @@
 {
   "name": "@qwery/extension-mysql",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
-  "main": "./dist/driver.js",
-  "types": "./dist/driver.d.ts",
   "exports": {
-    ".": {
-      "bun": "./src/driver.ts",
-      "types": "./dist/driver.d.ts",
-      "default": "./dist/driver.js"
-    }
-  },
-  "scripts": {
-    "lint": "echo \"no lint configured\"",
-    "test": "vitest run --coverage --passWithNoTests",
-    "build": "tsc -p tsconfig.build.json"
-  },
-  "contributes": {
-    "datasources": [
-      {
-        "id": "mysql",
-        "name": "MySQL",
-        "description": "Connect to MySQL databases",
-        "tags": [
-          "SQL"
-        ],
-        "icon": "media/MySQL.svg",
-        "drivers": [
-          "mysql.default"
-        ],
-        "docsUrl": "https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html"
-      }
-    ],
-    "drivers": [
-      {
-        "id": "mysql.default",
-        "name": "MySQL (Node)",
-        "description": "Default Node runtime MySQL driver",
-        "runtime": "node",
-        "entry": "./dist/driver.js"
-      }
-    ]
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./schema": "./src/schema.ts"
   },
   "dependencies": {
-    "@qwery/extensions-sdk": "workspace:*",
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
     "mysql2": "^3.15.3",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@vitest/coverage-istanbul": "catalog:",
-    "vitest": "catalog:"
+    "zod": "^4.4.3"
   }
 }

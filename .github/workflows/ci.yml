@@ -12,191 +12,90 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# simple-git-hooks' postinstall crashes under Bun's nested store layout on a fresh
+# CI install (it resolves the project root to the package's store dir). Git hooks
+# are irrelevant in CI, so skip its install entirely.
+env:
+  SKIP_INSTALL_SIMPLE_GIT_HOOKS: '1'
+
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          fetch-depth: 2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          bun-version: '1.3.8'
+      - uses: actions/cache@v4
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.18.1
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run linter
-        run: pnpm lint
-
-      - name: Check formatting
-        run: pnpm format
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Biome (lint + format check)
+        run: bun run lint
 
   typecheck:
-    name: Type Check
+    name: Type Check & Architecture
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          bun-version: '1.3.8'
+      - uses: actions/cache@v4
         with:
-          version: 10.18.1
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run type check
-        run: pnpm typecheck
-
-      - name: Validate error i18n keys
-        run: pnpm validate:error-keys
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: TypeScript (tsc -b)
+        run: bun run typecheck
+      - name: Hexagonal boundaries (dependency-cruiser)
+        run: bun run check:arch
 
   test:
-    name: Test
+    name: Test & Privacy Invariant
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          bun-version: '1.3.8'
+      - uses: actions/cache@v4
         with:
-          version: 10.18.1
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: unittests
-          fail_ci_if_error: false
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Tests (coverage)
+        run: bun run test:coverage
+      - name: Privacy invariant
+        run: bun run check:privacy
 
   build:
-    name: Build
+    name: Build release tarball (smoke)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          bun-version: '1.3.8'
+      - uses: actions/cache@v4
         with:
-          version: 10.18.1
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Build linux-x86_64 tarball
+        run: bun run build:release
+      - uses: actions/upload-artifact@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.3.9'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build packages
-        run: pnpm turbo build --cache-dir=.turbo --filter='!qwery-app'
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: |
-            apps/*/build
-            apps/*/dist
-            packages/*/dist
+          name: ci-build-linux-x86_64
+          path: dist-release/*.tar.gz
           retention-days: 7
-

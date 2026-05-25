@@ -4,148 +4,75 @@ This roadmap outlines the planned features and milestones for Qwery. Dates and f
 
 ---
 
-## Current Development
+## Shipped & in progress
 
-### 🚧 v0.0.1 - Initial Project Structure
-**Status:** In Progress
-
-- Project foundation and architecture
-- Monorepo setup with Turborepo
-- Core domain models
-- Basic TypeScript configuration
-- Development tooling
-
-## Released Versions
+For released versions and current development, see the [Changelog](CHANGELOG.md).
 
 ---
 
 ## Upcoming Releases
 
-### 🚧 v0.1.0 - Playground on Desktop and Web App
-Status: In Development • Target: Q4 2025
+### 🚧 v0.2.0 - Agentic TUI
 
-- Playground on Web and Desktop application
-- PGLite integration for client-side PostgreSQL
-- SQLite support with embedded datasets
-- Sample datasets for quick start
-- Query execution and results visualization
+**Status:** Current
 
-### 🚧 v0.2.0 - Extensions SDK and PostgreSQL Support
-**Status:** In Development • Target: TBD
+The terminal-first rebuild that exists today: a dual-agent data analyst in your terminal.
 
 **Key Features:**
-- Extensions SDK for custom datasource connectors
-- Support for any PostgreSQL-compatible databases
-- Connection manager for multiple datasources
-- PostgreSQL driver optimizations
-- Schema introspection and metadata caching
-- Query builder improvements
+- Dual-agent TUI (DataAgent + CodingAgent) on Bun and Ink
+- Privacy-safe local query pipeline (schema, runQuery, present); row data never reaches the LLM
+- Datasource extensions: PostgreSQL, MySQL, ClickHouse, DuckDB, CSV (local and online), Parquet, JSON, Google Sheets, S3, Excel
+- Bring your own model via `/models` (Ollama, Azure OpenAI, AWS Bedrock, any OpenAI-compatible endpoint)
+- GFS database-branching foundation
+- Install script and per-platform release tarballs
 
-### 📋 v0.2.5 - Guepard Platform Integration
-**Status:** Planned • Target: TBD
+### 🚧 v0.3.0 - Confidentiality & Correctness
 
-**Key Features:**
-- Integration with Guepard Platform
-- Database branching capabilities
-- Environment management (dev, staging, prod)
-- Branch-based schema migrations
-- Enable AI Agents experiments on data using Git for Databases
+**Status:** Next
 
-### 📋 v0.3.0 - Community Templates
-**Status:** Planned • Target: TBD
+Make the agent trustworthy: provably private, measurably correct.
 
 **Key Features:**
-- Template marketplace
-- Pre-built query templates
-- Dashboard templates
-- Notebook templates
-- Data app templates
-- Community contributions system
-- Template sharing and discovery
+- Eval suite gating prompt / model / tool changes on NL→SQL correctness, tool selection, and a privacy-never-leak invariant (pass-rate thresholds)
+- Hardened privacy boundary enforcement (extended `privacy-check`, audited tool surface)
+- Semantic / ontology validation tied to eval-measured accuracy
+- Coverage gates (ADR #16) wired into CI
+- Cold-start and onboarding polish
 
-### 📋 v0.4.0 - AI Agent and CMD + L
-**Status:** Planned • Target: TBD
+### 📋 v0.4.0 - Guepard Data Platform Integration
 
-**Key Features:**
-- AI-powered assistant (CMD/CTRL + L)
-- Natural language to SQL generation
-- Intelligent query suggestions
-- Context-aware help and documentation
-- Multi-turn conversations
-- Query optimization recommendations
-- Error explanation and debugging assistance
+**Status:** Planned
 
-### 📋 v0.5.0 - AI Notebook and CMD + K
-**Status:** Planned • Target: TBD
+Connect local work to the Guepard cloud.
 
 **Key Features:**
-- AI-powered notebook interface
-- Quick commands with CMD/CTRL + K
-- Inline AI assistance
-- Code generation and completion
-- Data analysis suggestions
-- Automatic documentation generation
-- Notebook sharing and collaboration
+- Push and pull GFS branches to guepard.run from the agent
+- Managed database branching and environment management (dev, staging, prod)
+- Remote, shareable workspaces
+- Agent experiments on production-like data without touching production
 
-### 📋 v0.6.0 - API Qwery
-**Status:** Planned • Target: TBD
+### 📋 v0.5.0 - More Datasources & External Integrations
 
-**Key Features:**
-- RESTful API for programmatic access
-- GraphQL API support
-- API key management
-- Rate limiting and usage tracking
-- Webhook integrations
-- API documentation with OpenAPI/Swagger
-- SDK libraries (JavaScript, Python, Go)
+**Status:** Planned
 
-### 📋 v0.7.0 - Federated Queries
-**Status:** Planned • Target: TBD
+Broaden reach once the core is trustworthy.
 
 **Key Features:**
-- Cross-database queries
-- Federated query engine
-- Join data across multiple datasources
-- Distributed query optimization
-- Caching layer for federated results
-- Support for heterogeneous database systems
-
-### 📋 v0.8.0 - Database Management UI
-**Status:** Planned • Target: TBD
-
-**Key Features:**
-- Visual database schema designer
-- Table creation and modification
-- Index management
-- User and permissions management
-- Database backup and restore
-- Migration tools
-- Performance monitoring dashboard
-
-### 🎯 v1.0.0 - Production Ready
-**Status:** Future • Target: TBD
-
-**Key Milestones:**
-- Enterprise-grade stability
-- Comprehensive security audit
-- Performance optimizations
-- Complete documentation
-- Production deployment guides
-- Enterprise support options
+- Additional datasource extensions (Snowflake, BigQuery, SQLite, MongoDB, generic REST API)
+- MCP support (stdio, SSE, HTTP) for external tools and integrations (Notion, Slack, GitHub, Linear)
+- Third-party extension discovery and loading (`@qwery/extension-*` via npm)
 
 ---
 
 ## Future Considerations
 
-Beyond v1.0, we're exploring:
+Beyond v0.5, we're exploring:
 
-- **Real-time Collaboration**: Multi-user editing and live cursors
-- **More AI Agents capabilities**: Data pipeline design
-- **Scheduling**: Automated query execution and reporting
-- **Alerting**: Data-driven alerts and notifications
-- **Mobile Apps**: iOS and Android applications
-- **Embedded Analytics**: Embed Qwery in your applications
-- **More Datasources**: Support thousands of datasources
+- **More AI agent capabilities**: data pipeline design, multi-agent orchestration
+- **Scheduling**: automated query execution and reporting
+- **Alerting**: data-driven alerts and notifications
+- **Programmatic access**: an API / SDK for embedding Qwery in your own tools
+- **More datasources**: support for thousands of sources
 
 ---
 
@@ -173,5 +100,4 @@ We value community input! Here's how you can help shape Qwery's future:
 
 **Note:** This roadmap is a living document and will be updated regularly. Timelines are estimates and may change based on complexity, resources, and community priorities.
 
-**Last Updated:** November 11, 2025
-
+**Last Updated:** May 24, 2026

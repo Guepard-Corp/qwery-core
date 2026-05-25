@@ -1,0 +1,29 @@
+# Configures GitHub's automatic release notes (used by release.yml's
+# `generate_release_notes: true`). Entries come from PRs merged since the previous
+# release and are bucketed by PR *label* into the sections below — so the quality
+# of the notes depends on labelling PRs. Unlabelled PRs fall into "Other Changes".
+# The catch-all `"*"` category must stay last.
+changelog:
+  exclude:
+    # PRs with these labels are omitted from the notes entirely.
+    labels:
+      - skip-changelog
+      - ignore-for-release
+  categories:
+    - title: 🚀 Features
+      labels: [feature, enhancement]
+    - title: 🐛 Bug Fixes
+      labels: [bug, fix]
+    - title: ⚡ Performance
+      labels: [performance]
+    - title: ♻️ Refactoring
+      labels: [refactor]
+    - title: 📚 Documentation
+      labels: [documentation]
+    - title: 📦 Dependencies
+      # Matches dependabot PRs (see .github/dependabot.yml `labels:`).
+      labels: [dependencies]
+    - title: 🔧 Maintenance
+      labels: [chore, ci, build]
+    - title: Other Changes
+      labels: ["*"]

@@ -1,60 +1,37 @@
 {
   "name": "@qwery/extension-gsheet-csv",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
-  "main": "./dist/driver.js",
-  "types": "./dist/driver.d.ts",
   "exports": {
-    ".": {
-      "bun": "./dist/driver.js",
-      "types": "./dist/driver.d.ts",
-      "default": "./dist/driver.js"
-    },
-    "./schema": "./dist/schema.js"
-  },
-  "scripts": {
-    "lint": "echo \"no lint configured\"",
-    "test": "vitest run --coverage --passWithNoTests",
-    "build": "tsc -p tsconfig.build.json"
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./schema": "./src/schema.ts"
   },
   "contributes": {
     "datasources": [
       {
         "id": "gsheet-csv",
         "name": "Google Sheets (CSV)",
-        "description": "Connect to public Google Sheets via CSV export",
+        "description": "Query a public Google Sheet via its CSV export, one view per tab.",
         "docsUrl": "https://support.google.com/docs/answer/2494822",
-        "supportsPreview": true,
-        "previewUrlKind": "embeddable",
-        "tags": [
-          "Files",
-          "SaaS"
-        ],
-        "icon": "media/gsheet.svg",
-        "drivers": [
-          "gsheet-csv.duckdb"
-        ]
+        "tags": ["Files", "SaaS"],
+        "icon": "📊",
+        "drivers": ["gsheet-csv.duckdb"]
       }
     ],
     "drivers": [
       {
         "id": "gsheet-csv.duckdb",
         "name": "DuckDB (Node)",
-        "description": "Node runtime DuckDB driver for Google Sheets CSV",
+        "description": "DuckDB-backed driver for Google Sheets CSV export",
         "runtime": "node",
-        "entry": "./dist/driver.js"
+        "entry": "./src/driver.ts"
       }
     ]
   },
   "dependencies": {
-    "@duckdb/node-api": "1.4.2-r.1",
-    "@qwery/extensions-sdk": "workspace:*",
-    "@qwery/shared": "workspace:*",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@vitest/coverage-istanbul": "catalog:",
-    "vitest": "catalog:"
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
+    "zod": "^4.4.3"
   }
 }

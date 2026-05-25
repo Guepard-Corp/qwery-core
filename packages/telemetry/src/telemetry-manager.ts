@@ -1,197 +1,114 @@
-import { NullTelemetryService } from './null-telemetry-service';
-import type {
-  TelemetryManager,
-  TelemetryService,
-  CreateTelemetryManagerOptions,
-} from './types';
+import { NULL_TELEMETRY_SPAN, type Telemetry, type TelemetrySpan } from '@qwery/domain';
+import type { TelemetryBackend } from './backend';
+import type { ResolvedTelemetryConfig } from './config';
 
-export function createTelemetryManager<T extends string, Config extends object>(
-  options: CreateTelemetryManagerOptions<T, Config>,
-): TelemetryManager {
-  const activeServices = new Map<T, TelemetryService>();
+/** Runs a backend call, swallowing any error: telemetry must never throw. */
+function safe(debug: boolean, backend: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (error) {
+    if (debug) console.error(`[telemetry] ${backend} call failed:`, error);
+  }
+}
 
-  const getActiveServices = (): TelemetryService[] => {
-    if (activeServices.size === 0) {
-      console.debug(
-        'No active telemetry services. Using NullTelemetryService.',
-      );
+/** Awaits a promise but never rejects, with a hard timeout for shutdown paths. */
+async function safeAsync(
+  debug: boolean,
+  backend: string,
+  fn: () => Promise<void>,
+  timeoutMs: number,
+): Promise<void> {
+  try {
+    await Promise.race([fn(), new Promise<void>((resolve) => setTimeout(resolve, timeoutMs))]);
+  } catch (error) {
+    if (debug) console.error(`[telemetry] ${backend} async call failed:`, error);
+  }
+}
 
-      return [NullTelemetryService];
-    }
+/**
+ * Composes several backends behind the single `Telemetry` facade. Every call is
+ * fanned out to the relevant backends and is fire-and-forget — failures are
+ * isolated per backend and never propagate to the caller.
+ */
+export function createTelemetryManager(
+  backends: TelemetryBackend[],
+  config: ResolvedTelemetryConfig,
+): Telemetry {
+  const { debug } = config;
 
-    return Array.from(activeServices.values());
-  };
-
-  const registerActiveServices = (
-    options: CreateTelemetryManagerOptions<T, Config>,
-  ) => {
-    Object.keys(options.providers).forEach((provider) => {
-      const providerKey = provider as keyof typeof options.providers;
-      const factory = options.providers[providerKey];
-
-      if (!factory) {
-        console.warn(
-          `Analytics provider '${provider}' not registered. Skipping initialization.`,
-        );
-
-        return;
+  const startSpan = (
+    name: string,
+    attributes?: Record<string, string | number | boolean | undefined>,
+  ): TelemetrySpan => {
+    for (const backend of backends) {
+      if (!backend.startSpan) continue;
+      try {
+        const span = backend.startSpan(name, attributes);
+        if (span) return span;
+      } catch (error) {
+        if (debug) console.error(`[telemetry] ${backend.name} startSpan failed:`, error);
       }
-
-      const service = factory();
-      activeServices.set(provider as T, service);
-
-      console.log('Initializing telemetry service', provider);
-      void service.initialize();
-    });
+    }
+    return NULL_TELEMETRY_SPAN;
   };
-
-  registerActiveServices(options);
 
   return {
-    addProvider: (provider: T, config: Config) => {
-      const factory = options.providers[provider];
-
-      if (!factory) {
-        console.warn(
-          `Analytics provider '${provider}' not registered. Skipping initialization.`,
-        );
-
-        return Promise.resolve();
+    trackEvent(name, properties) {
+      for (const backend of backends) {
+        if (backend.trackEvent) safe(debug, backend.name, () => backend.trackEvent?.(name, properties));
       }
-
-      const service = factory(config);
-      activeServices.set(provider, service);
-
-      return service.initialize();
     },
-
-    removeProvider: (provider: T) => {
-      activeServices.delete(provider);
+    trackError(error, context) {
+      for (const backend of backends) {
+        if (backend.trackError) safe(debug, backend.name, () => backend.trackError?.(error, context));
+      }
     },
-
-    identify: (userId: string, traits?: Record<string, string>) => {
-      // Fire-and-forget: don't block core logic on telemetry
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.identify(userId, traits).catch((error) => {
-            console.warn('[Telemetry] identify failed for a provider:', error);
-          }),
+    identify(distinctId, traits) {
+      for (const backend of backends) {
+        if (backend.identify) safe(debug, backend.name, () => backend.identify?.(distinctId, traits));
+      }
+    },
+    recordTokenUsage(usage) {
+      for (const backend of backends) {
+        if (backend.recordTokenUsage) safe(debug, backend.name, () => backend.recordTokenUsage?.(usage));
+      }
+    },
+    startSpan,
+    async withSpan(name, attributes, fn) {
+      // Prefer a backend that activates span context (OTel) so nested spans
+      // started inside `fn` become children; otherwise fall back to flat start/end.
+      const tracing = backends.find((b) => b.withSpan);
+      if (tracing?.withSpan) {
+        return tracing.withSpan(name, attributes, fn);
+      }
+      const span = startSpan(name, attributes);
+      try {
+        const result = await fn(span);
+        span.end(true);
+        return result;
+      } catch (error) {
+        if (error instanceof Error) span.recordError(error);
+        span.end(false);
+        throw error;
+      }
+    },
+    async flush() {
+      await Promise.allSettled(
+        backends.map((backend) =>
+          backend.flush
+            ? safeAsync(debug, backend.name, backend.flush.bind(backend), 3000)
+            : Promise.resolve(),
         ),
-      ).catch(() => {
-        // Silently ignore - telemetry should never block core logic
-      });
-      return Promise.resolve();
+      );
     },
-
-    trackPageView: (path: string) => {
-      // Fire-and-forget: don't block core logic on telemetry
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackPageView(path).catch((error) => {
-            console.warn(
-              '[Telemetry] trackPageView failed for a provider:',
-              error,
-            );
-          }),
+    async shutdown() {
+      await Promise.allSettled(
+        backends.map((backend) =>
+          backend.shutdown
+            ? safeAsync(debug, backend.name, backend.shutdown.bind(backend), 3000)
+            : Promise.resolve(),
         ),
-      ).catch(() => {
-        // Silently ignore - telemetry should never block core logic
-      });
-      return Promise.resolve();
-    },
-
-    trackError: (error: Error) => {
-      // Fire-and-forget: don't block core logic on telemetry
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackError(error).catch((telemetryError) => {
-            console.warn(
-              '[Telemetry] trackError failed for a provider:',
-              telemetryError,
-            );
-          }),
-        ),
-      ).catch(() => {
-        // Silently ignore - telemetry should never block core logic
-      });
-      return Promise.resolve();
-    },
-
-    trackUsage: (usage: string) => {
-      // Fire-and-forget: don't block core logic on telemetry
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackUsage(usage).catch((error) => {
-            console.warn(
-              '[Telemetry] trackUsage failed for a provider:',
-              error,
-            );
-          }),
-        ),
-      ).catch(() => {});
-      return Promise.resolve();
-    },
-
-    trackPerformance: (performance: string) => {
-      // Fire-and-forget: don't block core logic on telemetry
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackPerformance(performance).catch((error) => {
-            console.warn(
-              '[Telemetry] trackPerformance failed for a provider:',
-              error,
-            );
-          }),
-        ),
-      ).catch(() => {});
-      return Promise.resolve();
-    },
-
-    trackFeatureUsage: (feature: string) => {
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackFeatureUsage(feature).catch((error) => {
-            console.warn(
-              '[Telemetry] trackFeatureUsage failed for a provider:',
-              error,
-            );
-          }),
-        ),
-      ).catch(() => {
-        // Silently ignore - telemetry should never block core logic
-      });
-      return Promise.resolve();
-    },
-
-    trackAgent: (agent: string) => {
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackAgent(agent).catch((error) => {
-            console.warn(
-              '[Telemetry] trackAgent failed for a provider:',
-              error,
-            );
-          }),
-        ),
-      ).catch(() => {});
-      return Promise.resolve();
-    },
-
-    trackEvent: (
-      eventName: string,
-      eventProperties?: Record<string, string | string[]>,
-    ) => {
-      Promise.allSettled(
-        getActiveServices().map((service) =>
-          service.trackEvent(eventName, eventProperties).catch((error) => {
-            console.warn(
-              '[Telemetry] trackEvent failed for a provider:',
-              error,
-            );
-          }),
-        ),
-      ).catch(() => {});
-      return Promise.resolve();
+      );
     },
   };
 }

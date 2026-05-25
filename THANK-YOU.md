@@ -4,49 +4,67 @@ Qwery would not be possible without the support and assistance of other open-sou
 
 ## Agentic AI Technologies
 
-**LangChain / LangGraph**
+**Vercel AI SDK**
 
-Framework for developing applications powered by large language models, enabling our AI-driven query generation and agents.
+A unified TypeScript toolkit for LLMs (streaming, tool calling, and provider abstraction) powering our agent loop and query generation.
 
-https://www.langchain.com
+https://sdk.vercel.ai
+
+**Ollama**
+
+Run open models locally with a single command. Our default backend for local development and for the evaluation suite.
+
+https://ollama.com
 
 ## Core Technologies
 
+**Bun**
+
+A fast all-in-one JavaScript runtime, bundler, package manager, and test runner. It also ships `bun:sqlite`, which backs our local persistence.
+
+https://bun.sh
+
+**Ink**
+
+React for interactive command-line apps: the foundation of our terminal UI.
+
+https://github.com/vadimdemedes/ink
+
 **React**
 
-A JavaScript library for building user interfaces with a focus on component-based architecture and declarative programming.
+A JavaScript library for building user interfaces with a component-based, declarative model: the component layer behind Ink.
 
 https://react.dev
 
-**React Router**
-
-Declarative routing for React applications, enabling powerful navigation and data loading patterns.
-
-https://reactrouter.com
-
 **TypeScript**
 
-TypeScript is a strongly typed programming language that builds on JavaScript, giving you better tooling at any scale.
+A strongly typed programming language that builds on JavaScript, giving us better tooling at any scale.
 
 https://www.typescriptlang.org
 
-**Tailwind CSS**
+**DuckDB**
 
-A utility-first CSS framework for rapidly building custom user interfaces with modern design patterns.
+A fast in-process analytical SQL engine: one of the local query engines we run so data stays on your machine.
 
-https://tailwindcss.com
+https://duckdb.org
 
-**Shadcn UI**
+**GFS: Git For database Systems**
 
-Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.
+Git-like version control for databases (branch, commit, time-travel). It is the safety net that lets the agent experiment on data without fear.
 
-https://ui.shadcn.com
+https://github.com/Guepard-Corp/gfs
 
-**Electron**
+**Zod**
 
-Build cross-platform desktop apps with JavaScript, HTML, and CSS. Powers our desktop application.
+TypeScript-first schema declaration and validation, used across our domain and tool boundaries.
 
-https://www.electronjs.org
+https://zod.dev
+
+**Mustache**
+
+Logic-less templates, used to render query results locally without ever sending row data upstream.
+
+https://mustache.github.io
 
 ## Build & Development Tools
 
@@ -56,35 +74,23 @@ High-performance build system for JavaScript and TypeScript monorepos, helping u
 
 https://turbo.build
 
-**pnpm**
+**Biome**
 
-Fast, disk space efficient package manager that powers our dependency management across the monorepo.
+A fast formatter and linter for JavaScript and TypeScript, keeping our codebase consistent.
 
-https://pnpm.io
+https://biomejs.dev
 
-**Vite**
+**dependency-cruiser**
 
-Next generation frontend tooling. It's fast and provides an excellent development experience.
+Validates and visualizes our dependency graph, enforcing the boundaries of our hexagonal architecture.
 
-https://vitejs.dev
-
-**Vitest**
-
-A blazing fast unit test framework powered by Vite, ensuring our code quality.
-
-https://vitest.dev
+https://github.com/sverweij/dependency-cruiser
 
 **Docker**
 
-Docker enables developers to package and deploy applications inside containers that can run on any platform.
+Docker enables developers to package and deploy applications inside containers; GFS uses it to provision throwaway database instances.
 
 https://www.docker.com
-
-**Testcontainers**
-
-Testcontainers provides lightweight, throwaway instances of databases and other services for testing.
-
-https://testcontainers.com
 
 ## Community & Collaboration
 

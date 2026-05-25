@@ -1,0 +1,25 @@
+{
+  "name": "@qwery/e2e",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "test:coverage": "bun test --coverage"
+  },
+  "dependencies": {
+    "@qwery/cli": "workspace:*",
+    "@qwery/agent-factory-sdk": "workspace:*",
+    "@qwery/adapter-branching-gfs": "workspace:*",
+    "@qwery/adapter-compute-duckdb": "workspace:*",
+    "@qwery/adapter-persistence-sqlite": "workspace:*",
+    "@qwery/adapter-semantic-inprocess": "workspace:*",
+    "@qwery/domain": "workspace:*",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "ai": "^6.0.191",
+    "ansi-to-html": "^0.7.2",
+    "ink": "^7.0.3",
+    "ink-testing-library": "^4.0.0",
+    "react": "^19.2.6"
+  }
+}

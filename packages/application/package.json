@@ -1,0 +1,14 @@
+{
+  "name": "@qwery/application",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "ai": "^6.0.191",
+    "mustache": "^4.2.0",
+    "zod": "^4.4.3"
+  }
+}

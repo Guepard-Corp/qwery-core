@@ -1,8 +1,11 @@
 {
-  "extends": "@qwery/tsconfig/base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["bun"]
   },
-  "include": ["*.ts", "*.tsx", "src"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+  "references": [{ "path": "../domain" }]
 }

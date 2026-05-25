@@ -1,0 +1,36 @@
+{
+  "name": "@qwery/extension-parquet",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "contributes": {
+    "datasources": [
+      {
+        "id": "parquet",
+        "name": "Parquet (local or HTTP)",
+        "description": "Read a Parquet file from disk or an http(s) URL via DuckDB.",
+        "tags": ["Files"],
+        "icon": "📦",
+        "drivers": ["parquet.duckdb"]
+      }
+    ],
+    "drivers": [
+      {
+        "id": "parquet.duckdb",
+        "name": "DuckDB (Node)",
+        "description": "DuckDB-backed driver for local + http(s) Parquet files",
+        "runtime": "node",
+        "entry": "./src/driver.ts"
+      }
+    ]
+  },
+  "dependencies": {
+    "@qwery/domain": "workspace:*",
+    "@qwery/extension-sdk": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}

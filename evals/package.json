@@ -1,0 +1,16 @@
+{
+  "name": "@qwery/evals",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "evals": "bun run src/runner.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@qwery/adapter-compute-duckdb": "workspace:*",
+    "@qwery/agent-factory-sdk": "workspace:*",
+    "@qwery/domain": "workspace:*",
+    "ai": "^6.0.191"
+  }
+}

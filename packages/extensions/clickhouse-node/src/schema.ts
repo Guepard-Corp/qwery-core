@@ -1,87 +1,43 @@
-import { DATASOURCE_INPUT_MAX_LENGTH } from '@qwery/extensions-sdk';
+import { DATASOURCE_INPUT_MAX_LENGTH as L } from '@qwery/extension-sdk';
 import { z } from 'zod';
 
-const passwordField = z
-  .string()
-  .min(1)
-  .max(DATASOURCE_INPUT_MAX_LENGTH.password)
-  .meta({
-    description: 'ClickHouse password',
-    secret: true,
-  });
-
-const connectionUrlField = z
-  .string()
-  .min(1)
-  .max(DATASOURCE_INPUT_MAX_LENGTH.connectionString)
-  .url()
-  .meta({
-    description:
-      'ClickHouse connection URL (clickhouse://user:pass@host:port/database or http://host:port)',
-    placeholder:
-      'clickhouse://user:pass@host:8123/default or http://host:8123',
-    secret: true,
-  });
-
-const detailsSchema = z.object({
-  host: z
-    .string()
-    .min(1)
-    .meta({
-      label: 'Host',
-      description: 'ClickHouse server hostname',
-    }),
-  port: z
-    .coerce.number()
-    .int()
-    .min(1)
-    .max(65535)
-    .default(8123)
-    .meta({
-      label: 'Port',
-      placeholder: '8123',
-    }),
-  username: z
-    .string()
-    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
-    .default('default')
-    .meta({
-      label: 'Username',
-      description: 'ClickHouse user',
-    }),
-  user: z
-    .string()
-    .max(DATASOURCE_INPUT_MAX_LENGTH.username)
-    .default('default')
-    .optional()
-    .meta({
-      label: 'User (alias for username)',
-    }),
-  password: passwordField.optional(),
-  database: z
-    .string()
-    .max(DATASOURCE_INPUT_MAX_LENGTH.database)
-    .default('default')
-    .meta({
-      label: 'Database',
-      description: 'ClickHouse database name',
-    }),
-});
+// Plain z.objects (no .refine/.transform) so the TUI can read `.shape` for the
+// pick-variant step.
+const detailsSchema = z
+  .object({
+    host: z.string().min(1).max(L.host).meta({ label: 'Host', description: 'ClickHouse server hostname' }),
+    port: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(65535)
+      .default(8123)
+      .meta({ label: 'Port', placeholder: '8123' }),
+    username: z
+      .string()
+      .max(L.username)
+      .default('default')
+      .meta({ label: 'Username', description: 'ClickHouse user' }),
+    password: z.string().max(L.password).optional().meta({ label: 'Password', secret: true }),
+    database: z
+      .string()
+      .max(L.database)
+      .default('default')
+      .meta({ label: 'Database', description: 'ClickHouse database' }),
+  })
+  .meta({ label: 'Host & credentials' });
 
 const urlSchema = z
   .object({
-    connectionUrl: connectionUrlField.optional(),
-    connectionString: connectionUrlField.optional(),
+    connectionUrl: z.string().min(1).max(L.connectionString).url().meta({
+      label: 'Connection URL',
+      description: 'ClickHouse URL (clickhouse://user:pass@host:8123/db or http://host:8123)',
+      placeholder: 'clickhouse://user:pass@host:8123/default',
+      secret: true,
+    }),
   })
-  .refine(
-    (v) =>
-      (typeof v.connectionUrl === 'string' && v.connectionUrl.length > 0) ||
-      (typeof v.connectionString === 'string' && v.connectionString.length > 0),
-    { message: 'connectionUrl or connectionString is required' },
-  )
-  .transform((v) => ({
-    connectionUrl: (v.connectionUrl ?? v.connectionString) as string,
-  }));
+  .meta({ label: 'Connection URL' });
 
 export const schema = z.union([detailsSchema, urlSchema]);
 
+export type ClickHouseConfig = z.infer<typeof schema>;
