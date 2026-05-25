@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import {
+  assertBashCommandAllowed,
   BASH_MAX_OUTPUT_BYTES,
   BASH_TIMEOUT_MS,
   READ_MAX_BYTES,
@@ -130,4 +131,40 @@ describe('runBash', () => {
   test('BASH_TIMEOUT_MS is a positive number', () => {
     expect(BASH_TIMEOUT_MS).toBeGreaterThan(0);
   });
+
+  test('rejects a command that reads qwery secrets before spawning', async () => {
+    await expect(runBash('sqlite3 ~/.qwery/qwery.sqlite "SELECT config FROM datasources"')).rejects.toThrow(
+      /private directory/,
+    );
+  });
+});
+
+describe('assertBashCommandAllowed — ~/.qwery guard', () => {
+  const blocked = [
+    'cat ~/.qwery/.master.key',
+    'sqlite3 ~/.qwery/qwery.sqlite "SELECT config FROM datasources"',
+    'cat ~/.qwery/config.json | python3 -c "import sys"',
+    `cat ${path.join(homedir(), '.qwery', 'config.json')}`,
+    'find ~/.qwery -name "*.json"',
+    'cp /tmp/x ~/.qwery/.master.key',
+  ];
+  for (const cmd of blocked) {
+    test(`blocks: ${cmd.slice(0, 40)}`, () => {
+      expect(() => assertBashCommandAllowed(cmd)).toThrow(/private directory/);
+    });
+  }
+
+  const allowed = [
+    'ls -la',
+    'git status',
+    'bun test',
+    'cat ~/.qwery/cache/models.json', // cache subdir is permitted
+    'echo "no qwery here"',
+    'cat package.json',
+  ];
+  for (const cmd of allowed) {
+    test(`allows: ${cmd.slice(0, 40)}`, () => {
+      expect(() => assertBashCommandAllowed(cmd)).not.toThrow();
+    });
+  }
 });

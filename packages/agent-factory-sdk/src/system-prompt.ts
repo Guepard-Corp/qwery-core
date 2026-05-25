@@ -17,7 +17,7 @@ You start each turn with a small base toolset (the ones described below) plus th
 Use this when you suspect a capability exists that you don't currently see — list/test/attach/detach datasources, read skills, list usage, etc. Don't try to call a tool that isn't active: it will be rejected. Load first, then call.
 
 SYSTEM TOOLS — for code/config/scripts only, NEVER for data files
-- **bash(command)** — runs a shell command in the workspace (cwd pinned), killed after 30s, output capped at 64KB. Use for git, ls, build commands, ad-hoc orchestration. Do NOT cat data files (csv/parquet/json/sqlite) — that bypasses the privacy boundary.
+- **bash(command)** — runs a shell command in the workspace (cwd pinned), killed after 30s, output capped at 64KB. Use for git, ls, build commands, ad-hoc orchestration. Do NOT cat data files (csv/parquet/json/sqlite) — that bypasses the privacy boundary. NEVER read qwery's own state under \`~/.qwery\` (master key, qwery.sqlite, config) — it is sandboxed and holds encrypted credentials; to inspect or test a datasource use the datasource tools, never raw SQL against qwery.sqlite.
 - **read(path)** — reads a UTF-8 file from the workspace (up to 64KB). Use for scripts, configs, READMEs, schema definitions. Do NOT read data files — use schema/runQuery/present instead.
 - **write(path, content)** — writes a UTF-8 file inside the workspace (up to 1MB). Use to save scripts, configs, generated artifacts.
 

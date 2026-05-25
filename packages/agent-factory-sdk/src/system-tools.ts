@@ -1,16 +1,58 @@
 import { spawn } from 'node:child_process';
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+const HOME = homedir();
 const WORKSPACE_ROOT = process.cwd();
-const CACHE_ROOT = path.join(homedir(), '.qwery', 'cache');
+/** qwery's private state dir: master key, persistence DB, config. */
+const QWERY_HOME = path.join(HOME, '.qwery');
+const CACHE_ROOT = path.join(QWERY_HOME, 'cache');
 const ALLOWED_ROOTS = [WORKSPACE_ROOT, CACHE_ROOT];
 
 export const BASH_TIMEOUT_MS = 30_000;
 export const BASH_MAX_OUTPUT_BYTES = 64 * 1024;
 export const READ_MAX_BYTES = 64 * 1024;
 export const WRITE_MAX_BYTES = 1_000_000;
+
+/**
+ * `~/.qwery` holds the AES master key, the persistence DB (encrypted datasource
+ * credentials), and config. `bash` must never touch it: otherwise the LLM can
+ * exfiltrate the very secrets the vault exists to hide (read the master key +
+ * the ciphertext + the open-source algorithm = full decryption). The `read`
+ * tool already refuses these paths via `resolveSafePath`; `bash` needs its own
+ * guard. The cache subdir stays accessible. Agents must use the datasource and
+ * GFS tools instead of poking qwery's internals.
+ */
+const QWERY_GUARD_MESSAGE =
+  "bash: access to qwery's private directory (~/.qwery) is blocked — it holds the master key and encrypted datasource credentials. Never read it. Use the datasource tools (datasourceList / datasourceTest / datasourceAttach) and the GFS tools instead.";
+
+/**
+ * Best-effort static guard, applied on every platform. It is the only FS guard
+ * where the OS sandbox is unavailable (non-darwin), and defense-in-depth where
+ * it is. Matches references to `~/.qwery` (absolute, `~`, or `$HOME`) that are
+ * not the cache subdir, plus the master key by name.
+ */
+export function assertBashCommandAllowed(command: string): void {
+  const refsQweryPrivate =
+    /\.qwery\/(?!cache(?:\/|\b))/.test(command) || /\.qwery\/?(?:\s|$|;|&|\|)/.test(command);
+  const refsMasterKey = /\.master\.key\b/.test(command);
+  if (refsQweryPrivate || refsMasterKey) throw new Error(QWERY_GUARD_MESSAGE);
+}
+
+/**
+ * macOS kernel-enforced sandbox profile: allow everything, then deny read+write
+ * on `~/.qwery` while re-allowing its `cache` subdir. Unlike the static guard,
+ * this cannot be bypassed with env vars, encoding, or indirection. Linux
+ * hardening (bubblewrap) is a follow-up; until then the static guard stands.
+ */
+const SANDBOX_AVAILABLE = process.platform === 'darwin' && existsSync('/usr/bin/sandbox-exec');
+const SANDBOX_PROFILE = [
+  '(version 1)',
+  '(allow default)',
+  `(deny file-read* file-write* (subpath "${QWERY_HOME}"))`,
+  `(allow file-read* file-write* (subpath "${CACHE_ROOT}"))`,
+].join('\n');
 
 /**
  * Resolve a user-supplied path inside one of the allowed roots (workspace or
@@ -37,12 +79,20 @@ export interface BashResult {
  * Run a shell command via `bash -c`. We pass the command as a single argument
  * to spawn (not interpolated into another string) so user-supplied content can
  * never break the argv boundary. `cwd` is pinned to the workspace and the
- * process is killed after `BASH_TIMEOUT_MS`. ADR #18 — MVP scope: no FS or
- * process sandbox yet, only argv-level injection safety + timeout + cwd lock.
+ * process is killed after `BASH_TIMEOUT_MS`.
+ *
+ * FS access to `~/.qwery` (secrets) is blocked two ways: a static guard
+ * (`assertBashCommandAllowed`, every platform) and, on macOS, a kernel-enforced
+ * `sandbox-exec` profile. The command otherwise has normal filesystem access so
+ * legitimate tooling (git, bun, build steps) keeps working (ADR #18).
  */
 export async function runBash(command: string): Promise<BashResult> {
+  assertBashCommandAllowed(command);
+  const [bin, args] = SANDBOX_AVAILABLE
+    ? (['sandbox-exec', ['-p', SANDBOX_PROFILE, 'bash', '-c', command]] as const)
+    : (['bash', ['-c', command]] as const);
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('bash', ['-c', command], { cwd: WORKSPACE_ROOT });
+    const child = spawn(bin, args, { cwd: WORKSPACE_ROOT });
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
     let stdoutBytes = 0;
