@@ -34,7 +34,12 @@ describe('e2e: chat turn persists to a real sqlite DB', () => {
       expect(sessions.length).toBe(1);
 
       // HTML screenshot + text-frame snapshot of the rendered conversation.
-      const frame = await waitForFrame(lastFrame, (f) => f.includes('hi there'), { label: 'chat-turn' });
+      // Wait for the reply AND for streaming to settle — otherwise a slower
+      // runner captures the transient "agent: streaming…" indicator, making the
+      // frame snapshot non-deterministic.
+      const frame = await waitForFrame(lastFrame, (f) => f.includes('hi there') && !f.includes('streaming'), {
+        label: 'chat-turn',
+      });
       const snapshot = captureFrame('chat-turn', frame);
       expect(snapshot).toMatchSnapshot();
     } finally {
