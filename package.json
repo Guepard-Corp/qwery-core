@@ -1,6 +1,6 @@
 {
   "name": "qwery-core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "AI data agent with a TUI, talk your data with confidence.",
   "homepage": "https://qwery.run",
   "author": {
