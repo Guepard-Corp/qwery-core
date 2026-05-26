@@ -35,8 +35,12 @@ export {
   buildSystemPrompt,
   type LocalAppSummary,
   type SkillSummary,
+  type SubagentInfo,
   SYSTEM_PROMPT,
   type SystemPromptContext,
+  type SystemPromptSegment,
+  type SystemPromptSegmentKey,
+  systemPromptSegments,
 } from './system-prompt';
 export { buildTodoTools, createTodoStore, type TodoStore } from './todo-tools';
 export {

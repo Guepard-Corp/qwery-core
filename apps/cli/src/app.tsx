@@ -134,6 +134,7 @@ export function App() {
   const [overlayContextSnapshot, setOverlayContextSnapshot] = useState<{
     apps: import('@qwery/agent-factory-sdk').LocalAppSummary[];
     skills: import('@qwery/agent-factory-sdk').SkillSummary[];
+    subagents: import('@qwery/agent-factory-sdk').SubagentInfo[];
   } | null>(null);
   const [attachStates, setAttachStates] = useState<AttachState[]>([]);
   const [pinnedAgent, setPinnedAgent] = useState<AgentId | null>(null);
@@ -658,9 +659,10 @@ export function App() {
       }
       if (text === '/context') {
         void (async () => {
-          const [appsForCtx, skillsForCtx] = await Promise.all([
+          const [appsForCtx, skillsForCtx, subagentsForCtx] = await Promise.all([
             listLocalApps().catch(() => []),
             listLocalSkills().catch(() => [] as LocalSkillSummary[]),
+            listLocalSubagents().catch(() => []),
           ]);
           setOverlayContextSnapshot({
             apps: appsForCtx,
@@ -669,6 +671,11 @@ export function App() {
               description: s.description,
               path: s.path,
               agent: s.agent,
+            })),
+            subagents: subagentsForCtx.map((sa) => ({
+              name: sa.name,
+              description: sa.description,
+              baseAgent: sa.baseAgent,
             })),
           });
           setOverlay('context');
@@ -1010,6 +1017,7 @@ export function App() {
         datasources={datasourceSummaries}
         apps={overlayContextSnapshot.apps}
         skills={overlayContextSnapshot.skills}
+        subagents={overlayContextSnapshot.subagents}
         loadedTools={[...loadedTools.current]}
         onClose={() => {
           setOverlay(null);
