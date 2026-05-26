@@ -1,4 +1,4 @@
-import type { Branching, IDatasourceRepository, IUsageRepository } from '@qwery/domain';
+import type { IDatasourceRepository, IUsageRepository } from '@qwery/domain';
 import { type Tool, tool } from 'ai';
 import { z } from 'zod';
 
@@ -62,8 +62,6 @@ export interface ToolRegistryDeps {
   readSkill?: (name: string) => Promise<{ name: string; content: string; path: string } | null>;
   /** Usage repository (read-only listing). */
   usageRepo?: IUsageRepository;
-  /** GFS version-control port; enables the read-only `gfsStatus` tool. */
-  branching?: Branching;
 }
 
 interface RegistryContext {
@@ -263,55 +261,6 @@ export function buildToolRegistry(
               timestamp: u.timestamp,
             })),
           };
-        },
-      }),
-    });
-  }
-
-  // -------- GFS (versioned database sandbox) --------
-  if (deps.branching) {
-    deferred.push({
-      name: 'gfsStatus',
-      scope: 'all',
-      description:
-        "Report the status of GFS (Guepard File System — qwery's git-for-data version-control sandbox): whether it is installed, its version, the current branch, HEAD commit, the database provider, and whether the database container is running. Use this to answer any question about GFS or before a versioning workflow. Read-only; reveals no row data or credentials.",
-      tool: tool({
-        description: 'Report GFS (versioned database sandbox) availability and status.',
-        inputSchema: z.object({}),
-        execute: async () => {
-          const available = await deps.branching!.isAvailable();
-          if (!available) {
-            return {
-              ok: true as const,
-              available: false as const,
-              hint: 'GFS is not installed. Install it from gfs.guepard.run/install to enable the versioned database sandbox.',
-            };
-          }
-          const version = await deps.branching!.version();
-          try {
-            const status = await deps.branching!.status();
-            return {
-              ok: true as const,
-              available: true as const,
-              version,
-              currentBranch: status.currentBranch,
-              head: status.head,
-              provider: status.provider,
-              providerVersion: status.providerVersion,
-              containerStatus: status.containerStatus,
-              containerRunning: status.containerRunning,
-            };
-          } catch (err) {
-            // GFS is installed but no repo is initialized in this directory yet.
-            return {
-              ok: true as const,
-              available: true as const,
-              version,
-              initialized: false as const,
-              hint: 'GFS is installed but no repository is initialized in this directory yet.',
-              error: err instanceof Error ? err.message : String(err),
-            };
-          }
         },
       }),
     });

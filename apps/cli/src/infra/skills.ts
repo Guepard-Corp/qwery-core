@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { BUILTIN_SKILL_SOURCES } from './builtin-skills';
 
 const WORKSPACE_SKILLS = path.join(process.cwd(), '.qwery', 'skills');
 const USER_SKILLS = path.join(homedir(), '.qwery', 'skills');
@@ -8,7 +9,7 @@ const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;
 const MAX_SKILLS = 50;
 
-export type SkillScope = 'user' | 'workspace';
+export type SkillScope = 'builtin' | 'user' | 'workspace';
 export type SkillAgent = 'data' | 'code' | 'all';
 
 export interface SkillSummary {
@@ -59,6 +60,49 @@ function validateAgent(value: string | undefined): SkillAgent {
   return value === 'data' || value === 'code' ? value : 'all';
 }
 
+/** Parse and validate a skill's frontmatter fields. Returns null if invalid. */
+function parseSkillFields(raw: string): Pick<SkillSummary, 'name' | 'description' | 'agent'> | null {
+  const { fields } = parseFrontmatter(raw);
+  const name = fields.name?.trim() ?? '';
+  const description = fields.description?.trim() ?? '';
+  if (!validateName(name)) return null;
+  if (description.length === 0 || description.length > MAX_DESCRIPTION_LENGTH) return null;
+  return { name, description, agent: validateAgent(fields.agent) };
+}
+
+interface BuiltinSkill {
+  summary: SkillSummary;
+  content: string;
+}
+
+let builtinCache: BuiltinSkill[] | null = null;
+
+/**
+ * Skills qwery ships by default, embedded in the binary (see
+ * `builtin-skills/`). They are the lowest-priority scope: a user or workspace
+ * skill with the same name overrides the built-in one.
+ */
+function loadBuiltinSkills(): BuiltinSkill[] {
+  if (builtinCache) return builtinCache;
+  const out: BuiltinSkill[] = [];
+  for (const raw of BUILTIN_SKILL_SOURCES) {
+    if (out.length >= MAX_SKILLS) break;
+    const parsed = parseSkillFields(raw);
+    if (!parsed) continue;
+    out.push({
+      summary: { ...parsed, path: `<builtin>/${parsed.name}.md`, scope: 'builtin' },
+      content: raw,
+    });
+  }
+  builtinCache = out;
+  return out;
+}
+
+/** Summaries of the skills qwery ships by default (lowest-priority scope). */
+export function listBuiltinSkills(): SkillSummary[] {
+  return loadBuiltinSkills().map((b) => b.summary);
+}
+
 async function loadSkillsFromDir(dir: string, scope: SkillScope): Promise<SkillSummary[]> {
   let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
   try {
@@ -86,18 +130,9 @@ async function loadSkillsFromDir(dir: string, scope: SkillScope): Promise<SkillS
     if (!skillFile) continue;
     try {
       const raw = await fs.readFile(skillFile, 'utf-8');
-      const { fields } = parseFrontmatter(raw);
-      const name = fields.name?.trim() ?? '';
-      const description = fields.description?.trim() ?? '';
-      if (!validateName(name)) continue;
-      if (description.length === 0 || description.length > MAX_DESCRIPTION_LENGTH) continue;
-      skills.push({
-        name,
-        description,
-        path: skillFile,
-        scope,
-        agent: validateAgent(fields.agent),
-      });
+      const parsed = parseSkillFields(raw);
+      if (!parsed) continue;
+      skills.push({ ...parsed, path: skillFile, scope });
     } catch {
       // ignore unreadable files
     }
@@ -115,8 +150,10 @@ async function loadSkillsFromDir(dir: string, scope: SkillScope): Promise<SkillS
  *   ---
  *   <body — the full instructions, read on demand via the `read` tool>
  *
- * Workspace skills win over user skills on name conflict. Inspired by pi's
- * `SKILL.md` spec; spec is intentionally strict (kebab-case, length caps).
+ * Priority on name conflict: workspace > user > built-in. Built-in skills ship
+ * with qwery; a user or workspace skill of the same name overrides them.
+ * Inspired by pi's `SKILL.md` spec; spec is intentionally strict (kebab-case,
+ * length caps).
  */
 export async function listLocalSkills(): Promise<SkillSummary[]> {
   const [workspaceSkills, userSkills] = await Promise.all([
@@ -124,7 +161,8 @@ export async function listLocalSkills(): Promise<SkillSummary[]> {
     loadSkillsFromDir(USER_SKILLS, 'user'),
   ]);
   const merged = new Map<string, SkillSummary>();
-  for (const skill of userSkills) merged.set(skill.name, skill);
+  for (const { summary } of loadBuiltinSkills()) merged.set(summary.name, summary);
+  for (const skill of userSkills) merged.set(skill.name, skill); // user overrides built-in
   for (const skill of workspaceSkills) merged.set(skill.name, skill); // workspace overrides user
   return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -136,6 +174,11 @@ export async function readLocalSkill(
   const skills = await listLocalSkills();
   const skill = skills.find((s) => s.name === name);
   if (!skill) return null;
+  if (skill.scope === 'builtin') {
+    const builtin = loadBuiltinSkills().find((b) => b.summary.name === name);
+    if (!builtin) return null;
+    return { name: skill.name, content: builtin.content, path: skill.path };
+  }
   const content = await fs.readFile(skill.path, 'utf-8');
   return { name: skill.name, content, path: skill.path };
 }
