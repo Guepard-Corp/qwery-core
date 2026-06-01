@@ -1,5 +1,7 @@
 import {
   type Compute,
+  type Datasource,
+  type Logger,
   type OntologyProvider,
   type SchemaRetriever,
   type ToolEvent,
@@ -10,11 +12,26 @@ import { z } from 'zod';
 import { editFile } from './edit-tool';
 import { renderTemplate, validateTemplateColumns } from './mustache-helpers';
 import { readFileSafe, runBash, writeFileSafe } from './system-tools';
+import {
+  createCompareQueryRewriteTool,
+  createDetectDbEngineTool,
+  createExplainQueryPlanTool,
+  createGetBloatEstimatesTool,
+  createGetIndexHealthTool,
+  createGetInfraRuntimeSignalsTool,
+  createGetLockAndBlockingAnalysisTool,
+  createGetRecentDbLogsTool,
+  createGetReplicationHealthTool,
+  createGetStatisticsHealthTool,
+  createGetTableHealthTool,
+  createGetTopSlowQueriesTool,
+} from './tools/db-audit';
 import { createExpandSchemaTool } from './tools/expand-schema';
 import { createSchemaTool, type DatasourceSchemaProvider } from './tools/schema';
 import { createSearchSchemaTool } from './tools/search-schema';
 import { createTracker } from './tools/track';
 import { createValidateQueryTool } from './tools/validate-query';
+import { createValidateRemediationInGfsCliTool } from './tools/validate-remediation-in-gfs-cli';
 
 export interface BuildToolsOptions {
   compute: Compute;
@@ -25,6 +42,14 @@ export interface BuildToolsOptions {
   ontologyProvider?: OntologyProvider;
   /** Optional semantic-layer retriever; enables the `searchSchema` tool when present. */
   schemaRetriever?: SchemaRetriever;
+  /** Current session id, used to scope isolated GFS validation repos. */
+  sessionId?: string;
+  /** Resolve the attached datasource the audit agent should validate against. */
+  getAttachedDatasource?: () => Promise<Datasource | null>;
+  /** Reveal datasource secrets for tools that need a native PostgreSQL URL. */
+  revealDatasourceSecrets?: (datasource: Datasource) => Promise<Record<string, unknown>>;
+  logger?: Logger;
+  signal?: AbortSignal;
 }
 
 export function buildTools({
@@ -33,6 +58,11 @@ export function buildTools({
   schemaProvider,
   ontologyProvider,
   schemaRetriever,
+  sessionId,
+  getAttachedDatasource,
+  revealDatasourceSecrets,
+  logger,
+  signal,
 }: BuildToolsOptions) {
   const track = createTracker(onEvent);
 
@@ -44,6 +74,56 @@ export function buildTools({
     expandSchema: createExpandSchemaTool({ track, schemaProvider }),
 
     validateQuery: createValidateQueryTool({ track, schemaProvider, ontologyProvider }),
+
+    detectDbEngine: createDetectDbEngineTool({ compute, track }),
+
+    getTopSlowQueries: createGetTopSlowQueriesTool({ compute, track }),
+
+    explainQueryPlan: createExplainQueryPlanTool({
+      compute,
+      track,
+      getAttachedDatasource,
+      revealDatasourceSecrets,
+    }),
+
+    compareQueryRewrite: createCompareQueryRewriteTool({
+      compute,
+      track,
+      getAttachedDatasource,
+      revealDatasourceSecrets,
+    }),
+
+    getIndexHealth: createGetIndexHealthTool({ compute, track }),
+
+    getTableHealth: createGetTableHealthTool({ compute, track }),
+
+    getInfraRuntimeSignals: createGetInfraRuntimeSignalsTool({ compute, track }),
+
+    getRecentDbLogs: createGetRecentDbLogsTool({ compute, track }),
+
+    getLockAndBlockingAnalysis: createGetLockAndBlockingAnalysisTool({ compute, track }),
+
+    getStatisticsHealth: createGetStatisticsHealthTool({ compute, track }),
+
+    getBloatEstimates: createGetBloatEstimatesTool({ compute, track }),
+
+    getReplicationHealth: createGetReplicationHealthTool({ compute, track }),
+
+    validateRemediationInGfsCli: createValidateRemediationInGfsCliTool({
+      sessionId,
+      signal,
+      logger:
+        logger ??
+        ({
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+        } as Logger),
+      track,
+      getAttachedDatasource,
+      revealDatasourceSecrets,
+    }),
 
     runQuery: tool({
       description:

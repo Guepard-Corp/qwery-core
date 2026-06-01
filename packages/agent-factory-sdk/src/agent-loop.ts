@@ -74,6 +74,11 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     schemaProvider,
     ontologyProvider,
     schemaRetriever,
+    sessionId: opts.sessionId,
+    signal: opts.signal,
+    logger,
+    getAttachedDatasource: opts.getAttachedDatasource,
+    revealDatasourceSecrets: opts.revealDatasourceSecrets,
     onEvent: (event) => {
       logger.info(`tool.${event.status}`, {
         id: event.id,
