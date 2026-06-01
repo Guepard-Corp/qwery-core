@@ -12,6 +12,48 @@ import { buildTools } from './tools';
 
 export type { AgentRunOptions, AgentRunResult } from './agent-types';
 
+/**
+ * Tool-call steps the model may take per turn before the loop stops. A thorough
+ * task (e.g. a full database audit) can legitimately need many tool calls, so
+ * this is generous; override with `QWERY_MAX_STEPS`. When the ceiling is hit
+ * mid-tool-calling, {@link runAgent} runs a tool-less finalization pass so the
+ * user still gets a written answer instead of an empty turn.
+ */
+export const DEFAULT_MAX_STEPS = 100;
+
+function resolveMaxSteps(): number {
+  const n = Number(process.env.QWERY_MAX_STEPS);
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_MAX_STEPS;
+}
+
+/**
+ * Debug switch: when truthy, the run-completion log events
+ * (`agent.run.done` / `agent.run.aborted`) carry the full assistant `text`
+ * in addition to `textLen`, so the verbatim report can be recovered from
+ * the log. Off by default — the report can be large and may contain
+ * datasource-derived content, so we only emit it when explicitly asked.
+ */
+function shouldLogReportText(): boolean {
+  const raw = process.env.QWERY_DEBUG_REPORT_TEXT?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
+}
+
+export function formatStreamError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (!error || typeof error !== 'object') return String(error);
+  const record = error as Record<string, unknown>;
+  for (const key of ['message', 'error', 'reason', 'statusText']) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   const {
     compute,
@@ -32,6 +74,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
 
   logger.info('agent.run.start', { messageCount: opts.messages.length, agent: agent.id });
   const startedAt = Date.now();
+  const maxSteps = resolveMaxSteps();
+  const logReportText = shouldLogReportText();
 
   // Pre-turn compaction. We estimate the incoming prompt size and, if it
   // crosses the threshold, prune + summarize before kicking off streamText.
@@ -219,25 +263,28 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   // Hoisted out of the try so the catch can preserve partial text on abort.
   let assistantText = '';
 
+  // Built once and reused by the step-limit finalization pass below.
+  const systemPrompt = buildSystemPrompt({
+    datasources,
+    apps,
+    skills: scopedSkills,
+    // Subagents are only advertised to the parent — inside a subagent loop,
+    // we pass `undefined` so the whole block (persisted + ad-hoc) is
+    // omitted, preventing recursive spawn.
+    subagents: isSubagent
+      ? undefined
+      : subagents.map((sa) => ({
+          name: sa.name,
+          description: sa.description,
+          baseAgent: sa.baseAgent,
+        })),
+    agentPreamble: agent.promptPreamble,
+  });
+
   try {
     const result = streamText({
       model: llm.getModel() as LanguageModel,
-      system: buildSystemPrompt({
-        datasources,
-        apps,
-        skills: scopedSkills,
-        // Subagents are only advertised to the parent — inside a subagent loop,
-        // we pass `undefined` so the whole block (persisted + ad-hoc) is
-        // omitted, preventing recursive spawn.
-        subagents: isSubagent
-          ? undefined
-          : subagents.map((sa) => ({
-              name: sa.name,
-              description: sa.description,
-              baseAgent: sa.baseAgent,
-            })),
-        agentPreamble: agent.promptPreamble,
-      }),
+      system: systemPrompt,
       messages,
       tools,
       // `activeTools` controls which tools are advertised to the LLM at each
@@ -259,7 +306,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
           ...[...registryContext.loadedTools],
         ],
       }),
-      stopWhen: stepCountIs(50),
+      stopWhen: stepCountIs(maxSteps),
       abortSignal: opts.signal,
       onStepFinish: ({ finishReason: reason, usage, toolCalls, toolResults, text }) => {
         logger.info('agent.step.finish', {
@@ -303,11 +350,11 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
           logger.error('llm.tool-error', {
             toolName: part.toolName,
             toolCallId: part.toolCallId,
-            error: part.error instanceof Error ? part.error.message : String(part.error),
+            error: formatStreamError(part.error),
           });
           break;
         case 'error':
-          streamError = part.error instanceof Error ? part.error.message : String(part.error);
+          streamError = formatStreamError(part.error);
           logger.error('llm.stream.error', { error: streamError });
           break;
         case 'finish':
@@ -321,16 +368,62 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
 
     if (streamError) throw new Error(`LLM stream error: ${streamError}`);
 
+    // The loop stopped while the model still wanted to call tools (it hit the
+    // `maxSteps` ceiling) and never wrote a response — without this the user
+    // sees an empty turn. Run one tool-less pass so the model summarizes what
+    // it gathered into a final answer. Skipped if the caller aborted.
+    if (!opts.signal?.aborted && finishReason === 'tool-calls' && assistantText.trim() === '') {
+      logger.info('agent.run.finalize', { reason: 'step-limit', maxSteps });
+      const priorMessages = (await result.response).messages;
+      const finalize = streamText({
+        model: llm.getModel() as LanguageModel,
+        system: systemPrompt,
+        // Honor the same abort signal as the main stream — without it a
+        // user-initiated Ctrl+C during finalization keeps streaming/billing
+        // tokens until the summary completes.
+        abortSignal: opts.signal,
+        messages: [
+          ...messages,
+          ...priorMessages,
+          {
+            role: 'user',
+            content: `You reached the ${maxSteps}-step tool-call limit. Do not call any more tools. Summarize the findings you have gathered and give your final answer now.`,
+          },
+        ] as typeof messages,
+      });
+      for await (const part of finalize.fullStream) {
+        if (part.type === 'text-delta') {
+          assistantText += part.text;
+          onToken(part.text);
+        } else if (part.type === 'finish') {
+          finishReason = part.finishReason ?? finishReason;
+        } else if (part.type === 'error') {
+          // Finalization is best-effort — log and keep whatever we have.
+          logger.error('agent.run.finalize.error', { error: formatStreamError(part.error) });
+        }
+      }
+    }
+
     const durationMs = Date.now() - startedAt;
     // If the caller aborted but streamText returned without throwing (e.g.
     // the signal was already aborted before any chunk could arrive, or the
     // provider chose to swallow the abort silently), surface that as
     // 'aborted' so the UI can show the right state.
     if (opts.signal?.aborted) {
-      logger.info('agent.run.aborted', { durationMs, textLen: assistantText.length, totalUsage });
+      logger.info('agent.run.aborted', {
+        durationMs,
+        textLen: assistantText.length,
+        totalUsage,
+        ...(logReportText ? { text: assistantText } : {}),
+      });
       return { text: assistantText, usage: totalUsage, durationMs, finishReason: 'aborted' };
     }
-    logger.info('agent.run.done', { textLen: assistantText.length, durationMs, totalUsage });
+    logger.info('agent.run.done', {
+      textLen: assistantText.length,
+      durationMs,
+      totalUsage,
+      ...(logReportText ? { text: assistantText } : {}),
+    });
     return { text: assistantText, usage: totalUsage, durationMs, finishReason };
   } catch (err) {
     // AbortError is not a failure — the caller intentionally cancelled.
@@ -339,7 +432,12 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     const aborted = (err instanceof Error && err.name === 'AbortError') || opts.signal?.aborted === true;
     if (aborted) {
       const durationMs = Date.now() - startedAt;
-      logger.info('agent.run.aborted', { durationMs, textLen: assistantText.length, totalUsage });
+      logger.info('agent.run.aborted', {
+        durationMs,
+        textLen: assistantText.length,
+        totalUsage,
+        ...(logReportText ? { text: assistantText } : {}),
+      });
       return {
         text: assistantText,
         usage: totalUsage,
