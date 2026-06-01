@@ -28,6 +28,7 @@ import {
   type TelemetrySpan,
   type Todo,
   type ToolEvent,
+  type ToolName,
 } from '@qwery/domain';
 import { AGENT_EVENTS } from '@qwery/telemetry/events';
 import type { ModelMessage } from 'ai';
@@ -54,6 +55,7 @@ import type { UpdateOutcome } from './infra/updater';
 import { getAppVersion } from './infra/version';
 import { useServices } from './services';
 import { AgentsOverlay } from './tui/agents-overlay';
+import { flattenChatLines } from './tui/chat-lines';
 import { ChatView } from './tui/chat-view';
 import { ContextOverlay } from './tui/context-overlay';
 import { DatasourcesOverlay } from './tui/datasources-overlay';
@@ -94,6 +96,39 @@ function formatUpdate(o: UpdateOutcome): string {
 /** True when at least one artifact has a release staged for next launch. */
 function hasStagedUpdate(outcomes: UpdateOutcome[] | null): boolean {
   return (outcomes ?? []).some((o) => o.action === 'stage' || o.action === 'already-staged');
+}
+
+function emptyLastByTool(): Record<ToolName, ToolEvent | null> {
+  return {
+    schema: null,
+    runQuery: null,
+    describeQuery: null,
+    present: null,
+    bash: null,
+    read: null,
+    write: null,
+    edit: null,
+    agent: null,
+    taskStatus: null,
+    todoWrite: null,
+    todoRead: null,
+    validateQuery: null,
+    searchSchema: null,
+    expandSchema: null,
+    detectDbEngine: null,
+    getTopSlowQueries: null,
+    explainQueryPlan: null,
+    compareQueryRewrite: null,
+    getIndexHealth: null,
+    getTableHealth: null,
+    getInfraRuntimeSignals: null,
+    getRecentDbLogs: null,
+    getLockAndBlockingAnalysis: null,
+    getStatisticsHealth: null,
+    getBloatEstimates: null,
+    getReplicationHealth: null,
+    validateRemediationInGfsCli: null,
+  };
 }
 
 export function App() {
@@ -147,29 +182,29 @@ export function App() {
   // mode the chat occupies roughly half the terminal width.
   const chatPaneWidth =
     layoutMode === 'split' ? Math.max(20, Math.floor(termCols / 2) - 4) : Math.max(20, termCols - 4);
+  // Rows the chat pane (including its own padding) may occupy. Reserve the
+  // surrounding chrome — header, pane label / tab bar, agent-status line, input
+  // box (3 rows), status bar — so ChatView can bound its own height. Ink can't
+  // reliably clip vertical overflow, so the view must never exceed this.
+  const chatAvailableHeight = Math.max(4, termRows - (layoutMode === 'split' ? 9 : 8));
+  // The chat flattened to one node per terminal row, so the view can window it
+  // by line (exact height) and scroll line-by-line through long output.
+  const chatLines = useMemo(
+    () => flattenChatLines(entries, streaming, chatPaneWidth),
+    [entries, streaming, chatPaneWidth],
+  );
+  // Rows of chat content visible at once, and the furthest we can scroll up.
+  // The `+1` reclaims the row a "more below" indicator costs once scrolled, so
+  // the very first line stays reachable; clamped to 0 when everything fits.
+  const chatContentRows = Math.max(1, chatAvailableHeight - 2);
+  const chatMaxScroll = chatLines.length <= chatContentRows ? 0 : chatLines.length - chatContentRows + 1;
   const [resultMode, setResultMode] = useState<ResultViewMode>('data');
   const [inputState, setInputState] = useState<InputState>(EMPTY_INPUT_STATE);
   const [sessionTotals, setSessionTotals] = useState<SessionTotals>(EMPTY_SESSION_TOTALS);
   const [chatScrollOffset, setChatScrollOffset] = useState(0);
   const [contextLimit, setContextLimit] = useState<number | null>(null);
   const [lastTurnInputTokens, setLastTurnInputTokens] = useState(0);
-  const lastByType = useRef<Record<ToolEvent['name'], ToolEvent | null>>({
-    schema: null,
-    runQuery: null,
-    describeQuery: null,
-    present: null,
-    bash: null,
-    read: null,
-    write: null,
-    edit: null,
-    agent: null,
-    taskStatus: null,
-    todoWrite: null,
-    todoRead: null,
-    validateQuery: null,
-    searchSchema: null,
-    expandSchema: null,
-  });
+  const lastByType = useRef<Record<ToolEvent['name'], ToolEvent | null>>(emptyLastByTool());
   const session = useRef<ModelMessage[]>([]);
   const sessionId = useRef<string | null>(null);
   /** Names of deferred (lazy) tools the LLM has loaded so far this session. */
@@ -418,23 +453,7 @@ export function App() {
         setChatScrollOffset(0);
         setActiveResult(null);
         setResultsBadge(false);
-        lastByType.current = {
-          schema: null,
-          runQuery: null,
-          describeQuery: null,
-          present: null,
-          bash: null,
-          read: null,
-          write: null,
-          edit: null,
-          agent: null,
-          taskStatus: null,
-          todoWrite: null,
-          todoRead: null,
-          validateQuery: null,
-          searchSchema: null,
-          expandSchema: null,
-        };
+        lastByType.current = emptyLastByTool();
         setEntries((p) => [
           ...p,
           {
@@ -526,9 +545,12 @@ export function App() {
       if (activeTab === 'chat') setResultsBadge(false);
     }
 
-    // Chat scroll: Shift+↑ goes to older messages, Shift+↓ comes back to latest.
+    // Chat scroll (in lines): Shift+↑ scrolls toward older output, Shift+↓ back
+    // toward the latest; PageUp/PageDown jump by a screenful. Clamped so it can
+    // never scroll past the top or below the live bottom.
+    const page = Math.max(1, chatContentRows - 1);
     if (key.shift && key.upArrow) {
-      setChatScrollOffset((o) => o + 1);
+      setChatScrollOffset((o) => Math.min(chatMaxScroll, o + 1));
       return;
     }
     if (key.shift && key.downArrow) {
@@ -536,11 +558,11 @@ export function App() {
       return;
     }
     if (key.pageUp) {
-      setChatScrollOffset((o) => o + 3);
+      setChatScrollOffset((o) => Math.min(chatMaxScroll, o + page));
       return;
     }
     if (key.pageDown) {
-      setChatScrollOffset((o) => Math.max(0, o - 3));
+      setChatScrollOffset((o) => Math.max(0, o - page));
       return;
     }
   });
@@ -604,23 +626,7 @@ export function App() {
         setSessionTotals(EMPTY_SESSION_TOTALS);
         setLastTurnInputTokens(0);
         setChatScrollOffset(0);
-        lastByType.current = {
-          schema: null,
-          runQuery: null,
-          describeQuery: null,
-          present: null,
-          bash: null,
-          read: null,
-          write: null,
-          edit: null,
-          agent: null,
-          taskStatus: null,
-          todoWrite: null,
-          todoRead: null,
-          validateQuery: null,
-          searchSchema: null,
-          expandSchema: null,
-        };
+        lastByType.current = emptyLastByTool();
         session.current = [];
         sessionId.current = null;
         loadedTools.current.clear();
@@ -635,7 +641,7 @@ export function App() {
           {
             kind: 'assistant',
             text:
-              'Slash commands: /models, /datasources, /agents, /context, /data, /code, /auto, /layout, /resume, /clear, /help, /logs, /update, /quit.\n' +
+              'Slash commands: /models, /datasources, /agents, /context, /data, /code, /audit, /optimize, /auto, /layout, /resume, /clear, /help, /logs, /update, /quit.\n' +
               'Hotkeys: Tab (switch view, focus mode), Ctrl+B (toggle split), Ctrl+R (last data), Ctrl+I (last schema), Ctrl+L (toggle SQL view), Ctrl+C (quit), ↑/↓ (history).',
           },
         ]);
@@ -682,8 +688,23 @@ export function App() {
         })();
         return;
       }
-      if (text === '/data' || text === '/code' || text === '/auto') {
-        const next = text === '/auto' ? null : text === '/code' ? ('code' as AgentId) : ('data' as AgentId);
+      if (
+        text === '/data' ||
+        text === '/code' ||
+        text === '/audit' ||
+        text === '/optimize' ||
+        text === '/auto'
+      ) {
+        const next =
+          text === '/auto'
+            ? null
+            : text === '/code'
+              ? ('code' as AgentId)
+              : text === '/audit'
+                ? ('db-performance-audit' as AgentId)
+                : text === '/optimize'
+                  ? ('slow-query-optimizer' as AgentId)
+                  : ('data' as AgentId);
         setPinnedAgent(next);
         const label = next === null ? 'auto (heuristic)' : AGENT_SPECS[next].label;
         setEntries((p) => [...p, { kind: 'assistant', text: `Agent routing pinned to: ${label}.` }]);
@@ -790,6 +811,12 @@ export function App() {
             signal: abort.signal,
             datasources: datasourceSummaries,
             schemaProvider: { listSchemas: () => attachedDatasources.schemas() },
+            getAttachedDatasource: async () => {
+              const attached = attachedDatasources.list().find((state) => state.status === 'attached');
+              return attached?.datasource ?? null;
+            },
+            revealDatasourceSecrets: (datasource) =>
+              datasourceRepo.revealSecrets(datasource.config as Record<string, unknown>),
             ontologyProvider: createInProcessOntologyProvider(),
             schemaRetriever: createInProcessSchemaRetriever(createHashingEmbedder()),
             apps,
@@ -1062,10 +1089,9 @@ export function App() {
             </Box>
             <Box flexDirection="column" flexGrow={1} flexShrink={1} overflow="hidden">
               <ChatView
-                entries={entries}
-                streaming={streaming}
+                lines={chatLines}
                 scrollOffset={chatScrollOffset}
-                availableWidth={chatPaneWidth}
+                availableHeight={chatAvailableHeight}
               />
             </Box>
             <Box flexShrink={0} flexDirection="column">
@@ -1123,10 +1149,9 @@ export function App() {
           <Box flexDirection="column" flexGrow={1} flexShrink={1} overflow="hidden">
             {activeTab === 'chat' ? (
               <ChatView
-                entries={entries}
-                streaming={streaming}
+                lines={chatLines}
                 scrollOffset={chatScrollOffset}
-                availableWidth={chatPaneWidth}
+                availableHeight={chatAvailableHeight}
               />
             ) : (
               <ResultsView event={activeResult} mode={resultMode} />

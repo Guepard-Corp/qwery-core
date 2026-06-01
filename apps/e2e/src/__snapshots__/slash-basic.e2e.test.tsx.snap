@@ -5,14 +5,14 @@ exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
  Chat                                             │ Results
                                                   │
                                                   │
- Slash commands: /models, /datasources, /agents,  │ No result yet.
- /context, /data, /code, /auto, /layout, /resume, │ ⌃R last present · ⌃I last schema · ⌃L toggle
-  /clear, /help, /logs, /update, /quit.           │ SQL view
+ Slash commands: /models, /datasources,           │ No result yet.
+ /agents, /context, /data, /code, /audit,         │ ⌃R last present · ⌃I last schema · ⌃L toggle
+ /optimize, /auto, /layout, /resume, /clear,      │ SQL view
+ /help, /logs, /update, /quit.                    │
  Hotkeys: Tab (switch view, focus mode), Ctrl+B   │
- (toggle split), Ctrl+R (last data), Ctrl+I (last │
-  schema), Ctrl+L (toggle SQL view), Ctrl+C       │
- (quit), ↑/↓ (history).                           │
-                                                  │
+ (toggle split), Ctrl+R (last data), Ctrl+I       │
+ (last schema), Ctrl+L (toggle SQL view),         │
+ Ctrl+C (quit), ↑/↓ (history).                    │
                                                   │
                                                   │
                                                   │
