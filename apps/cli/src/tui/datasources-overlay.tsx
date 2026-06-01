@@ -4,6 +4,7 @@ import { type DatasourceExtension, ExtensionsRegistry } from '@qwery/extension-s
 import { Box, Text, useInput } from 'ink';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AttachState } from '../infra/datasources';
+import { generateRandomName } from '../infra/random-name';
 import { useServices } from '../services';
 
 interface DatasourcesOverlayProps {
@@ -32,6 +33,7 @@ type Mode =
   | { kind: 'pick-extension'; cursor: number }
   | { kind: 'pick-variant'; extension: DatasourceExtension; variants: Variant[]; cursor: number }
   | { kind: 'confirm-delete'; datasource: Datasource; cursor: number }
+  | { kind: 'rename'; datasource: Datasource; cursor: number; buffer: string; error?: string }
   | {
       kind: 'configure';
       extension: DatasourceExtension;
@@ -255,6 +257,34 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
         void toggleProjectAttach(selectedDs);
       } else if (input === 'd' && selectedDs) {
         setMode({ kind: 'confirm-delete', datasource: selectedDs, cursor: mode.cursor });
+      } else if (input === 'r' && selectedDs) {
+        // `r` renames the selected datasource, pre-filling its current name.
+        setMode({ kind: 'rename', datasource: selectedDs, cursor: mode.cursor, buffer: selectedDs.name });
+      }
+      return;
+    }
+
+    if (mode.kind === 'rename') {
+      const m = mode;
+      if (key.return) {
+        const trimmed = m.buffer.trim();
+        if (trimmed.length === 0) {
+          setMode({ ...m, error: 'Name is required' });
+          return;
+        }
+        if (trimmed === m.datasource.name) {
+          setMode({ kind: 'list', cursor: m.cursor });
+          return;
+        }
+        void renameDatasource(m.datasource, trimmed, m.cursor);
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setMode({ ...m, buffer: m.buffer.slice(0, -1), error: undefined });
+        return;
+      }
+      if (input && !key.ctrl && !key.meta) {
+        setMode({ ...m, buffer: m.buffer + input, error: undefined });
       }
       return;
     }
@@ -348,6 +378,21 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
     }
   });
 
+  async function renameDatasource(ds: Datasource, name: string, cursor: number): Promise<void> {
+    try {
+      await DatasourceUseCases.updateDatasource({ datasourceRepo }, ds.id, { name });
+      const refreshed = await datasourceRepo.findAll();
+      setDatasources(refreshed);
+      await refreshProjects(refreshed);
+      setMode({ kind: 'list', cursor });
+      setStatus(`Renamed ${ds.name} → ${name}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error('datasource.rename.error', { id: ds.id, message });
+      setMode({ kind: 'rename', datasource: ds, cursor, buffer: name, error: message });
+    }
+  }
+
   async function submit(
     extension: DatasourceExtension,
     fields: FormField[],
@@ -371,7 +416,9 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
       const ds = await DatasourceUseCases.createDatasource(
         { datasourceRepo },
         {
-          name: extension.name,
+          // New datasources get a friendly random name by default; the user
+          // can rename it from the list with `r`.
+          name: generateRandomName(),
           description: extension.description ?? '',
           datasource_provider: extension.id,
           datasource_driver: driverReg.id,
@@ -405,7 +452,9 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
                 ? `Connect ${mode.extension.name}`
                 : mode.kind === 'confirm-delete'
                   ? `Delete ${mode.datasource.name}?`
-                  : `Configure ${mode.extension.name}`}
+                  : mode.kind === 'rename'
+                    ? `Rename ${mode.datasource.name}`
+                    : `Configure ${mode.extension.name}`}
         </Text>
         <Text dimColor>esc {mode.kind === 'list' ? 'close' : 'back'}</Text>
       </Box>
@@ -429,6 +478,7 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
       {mode.kind === 'pick-extension' && <PickExtensionMode extensions={extensions} cursor={mode.cursor} />}
       {mode.kind === 'pick-variant' && <PickVariantMode mode={mode} />}
       {mode.kind === 'confirm-delete' && <ConfirmDeleteMode datasource={mode.datasource} />}
+      {mode.kind === 'rename' && <RenameMode mode={mode} />}
       {mode.kind === 'configure' && <ConfigureMode mode={mode} />}
     </Box>
   );
@@ -453,7 +503,9 @@ function ListMode({
   return (
     <Box flexDirection="column">
       <Box marginY={1} flexDirection="column">
-        <Text dimColor>↑/↓ navigate · n new · a attach/detach · p project · d delete · esc close</Text>
+        <Text dimColor>
+          ↑/↓ navigate · n new · a attach/detach · p project · r rename · d delete · esc close
+        </Text>
         <Text dimColor>
           showing {scopeLabel} · t: {showAll ? 'this project only' : 'show all'}
         </Text>
@@ -581,6 +633,36 @@ function ConfirmDeleteMode({ datasource }: { datasource: Datasource }) {
         <Text bold>n</Text>
         <Text dimColor> / enter / esc cancel</Text>
       </Box>
+    </Box>
+  );
+}
+
+function RenameMode({ mode }: { mode: Extract<Mode, { kind: 'rename' }> }) {
+  return (
+    <Box flexDirection="column">
+      <Box marginY={1}>
+        <Text dimColor>enter to save · esc cancel</Text>
+      </Box>
+      <Box>
+        <Text bold>Name: </Text>
+      </Box>
+      <Box>
+        <Text color="magenta" bold>
+          ›{' '}
+        </Text>
+        <Text>{mode.buffer}</Text>
+        <Text inverse> </Text>
+      </Box>
+      <Box marginTop={1}>
+        <Text dimColor>
+          {mode.datasource.name} <Text dimColor>({mode.datasource.datasource_provider})</Text>
+        </Text>
+      </Box>
+      {mode.error && (
+        <Box marginTop={1}>
+          <Text color="red">{mode.error}</Text>
+        </Box>
+      )}
     </Box>
   );
 }
