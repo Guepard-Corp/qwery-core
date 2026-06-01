@@ -152,17 +152,29 @@ export function createGetTopSlowQueriesTool({ compute, track }: DbAuditToolDeps)
 export function createExplainQueryPlanTool({ compute, track, ...native }: DbAuditToolDeps & NativePgDeps) {
   return tool({
     description:
-      'Run EXPLAIN (FORMAT JSON, BUFFERS) for a SELECT/WITH query against the source PostgreSQL planner. Returns real Postgres plan nodes/costs. Does not execute the query or return table rows.',
-    inputSchema: z.object({ sql: z.string().describe('A SELECT or WITH query to explain.') }),
-    execute: async ({ sql }) =>
+      'Inspect the source PostgreSQL plan for a SELECT/WITH query. By default runs EXPLAIN (FORMAT JSON, BUFFERS) — plan/cost only, query NOT executed. Pass `analyze: true` to run EXPLAIN (ANALYZE, BUFFERS) and capture measured execution time/row counts (executes the query; no row data is returned). Returns real Postgres plan nodes.',
+    inputSchema: z.object({
+      sql: z.string().describe('A SELECT or WITH query to explain.'),
+      analyze: z
+        .boolean()
+        .default(false)
+        .describe('Execute the query to capture real timings (EXPLAIN ANALYZE). Default false (plan only).'),
+    }),
+    execute: async ({ sql, analyze }) =>
       track('explainQueryPlan', { sql }, async () => {
         assertReadOnlySql(sql);
         if (!/^(SELECT|WITH)\b/i.test(sql.trim()))
           throw new Error('explainQueryPlan only accepts SELECT/WITH input.');
         const url = await resolveSourcePostgresUrl(native);
         if (url) {
-          const [plan] = await explainOnSourcePostgres(url, [sql]);
-          return auditResult('explainQueryPlan', 'Captured PostgreSQL EXPLAIN plan.', plan);
+          const [plan] = await explainOnSourcePostgres(url, [sql], { analyze });
+          return auditResult(
+            'explainQueryPlan',
+            analyze
+              ? 'Captured PostgreSQL EXPLAIN ANALYZE plan (measured).'
+              : 'Captured PostgreSQL EXPLAIN plan.',
+            plan,
+          );
         }
         // No native PostgreSQL connection available — fall back to the DuckDB
         // plan (real Postgres nodes/costs are unavailable on this path).
@@ -179,9 +191,18 @@ export function createExplainQueryPlanTool({ compute, track, ...native }: DbAudi
 export function createCompareQueryRewriteTool({ compute, track, ...native }: DbAuditToolDeps & NativePgDeps) {
   return tool({
     description:
-      'Compare original and rewritten SELECT/WITH queries using the source PostgreSQL EXPLAIN planner. Does not execute or return rows.',
-    inputSchema: z.object({ originalSql: z.string(), rewrittenSql: z.string() }),
-    execute: async ({ originalSql, rewrittenSql }) =>
+      'Compare original vs rewritten SELECT/WITH queries on the source PostgreSQL. By default runs EXPLAIN ANALYZE on both (executes them) so you get a MEASURED before/after diff — real execution times, row counts and buffers. Pass `analyze: false` for very expensive queries to compare plan/cost estimates only (no execution). No row data is returned.',
+    inputSchema: z.object({
+      originalSql: z.string(),
+      rewrittenSql: z.string(),
+      analyze: z
+        .boolean()
+        .default(true)
+        .describe(
+          'Execute both queries to measure real before/after timing (EXPLAIN ANALYZE). Set false for plan/cost-only comparison on queries too expensive to run.',
+        ),
+    }),
+    execute: async ({ originalSql, rewrittenSql, analyze }) =>
       track('compareQueryRewrite', { originalSql, rewrittenSql }, async () => {
         for (const sql of [originalSql, rewrittenSql]) {
           assertReadOnlySql(sql);
@@ -190,13 +211,16 @@ export function createCompareQueryRewriteTool({ compute, track, ...native }: DbA
         }
         const url = await resolveSourcePostgresUrl(native);
         if (url) {
-          const [originalPlan, rewrittenPlan] = await explainOnSourcePostgres(url, [
-            originalSql,
-            rewrittenSql,
-          ]);
+          const [originalPlan, rewrittenPlan] = await explainOnSourcePostgres(
+            url,
+            [originalSql, rewrittenSql],
+            { analyze },
+          );
           return auditResult(
             'compareQueryRewrite',
-            'Captured original and rewritten PostgreSQL EXPLAIN plans.',
+            analyze
+              ? 'Captured measured original vs rewritten PostgreSQL EXPLAIN ANALYZE plans.'
+              : 'Captured original and rewritten PostgreSQL EXPLAIN plans (estimates only).',
             { originalPlan, rewrittenPlan },
           );
         }

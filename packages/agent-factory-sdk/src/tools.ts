@@ -27,6 +27,7 @@ import {
   createGetTopSlowQueriesTool,
 } from './tools/db-audit';
 import { createExpandSchemaTool } from './tools/expand-schema';
+import { createSourceAwareCompute } from './tools/pg-native';
 import { createSchemaTool, type DatasourceSchemaProvider } from './tools/schema';
 import { createSearchSchemaTool } from './tools/search-schema';
 import { createTracker } from './tools/track';
@@ -48,6 +49,13 @@ export interface BuildToolsOptions {
   getAttachedDatasource?: () => Promise<Datasource | null>;
   /** Reveal datasource secrets for tools that need a native PostgreSQL URL. */
   revealDatasourceSecrets?: (datasource: Datasource) => Promise<Record<string, unknown>>;
+  /**
+   * Route the agent's ad-hoc `runQuery`/`present`/`describeQuery` SQL to the
+   * attached source PostgreSQL instead of the DuckDB compute. Set for the
+   * PostgreSQL-specialist agents, whose SQL uses catalog functions DuckDB lacks.
+   * Non-PostgreSQL datasources transparently fall back to DuckDB.
+   */
+  preferSourceEngine?: boolean;
   logger?: Logger;
   signal?: AbortSignal;
 }
@@ -61,10 +69,19 @@ export function buildTools({
   sessionId,
   getAttachedDatasource,
   revealDatasourceSecrets,
+  preferSourceEngine,
   logger,
   signal,
 }: BuildToolsOptions) {
   const track = createTracker(onEvent);
+
+  // `runQuery`/`present`/`describeQuery` run user-facing SQL. For source-engine
+  // agents, route that SQL to the native PostgreSQL connection (falling back to
+  // DuckDB when the source isn't PostgreSQL); other agents use DuckDB directly.
+  const queryCompute =
+    preferSourceEngine && getAttachedDatasource
+      ? createSourceAwareCompute(compute, { getAttachedDatasource, revealDatasourceSecrets })
+      : compute;
 
   return {
     schema: createSchemaTool({ track, schemaProvider }),
@@ -133,7 +150,7 @@ export function buildTools({
         track('runQuery', { sql }, async () => {
           const check = validateAggregateOnly(sql);
           if (!check.ok) throw new Error(check.reason);
-          const result = await compute.runSql(sql);
+          const result = await queryCompute.runSql(sql);
           if (result.rowCount !== 1) {
             throw new Error(
               `runQuery expects exactly 1 row of output, got ${result.rowCount}. Use present(sql, template) for multi-row results.`,
@@ -153,7 +170,7 @@ export function buildTools({
       inputSchema: z.object({ sql: z.string() }),
       execute: async ({ sql }) =>
         track('describeQuery', { sql }, async () => {
-          const schema = await compute.describeSql(sql);
+          const schema = await queryCompute.describeSql(sql);
           return {
             ui: { kind: 'describeQuery', sql, schema },
             llm: { ok: true as const, columns: schema.columns },
@@ -170,7 +187,7 @@ export function buildTools({
       }),
       execute: async ({ sql, template }) =>
         track('present', { sql, template }, async () => {
-          const result = await compute.runSql(sql);
+          const result = await queryCompute.runSql(sql);
           const columnNames = result.columns;
           const unknown = validateTemplateColumns(template, columnNames);
           if (unknown.length > 0) {

@@ -3,6 +3,7 @@ import type { Compute } from '@qwery/domain';
 import {
   createCompareQueryRewriteTool,
   createDetectDbEngineTool,
+  createExplainQueryPlanTool,
   createGetTopSlowQueriesTool,
 } from '../db-audit';
 import type { Track } from '../track';
@@ -64,6 +65,20 @@ describe('db audit tools', () => {
     expect(queries).toHaveLength(2);
     expect(queries[0]).toStartWith('EXPLAIN');
     expect(queries[1]).toStartWith('EXPLAIN');
+  });
+
+  test('compareQueryRewrite measures by default (analyze=true) so before/after is real', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: reading the tool's zod schema, not under test typing
+    const tool = createCompareQueryRewriteTool({ compute: fakeCompute(), track: passThroughTrack }) as any;
+    const parsed = tool.inputSchema.parse({ originalSql: 'SELECT 1', rewrittenSql: 'SELECT 1' });
+    expect(parsed.analyze).toBe(true);
+  });
+
+  test('explainQueryPlan is plan-only by default (analyze=false)', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: reading the tool's zod schema, not under test typing
+    const tool = createExplainQueryPlanTool({ compute: fakeCompute(), track: passThroughTrack }) as any;
+    const parsed = tool.inputSchema.parse({ sql: 'SELECT 1' });
+    expect(parsed.analyze).toBe(false);
   });
 
   test('compareQueryRewrite rejects write-capable SQL before compute runs', async () => {

@@ -23,6 +23,13 @@ export interface AgentSpec {
    * exclusive with `promptPreamble`. Used by the DB-audit / optimizer agents.
    */
   systemPrompt?: string;
+  /**
+   * Run the agent's ad-hoc `runQuery`/`present`/`describeQuery` SQL against the
+   * attached source engine (native PostgreSQL) rather than the DuckDB compute.
+   * Set for the PostgreSQL-specialist agents, whose SQL relies on catalog
+   * functions DuckDB lacks; non-PostgreSQL datasources fall back to DuckDB.
+   */
+  prefersSourceEngine?: boolean;
   /** Heuristic keywords that suggest this agent should handle a prompt. */
   routingKeywords: RegExp[];
 }
@@ -108,6 +115,7 @@ export const DbPerformanceAuditAgentSpec: AgentSpec = {
   label: 'DB Audit',
   tools: DbAuditTools,
   systemPrompt: DB_PERFORMANCE_AUDIT_PROMPT,
+  prefersSourceEngine: true,
   routingKeywords: [
     /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
     /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,
@@ -133,6 +141,7 @@ export const SlowQueryOptimizerAgentSpec: AgentSpec = {
     'taskStatus',
   ],
   systemPrompt: SLOW_QUERY_OPTIMIZER_PROMPT,
+  prefersSourceEngine: true,
   routingKeywords: [
     /\b(slow|sluggish|expensive|hot)\s+(query|queries|sql)\b/i,
     /\b(optimi[sz]e|rewrite|execution plan|explain analyze)\b/i,

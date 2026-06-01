@@ -125,6 +125,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     logger,
     getAttachedDatasource: opts.getAttachedDatasource,
     revealDatasourceSecrets: opts.revealDatasourceSecrets,
+    preferSourceEngine: agent.prefersSourceEngine,
     onEvent: (event) => {
       logger.info(`tool.${event.status}`, {
         id: event.id,
