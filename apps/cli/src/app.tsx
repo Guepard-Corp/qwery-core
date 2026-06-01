@@ -15,12 +15,7 @@ import {
   runAgent,
   type TodoStore,
 } from '@qwery/agent-factory-sdk';
-import {
-  Message as MessageUseCases,
-  Project as ProjectUseCases,
-  Session as SessionUseCases,
-  UsageUseCase,
-} from '@qwery/application';
+import { Message as MessageUseCases, Session as SessionUseCases, UsageUseCase } from '@qwery/application';
 import {
   type Message as DomainMessage,
   getContextLimit,
@@ -146,7 +141,6 @@ export function App() {
     usageRepo,
     modelCatalog,
     datasourceRepo,
-    projectRepo,
     attachedDatasources,
     branching,
     updater,
@@ -300,29 +294,9 @@ export function App() {
     void runUpdateCheck().catch((err) => logger.warn('updater.check.error', { error: String(err) }));
   }, [runUpdateCheck, logger]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      // Only the current project's datasources are auto-attached: the status bar
-      // under the input reflects this project, not every datasource on the machine.
-      const projectDatasources = await ProjectUseCases.listDatasourcesForProject(
-        { projectRepo, datasourceRepo },
-        currentProject.id,
-      );
-      for (const ds of projectDatasources) {
-        if (cancelled) return;
-        if (attachedDatasources.get(ds.id)?.status === 'attached') continue;
-        await attachedDatasources.attach(ds);
-      }
-    })().catch((err) =>
-      logger.error('datasource.startup.attach.error', {
-        message: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [datasourceRepo, projectRepo, currentProject, attachedDatasources, logger]);
+  // Datasources are not auto-attached on startup — the user attaches the ones
+  // they want via /datasources. (Attaching every datasource on the machine
+  // polluted the agent's context and the status bar.)
 
   const datasourceSummaries = useMemo<AttachedDatasourceSummary[]>(() => {
     return attachStates
