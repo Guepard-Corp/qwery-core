@@ -1,6 +1,6 @@
 import type { ToolName } from '@qwery/domain';
 
-export type AgentId = 'data' | 'code';
+export type AgentId = 'data' | 'code' | 'db-performance-audit' | 'slow-query-optimizer';
 
 export interface AgentSpec {
   id: AgentId;
@@ -67,9 +67,72 @@ export const CodingAgentSpec: AgentSpec = {
   ],
 };
 
+const DbAuditTools: ToolName[] = [
+  'schema',
+  'detectDbEngine',
+  'getTopSlowQueries',
+  'explainQueryPlan',
+  'getIndexHealth',
+  'getTableHealth',
+  'getInfraRuntimeSignals',
+  'getRecentDbLogs',
+  'getLockAndBlockingAnalysis',
+  'getStatisticsHealth',
+  'getBloatEstimates',
+  'getReplicationHealth',
+  'validateRemediationInGfsCli',
+  'validateQuery',
+  'runQuery',
+  'describeQuery',
+  'present',
+  'agent',
+  'taskStatus',
+];
+
+export const DbPerformanceAuditAgentSpec: AgentSpec = {
+  id: 'db-performance-audit',
+  label: 'DB Audit',
+  tools: DbAuditTools,
+  promptPreamble:
+    'You are the Qwery Database Performance Audit Agent. Run PostgreSQL performance audits for attached datasources and produce evidence-backed findings. Keep row-level data private. Use audit tools for pg_stat, catalog, lock, bloat, replication, and runtime signals. validateRemediationInGfsCli is mandatory before recommending remediation SQL, configuration experiments, maintenance actions, quick wins, or next steps. Only present recommendations whose validateRemediationInGfsCli result has validation.assessment.recommendationStatus = validated. If GFS validation is unavailable or blocked, mark the audit incomplete and write exactly: Blocked - no validated GFS remediation for this finding.',
+  routingKeywords: [
+    /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
+    /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,
+    /\bpg_stat_statements|pg_stat_activity|pg_locks\b/i,
+  ],
+};
+
+export const SlowQueryOptimizerAgentSpec: AgentSpec = {
+  id: 'slow-query-optimizer',
+  label: 'Query Optimizer',
+  tools: [
+    'schema',
+    'detectDbEngine',
+    'getTopSlowQueries',
+    'explainQueryPlan',
+    'compareQueryRewrite',
+    'getStatisticsHealth',
+    'validateQuery',
+    'runQuery',
+    'describeQuery',
+    'present',
+    'agent',
+    'taskStatus',
+  ],
+  promptPreamble:
+    'You are the Qwery Slow Query Optimizer. Identify slow PostgreSQL read queries, inspect execution plans, propose SQL rewrites or index/statistics remediations, and compare original versus rewritten plans. Keep row-level data private. Configuration tuning is outside the default workflow unless the user explicitly asks.',
+  routingKeywords: [
+    /\b(slow|sluggish|expensive|hot)\s+(query|queries|sql)\b/i,
+    /\b(optimi[sz]e|rewrite|execution plan|explain analyze)\b/i,
+    /\bpg_stat_statements\b/i,
+  ],
+};
+
 export const AGENT_SPECS: Record<AgentId, AgentSpec> = {
   data: DataAgentSpec,
   code: CodingAgentSpec,
+  'db-performance-audit': DbPerformanceAuditAgentSpec,
+  'slow-query-optimizer': SlowQueryOptimizerAgentSpec,
 };
 
 /**
@@ -81,7 +144,12 @@ export const AGENT_SPECS: Record<AgentId, AgentSpec> = {
 export function routeAgent(prompt: string): AgentSpec {
   let bestSpec = DataAgentSpec;
   let bestScore = -1;
-  for (const spec of [DataAgentSpec, CodingAgentSpec]) {
+  for (const spec of [
+    DataAgentSpec,
+    CodingAgentSpec,
+    DbPerformanceAuditAgentSpec,
+    SlowQueryOptimizerAgentSpec,
+  ]) {
     let score = 0;
     for (const re of spec.routingKeywords) if (re.test(prompt)) score++;
     if (score > bestScore) {
