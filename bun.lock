@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 1,
   "workspaces": {
     "": {
       "name": "qwery-agent",
@@ -17,6 +16,8 @@
         "@types/react": "^19.2.15",
         "dependency-cruiser": "^17.4.0",
         "drizzle-kit": "^0.31.10",
+        "ink": "^7.0.3",
+        "react": "^19.2.6",
         "simple-git-hooks": "^2.13.1",
         "turbo": "^2.9.14",
         "typescript": "^6.0.3",
@@ -55,6 +56,9 @@
         "ink": "^7.0.3",
         "ink-spinner": "^5.0.0",
         "react": "^19.2.6",
+      },
+      "devDependencies": {
+        "ink-testing-library": "^4.0.0",
       },
     },
     "apps/e2e": {
@@ -142,7 +146,11 @@
         "@qwery/domain": "workspace:*",
         "ai": "^6.0.191",
         "mustache": "^4.2.0",
+        "pg": "^8.16.3",
         "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@types/pg": "^8.11.10",
       },
     },
     "packages/application": {

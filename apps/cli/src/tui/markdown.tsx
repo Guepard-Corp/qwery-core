@@ -15,7 +15,7 @@ import { Fragment, type ReactNode } from 'react';
  * Mustache `{{table}}` — this component handles only chat prose.
  */
 
-type Block =
+export type Block =
   | { kind: 'blank' }
   | { kind: 'hr' }
   | { kind: 'heading'; level: number; text: string }
@@ -26,7 +26,7 @@ type Block =
   | { kind: 'code'; language: string; content: string }
   | { kind: 'table'; header: string[]; align: Array<'left' | 'right' | 'center'>; rows: string[][] };
 
-function parseBlocks(text: string): Block[] {
+export function parseBlocks(text: string): Block[] {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const blocks: Block[] = [];
   let i = 0;
@@ -232,7 +232,11 @@ function tokenizeInline(line: string): InlineToken[] {
       }
     }
     if (line[i] === '_') {
-      const end = findClosingItalic(line, i + 1, '_');
+      // Only treat `_` as emphasis at a word boundary — otherwise identifiers
+      // like `passenger_id` or `pg_stat_statements` would be mangled into
+      // italics with the underscores eaten.
+      const openOk = i === 0 || !/[A-Za-z0-9]/.test(line[i - 1]!);
+      const end = openOk ? findClosingUnderscore(line, i + 1) : -1;
       if (end !== -1) {
         flush();
         tokens.push({ kind: 'italic', value: line.slice(i + 1, end) });
@@ -254,7 +258,19 @@ function findClosingItalic(line: string, from: number, char: '*' | '_'): number 
   return -1;
 }
 
-function renderInline(line: string): ReactNode[] {
+/** Closing `_` for emphasis: must sit at a word boundary (not flanked by an
+ *  alphanumeric) and not directly after a space, so intraword underscores in
+ *  identifiers are left untouched. */
+function findClosingUnderscore(line: string, from: number): number {
+  for (let j = from; j < line.length; j++) {
+    if (line[j] !== '_') continue;
+    const closeOk = j + 1 >= line.length || !/[A-Za-z0-9]/.test(line[j + 1]!);
+    if (closeOk && line[j - 1] !== ' ') return j;
+  }
+  return -1;
+}
+
+export function renderInline(line: string): ReactNode[] {
   return tokenizeInline(line).map((t, i) => {
     if (t.kind === 'bold')
       return (
@@ -294,7 +310,7 @@ function renderInline(line: string): ReactNode[] {
 }
 
 /** Strip inline markdown for width calculations (renders w/ alignment in tables). */
-function stripInline(line: string): string {
+export function stripInline(line: string): string {
   return line
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/~~(.*?)~~/g, '$1')

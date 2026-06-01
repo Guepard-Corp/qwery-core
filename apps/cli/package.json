@@ -41,5 +41,8 @@
     "ink": "^7.0.3",
     "ink-spinner": "^5.0.0",
     "react": "^19.2.6"
+  },
+  "devDependencies": {
+    "ink-testing-library": "^4.0.0"
   }
 }
