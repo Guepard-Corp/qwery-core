@@ -23,7 +23,7 @@ exports[`e2e: Tier 3 slash commands (overlays) /datasources opens the datasource
 │                                                                                                  │
 │ Datasources                                                                            esc close │
 │                                                                                                  │
-│ ↑/↓ navigate · n new · a attach/detach · p project · d delete · esc close                        │
+│ ↑/↓ navigate · n new · a attach/detach · p project · r rename · d delete · esc close             │
 │ showing project · t: show all                                                                    │
 │                                                                                                  │
 │ No datasources in project. Press \`n\` to add one, or \`t\` to see all and \`p\` to attach.            │
