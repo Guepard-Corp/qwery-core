@@ -829,6 +829,12 @@ export function App() {
             signal: abort.signal,
             datasources: datasourceSummaries,
             schemaProvider: { listSchemas: () => attachedDatasources.schemas() },
+            getAttachedDatasource: async () => {
+              const attached = attachedDatasources.list().find((state) => state.status === 'attached');
+              return attached?.datasource ?? null;
+            },
+            revealDatasourceSecrets: (datasource) =>
+              datasourceRepo.revealSecrets(datasource.config as Record<string, unknown>),
             ontologyProvider: createInProcessOntologyProvider(),
             schemaRetriever: createInProcessSchemaRetriever(createHashingEmbedder()),
             apps,
