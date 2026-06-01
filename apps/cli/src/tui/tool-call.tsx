@@ -1,8 +1,12 @@
 import type { ToolEvent, ToolName } from '@qwery/domain';
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import Spinner from 'ink-spinner';
+import type { ReactNode } from 'react';
 
-const PRIVACY_SAFE: Set<ToolName> = new Set([
+/** Tools whose output is privacy-safe (no row-level data crosses the LLM
+ *  boundary), shown with a 🔒 in the TUI. Single source of truth — imported by
+ *  the chat line-flattener so the lock set can't drift (ADR #28). */
+export const PRIVACY_SAFE: Set<ToolName> = new Set([
   'schema',
   'searchSchema',
   'expandSchema',
@@ -65,6 +69,7 @@ function preview(event: ToolEvent): string {
       .trim();
     return sql.length > 60 ? `${sql.slice(0, 59)}…` : sql;
   }
+  if (event.output?.kind === 'dbAudit') return event.output.summary;
   if (event.name === 'bash') {
     const cmd = String(input.command ?? '')
       .replace(/\s+/g, ' ')
@@ -118,6 +123,8 @@ function meta(event: ToolEvent): string {
     const tok = out.tokens >= 1000 ? `${(out.tokens / 1000).toFixed(1)}k` : String(out.tokens);
     return `${sec}s · ${tok} tok`;
   }
+  // dbAudit summaries are rendered by preview() as the row's main text — don't
+  // duplicate them here (meta is for compact stats like "3 cols" / "1 row").
   return '';
 }
 
@@ -152,55 +159,55 @@ const HOTKEY: Record<ToolName, string> = {
   validateRemediationInGfsCli: '',
 };
 
-export function ToolCall({ event }: { event: ToolEvent }) {
+/** Collapse newlines/runs of whitespace so a value can't break the single-row
+ *  invariant (`wrap="truncate-end"` still renders embedded `\n` as extra rows,
+ *  which would desync the chat view's line budget). */
+export function oneLine(s: string): string {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Render a tool call as a single, truncated terminal row for the chat line-
+ * flattener. Keeping it to one row (via `wrap="truncate-end"` plus
+ * {@link oneLine}) is what lets the chat view budget its height exactly. `safe`
+ * controls the privacy lock glyph.
+ */
+export function toolCallLine(event: ToolEvent, safe: boolean): ReactNode {
   const color = event.status === 'done' ? 'green' : event.status === 'error' ? 'red' : 'yellow';
   const glyph = event.status === 'running' ? null : event.status === 'done' ? '✓' : '✗';
-
-  const safe = PRIVACY_SAFE.has(event.name);
   const lockPrefix = safe ? <Text color="green">🔒 </Text> : <Text> </Text>;
   const label = LABEL[event.name];
 
   if (event.status === 'error' && event.output?.kind === 'error') {
     return (
-      <Box>
+      <Text wrap="truncate-end">
         {lockPrefix}
         <Text color={color}>✗ </Text>
         <Text bold>{label}</Text>
         <Text dimColor> {elapsed(event)} </Text>
-        <Text color="red">{event.output.message}</Text>
-      </Box>
+        <Text color="red">{oneLine(event.output.message)}</Text>
+      </Text>
     );
   }
 
   const hotkey = HOTKEY[event.name];
   const showSqlHotkey = event.name === 'present' || event.name === 'runQuery';
+  const metaText = oneLine(meta(event));
+  const previewText = oneLine(preview(event));
 
   return (
-    <Box>
+    <Text wrap="truncate-end">
       {lockPrefix}
       <Text color={color}>{glyph ?? <Spinner type="dots" />} </Text>
       <Text color={color} bold>
         {label}
       </Text>
-      <Text dimColor>
-        {'  '}
-        {elapsed(event)}
-      </Text>
-      {meta(event) && (
-        <Text dimColor>
-          {'  '}
-          {meta(event)}
-        </Text>
-      )}
-      <Text dimColor>{'  '}</Text>
-      <Text>{preview(event)}</Text>
-      {(hotkey || showSqlHotkey) && (
-        <Text dimColor>
-          {'    '}
-          {hotkey}
-          {showSqlHotkey ? (hotkey ? ' ⌃L' : '⌃L') : ''}
-        </Text>
-      )}
-    </Box>
+      <Text dimColor>{`  ${elapsed(event)}`}</Text>
+      {metaText ? <Text dimColor>{`  ${metaText}`}</Text> : null}
+      {previewText ? <Text>{`  ${previewText}`}</Text> : null}
+      {hotkey || showSqlHotkey ? (
+        <Text dimColor>{`    ${hotkey}${showSqlHotkey ? (hotkey ? ' ⌃L' : '⌃L') : ''}`}</Text>
+      ) : null}
+    </Text>
   );
 }
