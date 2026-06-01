@@ -130,7 +130,10 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
         input: event.input,
         durationMs: event.endedAt ? event.endedAt - event.startedAt : undefined,
         ...(event.output?.kind === 'error' ? { error: event.output.message } : {}),
-        ...(event.output && 'result' in event.output ? { rowCount: event.output.result.rowCount } : {}),
+        ...(event.output?.kind === 'runQuery' || event.output?.kind === 'present'
+          ? { rowCount: event.output.result.rowCount }
+          : {}),
+        ...(event.output?.kind === 'dbAudit' ? { summary: event.output.summary } : {}),
       });
       onToolEvent(event);
     },

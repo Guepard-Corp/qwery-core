@@ -61,7 +61,7 @@ export type ToolResult =
     }
   | { kind: 'searchSchema'; query: string; available: boolean; tables: number }
   | { kind: 'expandSchema'; available: boolean; requested: number; found: number }
-  | { kind: 'dbAudit'; tool: ToolName; summary: string }
+  | { kind: 'dbAudit'; tool: ToolName; summary: string; result: unknown }
   | { kind: 'error'; message: string };
 
 export interface ToolEvent {
