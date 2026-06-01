@@ -9,6 +9,19 @@ const PRIVACY_SAFE: Set<ToolName> = new Set([
   'describeQuery',
   'present',
   'validateQuery',
+  'detectDbEngine',
+  'getTopSlowQueries',
+  'explainQueryPlan',
+  'compareQueryRewrite',
+  'getIndexHealth',
+  'getTableHealth',
+  'getInfraRuntimeSignals',
+  'getRecentDbLogs',
+  'getLockAndBlockingAnalysis',
+  'getStatisticsHealth',
+  'getBloatEstimates',
+  'getReplicationHealth',
+  'validateRemediationInGfsCli',
 ]);
 
 /** User-facing labels — the LLM tool IDs stay technical (system-prompt, ADRs). */
@@ -28,6 +41,19 @@ const LABEL: Record<ToolName, string> = {
   todoWrite: 'TodoWrite',
   todoRead: 'TodoRead',
   validateQuery: 'Validate',
+  detectDbEngine: 'DB Engine',
+  getTopSlowQueries: 'Slow Queries',
+  explainQueryPlan: 'Explain',
+  compareQueryRewrite: 'Compare',
+  getIndexHealth: 'Indexes',
+  getTableHealth: 'Tables',
+  getInfraRuntimeSignals: 'Runtime',
+  getRecentDbLogs: 'Logs',
+  getLockAndBlockingAnalysis: 'Locks',
+  getStatisticsHealth: 'Stats',
+  getBloatEstimates: 'Bloat',
+  getReplicationHealth: 'Replication',
+  validateRemediationInGfsCli: 'GFS Validate',
 };
 
 function preview(event: ToolEvent): string {
@@ -111,6 +137,19 @@ const HOTKEY: Record<ToolName, string> = {
   todoWrite: '',
   todoRead: '',
   validateQuery: '',
+  detectDbEngine: '',
+  getTopSlowQueries: '',
+  explainQueryPlan: '',
+  compareQueryRewrite: '',
+  getIndexHealth: '',
+  getTableHealth: '',
+  getInfraRuntimeSignals: '',
+  getRecentDbLogs: '',
+  getLockAndBlockingAnalysis: '',
+  getStatisticsHealth: '',
+  getBloatEstimates: '',
+  getReplicationHealth: '',
+  validateRemediationInGfsCli: '',
 };
 
 export function ToolCall({ event }: { event: ToolEvent }) {

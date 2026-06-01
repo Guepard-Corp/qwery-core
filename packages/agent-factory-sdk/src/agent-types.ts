@@ -1,5 +1,6 @@
 import type {
   Compute,
+  Datasource,
   LLMProvider,
   Logger,
   OntologyProvider,
@@ -72,6 +73,10 @@ export interface AgentRunOptions {
   disableCompaction?: boolean;
   /** Abort signal — when triggered, the in-flight LLM stream is cancelled. */
   signal?: AbortSignal;
+  /** Resolve the attached datasource for tools that need native datasource context. */
+  getAttachedDatasource?: () => Promise<Datasource | null>;
+  /** Reveal encrypted datasource config when a tool must connect outside DuckDB. */
+  revealDatasourceSecrets?: (datasource: Datasource) => Promise<Record<string, unknown>>;
 }
 
 export interface CompactionEventPayload {
