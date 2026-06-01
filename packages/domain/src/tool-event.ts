@@ -17,7 +17,20 @@ export type ToolName =
   | 'todoRead'
   | 'validateQuery'
   | 'searchSchema'
-  | 'expandSchema';
+  | 'expandSchema'
+  | 'detectDbEngine'
+  | 'getTopSlowQueries'
+  | 'explainQueryPlan'
+  | 'compareQueryRewrite'
+  | 'getIndexHealth'
+  | 'getTableHealth'
+  | 'getInfraRuntimeSignals'
+  | 'getRecentDbLogs'
+  | 'getLockAndBlockingAnalysis'
+  | 'getStatisticsHealth'
+  | 'getBloatEstimates'
+  | 'getReplicationHealth'
+  | 'validateRemediationInGfsCli';
 
 export type ToolResult =
   | { kind: 'schema'; target: string; schema: QuerySchema }
@@ -48,6 +61,7 @@ export type ToolResult =
     }
   | { kind: 'searchSchema'; query: string; available: boolean; tables: number }
   | { kind: 'expandSchema'; available: boolean; requested: number; found: number }
+  | { kind: 'dbAudit'; tool: ToolName; summary: string }
   | { kind: 'error'; message: string };
 
 export interface ToolEvent {
