@@ -721,8 +721,23 @@ export function App() {
         })();
         return;
       }
-      if (text === '/data' || text === '/code' || text === '/auto') {
-        const next = text === '/auto' ? null : text === '/code' ? ('code' as AgentId) : ('data' as AgentId);
+      if (
+        text === '/data' ||
+        text === '/code' ||
+        text === '/audit' ||
+        text === '/optimize' ||
+        text === '/auto'
+      ) {
+        const next =
+          text === '/auto'
+            ? null
+            : text === '/code'
+              ? ('code' as AgentId)
+              : text === '/audit'
+                ? ('db-performance-audit' as AgentId)
+                : text === '/optimize'
+                  ? ('slow-query-optimizer' as AgentId)
+                  : ('data' as AgentId);
         setPinnedAgent(next);
         const label = next === null ? 'auto (heuristic)' : AGENT_SPECS[next].label;
         setEntries((p) => [...p, { kind: 'assistant', text: `Agent routing pinned to: ${label}.` }]);

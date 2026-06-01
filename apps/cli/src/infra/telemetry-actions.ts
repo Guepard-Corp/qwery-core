@@ -21,6 +21,8 @@ const KNOWN_COMMANDS = new Set([
   '/context',
   '/data',
   '/code',
+  '/audit',
+  '/optimize',
   '/auto',
   '/layout',
   '/split',
