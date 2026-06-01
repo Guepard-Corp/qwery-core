@@ -78,6 +78,15 @@ export const PROVIDERS: ProviderSpec[] = [
         required: false,
         placeholder: '2025-04-01-preview',
       },
+      {
+        key: 'reasoningEffort',
+        label: 'Reasoning effort (optional)',
+        type: 'select',
+        required: false,
+        default: 'high',
+        help: 'Forwarded to OpenAI/Azure reasoning models such as GPT-5 and o-series. Leave blank to disable.',
+        loadChoices: async () => ['', 'minimal', 'low', 'medium', 'high'],
+      },
     ],
   },
   {

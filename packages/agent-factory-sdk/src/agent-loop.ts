@@ -71,6 +71,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   const agent: AgentSpec = opts.agent ?? DataAgentSpec;
   const subagents: SubagentRunInfo[] = opts.subagents ?? [];
   const isSubagent = opts.isSubagent ?? false;
+  const providerOptions = llm.getProviderOptions?.();
 
   logger.info('agent.run.start', { messageCount: opts.messages.length, agent: agent.id });
   const startedAt = Date.now();
@@ -283,10 +284,14 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
         })),
     agentPreamble: agent.promptPreamble,
   });
+  const providerOptionsArg = providerOptions
+    ? { providerOptions: providerOptions as Parameters<typeof streamText>[0]['providerOptions'] }
+    : {};
 
   try {
     const result = streamText({
       model: llm.getModel() as LanguageModel,
+      ...providerOptionsArg,
       system: systemPrompt,
       messages,
       tools,
@@ -380,6 +385,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
       const priorMessages = (await result.response).messages;
       const finalize = streamText({
         model: llm.getModel() as LanguageModel,
+        ...providerOptionsArg,
         system: systemPrompt,
         // Honor the same abort signal as the main stream — without it a
         // user-initiated Ctrl+C during finalization keeps streaming/billing
