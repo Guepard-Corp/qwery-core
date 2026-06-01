@@ -43,11 +43,17 @@ describe('agent specs', () => {
     expect(DbPerformanceAuditAgentSpec.tools).toContain('getIndexHealth');
     expect(DbPerformanceAuditAgentSpec.tools).toContain('getReplicationHealth');
     expect(DbPerformanceAuditAgentSpec.tools).toContain('validateRemediationInGfsCli');
-    expect(DbPerformanceAuditAgentSpec.promptPreamble).toContain('validateRemediationInGfsCli is mandatory');
+    // Specialist agents own their full system message (no generalist preamble).
+    expect(DbPerformanceAuditAgentSpec.promptPreamble).toBeUndefined();
+    expect(DbPerformanceAuditAgentSpec.systemPrompt).toContain(
+      'validate_remediation_in_gfs_cli` is mandatory',
+    );
     expect(DbPerformanceAuditAgentSpec.tools).not.toContain('write');
 
     expect(SlowQueryOptimizerAgentSpec.tools).toContain('getTopSlowQueries');
     expect(SlowQueryOptimizerAgentSpec.tools).toContain('compareQueryRewrite');
+    expect(SlowQueryOptimizerAgentSpec.promptPreamble).toBeUndefined();
+    expect(SlowQueryOptimizerAgentSpec.systemPrompt).toContain('Slow Query Optimizer');
     expect(SlowQueryOptimizerAgentSpec.tools).not.toContain('write');
   });
 });

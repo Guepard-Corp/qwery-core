@@ -110,6 +110,13 @@ export interface SystemPromptContext {
   subagents?: SubagentInfo[];
   /** Optional preamble inserted at the very top, before any dynamic block. */
   agentPreamble?: string;
+  /**
+   * When set, replaces the shared base prompt entirely for a specialist agent.
+   * The dynamic context blocks (datasources, subagents, skills, apps) are still
+   * prepended; only the static base `SYSTEM_PROMPT` is swapped out. Takes
+   * precedence over `agentPreamble`.
+   */
+  agentSystemPrompt?: string;
 }
 
 export type SystemPromptSegmentKey = 'preamble' | 'subagents' | 'skills' | 'datasources' | 'apps';
@@ -210,7 +217,10 @@ export function systemPromptSegments(context: SystemPromptContext = {}): SystemP
 
 /** Build the full system prompt: dynamic segments joined with the base prompt. */
 export function buildSystemPrompt(context: SystemPromptContext = {}): string {
+  // A specialist agent supplies its own base; generalists fall back to the
+  // shared SYSTEM_PROMPT. Either way the dynamic context blocks are prepended.
+  const base = context.agentSystemPrompt?.trim() || SYSTEM_PROMPT;
   const blocks = systemPromptSegments(context).map((s) => s.text);
-  if (blocks.length === 0) return SYSTEM_PROMPT;
-  return `${blocks.join('\n\n')}\n\n${SYSTEM_PROMPT}`;
+  if (blocks.length === 0) return base;
+  return `${blocks.join('\n\n')}\n\n${base}`;
 }

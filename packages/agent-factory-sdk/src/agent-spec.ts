@@ -1,4 +1,6 @@
 import type { ToolName } from '@qwery/domain';
+import { DB_PERFORMANCE_AUDIT_PROMPT } from './prompts/db-performance-audit.prompt';
+import { SLOW_QUERY_OPTIMIZER_PROMPT } from './prompts/slow-query-optimizer.prompt';
 
 export type AgentId = 'data' | 'code' | 'db-performance-audit' | 'slow-query-optimizer';
 
@@ -7,8 +9,20 @@ export interface AgentSpec {
   label: string;
   /** Tool names this agent is allowed to call. */
   tools: ToolName[];
-  /** Prepended to the base system prompt before the dynamic context blocks. */
-  promptPreamble: string;
+  /**
+   * Generalist agents augment the shared base prompt: this text is prepended,
+   * ahead of the dynamic context blocks. Mutually exclusive with
+   * `systemPrompt`. Used by `data` / `code`.
+   */
+  promptPreamble?: string;
+  /**
+   * Specialist agents own their entire system message. When set, this *replaces*
+   * the shared base prompt (the dynamic context blocks — datasources, schema,
+   * subagents — are still prepended). Mirrors how db-audit ran its agents, so
+   * generic instructions like "keep replies short" never leak in. Mutually
+   * exclusive with `promptPreamble`. Used by the DB-audit / optimizer agents.
+   */
+  systemPrompt?: string;
   /** Heuristic keywords that suggest this agent should handle a prompt. */
   routingKeywords: RegExp[];
 }
@@ -93,8 +107,7 @@ export const DbPerformanceAuditAgentSpec: AgentSpec = {
   id: 'db-performance-audit',
   label: 'DB Audit',
   tools: DbAuditTools,
-  promptPreamble:
-    'You are the Qwery Database Performance Audit Agent. Run PostgreSQL performance audits for attached datasources and produce evidence-backed findings. Keep row-level data private. Use audit tools for pg_stat, catalog, lock, bloat, replication, and runtime signals. validateRemediationInGfsCli is mandatory before recommending remediation SQL, configuration experiments, maintenance actions, quick wins, or next steps. Only present recommendations whose validateRemediationInGfsCli result has validation.assessment.recommendationStatus = validated. If GFS validation is unavailable or blocked, mark the audit incomplete and write exactly: Blocked - no validated GFS remediation for this finding.',
+  systemPrompt: DB_PERFORMANCE_AUDIT_PROMPT,
   routingKeywords: [
     /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
     /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,
@@ -119,8 +132,7 @@ export const SlowQueryOptimizerAgentSpec: AgentSpec = {
     'agent',
     'taskStatus',
   ],
-  promptPreamble:
-    'You are the Qwery Slow Query Optimizer. Identify slow PostgreSQL read queries, inspect execution plans, propose SQL rewrites or index/statistics remediations, and compare original versus rewritten plans. Keep row-level data private. Configuration tuning is outside the default workflow unless the user explicitly asks.',
+  systemPrompt: SLOW_QUERY_OPTIMIZER_PROMPT,
   routingKeywords: [
     /\b(slow|sluggish|expensive|hot)\s+(query|queries|sql)\b/i,
     /\b(optimi[sz]e|rewrite|execution plan|explain analyze)\b/i,

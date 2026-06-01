@@ -16,6 +16,30 @@ describe('buildSystemPrompt', () => {
     expect(out).toContain(SYSTEM_PROMPT);
   });
 
+  test('agentSystemPrompt replaces the shared base prompt', () => {
+    const out = buildSystemPrompt({ agentSystemPrompt: 'You are the audit agent.' });
+    expect(out).toBe('You are the audit agent.');
+    expect(out).not.toContain(SYSTEM_PROMPT);
+  });
+
+  test('agentSystemPrompt replaces the base but keeps dynamic blocks', () => {
+    const out = buildSystemPrompt({
+      agentSystemPrompt: 'You are the audit agent.',
+      datasources: [
+        {
+          name: 'sales',
+          provider: 'postgres',
+          tables: [{ path: 'orders', columns: [{ name: 'id', type: 'BIGINT' }] }],
+        },
+      ],
+    });
+    expect(out).toContain('Available datasources');
+    expect(out).toContain('You are the audit agent.');
+    expect(out).not.toContain(SYSTEM_PROMPT);
+    // Dynamic blocks come first, the agent's own base last.
+    expect(out.endsWith('You are the audit agent.')).toBe(true);
+  });
+
   test('renders attached datasources with their columns', () => {
     const out = buildSystemPrompt({
       datasources: [

@@ -36,6 +36,13 @@ export interface AgentRunOptions {
   logger: Logger;
   onToolEvent: (event: ToolEvent) => void;
   onToken: (delta: string) => void;
+  /**
+   * Fired at each tool-loop step boundary. The model emits transient status
+   * narration (e.g. "Phase 1/4 - Collect: ...") before the tool calls on each
+   * step; only the final step holds the actual answer. Callers should reset any
+   * accumulated streaming buffer here so per-step status does not pile up.
+   */
+  onStepStart?: () => void;
   datasources?: AttachedDatasourceSummary[];
   /** Native driver-introspected schema provider for the `schema` tool. */
   schemaProvider?: DatasourceSchemaProvider;

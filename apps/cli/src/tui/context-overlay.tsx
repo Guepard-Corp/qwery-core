@@ -121,8 +121,11 @@ export function ContextOverlay({
       skills: scopedSkills,
       subagents,
       agentPreamble: agent.promptPreamble,
+      agentSystemPrompt: agent.systemPrompt,
     });
-    const baseTokens = tokensOf(SYSTEM_PROMPT);
+    // Specialist agents replace the shared base with their own system prompt;
+    // attribute the base-prompt tokens to whichever one is actually in use.
+    const baseTokens = tokensOf(agent.systemPrompt ?? SYSTEM_PROMPT);
     const parts: PromptPart[] = [{ label: 'base prompt', tokens: baseTokens }];
     for (const seg of segments) {
       const suffix = seg.key === 'preamble' ? '' : ` (${seg.count})`;

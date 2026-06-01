@@ -253,6 +253,84 @@ describe('runAgent — onToolEvent', () => {
   });
 });
 
+describe('runAgent — step boundaries', () => {
+  // A two-step run: step 1 emits transient status narration then calls a tool;
+  // step 2 emits the final report. `doStream` is invoked once per step.
+  function twoStepModel(status: string, report: string): MockLanguageModelV3 {
+    let call = 0;
+    return new MockLanguageModelV3({
+      doStream: async () => {
+        call += 1;
+        if (call === 1) {
+          return {
+            stream: streamChunks([
+              { type: 'stream-start', warnings: [] },
+              { type: 'text-start', id: 's1' },
+              { type: 'text-delta', id: 's1', delta: status },
+              { type: 'text-end', id: 's1' },
+              { type: 'tool-call', toolCallId: 'c1', toolName: 'todoRead', input: '{}' },
+              {
+                type: 'finish',
+                finishReason: 'tool-calls',
+                usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+              },
+            ]),
+          };
+        }
+        return {
+          stream: streamChunks([
+            { type: 'stream-start', warnings: [] },
+            { type: 'text-start', id: 's2' },
+            { type: 'text-delta', id: 's2', delta: report },
+            { type: 'text-end', id: 's2' },
+            {
+              type: 'finish',
+              finishReason: 'stop',
+              usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            },
+          ]),
+        };
+      },
+    });
+  }
+
+  test('report is the final step only — interim status narration is not accumulated', async () => {
+    const r = await runAgent({
+      messages: [{ role: 'user', content: 'audit' }],
+      compute: computeStub,
+      llm: fakeLLM(twoStepModel('Phase 1/4 - Collect: gathering signals.', 'FINAL REPORT BODY')),
+      logger: silentLogger,
+      onToolEvent: () => undefined,
+      onToken: () => undefined,
+      disableCompaction: true,
+      sessionId: 'sess',
+      todoStore: createTodoStore(),
+    });
+    // Without the start-step reset this would be the two steps concatenated
+    // ("Phase 1/4 - Collect: gathering signals.FINAL REPORT BODY").
+    expect(r.text).toBe('FINAL REPORT BODY');
+  });
+
+  test('onStepStart fires once per tool-loop step', async () => {
+    let starts = 0;
+    await runAgent({
+      messages: [{ role: 'user', content: 'audit' }],
+      compute: computeStub,
+      llm: fakeLLM(twoStepModel('status', 'report')),
+      logger: silentLogger,
+      onToolEvent: () => undefined,
+      onToken: () => undefined,
+      onStepStart: () => {
+        starts += 1;
+      },
+      disableCompaction: true,
+      sessionId: 'sess',
+      todoStore: createTodoStore(),
+    });
+    expect(starts).toBe(2);
+  });
+});
+
 describe('runAgent — QWERY_DEBUG_REPORT_TEXT', () => {
   function capturingLogger(): { logger: Logger; done: () => Record<string, unknown> | undefined } {
     const infos: Array<{ event: string; fields?: Record<string, unknown> }> = [];

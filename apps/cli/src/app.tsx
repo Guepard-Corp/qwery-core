@@ -34,6 +34,7 @@ import { AGENT_EVENTS } from '@qwery/telemetry/events';
 import type { ModelMessage } from 'ai';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { autoRunPromptFor } from './agent-autorun';
 import type { ChatEntry } from './chat-entry';
 import type { AttachState } from './infra/datasources';
 import { listLocalApps } from './infra/local-apps';
@@ -599,7 +600,7 @@ export function App() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: attachedDatasources methods are stable (single registry from context)
   const submit = useCallback(
-    async (text: string) => {
+    async (text: string, agentOverride?: AgentSpec) => {
       if (busy) return;
 
       // `!cmd` runs a shell command locally. Its output is shown in chat but is
@@ -709,6 +710,13 @@ export function App() {
         const label = next === null ? 'auto (heuristic)' : AGENT_SPECS[next].label;
         setEntries((p) => [...p, { kind: 'assistant', text: `Agent routing pinned to: ${label}.` }]);
         if (next !== null) setActiveAgent(AGENT_SPECS[next]);
+        // Audit agents auto-run their default task on selection, matching the
+        // db-audit TUI. The pinned-agent state update above is async, so pass
+        // the agent spec explicitly to the recursive run.
+        const autoPrompt = autoRunPromptFor(next);
+        if (next !== null && autoPrompt) {
+          void submit(autoPrompt, AGENT_SPECS[next]);
+        }
         return;
       }
       if (text === '/layout' || text === '/split' || text === '/focus') {
@@ -750,7 +758,7 @@ export function App() {
       }
 
       const isFirstTurn = session.current.length === 0;
-      const agent = pinnedAgent ? AGENT_SPECS[pinnedAgent] : routeAgent(text);
+      const agent = agentOverride ?? (pinnedAgent ? AGENT_SPECS[pinnedAgent] : routeAgent(text));
       setActiveAgent(agent);
       setHistory((h) => [...h, text]);
       setEntries((p) => [...p, { kind: 'user', text }]);
@@ -907,6 +915,13 @@ export function App() {
             onToken: (delta) => {
               buffer += delta;
               setStreaming(buffer);
+            },
+            onStepStart: () => {
+              // New tool-loop step: drop the previous step's transient status
+              // narration so the live preview shows only the current phase
+              // instead of accumulating "Phase 1/4 …Phase 1/4 …" run-ons.
+              buffer = '';
+              setStreaming('');
             },
           }),
         );
