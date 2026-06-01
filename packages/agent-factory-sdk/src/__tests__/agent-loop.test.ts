@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Compute, LLMProvider, Logger, ToolEvent } from '@qwery/domain';
 import { MockLanguageModelV3, simulateReadableStream } from 'ai/test';
-import { runAgent } from '../agent-loop';
+import { formatStreamError, runAgent } from '../agent-loop';
 import { createTodoStore } from '../todo-tools';
 
 /**
@@ -91,6 +91,13 @@ describe('runAgent — happy path', () => {
 });
 
 describe('runAgent — error propagation', () => {
+  test('formats object stream errors instead of [object Object]', () => {
+    expect(formatStreamError({ message: 'rate limited', status: 429 })).toBe('rate limited');
+    expect(formatStreamError({ code: 'bad_request', status: 400 })).toBe(
+      '{"code":"bad_request","status":400}',
+    );
+  });
+
   test('stream-level error is re-thrown', async () => {
     const model = new MockLanguageModelV3({
       doStream: async () => ({
@@ -243,5 +250,58 @@ describe('runAgent — onToolEvent', () => {
       disableCompaction: true,
     });
     expect(events).toHaveLength(0);
+  });
+});
+
+describe('runAgent — QWERY_DEBUG_REPORT_TEXT', () => {
+  function capturingLogger(): { logger: Logger; done: () => Record<string, unknown> | undefined } {
+    const infos: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    return {
+      logger: {
+        debug: () => undefined,
+        info: (event: string, fields?: Record<string, unknown>) => infos.push({ event, fields }),
+        warn: () => undefined,
+        error: () => undefined,
+      },
+      done: () => infos.find((i) => i.event === 'agent.run.done')?.fields,
+    };
+  }
+
+  async function runWith(flag: string | undefined): Promise<Record<string, unknown> | undefined> {
+    const prev = process.env.QWERY_DEBUG_REPORT_TEXT;
+    if (flag === undefined) delete process.env.QWERY_DEBUG_REPORT_TEXT;
+    else process.env.QWERY_DEBUG_REPORT_TEXT = flag;
+    const cap = capturingLogger();
+    try {
+      await runAgent({
+        messages: [{ role: 'user', content: 'hi' }],
+        compute: computeStub,
+        llm: fakeLLM(trivialModel('the full report body')),
+        logger: cap.logger,
+        onToolEvent: () => undefined,
+        onToken: () => undefined,
+        disableCompaction: true,
+      });
+    } finally {
+      if (prev === undefined) delete process.env.QWERY_DEBUG_REPORT_TEXT;
+      else process.env.QWERY_DEBUG_REPORT_TEXT = prev;
+    }
+    return cap.done();
+  }
+
+  test('off by default: agent.run.done logs textLen but not the report text', async () => {
+    const fields = await runWith(undefined);
+    expect(fields?.textLen).toBe('the full report body'.length);
+    expect(fields?.text).toBeUndefined();
+  });
+
+  test('when enabled: agent.run.done also carries the full report text', async () => {
+    const fields = await runWith('1');
+    expect(fields?.text).toBe('the full report body');
+  });
+
+  test('a non-truthy value does not enable it', async () => {
+    const fields = await runWith('0');
+    expect(fields?.text).toBeUndefined();
   });
 });

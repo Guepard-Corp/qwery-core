@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { CodingAgentSpec, DataAgentSpec, routeAgent } from '../agent-spec';
+import {
+  CodingAgentSpec,
+  DataAgentSpec,
+  DbPerformanceAuditAgentSpec,
+  routeAgent,
+  SlowQueryOptimizerAgentSpec,
+} from '../agent-spec';
 
 describe('agent specs', () => {
   test('DataAgent and CodingAgent expose disjoint-but-overlapping tool rosters', () => {
@@ -31,6 +37,19 @@ describe('agent specs', () => {
       expect(spec.tools).toContain('taskStatus');
     }
   });
+
+  test('db audit agents expose PostgreSQL diagnostic tools', () => {
+    expect(DbPerformanceAuditAgentSpec.tools).toContain('getTopSlowQueries');
+    expect(DbPerformanceAuditAgentSpec.tools).toContain('getIndexHealth');
+    expect(DbPerformanceAuditAgentSpec.tools).toContain('getReplicationHealth');
+    expect(DbPerformanceAuditAgentSpec.tools).toContain('validateRemediationInGfsCli');
+    expect(DbPerformanceAuditAgentSpec.promptPreamble).toContain('validateRemediationInGfsCli is mandatory');
+    expect(DbPerformanceAuditAgentSpec.tools).not.toContain('write');
+
+    expect(SlowQueryOptimizerAgentSpec.tools).toContain('getTopSlowQueries');
+    expect(SlowQueryOptimizerAgentSpec.tools).toContain('compareQueryRewrite');
+    expect(SlowQueryOptimizerAgentSpec.tools).not.toContain('write');
+  });
 });
 
 describe('routeAgent heuristic', () => {
@@ -46,6 +65,12 @@ describe('routeAgent heuristic', () => {
     expect(routeAgent('fix the bug in apps/dashboard/index.html').id).toBe('code');
     expect(routeAgent('write a Python script that exports JSON').id).toBe('code');
     expect(routeAgent('refactor this code').id).toBe('code');
+  });
+
+  test('db audit prompts pick db audit agents', () => {
+    expect(routeAgent('run a PostgreSQL performance audit').id).toBe('db-performance-audit');
+    expect(routeAgent('find bloat and replication issues').id).toBe('db-performance-audit');
+    expect(routeAgent('optimize the slowest query from pg_stat_statements').id).toBe('slow-query-optimizer');
   });
 
   test('ambiguous prompts default to DataAgent (privacy-safe default)', () => {
