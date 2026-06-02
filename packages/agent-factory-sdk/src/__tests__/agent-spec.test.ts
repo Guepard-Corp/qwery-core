@@ -56,6 +56,11 @@ describe('agent specs', () => {
     expect(SlowQueryOptimizerAgentSpec.systemPrompt).toContain('Slow Query Optimizer');
     expect(SlowQueryOptimizerAgentSpec.tools).not.toContain('write');
   });
+
+  test('audit runs at medium reasoning effort; optimizer keeps the provider default', () => {
+    expect(DbPerformanceAuditAgentSpec.reasoningEffort).toBe('medium');
+    expect(SlowQueryOptimizerAgentSpec.reasoningEffort).toBeUndefined();
+  });
 });
 
 describe('routeAgent heuristic', () => {

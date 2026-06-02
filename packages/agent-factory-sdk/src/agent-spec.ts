@@ -4,6 +4,9 @@ import { SLOW_QUERY_OPTIMIZER_PROMPT } from './prompts/slow-query-optimizer.prom
 
 export type AgentId = 'data' | 'code' | 'db-performance-audit' | 'slow-query-optimizer';
 
+/** Reasoning effort forwarded to OpenAI/Azure reasoning models (GPT-5 / o-series). */
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+
 export interface AgentSpec {
   id: AgentId;
   label: string;
@@ -30,6 +33,13 @@ export interface AgentSpec {
    * functions DuckDB lacks; non-PostgreSQL datasources fall back to DuckDB.
    */
   prefersSourceEngine?: boolean;
+  /**
+   * Override the provider's reasoning effort for this agent (OpenAI/Azure
+   * reasoning models only). Lower effort cuts reasoning-token usage per step —
+   * useful to keep a heavy, many-step agent under a tokens-per-minute quota.
+   * Unset means the provider default applies.
+   */
+  reasoningEffort?: ReasoningEffort;
   /** Heuristic keywords that suggest this agent should handle a prompt. */
   routingKeywords: RegExp[];
 }
@@ -116,6 +126,10 @@ export const DbPerformanceAuditAgentSpec: AgentSpec = {
   tools: DbAuditTools,
   systemPrompt: DB_PERFORMANCE_AUDIT_PROMPT,
   prefersSourceEngine: true,
+  // The audit is the heaviest agent (many steps, large context); medium effort
+  // keeps it under the deployment's tokens-per-minute quota. The optimizer keeps
+  // the provider default (high) — its plan reasoning benefits from it.
+  reasoningEffort: 'medium',
   routingKeywords: [
     /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
     /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,

@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import type { Compute, LLMProvider, Logger, ToolEvent } from '@qwery/domain';
 import { MockLanguageModelV3, simulateReadableStream } from 'ai/test';
-import { DEFAULT_MAX_RETRIES, formatStreamError, resolveMaxRetries, runAgent } from '../agent-loop';
+import {
+  DEFAULT_MAX_RETRIES,
+  formatStreamError,
+  resolveMaxRetries,
+  runAgent,
+  withAgentReasoningEffort,
+} from '../agent-loop';
 import { createTodoStore } from '../todo-tools';
 
 /**
@@ -87,6 +93,29 @@ describe('runAgent — happy path', () => {
       disableCompaction: true,
     });
     expect(tokens.join('')).toBe('abc');
+  });
+});
+
+describe('withAgentReasoningEffort', () => {
+  test('overrides the openai reasoning effort when the agent sets one', () => {
+    const out = withAgentReasoningEffort({ openai: { reasoningEffort: 'high' } }, 'medium');
+    expect(out).toEqual({ openai: { reasoningEffort: 'medium' } });
+  });
+
+  test('preserves other openai options while overriding effort', () => {
+    const out = withAgentReasoningEffort({ openai: { reasoningEffort: 'high', store: true } }, 'low');
+    expect(out).toEqual({ openai: { reasoningEffort: 'low', store: true } });
+  });
+
+  test('no-op when the agent sets no effort (provider default stands)', () => {
+    const opts = { openai: { reasoningEffort: 'high' } };
+    expect(withAgentReasoningEffort(opts, undefined)).toBe(opts);
+  });
+
+  test('no-op when the provider produced no openai options', () => {
+    expect(withAgentReasoningEffort(undefined, 'medium')).toBeUndefined();
+    const ollama = { ollama: { foo: 1 } };
+    expect(withAgentReasoningEffort(ollama, 'medium')).toBe(ollama);
   });
 });
 

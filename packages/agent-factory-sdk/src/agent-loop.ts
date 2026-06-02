@@ -55,6 +55,20 @@ function shouldLogReportText(): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
 
+/**
+ * Apply an agent's per-agent `reasoningEffort` override onto the provider's
+ * options. Only touches the OpenAI/Azure `openai.reasoningEffort` slot, and only
+ * when the provider already produced one (i.e. a reasoning model is in use) —
+ * for other providers the override is a no-op so nothing invalid is injected.
+ */
+export function withAgentReasoningEffort(
+  options: Record<string, Record<string, unknown>> | undefined,
+  effort: string | undefined,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!effort || !options?.openai) return options;
+  return { ...options, openai: { ...options.openai, reasoningEffort: effort } };
+}
+
 export function formatStreamError(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -89,7 +103,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   const agent: AgentSpec = opts.agent ?? DataAgentSpec;
   const subagents: SubagentRunInfo[] = opts.subagents ?? [];
   const isSubagent = opts.isSubagent ?? false;
-  const providerOptions = llm.getProviderOptions?.();
+  const providerOptions = withAgentReasoningEffort(llm.getProviderOptions?.(), agent.reasoningEffort);
 
   logger.info('agent.run.start', { messageCount: opts.messages.length, agent: agent.id });
   const startedAt = Date.now();
