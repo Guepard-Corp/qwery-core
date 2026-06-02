@@ -27,6 +27,23 @@ function resolveMaxSteps(): number {
 }
 
 /**
+ * Per-request retry budget for the LLM call. The AI SDK retries retryable
+ * failures (HTTP 429 rate limits, 5xx) with exponential backoff, so a long
+ * multi-step audit survives a transient `too_many_requests` instead of dying
+ * mid-run — the backoff also lets a per-minute token quota recover. Higher than
+ * the SDK default of 2; override with `QWERY_MAX_RETRIES`.
+ */
+export const DEFAULT_MAX_RETRIES = 5;
+
+export function resolveMaxRetries(): number {
+  const raw = process.env.QWERY_MAX_RETRIES;
+  if (raw === undefined) return DEFAULT_MAX_RETRIES;
+  const n = Number(raw);
+  // Allow 0 to disable retries explicitly; reject NaN/negative.
+  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_MAX_RETRIES;
+}
+
+/**
  * Debug switch: when truthy, the run-completion log events
  * (`agent.run.done` / `agent.run.aborted`) carry the full assistant `text`
  * in addition to `textLen`, so the verbatim report can be recovered from
@@ -77,6 +94,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   logger.info('agent.run.start', { messageCount: opts.messages.length, agent: agent.id });
   const startedAt = Date.now();
   const maxSteps = resolveMaxSteps();
+  const maxRetries = resolveMaxRetries();
   const logReportText = shouldLogReportText();
 
   // Pre-turn compaction. We estimate the incoming prompt size and, if it
@@ -318,6 +336,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
         ],
       }),
       stopWhen: stepCountIs(maxSteps),
+      maxRetries,
       abortSignal: opts.signal,
       onStepFinish: ({ finishReason: reason, usage, toolCalls, toolResults, text }) => {
         logger.info('agent.step.finish', {
@@ -401,6 +420,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
         model: llm.getModel() as LanguageModel,
         ...providerOptionsArg,
         system: systemPrompt,
+        maxRetries,
         // Honor the same abort signal as the main stream — without it a
         // user-initiated Ctrl+C during finalization keeps streaming/billing
         // tokens until the summary completes.

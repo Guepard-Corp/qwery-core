@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Compute, LLMProvider, Logger, ToolEvent } from '@qwery/domain';
 import { MockLanguageModelV3, simulateReadableStream } from 'ai/test';
-import { formatStreamError, runAgent } from '../agent-loop';
+import { DEFAULT_MAX_RETRIES, formatStreamError, resolveMaxRetries, runAgent } from '../agent-loop';
 import { createTodoStore } from '../todo-tools';
 
 /**
@@ -87,6 +87,37 @@ describe('runAgent — happy path', () => {
       disableCompaction: true,
     });
     expect(tokens.join('')).toBe('abc');
+  });
+});
+
+describe('resolveMaxRetries', () => {
+  function withEnv(value: string | undefined, fn: () => void): void {
+    const prev = process.env.QWERY_MAX_RETRIES;
+    if (value === undefined) delete process.env.QWERY_MAX_RETRIES;
+    else process.env.QWERY_MAX_RETRIES = value;
+    try {
+      fn();
+    } finally {
+      if (prev === undefined) delete process.env.QWERY_MAX_RETRIES;
+      else process.env.QWERY_MAX_RETRIES = prev;
+    }
+  }
+
+  test('defaults when unset (survives transient 429s with backoff)', () => {
+    withEnv(undefined, () => expect(resolveMaxRetries()).toBe(DEFAULT_MAX_RETRIES));
+  });
+
+  test('honors a valid override', () => {
+    withEnv('8', () => expect(resolveMaxRetries()).toBe(8));
+  });
+
+  test('allows 0 to disable retries', () => {
+    withEnv('0', () => expect(resolveMaxRetries()).toBe(0));
+  });
+
+  test('falls back to the default for invalid or negative values', () => {
+    withEnv('abc', () => expect(resolveMaxRetries()).toBe(DEFAULT_MAX_RETRIES));
+    withEnv('-3', () => expect(resolveMaxRetries()).toBe(DEFAULT_MAX_RETRIES));
   });
 });
 
