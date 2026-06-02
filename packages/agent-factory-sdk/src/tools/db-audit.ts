@@ -1,7 +1,12 @@
 import { type Compute, validateAggregateOnly } from '@qwery/domain';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { explainOnSourcePostgres, type NativePgDeps, resolveSourcePostgresUrl } from './pg-native';
+import {
+  explainOnSourcePostgres,
+  type NativePgDeps,
+  resolveSourcePostgresUrl,
+  runSqlOnSourcePostgres,
+} from './pg-native';
 import type { Track } from './track';
 
 const WRITE_KEYWORDS =
@@ -342,16 +347,74 @@ export const createGetStatisticsHealthTool = catalogTool(
   'Collected statistics freshness signals.',
 );
 
-export const createGetBloatEstimatesTool = catalogTool(
-  'getBloatEstimates',
-  'Estimate table bloat risk from dead tuple ratios using pg_stat_user_tables.',
-  async (compute) => `SELECT schemaname, relname AS table_name, n_live_tup, n_dead_tup,
-          CASE WHEN n_live_tup + n_dead_tup > 0 THEN ROUND((n_dead_tup::numeric / (n_live_tup + n_dead_tup)) * 100, 2) ELSE 0 END AS dead_tuple_pct
-     FROM ${await qualifyTable(compute, 'pg_catalog', 'pg_stat_user_tables')}
-    ORDER BY dead_tuple_pct DESC, n_dead_tup DESC
-    LIMIT 100`,
-  'Collected bloat risk estimates.',
-);
+// Per-table bloat with absolute sizes — requires native Postgres size functions
+// (pg_total_relation_size), which DuckDB federation does not expose.
+const BLOAT_TABLES_SQL_PG = `SELECT schemaname, relname AS table_name, n_live_tup, n_dead_tup,
+        CASE WHEN n_live_tup + n_dead_tup > 0 THEN ROUND((n_dead_tup::numeric / (n_live_tup + n_dead_tup)) * 100, 2) ELSE 0 END AS dead_tuple_pct,
+        pg_total_relation_size(relid) AS size_bytes,
+        CASE WHEN n_live_tup + n_dead_tup > 0
+             THEN ROUND(pg_total_relation_size(relid) * (n_dead_tup::numeric / (n_live_tup + n_dead_tup)))
+             ELSE 0 END AS estimated_dead_tuple_bytes
+   FROM pg_stat_user_tables
+  ORDER BY size_bytes DESC NULLS LAST
+  LIMIT 100`;
+
+const BLOAT_SUMMARY_SQL_PG = `SELECT pg_database_size(current_database()) AS database_bytes,
+        (SELECT count(*) FROM pg_stat_user_tables) AS user_table_count,
+        (SELECT count(*) FROM pg_stat_user_indexes) AS user_index_count`;
+
+/**
+ * Bloat risk plus a database size summary. On native PostgreSQL it returns
+ * per-table absolute sizes and `dbSummary` (database bytes, user table/index
+ * counts) the audit report's Audit Context and bloat sections need — these rely
+ * on `pg_database_size`/`pg_total_relation_size`, which the DuckDB federation
+ * cannot run. Without a native connection it falls back to dead-tuple ratios
+ * plus catalog counts (sizes omitted).
+ */
+export function createGetBloatEstimatesTool({ compute, track, ...native }: DbAuditToolDeps & NativePgDeps) {
+  return tool({
+    description:
+      'Estimate table bloat (dead-tuple ratios) and report a database size summary: per-table sizes, estimated dead-tuple bytes, and DB-wide table/index counts and total bytes. Sizes require the native PostgreSQL connection.',
+    inputSchema: z.object({}),
+    execute: async () =>
+      track('getBloatEstimates', {}, async () => {
+        const url = await resolveSourcePostgresUrl(native);
+        if (url) {
+          const [summary, tables] = await Promise.all([
+            runSqlOnSourcePostgres(url, BLOAT_SUMMARY_SQL_PG),
+            runSqlOnSourcePostgres(url, BLOAT_TABLES_SQL_PG),
+          ]);
+          return auditResult('getBloatEstimates', 'Collected bloat risk estimates and size summary.', {
+            dbSummary: summary.rows[0] ?? {},
+            tables: tables.rows,
+          });
+        }
+        // DuckDB fallback: dead-tuple ratios + catalog counts; sizes unavailable.
+        const pgStatTables = await qualifyTable(compute, 'pg_catalog', 'pg_stat_user_tables');
+        const pgStatIndexes = await qualifyTable(compute, 'pg_catalog', 'pg_stat_user_indexes');
+        const [summary, tables] = await Promise.all([
+          safeRun(
+            compute,
+            `SELECT (SELECT count(*) FROM ${pgStatTables}) AS user_table_count,
+                    (SELECT count(*) FROM ${pgStatIndexes}) AS user_index_count`,
+          ),
+          safeRun(
+            compute,
+            `SELECT schemaname, relname AS table_name, n_live_tup, n_dead_tup,
+                    CASE WHEN n_live_tup + n_dead_tup > 0 THEN ROUND((n_dead_tup::numeric / (n_live_tup + n_dead_tup)) * 100, 2) ELSE 0 END AS dead_tuple_pct
+               FROM ${pgStatTables}
+              ORDER BY dead_tuple_pct DESC, n_dead_tup DESC
+              LIMIT 100`,
+          ),
+        ]);
+        return auditResult(
+          'getBloatEstimates',
+          'Collected bloat risk estimates (DuckDB compute; absolute sizes unavailable).',
+          { dbSummary: summary.rows[0] ?? {}, tables: tables.rows },
+        );
+      }),
+  });
+}
 
 export const createGetReplicationHealthTool = catalogTool(
   'getReplicationHealth',

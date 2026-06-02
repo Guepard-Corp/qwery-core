@@ -4,6 +4,7 @@ import {
   createCompareQueryRewriteTool,
   createDetectDbEngineTool,
   createExplainQueryPlanTool,
+  createGetBloatEstimatesTool,
   createGetTopSlowQueriesTool,
 } from '../db-audit';
 import type { Track } from '../track';
@@ -72,6 +73,55 @@ describe('db audit tools', () => {
     const tool = createCompareQueryRewriteTool({ compute: fakeCompute(), track: passThroughTrack }) as any;
     const parsed = tool.inputSchema.parse({ originalSql: 'SELECT 1', rewrittenSql: 'SELECT 1' });
     expect(parsed.analyze).toBe(true);
+  });
+
+  test('getBloatEstimates fallback returns dbSummary counts + per-table rows (DuckDB, no native PG)', async () => {
+    const compute: Compute = {
+      async runSql(sql) {
+        if (sql.includes('information_schema.tables')) {
+          const name = sql.match(/table_name = '([^']+)'/)?.[1] ?? 'unknown';
+          return {
+            columns: ['table_catalog', 'table_schema', 'table_name'],
+            rows: [{ table_catalog: 'pg_attached', table_schema: 'pg_catalog', table_name: name }],
+            rowCount: 1,
+            durationMs: 1,
+          };
+        }
+        if (sql.includes('user_table_count')) {
+          return {
+            columns: ['user_table_count', 'user_index_count'],
+            rows: [{ user_table_count: 21, user_index_count: 34 }],
+            rowCount: 1,
+            durationMs: 1,
+          };
+        }
+        return {
+          columns: ['schemaname', 'table_name', 'n_live_tup', 'n_dead_tup', 'dead_tuple_pct'],
+          rows: [
+            {
+              schemaname: 'public',
+              table_name: 'orders',
+              n_live_tup: 100,
+              n_dead_tup: 5,
+              dead_tuple_pct: 4.76,
+            },
+          ],
+          rowCount: 1,
+          durationMs: 1,
+        };
+      },
+      async describeSql() {
+        return { columns: [] };
+      },
+    };
+    // No native deps → resolveSourcePostgresUrl returns null → DuckDB fallback.
+    const tool = createGetBloatEstimatesTool({ compute, track: passThroughTrack });
+    // biome-ignore lint/suspicious/noExplicitAny: tool output is loosely typed in tests
+    const result = (await run(tool, {})) as any;
+    expect(result.ok).toBe(true);
+    expect(result.result.dbSummary.user_table_count).toBe(21);
+    expect(result.result.dbSummary.user_index_count).toBe(34);
+    expect(result.result.tables[0].table_name).toBe('orders');
   });
 
   test('explainQueryPlan is plan-only by default (analyze=false)', () => {

@@ -122,7 +122,12 @@ export function buildTools({
 
     getStatisticsHealth: createGetStatisticsHealthTool({ compute, track }),
 
-    getBloatEstimates: createGetBloatEstimatesTool({ compute, track }),
+    getBloatEstimates: createGetBloatEstimatesTool({
+      compute,
+      track,
+      getAttachedDatasource,
+      revealDatasourceSecrets,
+    }),
 
     getReplicationHealth: createGetReplicationHealthTool({ compute, track }),
 
