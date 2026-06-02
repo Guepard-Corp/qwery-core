@@ -30,6 +30,7 @@ import type { ModelMessage } from 'ai';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { autoRunPromptFor } from './agent-autorun';
+import { defaultLayoutModeFor } from './agent-layout';
 import type { ChatEntry } from './chat-entry';
 import type { AttachState } from './infra/datasources';
 import { listLocalApps } from './infra/local-apps';
@@ -683,7 +684,13 @@ export function App() {
         setPinnedAgent(next);
         const label = next === null ? 'auto (heuristic)' : AGENT_SPECS[next].label;
         setEntries((p) => [...p, { kind: 'assistant', text: `Agent routing pinned to: ${label}.` }]);
-        if (next !== null) setActiveAgent(AGENT_SPECS[next]);
+        if (next !== null) {
+          setActiveAgent(AGENT_SPECS[next]);
+          // Some agents (audit/optimizer) prefer the full-screen focus layout
+          // for their long reports; switch to it on selection.
+          const preferred = defaultLayoutModeFor(next);
+          if (preferred) setLayoutMode(preferred);
+        }
         // Audit agents auto-run their default task on selection, matching the
         // db-audit TUI. The pinned-agent state update above is async, so pass
         // the agent spec explicitly to the recursive run.

@@ -42,6 +42,14 @@ export interface AgentSpec {
   reasoningEffort?: ReasoningEffort;
   /** Heuristic keywords that suggest this agent should handle a prompt. */
   routingKeywords: RegExp[];
+  /**
+   * Layout the CLI switches to when this agent is pinned. `'focus'` is the
+   * full-screen, one-pane-at-a-time view (toggled with Ctrl+B); `'split'` is
+   * the default side-by-side chat/results view. The audit and optimizer agents
+   * default to `'focus'` so their long reports get the whole screen. Unset
+   * leaves the current layout untouched.
+   */
+  defaultLayoutMode?: 'focus' | 'split';
 }
 
 export const DataAgentSpec: AgentSpec = {
@@ -130,6 +138,7 @@ export const DbPerformanceAuditAgentSpec: AgentSpec = {
   // keeps it under the deployment's tokens-per-minute quota. The optimizer keeps
   // the provider default (high) — its plan reasoning benefits from it.
   reasoningEffort: 'medium',
+  defaultLayoutMode: 'focus',
   routingKeywords: [
     /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
     /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,
@@ -156,6 +165,7 @@ export const SlowQueryOptimizerAgentSpec: AgentSpec = {
   ],
   systemPrompt: SLOW_QUERY_OPTIMIZER_PROMPT,
   prefersSourceEngine: true,
+  defaultLayoutMode: 'focus',
   routingKeywords: [
     /\b(slow|sluggish|expensive|hot)\s+(query|queries|sql)\b/i,
     /\b(optimi[sz]e|rewrite|execution plan|explain analyze)\b/i,

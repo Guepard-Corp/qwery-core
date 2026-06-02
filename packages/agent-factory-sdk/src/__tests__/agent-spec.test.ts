@@ -61,6 +61,13 @@ describe('agent specs', () => {
     expect(DbPerformanceAuditAgentSpec.reasoningEffort).toBe('medium');
     expect(SlowQueryOptimizerAgentSpec.reasoningEffort).toBeUndefined();
   });
+
+  test('audit + optimizer default to the full-screen focus layout; generalists express no preference', () => {
+    expect(DbPerformanceAuditAgentSpec.defaultLayoutMode).toBe('focus');
+    expect(SlowQueryOptimizerAgentSpec.defaultLayoutMode).toBe('focus');
+    expect(DataAgentSpec.defaultLayoutMode).toBeUndefined();
+    expect(CodingAgentSpec.defaultLayoutMode).toBeUndefined();
+  });
 });
 
 describe('routeAgent heuristic', () => {
