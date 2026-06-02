@@ -26,11 +26,11 @@ exports[`e2e: Tier 2 slash commands /layout toggles split → focus (TabBar appe
 
 
 
-
  ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
  │ ›                                                                                              │
  ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
-  no provider · /models  DataAgent                                                           ready"
+  no provider · /models
+  DataAgent                                                                                  ready"
 `;
 
 exports[`e2e: Tier 2 slash commands /clear removes prior chat entries 1`] = `
@@ -59,9 +59,9 @@ exports[`e2e: Tier 2 slash commands /clear removes prior chat entries 1`] = `
                                                   │
                                                   │
                                                   │
-                                                  │
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models  DataAgent        ready   │"
+  no provider · /models                           │
+  DataAgent                                ready  │"
 `;

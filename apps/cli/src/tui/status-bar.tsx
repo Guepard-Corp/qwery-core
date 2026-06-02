@@ -81,50 +81,81 @@ export function StatusBar({
     : 'no provider · /models';
 
   return (
-    <Box paddingX={1}>
-      <Text dimColor wrap="truncate-end">
-        {labelWithCtx}
-      </Text>
-      <Box marginLeft={2}>
-        <Text color="magenta" bold>
-          {agentLabel}
+    <Box flexDirection="column" paddingX={1}>
+      {/* Two rows so the bar fits the half-width column in split layout (UI
+          decision U1) without the indicators wrapping mid-word: the label owns
+          row 1, the right-aligned indicators own row 2 and truncate not wrap. */}
+      <Box>
+        <Text dimColor wrap="truncate-end">
+          {labelWithCtx}
         </Text>
-        {agentPinned && <Text dimColor> ·pinned</Text>}
       </Box>
-      <Box flexGrow={1} />
-      {updateReady && (
-        <Box marginRight={2}>
-          <Text color="yellow">⟳ update ready</Text>
-          <Text dimColor> · /update</Text>
-        </Box>
-      )}
-      {todos && todos.total > 0 && (
-        <Box marginRight={2}>
-          <Text color={todos.open > 0 ? 'yellow' : 'green'}>
-            ☐ {todos.total - todos.open}/{todos.total}
+      <Box>
+        <Box flexShrink={1} minWidth={0}>
+          <Text color="magenta" bold wrap="truncate-end">
+            {agentLabel}
           </Text>
-          <Text dimColor> todos</Text>
+          {agentPinned && (
+            <Text dimColor wrap="truncate-end">
+              {' '}
+              ·pinned
+            </Text>
+          )}
         </Box>
-      )}
-      {attachedDatasources > 0 && (
-        <Box marginRight={2}>
-          <Text color="green">🛢 {attachedDatasources}</Text>
-          <Text dimColor> {attachedDatasources === 1 ? 'datasource' : 'datasources'}</Text>
-        </Box>
-      )}
-      {contextLimit && lastTurnInputTokens > 0 && (
-        <Box marginRight={2}>
-          <ContextBar used={lastTurnInputTokens} limit={contextLimit} />
-        </Box>
-      )}
-      {hasUsage ? (
-        <Text dimColor>
-          ↓ {fmtTokens(totals.inputTokens)} · ↑ {fmtTokens(totals.outputTokens)} ·{' '}
-          <Text color="cyan">{fmtCost(totals.costUSD)}</Text>
-        </Text>
-      ) : (
-        <Text dimColor>ready</Text>
-      )}
+        <Box flexGrow={1} />
+        {updateReady && (
+          <Box marginLeft={2} flexShrink={0}>
+            <Text color="yellow" wrap="truncate-end">
+              ⟳ update ready
+            </Text>
+            <Text dimColor wrap="truncate-end">
+              {' '}
+              · /update
+            </Text>
+          </Box>
+        )}
+        {todos && todos.total > 0 && (
+          <Box marginLeft={2} flexShrink={0}>
+            <Text color={todos.open > 0 ? 'yellow' : 'green'} wrap="truncate-end">
+              ☐ {todos.total - todos.open}/{todos.total}
+            </Text>
+            <Text dimColor wrap="truncate-end">
+              {' '}
+              todos
+            </Text>
+          </Box>
+        )}
+        {attachedDatasources > 0 && (
+          <Box marginLeft={2} flexShrink={0}>
+            <Text color="green" wrap="truncate-end">
+              🛢 {attachedDatasources}
+            </Text>
+            <Text dimColor wrap="truncate-end">
+              {' '}
+              {attachedDatasources === 1 ? 'datasource' : 'datasources'}
+            </Text>
+          </Box>
+        )}
+        {contextLimit && lastTurnInputTokens > 0 && (
+          <Box marginLeft={2} flexShrink={0}>
+            <ContextBar used={lastTurnInputTokens} limit={contextLimit} />
+          </Box>
+        )}
+        {hasUsage ? (
+          <Box marginLeft={2} flexShrink={0}>
+            <Text dimColor wrap="truncate-end">
+              ↓ {fmtTokens(totals.inputTokens)} · ↑ {fmtTokens(totals.outputTokens)} ·{' '}
+              <Text color="cyan">{fmtCost(totals.costUSD)}</Text>
+            </Text>
+          </Box>
+        ) : (
+          <Box marginLeft={2} flexShrink={0}>
+            <Text dimColor wrap="truncate-end">
+              ready
+            </Text>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
