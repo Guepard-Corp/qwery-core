@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Datasource, Logger } from '@qwery/domain';
 import type { Track } from '../track';
@@ -8,7 +9,6 @@ import {
   type CommandRunner,
   type ExplainMetrics,
   parseExplainMetrics,
-  testOnlyTempGfsAuditDir,
   validateRemediationInGfsCli,
 } from '../validate-remediation-in-gfs-cli';
 
@@ -49,7 +49,9 @@ function explainJson(executionTime: number, readBlocks: number): string {
 }
 
 async function withDumpDirs(fn: (dumpDir: string, auditDir: string) => Promise<void>) {
-  const root = join(testOnlyTempGfsAuditDir(), `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  // mkdtemp creates a uniquely- and securely-named dir atomically (no predictable
+  // path / TOCTOU race that a hand-built tmpdir() + timestamp name would invite).
+  const root = await mkdtemp(join(tmpdir(), 'qwery-gfs-audits-test-'));
   const dumpDir = join(root, 'dumps');
   const auditDir = join(root, 'audits');
   process.env.QWERY_GFS_DUMPS_DIR = dumpDir;

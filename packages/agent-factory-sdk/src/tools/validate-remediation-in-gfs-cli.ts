@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Datasource, Logger } from '@qwery/domain';
@@ -457,8 +457,4 @@ export function createValidateRemediationInGfsCliTool(deps: ValidateRemediationI
         };
       }),
   });
-}
-
-export function testOnlyTempGfsAuditDir(): string {
-  return join(tmpdir(), 'qwery-gfs-audits-test');
 }

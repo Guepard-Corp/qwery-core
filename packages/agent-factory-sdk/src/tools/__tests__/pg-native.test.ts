@@ -58,7 +58,7 @@ describe('createSourceAwareCompute', () => {
     );
     expect((await compute.runSql('SELECT 1')).rows[0]?.engine).toBe('pg');
     expect((await compute.describeSql('SELECT 1')).columns[0]?.type).toBe('text');
-    expect(urls.every((u) => u.includes('db.example.com'))).toBe(true);
+    expect(urls.every((u) => new URL(u).hostname === 'db.example.com')).toBe(true);
     expect(urls).toHaveLength(2);
   });
 
