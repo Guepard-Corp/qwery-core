@@ -48,6 +48,12 @@ export function nextWordEnd(value: string, cursor: number): number {
  *  huge paste can't push the chat off-screen. */
 export const INPUT_MAX_ROWS = 6;
 
+/** Most slash-command rows the suggestion box shows before it scrolls
+ *  internally (windowed around the selection), so a long match list — a bare
+ *  `/` matches every command — can't push the bottom cluster off-screen
+ *  (ADR U12). The app reserves the box's height via {@link suggestionBoxRows}. */
+export const SUGGESTION_MAX_ROWS = 8;
+
 /** Columns available for the value text inside the box, after the border (2),
  *  horizontal padding (2) and the `› ` prompt gutter (2). */
 function contentWidth(paneWidth: number | undefined): number {
@@ -139,6 +145,23 @@ export function inputHeightRows(value: string, paneWidth: number | undefined): n
   let n = 0;
   for (const line of value.split('\n')) n += Math.max(1, Math.ceil(line.length / w));
   return Math.min(INPUT_MAX_ROWS, Math.max(1, n));
+}
+
+/**
+ * Terminal rows the slash-command suggestion box occupies above the input — 0
+ * when `value` is not a slash query. The app subtracts this from the chat height
+ * (like {@link inputHeightRows}) so the suggestion list can never push the input
+ * and status bar off-screen (ADR U12). Each rendered row (hint, command,
+ * indicator) is a single truncated line, so the height depends only on the match
+ * count, not the pane width. Reserves the worst-case two scroll indicators when
+ * the list is windowed, so it can only ever over-reserve, never under-reserve.
+ */
+export function suggestionBoxRows(value: string): number {
+  const matches = matchCommands(value);
+  if (matches.length === 0) return 0;
+  const visible = Math.min(matches.length, SUGGESTION_MAX_ROWS);
+  const indicators = matches.length > SUGGESTION_MAX_ROWS ? 2 : 0;
+  return 2 /* round border */ + 1 /* hint line */ + visible + indicators;
 }
 
 export interface InputBarProps {
@@ -323,6 +346,19 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
   const clampedSuggestionIndex = Math.min(suggestionIndex, Math.max(0, suggestions.length - 1));
   const promptColor = disabled ? 'gray' : inShellMode ? 'red' : 'magenta';
 
+  // Window the suggestion list around the selection so the box height stays
+  // bounded by SUGGESTION_MAX_ROWS — the app reserves exactly this (see
+  // suggestionBoxRows) so a long list can't overflow the viewport (ADR U12).
+  const suggestionTotal = suggestions.length;
+  const suggestionStart =
+    suggestionTotal > SUGGESTION_MAX_ROWS
+      ? Math.min(
+          Math.max(0, clampedSuggestionIndex - Math.floor(SUGGESTION_MAX_ROWS / 2)),
+          suggestionTotal - SUGGESTION_MAX_ROWS,
+        )
+      : 0;
+  const visibleSuggestions = suggestions.slice(suggestionStart, suggestionStart + SUGGESTION_MAX_ROWS);
+
   // Multi-line input (ADR U6): the value soft-wraps and honors embedded
   // newlines. The `›` prompt lives in its own fixed-width gutter column so it is
   // never swept into the wrapping flow (which would orphan it), and each visual
@@ -341,19 +377,27 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
     <Box flexDirection="column">
       {inSlashMode && (
         <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-          <Text dimColor>↑/↓ navigate · enter to run · shift+enter newline</Text>
-          {suggestions.map((c, i) => {
-            const selected = i === clampedSuggestionIndex;
+          {/* Every row here is a single truncated line so the box height matches
+              suggestionBoxRows exactly (the chat layout reserves it). */}
+          <Text dimColor wrap="truncate-end">
+            ↑/↓ navigate · enter to run · shift+enter newline
+          </Text>
+          {suggestionStart > 0 && <Text dimColor>↑ {suggestionStart} more</Text>}
+          {visibleSuggestions.map((c, i) => {
+            const selected = suggestionStart + i === clampedSuggestionIndex;
             return (
-              <Box key={c.name}>
+              <Text key={c.name} wrap="truncate-end">
                 <Text color={selected ? 'cyan' : undefined} bold={selected} inverse={selected}>
                   {' '}
                   {c.label.padEnd(10)}{' '}
                 </Text>
                 <Text dimColor> {c.description}</Text>
-              </Box>
+              </Text>
             );
           })}
+          {suggestionStart + SUGGESTION_MAX_ROWS < suggestionTotal && (
+            <Text dimColor>↓ {suggestionTotal - suggestionStart - SUGGESTION_MAX_ROWS} more</Text>
+          )}
         </Box>
       )}
       <Box borderStyle="round" borderColor={promptColor} paddingX={1} flexDirection="row">

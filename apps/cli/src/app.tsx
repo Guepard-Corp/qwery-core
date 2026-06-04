@@ -59,7 +59,13 @@ import { flattenChatLines } from './tui/chat-lines';
 import { ChatView } from './tui/chat-view';
 import { ContextOverlay } from './tui/context-overlay';
 import { DatasourcesOverlay } from './tui/datasources-overlay';
-import { EMPTY_INPUT_STATE, InputBar, type InputState, inputHeightRows } from './tui/input-bar';
+import {
+  EMPTY_INPUT_STATE,
+  InputBar,
+  type InputState,
+  inputHeightRows,
+  suggestionBoxRows,
+} from './tui/input-bar';
 import { activeProviderLabel, ModelsOverlay } from './tui/models-overlay';
 import { ResultsView, type ResultViewMode } from './tui/results-view';
 import { ResumeOverlay } from './tui/resume-overlay';
@@ -187,11 +193,18 @@ export function App() {
   // reservation assumes a single content row, so subtract the extra rows the
   // input currently occupies to keep the chat bounded (ADR U12).
   const inputExtraRows = inputHeightRows(inputState.value, chatPaneWidth) - 1;
+  // The slash-command autocomplete renders an extra bordered box above the
+  // input; reserve its (bounded) height too, or a long match list would push
+  // the bottom cluster off-screen (ADR U12). 0 when not in slash mode.
+  const suggestionRows = suggestionBoxRows(inputState.value);
   // Rows the chat pane (including its own padding) may occupy. Reserve the
   // surrounding chrome — header, pane label / tab bar, agent-status line, input
   // box, status bar — so ChatView can bound its own height. Ink can't reliably
   // clip vertical overflow, so the view must never exceed this.
-  const chatAvailableHeight = Math.max(4, termRows - (layoutMode === 'split' ? 9 : 8) - inputExtraRows);
+  const chatAvailableHeight = Math.max(
+    4,
+    termRows - (layoutMode === 'split' ? 9 : 8) - inputExtraRows - suggestionRows,
+  );
   // The chat flattened to one node per terminal row, so the view can window it
   // by line (exact height) and scroll line-by-line through long output.
   const chatLines = useMemo(

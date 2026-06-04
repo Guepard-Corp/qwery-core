@@ -13,6 +13,8 @@ import {
   nextWordEnd,
   prevWordStart,
   rowColToCursor,
+  SUGGESTION_MAX_ROWS,
+  suggestionBoxRows,
 } from '../input-bar';
 import { plain } from './_ansi';
 
@@ -472,5 +474,55 @@ describe('InputBar — vertical caret movement in multi-line input (ADR U6)', ()
       cursor: 'earlier'.length,
       historyIndex: 0,
     });
+  });
+});
+
+describe('slash suggestion box — bounded height (H1)', () => {
+  // Render the bar and count the terminal rows it actually paints.
+  function renderedRows(value: string, width: number): string {
+    const { lastFrame } = render(
+      <ServicesProvider services={stubServices}>
+        <Box width={width} flexDirection="column">
+          <InputBar
+            state={{ ...EMPTY_INPUT_STATE, value }}
+            onChange={noop}
+            onSubmit={noop}
+            history={[]}
+            width={width}
+          />
+        </Box>
+      </ServicesProvider>,
+    );
+    return plain(lastFrame() ?? '').replace(/\n+$/, '');
+  }
+
+  test('suggestionBoxRows is 0 outside slash mode and bounded inside', () => {
+    expect(suggestionBoxRows('')).toBe(0);
+    expect(suggestionBoxRows('hello')).toBe(0);
+    expect(suggestionBoxRows('/zzz')).toBe(0); // no command matches
+    expect(suggestionBoxRows('/up')).toBe(4); // 1 match: border(2)+hint(1)+1
+    expect(suggestionBoxRows('/d')).toBe(5); // 2 matches: /datasources, /data
+    // A bare "/" matches all 14 commands → capped at SUGGESTION_MAX_ROWS with
+    // both scroll indicators reserved.
+    expect(suggestionBoxRows('/')).toBe(2 + 1 + SUGGESTION_MAX_ROWS + 2);
+  });
+
+  test('a bare "/" no longer paints a giant box, and the reservation covers it', () => {
+    const width = 40;
+    const rows = renderedRows('/', width).split('\n').length;
+    // The input box itself is inputHeightRows + 2 border rows; the rest is the
+    // suggestion box. The reservation (suggestionBoxRows) must cover the actual
+    // rendered box — i.e. never under-reserve, which is what prevents overflow.
+    const inputBox = inputHeightRows('/', width) + 2;
+    expect(rows - inputBox).toBeLessThanOrEqual(suggestionBoxRows('/'));
+    // And it is small now (the un-windowed list rendered ~37 rows before).
+    expect(rows).toBeLessThan(20);
+  });
+
+  test('the list is windowed: first commands + a "more" indicator, not all 14', () => {
+    const f = renderedRows('/', 60);
+    expect(f).toContain('/models'); // first command shown
+    expect(f).toContain('more'); // "↓ N more" scroll indicator
+    expect(f).not.toContain('/quit'); // 14th command is windowed out at the top
   });
 });
