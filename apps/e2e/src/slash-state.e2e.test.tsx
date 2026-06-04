@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { renderApp, sendCommand, waitForFrame } from './support/harness';
+import { renderApp, sendCommand, settleEffectsBetweenTests, waitForFrame } from './support/harness';
 import { captureFrame } from './support/screenshot';
 
 /**
@@ -8,6 +8,8 @@ import { captureFrame } from './support/screenshot';
  */
 
 describe('e2e: Tier 2 slash commands', () => {
+  settleEffectsBetweenTests();
+
   test('/layout toggles split → focus (TabBar appears)', async () => {
     const { lastFrame, stdin, unmount } = renderApp();
     try {

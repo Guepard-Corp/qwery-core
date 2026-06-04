@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { delay, renderApp, sendCommand, waitForFrame } from './support/harness';
+import { delay, renderApp, sendCommand, settleEffectsBetweenTests, waitForFrame } from './support/harness';
 import { captureFrame } from './support/screenshot';
 
 describe('e2e: auto-update UX', () => {
+  settleEffectsBetweenTests();
+
   test('surfaces a staged update in the status bar and via /update', async () => {
     // Fake updater: qwery has a newer release staged, gfs is up to date.
     const { lastFrame, stdin, unmount } = renderApp({
