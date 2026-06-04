@@ -248,12 +248,25 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
       return;
     }
 
-    if (key.backspace || key.delete) {
+    if (key.backspace) {
       if (cursor === 0) return;
       onChange({
         ...state,
         value: value.slice(0, cursor - 1) + value.slice(cursor),
         cursor: cursor - 1,
+        suggestionIndex: 0,
+      });
+      return;
+    }
+
+    // Forward delete: the Delete key (CSI 3~, reported by Ink as key.delete —
+    // distinct from Backspace's 0x7f/0x08) removes the character to the right of
+    // the caret, leaving the caret in place. A no-op at end of input.
+    if (key.delete) {
+      if (cursor >= value.length) return;
+      onChange({
+        ...state,
+        value: value.slice(0, cursor) + value.slice(cursor + 1),
         suggestionIndex: 0,
       });
       return;

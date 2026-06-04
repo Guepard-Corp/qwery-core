@@ -315,3 +315,48 @@ describe('InputBar — word deletion key bindings', () => {
     expect(press('abc', 0, ALT_BACKSPACE)).toEqual({ value: 'abc', cursor: 0 });
   });
 });
+
+describe('InputBar — forward delete (Delete key, distinct from Backspace)', () => {
+  function press(value: string, cursor: number, seq: string): { value: string; cursor: number } {
+    let next: { value: string; cursor: number } = { value, cursor };
+    const { stdin } = render(
+      <ServicesProvider services={stubServices}>
+        <Box width={40} flexDirection="column">
+          <InputBar
+            state={{ ...EMPTY_INPUT_STATE, value, cursor }}
+            onChange={(s) => {
+              next = { value: s.value, cursor: s.cursor };
+            }}
+            onSubmit={noop}
+            history={[]}
+            width={40}
+          />
+        </Box>
+      </ServicesProvider>,
+    );
+    stdin.write(seq);
+    return next;
+  }
+
+  // The Delete key sends CSI 3~, which Ink reports as key.delete (the Backspace
+  // key sends 0x7f/0x08, reported as key.backspace) — so the two are distinct.
+  const DELETE = '\x1b[3~';
+  const BACKSPACE = '\x7f';
+
+  test('Delete removes the character to the RIGHT of the caret, caret stays put', () => {
+    expect(press('abcd', 1, DELETE)).toEqual({ value: 'acd', cursor: 1 });
+  });
+
+  test('Delete in the middle of a word removes only the char under the caret', () => {
+    // caret at index 7 (the space before "*"): "select |* from t" → delete "*"
+    expect(press('select * from t', 7, DELETE)).toEqual({ value: 'select  from t', cursor: 7 });
+  });
+
+  test('Delete at the end of the value is a no-op (nothing to the right)', () => {
+    expect(press('abcd', 4, DELETE)).toEqual({ value: 'abcd', cursor: 4 });
+  });
+
+  test('Backspace is unaffected — still deletes the char to the LEFT', () => {
+    expect(press('abcd', 2, BACKSPACE)).toEqual({ value: 'acd', cursor: 1 });
+  });
+});
