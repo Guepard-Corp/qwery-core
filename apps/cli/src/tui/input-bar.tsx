@@ -17,15 +17,98 @@ export const EMPTY_INPUT_STATE: InputState = {
   suggestionIndex: 0,
 };
 
+/** Most content rows the input box shows before it scrolls internally, so a
+ *  huge paste can't push the chat off-screen. */
+export const INPUT_MAX_ROWS = 6;
+
+/** Columns available for the value text inside the box, after the border (2),
+ *  horizontal padding (2) and the `› ` prompt gutter (2). */
+function contentWidth(paneWidth: number | undefined): number {
+  return Math.max(4, (paneWidth ?? 80) - 4 - 2);
+}
+
+/** Soft-wrap width: one column narrower than the content area so a full row
+ *  *plus* an end-of-line block caret still fits without Ink re-wrapping. */
+function wrapWidth(paneWidth: number | undefined): number {
+  return Math.max(1, contentWidth(paneWidth) - 1);
+}
+
+export interface InputLayout {
+  /** Visual rows: char-exact soft-wrapped slices of the value (one per screen row). */
+  rows: string[];
+  /** Row index of the caret within {@link rows}. */
+  caretRow: number;
+  /** Column of the caret within `rows[caretRow]` (0..row length). */
+  caretCol: number;
+}
+
+/**
+ * Char-exact soft-wrap of `value` (honoring embedded `\n`) to `w` columns,
+ * reporting the caret's visual position. Char-exact rather than word-wrap so
+ * every typed character — including runs of spaces — is preserved verbatim and
+ * the caret maps back to an exact (row, col).
+ */
+export function layoutInput(value: string, cursor: number, w: number): InputLayout {
+  const width = Math.max(1, w);
+  const rows: string[] = [];
+  let caretRow = 0;
+  let caretCol = 0;
+  let placed = false;
+  let offset = 0; // index in `value` at the start of the current logical line
+  for (const line of value.split('\n')) {
+    const chunks = Math.max(1, Math.ceil(line.length / width));
+    for (let ci = 0; ci < chunks; ci++) {
+      const s = ci * width;
+      const text = line.slice(s, s + width);
+      const rowIndex = rows.length;
+      rows.push(text);
+      if (!placed) {
+        const caretInLine = cursor - offset;
+        if (caretInLine >= s && caretInLine <= s + text.length) {
+          const col = caretInLine - s;
+          // A caret sitting exactly at the wrap column belongs to the next
+          // chunk's start, except on a line's final chunk (caret past last char).
+          if (!(col === width && ci < chunks - 1)) {
+            caretRow = rowIndex;
+            caretCol = col;
+            placed = true;
+          }
+        }
+      }
+    }
+    offset += line.length + 1; // + the consumed '\n'
+  }
+  if (!placed) {
+    caretRow = Math.max(0, rows.length - 1);
+    caretCol = rows[caretRow]?.length ?? 0;
+  }
+  return { rows, caretRow, caretCol };
+}
+
+/**
+ * Visible content rows the input occupies (1..{@link INPUT_MAX_ROWS}). The app
+ * uses this to reserve exactly the right chat height, so the bottom cluster
+ * never overflows the viewport (ADR U12) as the input grows.
+ */
+export function inputHeightRows(value: string, paneWidth: number | undefined): number {
+  const w = wrapWidth(paneWidth);
+  let n = 0;
+  for (const line of value.split('\n')) n += Math.max(1, Math.ceil(line.length / w));
+  return Math.min(INPUT_MAX_ROWS, Math.max(1, n));
+}
+
 export interface InputBarProps {
   state: InputState;
   onChange: (next: InputState) => void;
   onSubmit: (value: string) => void;
   disabled?: boolean;
   history: string[];
+  /** Width (in columns) of the column the bar lives in — sizes the wrap/window.
+   *  Falls back to 80 when unknown. */
+  width?: number;
 }
 
-export function InputBar({ state, onChange, onSubmit, disabled, history }: InputBarProps) {
+export function InputBar({ state, onChange, onSubmit, disabled, history, width }: InputBarProps) {
   const { value, cursor, historyIndex, suggestionIndex } = state;
   const { logger } = useServices();
   const suggestions: SlashCommand[] = useMemo(() => matchCommands(value), [value]);
@@ -37,6 +120,18 @@ export function InputBar({ state, onChange, onSubmit, disabled, history }: Input
     if (disabled) return;
 
     if (key.return) {
+      // Shift+Enter / Alt+Enter insert a newline (multi-line input, ADR U6);
+      // plain Enter submits. (A bare LF — Ctrl+J or a multi-line paste — arrives
+      // as text input, not key.return, and is inserted by the text branch below.)
+      if (key.shift || key.meta) {
+        onChange({
+          ...state,
+          value: value.slice(0, cursor) + '\n' + value.slice(cursor),
+          cursor: cursor + 1,
+          suggestionIndex: 0,
+        });
+        return;
+      }
       if (inSlashMode) {
         const chosen = suggestions[suggestionIndex] ?? suggestions[0]!;
         onSubmit(chosen.label);
@@ -111,25 +206,40 @@ export function InputBar({ state, onChange, onSubmit, disabled, history }: Input
     }
 
     if (input && !key.ctrl && !key.meta) {
+      // Normalize CRLF/CR (from pastes) to LF so the value holds a single
+      // newline convention; multi-line pastes thus land as real \n lines.
+      const ins = input.replace(/\r\n?/g, '\n');
       onChange({
         ...state,
-        value: value.slice(0, cursor) + input + value.slice(cursor),
-        cursor: cursor + input.length,
+        value: value.slice(0, cursor) + ins + value.slice(cursor),
+        cursor: cursor + ins.length,
         suggestionIndex: 0,
       });
     }
   });
 
   const clampedSuggestionIndex = Math.min(suggestionIndex, Math.max(0, suggestions.length - 1));
-  const before = value.slice(0, cursor);
-  const at = value[cursor] ?? ' ';
-  const after = value.slice(cursor + 1);
+  const promptColor = disabled ? 'gray' : inShellMode ? 'red' : 'magenta';
+
+  // Multi-line input (ADR U6): the value soft-wraps and honors embedded
+  // newlines. The `›` prompt lives in its own fixed-width gutter column so it is
+  // never swept into the wrapping flow (which would orphan it), and each visual
+  // row is a single <Text> so the inverse block caret flows inline rather than
+  // being stranded as a separate layout box. The box grows up to INPUT_MAX_ROWS
+  // then scrolls internally around the caret, keeping the layout bounded.
+  const { rows, caretRow, caretCol } = layoutInput(value, cursor, wrapWidth(width));
+  const total = rows.length;
+  const startRow =
+    total > INPUT_MAX_ROWS
+      ? Math.min(Math.max(0, caretRow - Math.floor(INPUT_MAX_ROWS / 2)), total - INPUT_MAX_ROWS)
+      : 0;
+  const visibleRows = rows.slice(startRow, startRow + INPUT_MAX_ROWS);
 
   return (
     <Box flexDirection="column">
       {inSlashMode && (
         <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-          <Text dimColor>↑/↓ navigate · enter to run</Text>
+          <Text dimColor>↑/↓ navigate · enter to run · shift+enter newline</Text>
           {suggestions.map((c, i) => {
             const selected = i === clampedSuggestionIndex;
             return (
@@ -144,13 +254,35 @@ export function InputBar({ state, onChange, onSubmit, disabled, history }: Input
           })}
         </Box>
       )}
-      <Box borderStyle="round" borderColor={disabled ? 'gray' : inShellMode ? 'red' : 'magenta'} paddingX={1}>
-        <Text color={disabled ? 'gray' : inShellMode ? 'red' : 'magenta'} bold>
-          ›{' '}
-        </Text>
-        <Text>{before}</Text>
-        <Text inverse>{at}</Text>
-        <Text>{after}</Text>
+      <Box borderStyle="round" borderColor={promptColor} paddingX={1} flexDirection="row">
+        {/* Prompt gutter: `›` on the first row, alignment spaces on continuations. */}
+        <Box flexDirection="column" flexShrink={0}>
+          {visibleRows.map((_, i) => (
+            <Text key={i} color={promptColor} bold>
+              {startRow + i === 0 ? '› ' : '  '}
+            </Text>
+          ))}
+        </Box>
+        {/* Value rows; the caret row splits around the inverse block cursor. */}
+        <Box flexDirection="column">
+          {visibleRows.map((row, i) => {
+            const absRow = startRow + i;
+            if (absRow !== caretRow) {
+              return (
+                <Text key={i} wrap="truncate-end">
+                  {row.length > 0 ? row : ' '}
+                </Text>
+              );
+            }
+            return (
+              <Text key={i} wrap="truncate-end">
+                {row.slice(0, caretCol)}
+                <Text inverse>{row[caretCol] ?? ' '}</Text>
+                {row.slice(caretCol + 1)}
+              </Text>
+            );
+          })}
+        </Box>
       </Box>
     </Box>
   );
