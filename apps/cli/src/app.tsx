@@ -646,7 +646,7 @@ export function App() {
             kind: 'assistant',
             text:
               'Slash commands: /models, /datasources, /agents, /context, /data, /code, /audit, /optimize, /auto, /layout, /resume, /clear, /help, /logs, /update, /quit.\n' +
-              'Hotkeys: Tab (switch view, focus mode), Ctrl+B (toggle split), Ctrl+R (last data), Ctrl+I (last schema), Ctrl+L (toggle SQL view), Ctrl+C (quit), ↑/↓ (history), Alt+←/→ (jump word).',
+              'Hotkeys: Tab (switch view, focus mode), Ctrl+B (toggle split), Ctrl+R (last data), Ctrl+I (last schema), Ctrl+L (toggle SQL view), Ctrl+C (quit), ↑/↓ (history), Alt+←/→ (jump word), Alt+⌫ (delete word).',
           },
         ]);
         return;

@@ -232,6 +232,22 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
       return;
     }
 
+    // Delete the previous word: Alt+Backspace or Ctrl+W (readline word-rubout).
+    // Must precede the plain backspace check, since Alt+Backspace also sets
+    // key.backspace. (Ctrl+Backspace is indistinguishable from plain backspace
+    // in most terminals, so it is intentionally left as single-char delete.)
+    if ((key.backspace && key.meta) || (key.ctrl && input === 'w')) {
+      if (cursor === 0) return;
+      const start = prevWordStart(value, cursor);
+      onChange({
+        ...state,
+        value: value.slice(0, start) + value.slice(cursor),
+        cursor: start,
+        suggestionIndex: 0,
+      });
+      return;
+    }
+
     if (key.backspace || key.delete) {
       if (cursor === 0) return;
       onChange({

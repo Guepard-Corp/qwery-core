@@ -263,3 +263,55 @@ describe('InputBar — word navigation key bindings', () => {
     expect(press(v, 10, '\x1b[C')).toBe(11); // right
   });
 });
+
+describe('InputBar — word deletion key bindings', () => {
+  function press(value: string, cursor: number, seq: string): { value: string; cursor: number } {
+    let next: { value: string; cursor: number } = { value, cursor };
+    const { stdin } = render(
+      <ServicesProvider services={stubServices}>
+        <Box width={40} flexDirection="column">
+          <InputBar
+            state={{ ...EMPTY_INPUT_STATE, value, cursor }}
+            onChange={(s) => {
+              next = { value: s.value, cursor: s.cursor };
+            }}
+            onSubmit={noop}
+            history={[]}
+            width={40}
+          />
+        </Box>
+      </ServicesProvider>,
+    );
+    stdin.write(seq);
+    return next;
+  }
+
+  const ALT_BACKSPACE = '\x1b\x7f';
+  const CTRL_W = '\x17';
+  const PLAIN_BACKSPACE = '\x7f';
+
+  test('Alt+Backspace deletes the previous word', () => {
+    const v = 'select * from pg_stat_statements';
+    expect(press(v, v.length, ALT_BACKSPACE)).toEqual({ value: 'select * from ', cursor: 14 });
+  });
+
+  test('Ctrl+W deletes the previous word', () => {
+    expect(press('drop table users', 16, CTRL_W)).toEqual({ value: 'drop table ', cursor: 11 });
+  });
+
+  test('word delete from mid-string keeps the tail', () => {
+    // caret after "from" (index 13); delete back to start of "from" (9).
+    expect(press('select * from users', 13, ALT_BACKSPACE)).toEqual({
+      value: 'select *  users',
+      cursor: 9,
+    });
+  });
+
+  test('plain Backspace still deletes a single character', () => {
+    expect(press('abcd', 4, PLAIN_BACKSPACE)).toEqual({ value: 'abc', cursor: 3 });
+  });
+
+  test('word delete at the start of the line is a no-op', () => {
+    expect(press('abc', 0, ALT_BACKSPACE)).toEqual({ value: 'abc', cursor: 0 });
+  });
+});
