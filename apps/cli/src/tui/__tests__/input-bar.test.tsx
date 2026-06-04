@@ -12,6 +12,7 @@ import {
   layoutInput,
   nextWordEnd,
   prevWordStart,
+  rowColToCursor,
 } from '../input-bar';
 import { plain } from './_ansi';
 
@@ -358,5 +359,118 @@ describe('InputBar — forward delete (Delete key, distinct from Backspace)', ()
 
   test('Backspace is unaffected — still deletes the char to the LEFT', () => {
     expect(press('abcd', 2, BACKSPACE)).toEqual({ value: 'acd', cursor: 1 });
+  });
+});
+
+describe('rowColToCursor — inverse of the caret mapping (↑/↓ moves)', () => {
+  test('layoutInput exposes the flat start index of each visual row', () => {
+    // 'a\nbb\nccc' → rows a|bb|ccc; '\n's sit at flat indices 1 and 4.
+    expect(layoutInput('a\nbb\nccc', 0, 20).rowStarts).toEqual([0, 2, 5]);
+    // soft-wrap: 'abcdefghij' at width 4 → abcd|efgh|ij.
+    expect(layoutInput('abcdefghij', 0, 4).rowStarts).toEqual([0, 4, 8]);
+  });
+
+  test('maps a (row, col) back to its flat cursor', () => {
+    const l = layoutInput('abcdefghij', 0, 4); // rows abcd|efgh|ij
+    expect(rowColToCursor(l, 1, 2)).toBe(6); // 'g'
+    expect(rowColToCursor(l, 2, 0)).toBe(8); // start of 'ij'
+  });
+
+  test('clamps the column to the target row length (lands at end of a shorter row)', () => {
+    const l = layoutInput('longline\nx', 0, 20); // rows longline|x, rowStarts 0,9
+    expect(rowColToCursor(l, 1, 99)).toBe(10); // col clamped to len('x')=1 → 9+1
+  });
+
+  test('round-trip: moving up from the last row lands one row higher', () => {
+    const l = layoutInput('a\nbb\nccc', 8, 20); // caret at end of 'ccc' (row 2, col 3)
+    expect([l.caretRow, l.caretCol]).toEqual([2, 3]);
+    const up = rowColToCursor(l, l.caretRow - 1, l.caretCol); // → row 1, col clamped to 2
+    expect(layoutInput('a\nbb\nccc', up, 20).caretRow).toBe(1);
+  });
+});
+
+describe('InputBar — vertical caret movement in multi-line input (ADR U6)', () => {
+  // Inject a fixed multi-line state, press one arrow, capture what InputBar
+  // requests. width 40 → every short line is its own (un-wrapped) visual row.
+  function press(
+    value: string,
+    cursor: number,
+    seq: string,
+    history: string[] = [],
+    historyIndex: number | null = null,
+  ): { value: string; cursor: number; historyIndex: number | null } {
+    let next = { value, cursor, historyIndex };
+    const { stdin } = render(
+      <ServicesProvider services={stubServices}>
+        <Box width={40} flexDirection="column">
+          <InputBar
+            state={{ ...EMPTY_INPUT_STATE, value, cursor, historyIndex }}
+            onChange={(s) => {
+              next = { value: s.value, cursor: s.cursor, historyIndex: s.historyIndex };
+            }}
+            onSubmit={noop}
+            history={history}
+            width={40}
+          />
+        </Box>
+      </ServicesProvider>,
+    );
+    stdin.write(seq);
+    return next;
+  }
+
+  const UP = '\x1B[A';
+  const DOWN = '\x1B[B';
+
+  test('↑ from a lower line moves the caret up WITHOUT touching the draft (U2 fix)', () => {
+    // 'line1\nline2', caret at end (row 1, col 5). ↑ → row 0, col 5 (cursor 5).
+    expect(press('line1\nline2', 11, UP, ['previous prompt'])).toEqual({
+      value: 'line1\nline2',
+      cursor: 5,
+      historyIndex: null,
+    });
+  });
+
+  test('↑ on the first line still recalls history (boundary fall-through)', () => {
+    // caret on row 0 → no row above → history recall.
+    expect(press('line1\nline2', 3, UP, ['old prompt'])).toEqual({
+      value: 'old prompt',
+      cursor: 'old prompt'.length,
+      historyIndex: 0,
+    });
+  });
+
+  test('↓ from the first line moves the caret down, preserving column', () => {
+    // caret at row 0 col 2 → row 1 col 2 → cursor 8 (after "li" in line2).
+    expect(press('line1\nline2', 2, DOWN)).toEqual({
+      value: 'line1\nline2',
+      cursor: 8,
+      historyIndex: null,
+    });
+  });
+
+  test('↓ clamps the column when the row below is shorter', () => {
+    // caret at end of "longline" (row 0, col 8) → row 1 "x" → clamp to col 1.
+    expect(press('longline\nx', 8, DOWN)).toEqual({
+      value: 'longline\nx',
+      cursor: 10,
+      historyIndex: null,
+    });
+  });
+
+  test('↓ on the last line is a no-op when not browsing history', () => {
+    expect(press('line1\nline2', 11, DOWN)).toEqual({
+      value: 'line1\nline2',
+      cursor: 11,
+      historyIndex: null,
+    });
+  });
+
+  test('single-line input is unaffected — ↑ goes straight to history', () => {
+    expect(press('select 1', 8, UP, ['earlier'])).toEqual({
+      value: 'earlier',
+      cursor: 'earlier'.length,
+      historyIndex: 0,
+    });
   });
 });

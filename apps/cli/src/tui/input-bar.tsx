@@ -67,6 +67,8 @@ export interface InputLayout {
   caretRow: number;
   /** Column of the caret within `rows[caretRow]` (0..row length). */
   caretCol: number;
+  /** Flat index into `value` where each visual row begins (for ↑/↓ caret moves). */
+  rowStarts: number[];
 }
 
 /**
@@ -78,6 +80,7 @@ export interface InputLayout {
 export function layoutInput(value: string, cursor: number, w: number): InputLayout {
   const width = Math.max(1, w);
   const rows: string[] = [];
+  const rowStarts: number[] = [];
   let caretRow = 0;
   let caretCol = 0;
   let placed = false;
@@ -89,6 +92,7 @@ export function layoutInput(value: string, cursor: number, w: number): InputLayo
       const text = line.slice(s, s + width);
       const rowIndex = rows.length;
       rows.push(text);
+      rowStarts.push(offset + s);
       if (!placed) {
         const caretInLine = cursor - offset;
         if (caretInLine >= s && caretInLine <= s + text.length) {
@@ -109,7 +113,20 @@ export function layoutInput(value: string, cursor: number, w: number): InputLayo
     caretRow = Math.max(0, rows.length - 1);
     caretCol = rows[caretRow]?.length ?? 0;
   }
-  return { rows, caretRow, caretCol };
+  return { rows, caretRow, caretCol, rowStarts };
+}
+
+/**
+ * Flat cursor index for a visual (row, col) in a laid-out value — the inverse of
+ * {@link layoutInput}'s caret mapping, used to move the caret between rows with
+ * ↑/↓. The column is clamped to the target row's length, so moving onto a shorter
+ * row lands the caret at its end (the familiar editor behaviour).
+ */
+export function rowColToCursor(layout: InputLayout, row: number, col: number): number {
+  const r = Math.max(0, Math.min(row, layout.rows.length - 1));
+  const text = layout.rows[r] ?? '';
+  const c = Math.max(0, Math.min(col, text.length));
+  return (layout.rowStarts[r] ?? 0) + c;
 }
 
 /**
@@ -184,6 +201,14 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
         onChange({ ...state, suggestionIndex: Math.max(0, suggestionIndex - 1) });
         return;
       }
+      // Multi-line caret movement (ADR U6): move to the row above when the caret
+      // isn't already on the first visual row. Only on the first row does ↑ fall
+      // through to history recall — so it never clobbers a multi-line draft.
+      const upLayout = layoutInput(value, cursor, wrapWidth(width));
+      if (upLayout.caretRow > 0) {
+        onChange({ ...state, cursor: rowColToCursor(upLayout, upLayout.caretRow - 1, upLayout.caretCol) });
+        return;
+      }
       if (history.length === 0) return;
       const next = historyIndex === null ? history.length - 1 : Math.max(0, historyIndex - 1);
       const h = history[next] ?? '';
@@ -199,6 +224,16 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
       });
       if (inSlashMode) {
         onChange({ ...state, suggestionIndex: Math.min(suggestions.length - 1, suggestionIndex + 1) });
+        return;
+      }
+      // Multi-line caret movement: move to the row below when the caret isn't on
+      // the last visual row. Only on the last row does ↓ fall through to history.
+      const downLayout = layoutInput(value, cursor, wrapWidth(width));
+      if (downLayout.caretRow < downLayout.rows.length - 1) {
+        onChange({
+          ...state,
+          cursor: rowColToCursor(downLayout, downLayout.caretRow + 1, downLayout.caretCol),
+        });
         return;
       }
       if (historyIndex === null) return;
