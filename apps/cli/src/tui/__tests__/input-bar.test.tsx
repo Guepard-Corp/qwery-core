@@ -10,6 +10,8 @@ import {
   type InputState,
   inputHeightRows,
   layoutInput,
+  nextWordEnd,
+  prevWordStart,
 } from '../input-bar';
 import { plain } from './_ansi';
 
@@ -184,5 +186,80 @@ describe('InputBar — newline insertion (ADR U6)', () => {
 
   test('a CRLF paste is normalized to LF', () => {
     expect(pressState('', 0, 'a\r\nb')).toMatchObject({ value: 'a\nb', cursor: 3 });
+  });
+});
+
+describe('word-boundary helpers', () => {
+  const v = 'select * from pg_stat_statements';
+  //         0123456789...        14            (len = 32)
+
+  test('prevWordStart jumps to the start of the word at/before the caret', () => {
+    expect(prevWordStart(v, v.length)).toBe(14); // from end → start of "pg_stat_statements"
+    expect(prevWordStart(v, 14)).toBe(9); // → start of "from"
+    expect(prevWordStart(v, 9)).toBe(7); // → "*"
+    expect(prevWordStart(v, 6)).toBe(0); // mid-"select" → start
+    expect(prevWordStart(v, 0)).toBe(0); // already at start
+  });
+
+  test('nextWordEnd jumps past the word at/after the caret', () => {
+    expect(nextWordEnd(v, 0)).toBe(6); // past "select"
+    expect(nextWordEnd(v, 6)).toBe(8); // skip space, past "*"
+    expect(nextWordEnd(v, 8)).toBe(13); // past "from"
+    expect(nextWordEnd(v, 13)).toBe(32); // past "pg_stat_statements" → end
+    expect(nextWordEnd(v, 32)).toBe(32); // already at end
+  });
+
+  test('handles leading/trailing/multiple spaces', () => {
+    expect(prevWordStart('  ab  cd  ', 10)).toBe(6); // skip trailing ws, start of "cd"
+    expect(nextWordEnd('  ab  cd  ', 0)).toBe(4); // skip leading ws, past "ab"
+  });
+});
+
+describe('InputBar — word navigation key bindings', () => {
+  // Controlled component: capture the cursor InputBar requests via onChange.
+  function press(value: string, cursor: number, seq: string): number {
+    let next = cursor;
+    const { stdin } = render(
+      <ServicesProvider services={stubServices}>
+        <Box width={40} flexDirection="column">
+          <InputBar
+            state={{ ...EMPTY_INPUT_STATE, value, cursor }}
+            onChange={(s) => {
+              next = s.cursor;
+            }}
+            onSubmit={noop}
+            history={[]}
+            width={40}
+          />
+        </Box>
+      </ServicesProvider>,
+    );
+    stdin.write(seq);
+    return next;
+  }
+
+  const v = 'select * from pg_stat_statements';
+  const ALT_LEFT = '\x1b[1;3D';
+  const ALT_RIGHT = '\x1b[1;3C';
+  const CTRL_LEFT = '\x1b[1;5D';
+  const CTRL_RIGHT = '\x1b[1;5C';
+  const META_B = '\x1bb';
+  const META_F = '\x1bf';
+
+  test('Alt+Left / Ctrl+Left / Meta-b jump back a word', () => {
+    expect(press(v, v.length, ALT_LEFT)).toBe(14);
+    expect(press(v, v.length, CTRL_LEFT)).toBe(14);
+    expect(press(v, v.length, META_B)).toBe(14);
+  });
+
+  test('Alt+Right / Ctrl+Right / Meta-f jump forward a word', () => {
+    expect(press(v, 0, ALT_RIGHT)).toBe(6);
+    expect(press(v, 0, CTRL_RIGHT)).toBe(6);
+    expect(press(v, 0, META_F)).toBe(6);
+  });
+
+  test('plain ←/→ still move by one character', () => {
+    expect(press(v, 10, '\x1b[D')).toBe(9); // left
+    expect(press(v, 10, '\x1b[C')).toBe(11); // right
   });
 });

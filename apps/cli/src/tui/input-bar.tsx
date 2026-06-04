@@ -17,6 +17,33 @@ export const EMPTY_INPUT_STATE: InputState = {
   suggestionIndex: 0,
 };
 
+const isSpace = (ch: string | undefined): boolean => ch === undefined || /\s/.test(ch);
+
+/**
+ * Start of the whitespace-delimited word at or before `cursor` — the target for
+ * a backward word jump (Alt/Ctrl+← or Meta-b). Skips any whitespace to the left
+ * of the caret, then the run of non-whitespace before it.
+ */
+export function prevWordStart(value: string, cursor: number): number {
+  let i = Math.min(cursor, value.length);
+  while (i > 0 && isSpace(value[i - 1])) i--;
+  while (i > 0 && !isSpace(value[i - 1])) i--;
+  return i;
+}
+
+/**
+ * Index just past the whitespace-delimited word at or after `cursor` — the
+ * target for a forward word jump (Alt/Ctrl+→ or Meta-f). Skips whitespace to the
+ * right of the caret, then the run of non-whitespace after it.
+ */
+export function nextWordEnd(value: string, cursor: number): number {
+  const n = value.length;
+  let i = Math.max(0, cursor);
+  while (i < n && isSpace(value[i])) i++;
+  while (i < n && !isSpace(value[i])) i++;
+  return i;
+}
+
 /** Most content rows the input box shows before it scrolls internally, so a
  *  huge paste can't push the chat off-screen. */
 export const INPUT_MAX_ROWS = 6;
@@ -182,6 +209,17 @@ export function InputBar({ state, onChange, onSubmit, disabled, history, width }
         const h = history[next] ?? '';
         onChange({ ...state, value: h, cursor: h.length, historyIndex: next });
       }
+      return;
+    }
+
+    // Word-wise motion (must precede the plain-arrow checks, since Alt/Ctrl+←
+    // also set key.leftArrow). Supports Alt/Ctrl+←/→ and readline's Meta-b/f.
+    if ((key.leftArrow && (key.meta || key.ctrl)) || (key.meta && input === 'b')) {
+      onChange({ ...state, cursor: prevWordStart(value, cursor) });
+      return;
+    }
+    if ((key.rightArrow && (key.meta || key.ctrl)) || (key.meta && input === 'f')) {
+      onChange({ ...state, cursor: nextWordEnd(value, cursor) });
       return;
     }
 
