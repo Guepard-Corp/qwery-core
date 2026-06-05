@@ -26,9 +26,9 @@ exports[`e2e: chat turn persists to a real sqlite DB a prompt + mock reply are w
                                                   │
                                                   │
                                                   │
-                                                  │
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models  DataAgent        ready   │"
+  no provider · /models                           │
+  DataAgent                                ready  │"
 `;
