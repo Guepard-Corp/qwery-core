@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { delay, renderApp, waitForFrame } from './support/harness';
+import { delay, renderApp, settleEffectsBetweenTests, waitForFrame } from './support/harness';
 import { captureFrame } from './support/screenshot';
 
 const UP_ARROW = '\x1B[A';
@@ -10,6 +10,8 @@ const UP_ARROW = '\x1B[A';
  */
 
 describe('e2e: input bar', () => {
+  settleEffectsBetweenTests();
+
   test('↑ recalls the previous entry into the input', async () => {
     const { lastFrame, stdin, unmount } = renderApp();
     try {

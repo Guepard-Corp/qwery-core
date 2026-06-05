@@ -144,7 +144,9 @@ export function ModelsOverlay({ onClose, onSaved }: ModelsOverlayProps) {
       advance(m, field, trimmed);
       return;
     }
-    if (key.backspace || key.delete) {
+    // The caret is pinned at the end of the buffer, so Backspace erases the last
+    // char; the Delete key (key.delete) has nothing to its right and is a no-op.
+    if (key.backspace) {
       setMode({ ...m, buffer: m.buffer.slice(0, -1) });
       return;
     }

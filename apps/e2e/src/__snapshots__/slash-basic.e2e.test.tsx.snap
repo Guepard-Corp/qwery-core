@@ -12,8 +12,8 @@ exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
  Hotkeys: Tab (switch view, focus mode), Ctrl+B   │
  (toggle split), Ctrl+R (last data), Ctrl+I       │
  (last schema), Ctrl+L (toggle SQL view),         │
- Ctrl+C (quit), ↑/↓ (history).                    │
-                                                  │
+ Ctrl+C (quit), ↑/↓ (history), Alt+←/→ (jump      │
+ word), Alt+⌫ (delete word).                      │
                                                   │
                                                   │
                                                   │

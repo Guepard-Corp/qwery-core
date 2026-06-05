@@ -279,7 +279,9 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
         void renameDatasource(m.datasource, trimmed, m.cursor);
         return;
       }
-      if (key.backspace || key.delete) {
+      // Caret is pinned at the buffer end: Backspace erases the last char; the
+      // Delete key has nothing to its right, so it is a no-op.
+      if (key.backspace) {
         setMode({ ...m, buffer: m.buffer.slice(0, -1), error: undefined });
         return;
       }
@@ -369,7 +371,9 @@ export function DatasourcesOverlay({ onClose, onAttached }: DatasourcesOverlayPr
       });
       return;
     }
-    if (key.backspace || key.delete) {
+    // Caret is pinned at the buffer end: Backspace erases the last char; the
+    // Delete key has nothing to its right, so it is a no-op.
+    if (key.backspace) {
       setMode({ ...m, buffer: m.buffer.slice(0, -1) });
       return;
     }
