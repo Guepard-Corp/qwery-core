@@ -12,9 +12,8 @@ exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
  Hotkeys: Tab (switch view, focus mode), Ctrl+B   │
  (toggle split), Ctrl+R (last data), Ctrl+I       │
  (last schema), Ctrl+L (toggle SQL view),         │
- Ctrl+C (quit), ↑/↓ (history).                    │
-                                                  │
-                                                  │
+ Ctrl+C (quit), ↑/↓ (history), Alt+←/→ (jump      │
+ word), Alt+⌫ (delete word).                      │
                                                   │
                                                   │
                                                   │
@@ -30,7 +29,8 @@ exports[`e2e: Tier 1 slash commands /help → "Slash commands:" 1`] = `
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models  DataAgent        ready   │"
+  no provider · /models                           │
+  DataAgent                                ready  │"
 `;
 
 exports[`e2e: Tier 1 slash commands /data → "Agent routing pinned to: DataAgent." 1`] = `
@@ -59,11 +59,11 @@ exports[`e2e: Tier 1 slash commands /data → "Agent routing pinned to: DataAgen
                                                   │
                                                   │
                                                   │
-                                                  │
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models  DataAgent ·pinnedready   │"
+  no provider · /models                           │
+  DataAgent ·pinned                        ready  │"
 `;
 
 exports[`e2e: Tier 1 slash commands /code → "Agent routing pinned to: CodingAgent." 1`] = `
@@ -95,8 +95,8 @@ exports[`e2e: Tier 1 slash commands /code → "Agent routing pinned to: CodingAg
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models CodingAgen ·pinnedready   │
-                                                  │"
+  no provider · /models                           │
+  CodingAgent ·pinned                      ready  │"
 `;
 
 exports[`e2e: Tier 1 slash commands /auto → "Agent routing pinned to: auto (heuristic)." 1`] = `
@@ -125,9 +125,9 @@ exports[`e2e: Tier 1 slash commands /auto → "Agent routing pinned to: auto (he
                                                   │
                                                   │
                                                   │
-                                                  │
  ╭──────────────────────────────────────────────╮ │
  │ ›                                            │ │
  ╰──────────────────────────────────────────────╯ │
-  no provider · /models  DataAgent        ready   │"
+  no provider · /models                           │
+  DataAgent                                ready  │"
 `;

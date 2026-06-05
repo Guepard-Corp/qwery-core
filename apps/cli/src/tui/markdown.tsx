@@ -309,6 +309,29 @@ export function renderInline(line: string): ReactNode[] {
   });
 }
 
+/**
+ * Visible width of a line *exactly as {@link renderInline} will paint it* — the
+ * single source of truth for wrapping. Derived from the same tokenizer as the
+ * renderer, so measurement can never drift from rendering: markers add nothing,
+ * but a link renders as `text (href)` so its href counts toward the width.
+ *
+ * Note `stripInline` is the wrong measure for wrapping: it *drops* the href the
+ * renderer prints (under-counting links) and it eats intra-word underscores the
+ * tokenizer deliberately keeps (under-counting identifiers like
+ * `pg_stat_statements`). Both let a row render wider than its budget, which made
+ * Ink re-wrap it into an uncounted extra terminal row. Invariant relied on by
+ * `wrapRaw`: `inlineWidth(s) <= s.length` for every `s`.
+ */
+export function inlineWidth(line: string): number {
+  let width = 0;
+  for (const token of tokenizeInline(line)) {
+    width += token.value.length;
+    // Links render as `value (href)` — the ` (` + href + `)` is 3 chars + href.
+    if (token.kind === 'link' && token.href) width += token.href.length + 3;
+  }
+  return width;
+}
+
 /** Strip inline markdown for width calculations (renders w/ alignment in tables). */
 export function stripInline(line: string): string {
   return line

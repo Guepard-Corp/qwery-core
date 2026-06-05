@@ -3,7 +3,7 @@ import type { QueryResult } from '@qwery/domain';
 import { Text } from 'ink';
 import type { ReactNode } from 'react';
 import type { ChatEntry } from '../chat-entry';
-import { type Block, parseBlocks, renderInline, stripInline } from './markdown';
+import { type Block, inlineWidth, parseBlocks, renderInline, stripInline } from './markdown';
 import { fmtCell, planTable, truncateCell } from './table';
 import { PRIVACY_SAFE, toolCallLine } from './tool-call';
 
@@ -23,18 +23,26 @@ import { PRIVACY_SAFE, toolCallLine } from './tool-call';
 
 const BLANK: ReactNode = <Text> </Text>;
 
-/** Visible width of a raw markdown fragment (inline markers don't take space). */
-function visibleWidth(raw: string): number {
-  return stripInline(raw).length;
-}
+/**
+ * Raw character count — the correct width for text that is rendered *verbatim*
+ * (user echo, shell output), where markdown markers are printed, not parsed.
+ */
+const rawWidth = (raw: string): number => raw.length;
 
 /**
- * Word-wrap a raw markdown line to `width` visible columns, returning raw
- * substrings (markers preserved). A token wider than the line is hard-broken by
- * raw characters so the rendered row never exceeds the width and Ink never
- * re-wraps it into extra (uncounted) rows.
+ * Word-wrap a raw line to `width` visible columns, returning raw substrings
+ * (markers preserved). A token wider than the line is hard-broken so the
+ * rendered row never exceeds the width and Ink never re-wraps it into extra
+ * (uncounted) rows.
+ *
+ * `measure` must report the width the row will actually paint at. It defaults to
+ * {@link inlineWidth} for markdown content (rendered via {@link renderInline});
+ * callers that render text verbatim pass {@link rawWidth}. Because both measures
+ * satisfy `measure(s) <= s.length`, the additive packing only ever over-counts
+ * when spans merge across a space (the safe direction) and the hard-break slices
+ * always fit, so every emitted row is guaranteed to render within `width`.
  */
-export function wrapRaw(raw: string, width: number): string[] {
+export function wrapRaw(raw: string, width: number, measure: (s: string) => number = inlineWidth): string[] {
   if (width <= 0) return [raw];
   const out: string[] = [];
   let cur = '';
@@ -48,18 +56,18 @@ export function wrapRaw(raw: string, width: number): string[] {
     // Only hard-break on *visible* width, so a marker-heavy token (e.g.
     // `**bold**`, raw length 8 but 4 visible) isn't split mid-marker — which
     // would leave the markers unparsed and printed literally.
-    if (visibleWidth(word) > width) {
+    if (measure(word) > width) {
       if (cur !== '') flush();
       let rest = word;
-      while (visibleWidth(rest) > width) {
+      while (measure(rest) > width) {
         out.push(rest.slice(0, width));
         rest = rest.slice(width);
       }
       cur = rest;
-      curWidth = visibleWidth(rest);
+      curWidth = measure(rest);
       continue;
     }
-    const w = visibleWidth(word);
+    const w = measure(word);
     if (cur === '') {
       cur = word;
       curWidth = w;
@@ -233,7 +241,8 @@ function tableToLines(result: QueryResult): ReactNode[] {
 function entryToLines(entry: ChatEntry, width: number): ReactNode[] {
   switch (entry.kind) {
     case 'user': {
-      const wrapped = wrapRaw(entry.text, Math.max(1, width - 2));
+      // The user's text is printed verbatim (no markdown), so measure raw chars.
+      const wrapped = wrapRaw(entry.text, Math.max(1, width - 2), rawWidth);
       return wrapped.map((ln, i) => (
         <Text key={i}>
           {i === 0 ? (
@@ -251,7 +260,7 @@ function entryToLines(entry: ChatEntry, width: number): ReactNode[] {
       return markdownToLines(entry.text, width);
     case 'shell': {
       const lines: ReactNode[] = [];
-      wrapRaw(entry.command, Math.max(1, width - 2)).forEach((ln, i) => {
+      wrapRaw(entry.command, Math.max(1, width - 2), rawWidth).forEach((ln, i) => {
         lines.push(
           <Text>
             {i === 0 ? (

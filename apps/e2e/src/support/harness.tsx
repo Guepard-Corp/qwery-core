@@ -1,3 +1,4 @@
+import { afterEach } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import { App } from '@qwery/cli/app';
 import { ServicesProvider } from '@qwery/cli/services';
@@ -63,6 +64,26 @@ class TestStdin extends EventEmitter {
 }
 
 export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Each e2e test mounts a fresh `<App/>`, whose async startup effects (session
+ * create, history load, branching version probe, update check, datasource
+ * attach) resolve a tick after mount. When a test ends and unmounts, those
+ * in-flight effects can still resolve — and if the next test has already mounted
+ * its own `<App/>`, they re-enter that fresh React root mid-render and crash its
+ * reconciler ("Should not already be working").
+ *
+ * Call this at the top of every e2e file that mounts the App more than once: it
+ * drains the event loop between tests so a finished test's effects settle before
+ * the next mounts, keeping the two roots from overlapping (AGENTS.md §5 — no
+ * flaky tests). bun scopes lifecycle hooks per file, so it must be invoked from
+ * within each file rather than once from this shared module.
+ */
+export function settleEffectsBetweenTests(): void {
+  afterEach(async () => {
+    await delay(50);
+  });
+}
 
 export interface WaitForFrameOptions {
   /** Used to name the screenshot written on timeout (`FAILED-<label>.html`). */

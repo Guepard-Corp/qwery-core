@@ -56,7 +56,13 @@ import { flattenChatLines } from './tui/chat-lines';
 import { ChatView } from './tui/chat-view';
 import { ContextOverlay } from './tui/context-overlay';
 import { DatasourcesOverlay } from './tui/datasources-overlay';
-import { EMPTY_INPUT_STATE, InputBar, type InputState } from './tui/input-bar';
+import {
+  EMPTY_INPUT_STATE,
+  InputBar,
+  type InputState,
+  inputHeightRows,
+  suggestionBoxRows,
+} from './tui/input-bar';
 import { activeProviderLabel, ModelsOverlay } from './tui/models-overlay';
 import { ResultsView, type ResultViewMode } from './tui/results-view';
 import { ResumeOverlay } from './tui/resume-overlay';
@@ -174,15 +180,27 @@ export function App() {
   const [gfsVersion, setGfsVersion] = useState<string | null>(null);
   const [updateOutcomes, setUpdateOutcomes] = useState<UpdateOutcome[] | null>(null);
   const [layoutMode, setLayoutMode] = useState<'focus' | 'split'>('split');
+  const [inputState, setInputState] = useState<InputState>(EMPTY_INPUT_STATE);
   // App padding (1 char each side) + extra padding for borders. In split
   // mode the chat occupies roughly half the terminal width.
   const chatPaneWidth =
     layoutMode === 'split' ? Math.max(20, Math.floor(termCols / 2) - 4) : Math.max(20, termCols - 4);
+  // The input box grows with multi-line content (ADR U6); the base chrome
+  // reservation assumes a single content row, so subtract the extra rows the
+  // input currently occupies to keep the chat bounded (ADR U12).
+  const inputExtraRows = inputHeightRows(inputState.value, chatPaneWidth) - 1;
+  // The slash-command autocomplete renders an extra bordered box above the
+  // input; reserve its (bounded) height too, or a long match list would push
+  // the bottom cluster off-screen (ADR U12). 0 when not in slash mode.
+  const suggestionRows = suggestionBoxRows(inputState.value);
   // Rows the chat pane (including its own padding) may occupy. Reserve the
   // surrounding chrome — header, pane label / tab bar, agent-status line, input
-  // box (3 rows), status bar — so ChatView can bound its own height. Ink can't
-  // reliably clip vertical overflow, so the view must never exceed this.
-  const chatAvailableHeight = Math.max(4, termRows - (layoutMode === 'split' ? 9 : 8));
+  // box, status bar — so ChatView can bound its own height. Ink can't reliably
+  // clip vertical overflow, so the view must never exceed this.
+  const chatAvailableHeight = Math.max(
+    4,
+    termRows - (layoutMode === 'split' ? 9 : 8) - inputExtraRows - suggestionRows,
+  );
   // The chat flattened to one node per terminal row, so the view can window it
   // by line (exact height) and scroll line-by-line through long output.
   const chatLines = useMemo(
@@ -195,7 +213,6 @@ export function App() {
   const chatContentRows = Math.max(1, chatAvailableHeight - 2);
   const chatMaxScroll = chatLines.length <= chatContentRows ? 0 : chatLines.length - chatContentRows + 1;
   const [resultMode, setResultMode] = useState<ResultViewMode>('data');
-  const [inputState, setInputState] = useState<InputState>(EMPTY_INPUT_STATE);
   const [sessionTotals, setSessionTotals] = useState<SessionTotals>(EMPTY_SESSION_TOTALS);
   const [chatScrollOffset, setChatScrollOffset] = useState(0);
   const [contextLimit, setContextLimit] = useState<number | null>(null);
@@ -618,7 +635,7 @@ export function App() {
             kind: 'assistant',
             text:
               'Slash commands: /models, /datasources, /agents, /context, /data, /code, /audit, /optimize, /auto, /layout, /resume, /clear, /help, /logs, /update, /quit.\n' +
-              'Hotkeys: Tab (switch view, focus mode), Ctrl+B (toggle split), Ctrl+R (last data), Ctrl+I (last schema), Ctrl+L (toggle SQL view), Ctrl+C (quit), ↑/↓ (history).',
+              'Hotkeys: Tab (switch view, focus mode), Ctrl+B (toggle split), Ctrl+R (last data), Ctrl+I (last schema), Ctrl+L (toggle SQL view), Ctrl+C (quit), ↑/↓ (history), Alt+←/→ (jump word), Alt+⌫ (delete word).',
           },
         ]);
         return;
@@ -1100,6 +1117,7 @@ export function App() {
                 onSubmit={submit}
                 disabled={busy}
                 history={history}
+                width={chatPaneWidth}
               />
               <StatusBar
                 providerLabel={providerLabel}
@@ -1163,6 +1181,7 @@ export function App() {
               onSubmit={submit}
               disabled={busy}
               history={history}
+              width={chatPaneWidth}
             />
             <StatusBar
               providerLabel={providerLabel}
