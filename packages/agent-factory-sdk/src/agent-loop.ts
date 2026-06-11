@@ -12,6 +12,79 @@ import { buildTools } from './tools';
 
 export type { AgentRunOptions, AgentRunResult } from './agent-types';
 
+/**
+ * Tool-call steps the model may take per turn before the loop stops. A thorough
+ * task (e.g. a full database audit) can legitimately need many tool calls, so
+ * this is generous; override with `QWERY_MAX_STEPS`. When the ceiling is hit
+ * mid-tool-calling, {@link runAgent} runs a tool-less finalization pass so the
+ * user still gets a written answer instead of an empty turn.
+ */
+export const DEFAULT_MAX_STEPS = 100;
+
+function resolveMaxSteps(): number {
+  const n = Number(process.env.QWERY_MAX_STEPS);
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_MAX_STEPS;
+}
+
+/**
+ * Per-request retry budget for the LLM call. The AI SDK retries retryable
+ * failures (HTTP 429 rate limits, 5xx) with exponential backoff, so a long
+ * multi-step audit survives a transient `too_many_requests` instead of dying
+ * mid-run — the backoff also lets a per-minute token quota recover. Higher than
+ * the SDK default of 2; override with `QWERY_MAX_RETRIES`.
+ */
+export const DEFAULT_MAX_RETRIES = 5;
+
+export function resolveMaxRetries(): number {
+  const raw = process.env.QWERY_MAX_RETRIES;
+  if (raw === undefined) return DEFAULT_MAX_RETRIES;
+  const n = Number(raw);
+  // Allow 0 to disable retries explicitly; reject NaN/negative.
+  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_MAX_RETRIES;
+}
+
+/**
+ * Debug switch: when truthy, the run-completion log events
+ * (`agent.run.done` / `agent.run.aborted`) carry the full assistant `text`
+ * in addition to `textLen`, so the verbatim report can be recovered from
+ * the log. Off by default — the report can be large and may contain
+ * datasource-derived content, so we only emit it when explicitly asked.
+ */
+function shouldLogReportText(): boolean {
+  const raw = process.env.QWERY_DEBUG_REPORT_TEXT?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
+}
+
+/**
+ * Apply an agent's per-agent `reasoningEffort` override onto the provider's
+ * options. Only touches the OpenAI/Azure `openai.reasoningEffort` slot, and only
+ * when the provider already produced one (i.e. a reasoning model is in use) —
+ * for other providers the override is a no-op so nothing invalid is injected.
+ */
+export function withAgentReasoningEffort(
+  options: Record<string, Record<string, unknown>> | undefined,
+  effort: string | undefined,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!effort || !options?.openai) return options;
+  return { ...options, openai: { ...options.openai, reasoningEffort: effort } };
+}
+
+export function formatStreamError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (!error || typeof error !== 'object') return String(error);
+  const record = error as Record<string, unknown>;
+  for (const key of ['message', 'error', 'reason', 'statusText']) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   const {
     compute,
@@ -19,6 +92,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     logger,
     onToolEvent,
     onToken,
+    onStepStart,
     datasources,
     apps,
     skills,
@@ -29,9 +103,13 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   const agent: AgentSpec = opts.agent ?? DataAgentSpec;
   const subagents: SubagentRunInfo[] = opts.subagents ?? [];
   const isSubagent = opts.isSubagent ?? false;
+  const providerOptions = withAgentReasoningEffort(llm.getProviderOptions?.(), agent.reasoningEffort);
 
   logger.info('agent.run.start', { messageCount: opts.messages.length, agent: agent.id });
   const startedAt = Date.now();
+  const maxSteps = resolveMaxSteps();
+  const maxRetries = resolveMaxRetries();
+  const logReportText = shouldLogReportText();
 
   // Pre-turn compaction. We estimate the incoming prompt size and, if it
   // crosses the threshold, prune + summarize before kicking off streamText.
@@ -74,6 +152,12 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     schemaProvider,
     ontologyProvider,
     schemaRetriever,
+    sessionId: opts.sessionId,
+    signal: opts.signal,
+    logger,
+    getAttachedDatasource: opts.getAttachedDatasource,
+    revealDatasourceSecrets: opts.revealDatasourceSecrets,
+    preferSourceEngine: agent.prefersSourceEngine,
     onEvent: (event) => {
       logger.info(`tool.${event.status}`, {
         id: event.id,
@@ -81,7 +165,10 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
         input: event.input,
         durationMs: event.endedAt ? event.endedAt - event.startedAt : undefined,
         ...(event.output?.kind === 'error' ? { error: event.output.message } : {}),
-        ...(event.output && 'result' in event.output ? { rowCount: event.output.result.rowCount } : {}),
+        ...(event.output?.kind === 'runQuery' || event.output?.kind === 'present'
+          ? { rowCount: event.output.result.rowCount }
+          : {}),
+        ...(event.output?.kind === 'dbAudit' ? { summary: event.output.summary } : {}),
       });
       onToolEvent(event);
     },
@@ -214,25 +301,33 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
   // Hoisted out of the try so the catch can preserve partial text on abort.
   let assistantText = '';
 
+  // Built once and reused by the step-limit finalization pass below.
+  const systemPrompt = buildSystemPrompt({
+    datasources,
+    apps,
+    skills: scopedSkills,
+    // Subagents are only advertised to the parent — inside a subagent loop,
+    // we pass `undefined` so the whole block (persisted + ad-hoc) is
+    // omitted, preventing recursive spawn.
+    subagents: isSubagent
+      ? undefined
+      : subagents.map((sa) => ({
+          name: sa.name,
+          description: sa.description,
+          baseAgent: sa.baseAgent,
+        })),
+    agentPreamble: agent.promptPreamble,
+    agentSystemPrompt: agent.systemPrompt,
+  });
+  const providerOptionsArg = providerOptions
+    ? { providerOptions: providerOptions as Parameters<typeof streamText>[0]['providerOptions'] }
+    : {};
+
   try {
     const result = streamText({
       model: llm.getModel() as LanguageModel,
-      system: buildSystemPrompt({
-        datasources,
-        apps,
-        skills: scopedSkills,
-        // Subagents are only advertised to the parent — inside a subagent loop,
-        // we pass `undefined` so the whole block (persisted + ad-hoc) is
-        // omitted, preventing recursive spawn.
-        subagents: isSubagent
-          ? undefined
-          : subagents.map((sa) => ({
-              name: sa.name,
-              description: sa.description,
-              baseAgent: sa.baseAgent,
-            })),
-        agentPreamble: agent.promptPreamble,
-      }),
+      ...providerOptionsArg,
+      system: systemPrompt,
       messages,
       tools,
       // `activeTools` controls which tools are advertised to the LLM at each
@@ -254,7 +349,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
           ...[...registryContext.loadedTools],
         ],
       }),
-      stopWhen: stepCountIs(50),
+      stopWhen: stepCountIs(maxSteps),
+      maxRetries,
       abortSignal: opts.signal,
       onStepFinish: ({ finishReason: reason, usage, toolCalls, toolResults, text }) => {
         logger.info('agent.step.finish', {
@@ -277,6 +373,17 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     let streamError: string | null = null;
     for await (const part of result.fullStream) {
       switch (part.type) {
+        case 'start-step':
+          // Each step the model writes transient status narration (e.g.
+          // "Phase 1/4 - Collect: ...") before its tool calls; only the final
+          // step holds the answer. Reset so `assistantText` ends up holding the
+          // last step's text — the report — mirroring the AI SDK's
+          // `result.text` ("full text generated by the last step") rather than
+          // gluing every step's status line together. `onStepStart` lets the UI
+          // clear its live-preview buffer for the same reason.
+          assistantText = '';
+          onStepStart?.();
+          break;
         case 'text-delta':
           assistantText += part.text;
           onToken(part.text);
@@ -298,11 +405,11 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
           logger.error('llm.tool-error', {
             toolName: part.toolName,
             toolCallId: part.toolCallId,
-            error: part.error instanceof Error ? part.error.message : String(part.error),
+            error: formatStreamError(part.error),
           });
           break;
         case 'error':
-          streamError = part.error instanceof Error ? part.error.message : String(part.error);
+          streamError = formatStreamError(part.error);
           logger.error('llm.stream.error', { error: streamError });
           break;
         case 'finish':
@@ -316,16 +423,64 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
 
     if (streamError) throw new Error(`LLM stream error: ${streamError}`);
 
+    // The loop stopped while the model still wanted to call tools (it hit the
+    // `maxSteps` ceiling) and never wrote a response — without this the user
+    // sees an empty turn. Run one tool-less pass so the model summarizes what
+    // it gathered into a final answer. Skipped if the caller aborted.
+    if (!opts.signal?.aborted && finishReason === 'tool-calls' && assistantText.trim() === '') {
+      logger.info('agent.run.finalize', { reason: 'step-limit', maxSteps });
+      const priorMessages = (await result.response).messages;
+      const finalize = streamText({
+        model: llm.getModel() as LanguageModel,
+        ...providerOptionsArg,
+        system: systemPrompt,
+        maxRetries,
+        // Honor the same abort signal as the main stream — without it a
+        // user-initiated Ctrl+C during finalization keeps streaming/billing
+        // tokens until the summary completes.
+        abortSignal: opts.signal,
+        messages: [
+          ...messages,
+          ...priorMessages,
+          {
+            role: 'user',
+            content: `You reached the ${maxSteps}-step tool-call limit. Do not call any more tools. Summarize the findings you have gathered and give your final answer now.`,
+          },
+        ] as typeof messages,
+      });
+      for await (const part of finalize.fullStream) {
+        if (part.type === 'text-delta') {
+          assistantText += part.text;
+          onToken(part.text);
+        } else if (part.type === 'finish') {
+          finishReason = part.finishReason ?? finishReason;
+        } else if (part.type === 'error') {
+          // Finalization is best-effort — log and keep whatever we have.
+          logger.error('agent.run.finalize.error', { error: formatStreamError(part.error) });
+        }
+      }
+    }
+
     const durationMs = Date.now() - startedAt;
     // If the caller aborted but streamText returned without throwing (e.g.
     // the signal was already aborted before any chunk could arrive, or the
     // provider chose to swallow the abort silently), surface that as
     // 'aborted' so the UI can show the right state.
     if (opts.signal?.aborted) {
-      logger.info('agent.run.aborted', { durationMs, textLen: assistantText.length, totalUsage });
+      logger.info('agent.run.aborted', {
+        durationMs,
+        textLen: assistantText.length,
+        totalUsage,
+        ...(logReportText ? { text: assistantText } : {}),
+      });
       return { text: assistantText, usage: totalUsage, durationMs, finishReason: 'aborted' };
     }
-    logger.info('agent.run.done', { textLen: assistantText.length, durationMs, totalUsage });
+    logger.info('agent.run.done', {
+      textLen: assistantText.length,
+      durationMs,
+      totalUsage,
+      ...(logReportText ? { text: assistantText } : {}),
+    });
     return { text: assistantText, usage: totalUsage, durationMs, finishReason };
   } catch (err) {
     // AbortError is not a failure — the caller intentionally cancelled.
@@ -334,7 +489,12 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
     const aborted = (err instanceof Error && err.name === 'AbortError') || opts.signal?.aborted === true;
     if (aborted) {
       const durationMs = Date.now() - startedAt;
-      logger.info('agent.run.aborted', { durationMs, textLen: assistantText.length, totalUsage });
+      logger.info('agent.run.aborted', {
+        durationMs,
+        textLen: assistantText.length,
+        totalUsage,
+        ...(logReportText ? { text: assistantText } : {}),
+      });
       return {
         text: assistantText,
         usage: totalUsage,

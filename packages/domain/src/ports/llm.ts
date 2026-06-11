@@ -8,6 +8,7 @@ export type Model = unknown;
 
 export interface LLMProvider {
   getModel(): Model;
+  getProviderOptions?(): Record<string, Record<string, unknown>> | undefined;
 }
 
 export class NoLLMProviderError extends Error {

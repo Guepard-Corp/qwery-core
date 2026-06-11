@@ -1,16 +1,55 @@
 import type { ToolName } from '@qwery/domain';
+import { DB_PERFORMANCE_AUDIT_PROMPT } from './prompts/db-performance-audit.prompt';
+import { SLOW_QUERY_OPTIMIZER_PROMPT } from './prompts/slow-query-optimizer.prompt';
 
-export type AgentId = 'data' | 'code';
+export type AgentId = 'data' | 'code' | 'db-performance-audit' | 'slow-query-optimizer';
+
+/** Reasoning effort forwarded to OpenAI/Azure reasoning models (GPT-5 / o-series). */
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
 export interface AgentSpec {
   id: AgentId;
   label: string;
   /** Tool names this agent is allowed to call. */
   tools: ToolName[];
-  /** Prepended to the base system prompt before the dynamic context blocks. */
-  promptPreamble: string;
+  /**
+   * Generalist agents augment the shared base prompt: this text is prepended,
+   * ahead of the dynamic context blocks. Mutually exclusive with
+   * `systemPrompt`. Used by `data` / `code`.
+   */
+  promptPreamble?: string;
+  /**
+   * Specialist agents own their entire system message. When set, this *replaces*
+   * the shared base prompt (the dynamic context blocks — datasources, schema,
+   * subagents — are still prepended). Mirrors how db-audit ran its agents, so
+   * generic instructions like "keep replies short" never leak in. Mutually
+   * exclusive with `promptPreamble`. Used by the DB-audit / optimizer agents.
+   */
+  systemPrompt?: string;
+  /**
+   * Run the agent's ad-hoc `runQuery`/`present`/`describeQuery` SQL against the
+   * attached source engine (native PostgreSQL) rather than the DuckDB compute.
+   * Set for the PostgreSQL-specialist agents, whose SQL relies on catalog
+   * functions DuckDB lacks; non-PostgreSQL datasources fall back to DuckDB.
+   */
+  prefersSourceEngine?: boolean;
+  /**
+   * Override the provider's reasoning effort for this agent (OpenAI/Azure
+   * reasoning models only). Lower effort cuts reasoning-token usage per step —
+   * useful to keep a heavy, many-step agent under a tokens-per-minute quota.
+   * Unset means the provider default applies.
+   */
+  reasoningEffort?: ReasoningEffort;
   /** Heuristic keywords that suggest this agent should handle a prompt. */
   routingKeywords: RegExp[];
+  /**
+   * Layout the CLI switches to when this agent is pinned. `'focus'` is the
+   * full-screen, one-pane-at-a-time view (toggled with Ctrl+B); `'split'` is
+   * the default side-by-side chat/results view. The audit and optimizer agents
+   * default to `'focus'` so their long reports get the whole screen. Unset
+   * leaves the current layout untouched.
+   */
+  defaultLayoutMode?: 'focus' | 'split';
 }
 
 export const DataAgentSpec: AgentSpec = {
@@ -67,9 +106,78 @@ export const CodingAgentSpec: AgentSpec = {
   ],
 };
 
+const DbAuditTools: ToolName[] = [
+  'schema',
+  'detectDbEngine',
+  'getTopSlowQueries',
+  'explainQueryPlan',
+  'getIndexHealth',
+  'getTableHealth',
+  'getInfraRuntimeSignals',
+  'getRecentDbLogs',
+  'getLockAndBlockingAnalysis',
+  'getStatisticsHealth',
+  'getBloatEstimates',
+  'getReplicationHealth',
+  'validateRemediationInGfsCli',
+  'validateQuery',
+  'runQuery',
+  'describeQuery',
+  'present',
+  'agent',
+  'taskStatus',
+];
+
+export const DbPerformanceAuditAgentSpec: AgentSpec = {
+  id: 'db-performance-audit',
+  label: 'DB Audit',
+  tools: DbAuditTools,
+  systemPrompt: DB_PERFORMANCE_AUDIT_PROMPT,
+  prefersSourceEngine: true,
+  // The audit is the heaviest agent (many steps, large context); medium effort
+  // keeps it under the deployment's tokens-per-minute quota. The optimizer keeps
+  // the provider default (high) — its plan reasoning benefits from it.
+  reasoningEffort: 'medium',
+  defaultLayoutMode: 'focus',
+  routingKeywords: [
+    /\b(database|postgres|postgresql|db)\s+(audit|health|performance)\b/i,
+    /\b(audit|bloat|replication|locks?|blocking|indexes?|statistics|vacuum|analyze)\b/i,
+    /\bpg_stat_statements|pg_stat_activity|pg_locks\b/i,
+  ],
+};
+
+export const SlowQueryOptimizerAgentSpec: AgentSpec = {
+  id: 'slow-query-optimizer',
+  label: 'Query Optimizer',
+  tools: [
+    'schema',
+    'detectDbEngine',
+    'getTopSlowQueries',
+    'explainQueryPlan',
+    'compareQueryRewrite',
+    'getStatisticsHealth',
+    'validateQuery',
+    'runQuery',
+    'describeQuery',
+    'present',
+    'agent',
+    'taskStatus',
+  ],
+  systemPrompt: SLOW_QUERY_OPTIMIZER_PROMPT,
+  prefersSourceEngine: true,
+  defaultLayoutMode: 'focus',
+  routingKeywords: [
+    /\b(slow|sluggish|expensive|hot)\s+(query|queries|sql)\b/i,
+    /\b(optimi[sz]e|rewrite|execution plan|explain analyze)\b/i,
+    /\bpg_stat_statements\b/i,
+  ],
+};
+
 export const AGENT_SPECS: Record<AgentId, AgentSpec> = {
   data: DataAgentSpec,
   code: CodingAgentSpec,
+  'db-performance-audit': DbPerformanceAuditAgentSpec,
+  'slow-query-optimizer': SlowQueryOptimizerAgentSpec,
 };
 
 /**
@@ -81,7 +189,12 @@ export const AGENT_SPECS: Record<AgentId, AgentSpec> = {
 export function routeAgent(prompt: string): AgentSpec {
   let bestSpec = DataAgentSpec;
   let bestScore = -1;
-  for (const spec of [DataAgentSpec, CodingAgentSpec]) {
+  for (const spec of [
+    DataAgentSpec,
+    CodingAgentSpec,
+    DbPerformanceAuditAgentSpec,
+    SlowQueryOptimizerAgentSpec,
+  ]) {
     let score = 0;
     for (const re of spec.routingKeywords) if (re.test(prompt)) score++;
     if (score > bestScore) {

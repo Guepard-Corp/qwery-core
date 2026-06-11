@@ -4,6 +4,30 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { type ConfigStore, type LLMProvider, NoLLMProviderError, type ProviderConfig } from '@qwery/domain';
 import type { LanguageModel } from 'ai';
 
+type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+
+function isReasoningEffort(value: unknown): value is ReasoningEffort {
+  return value === 'minimal' || value === 'low' || value === 'medium' || value === 'high';
+}
+
+function looksLikeReasoningModel(modelId: string): boolean {
+  return /(^|[-_])(gpt[-_]?5|o[134])([-_.]|$)/i.test(modelId);
+}
+
+export function buildProviderOptions(
+  config: ProviderConfig,
+): Record<string, Record<string, unknown>> | undefined {
+  if (config.id !== 'azure') return undefined;
+  const { deployment, apiKind = 'chat', reasoningEffort } = config.values;
+  if (apiKind.toLowerCase() !== 'responses') return undefined;
+  const effort = isReasoningEffort(reasoningEffort)
+    ? reasoningEffort
+    : looksLikeReasoningModel(deployment ?? '')
+      ? 'high'
+      : undefined;
+  return effort ? { openai: { reasoningEffort: effort } } : undefined;
+}
+
 export function buildModel(config: ProviderConfig): LanguageModel {
   switch (config.id) {
     case 'azure': {
@@ -68,6 +92,12 @@ class AiSdkLLM implements LLMProvider {
     const active = this.configStore.getActiveProvider();
     if (!active) throw new NoLLMProviderError();
     return buildModel(active);
+  }
+
+  getProviderOptions(): Record<string, Record<string, unknown>> | undefined {
+    const active = this.configStore.getActiveProvider();
+    if (!active) throw new NoLLMProviderError();
+    return buildProviderOptions(active);
   }
 }
 

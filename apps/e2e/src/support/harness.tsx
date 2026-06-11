@@ -1,8 +1,9 @@
 import { afterEach } from 'bun:test';
+import { EventEmitter } from 'node:events';
 import { App } from '@qwery/cli/app';
 import { ServicesProvider } from '@qwery/cli/services';
 import { matchCommands } from '@qwery/domain';
-import { render } from 'ink-testing-library';
+import { render } from 'ink';
 import { type MockServicesOptions, makeMockServices } from './mock-services';
 import { captureFrame } from './screenshot';
 
@@ -11,6 +12,56 @@ import { captureFrame } from './screenshot';
 process.env.QWERY_VERSION = '0.0.0-e2e';
 
 const DOWN_ARROW = '\x1B[B';
+
+class TestStdout extends EventEmitter {
+  columns = 100;
+  rows = 30;
+  frames: string[] = [];
+  private frame: string | undefined;
+
+  write = (frame: string) => {
+    this.frames.push(frame);
+    this.frame = frame;
+  };
+
+  lastFrame = () => this.frame;
+}
+
+class TestStderr extends EventEmitter {
+  frames: string[] = [];
+  private frame: string | undefined;
+
+  write = (frame: string) => {
+    this.frames.push(frame);
+    this.frame = frame;
+  };
+
+  lastFrame = () => this.frame;
+}
+
+class TestStdin extends EventEmitter {
+  isTTY = true;
+  private data: string | null = null;
+
+  write = (data: string) => {
+    this.data = data;
+    this.emit('readable');
+    this.emit('data', data);
+  };
+
+  setEncoding() {}
+  setRawMode() {}
+  resume() {}
+  pause() {}
+  ref() {}
+  unref() {}
+
+  read = () => {
+    const data = this.data;
+    this.data = null;
+    return data;
+  };
+}
 
 export const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -82,12 +133,33 @@ export async function waitFor<T>(
 /** Render the real <App> with mocked services. Returns the ink harness + the services. */
 export function renderApp(opts: MockServicesOptions = {}) {
   const services = makeMockServices(opts);
-  const harness = render(
+  const stdout = new TestStdout();
+  const stderr = new TestStderr();
+  const stdin = new TestStdin();
+  const instance = render(
     <ServicesProvider services={services}>
       <App />
     </ServicesProvider>,
+    {
+      stdout: stdout as never,
+      stderr: stderr as never,
+      stdin: stdin as never,
+      debug: true,
+      exitOnCtrlC: false,
+      patchConsole: false,
+    },
   );
-  return { ...harness, services };
+  return {
+    rerender: instance.rerender,
+    unmount: instance.unmount,
+    cleanup: instance.cleanup,
+    stdout,
+    stderr,
+    stdin,
+    frames: stdout.frames,
+    lastFrame: stdout.lastFrame,
+    services,
+  };
 }
 
 /**

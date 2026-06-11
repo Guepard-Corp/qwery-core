@@ -160,7 +160,7 @@ export function buildAgentTool(
         id: base.id,
         label: `${subagent.name} (subagent)`,
         tools: allowedTools,
-        promptPreamble: `${base.promptPreamble}\n\n--- Subagent role: ${subagent.name} ---\n${subagent.prompt}`,
+        promptPreamble: `${base.promptPreamble ?? ''}\n\n--- Subagent role: ${subagent.name} ---\n${subagent.prompt}`,
         routingKeywords: [],
       };
 

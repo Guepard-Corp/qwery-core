@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConfigStore, ProviderConfig, UserConfig } from '@qwery/domain';
-import { buildModel, createAiSdkLLM, NoLLMProviderError } from '../index';
+import { buildModel, buildProviderOptions, createAiSdkLLM, NoLLMProviderError } from '../index';
 
 function fakeStore(active: ProviderConfig | null): ConfigStore {
   return {
@@ -99,6 +99,35 @@ describe('buildModel', () => {
   });
 });
 
+describe('buildProviderOptions', () => {
+  test('Azure responses GPT-5 defaults to high reasoning effort', () => {
+    expect(
+      buildProviderOptions({
+        id: 'azure',
+        values: { deployment: 'gpt-5.3-codex', apiKind: 'responses' },
+      } as ProviderConfig),
+    ).toEqual({ openai: { reasoningEffort: 'high' } });
+  });
+
+  test('Azure responses accepts explicit reasoning effort override', () => {
+    expect(
+      buildProviderOptions({
+        id: 'azure',
+        values: { deployment: 'gpt-5.3-codex', apiKind: 'responses', reasoningEffort: 'medium' },
+      } as ProviderConfig),
+    ).toEqual({ openai: { reasoningEffort: 'medium' } });
+  });
+
+  test('does not set reasoning effort for Azure chat models', () => {
+    expect(
+      buildProviderOptions({
+        id: 'azure',
+        values: { deployment: 'gpt-5.3-codex', apiKind: 'chat' },
+      } as ProviderConfig),
+    ).toBeUndefined();
+  });
+});
+
 describe('createAiSdkLLM', () => {
   test('throws NoLLMProviderError when no active provider is configured', () => {
     const llm = createAiSdkLLM(fakeStore(null));
@@ -113,5 +142,16 @@ describe('createAiSdkLLM', () => {
       } as ProviderConfig),
     );
     expect(llm.getModel()).toBeDefined();
+  });
+
+  test('returns provider options for the active provider', () => {
+    const llm = createAiSdkLLM(
+      fakeStore({
+        id: 'azure',
+        values: { deployment: 'gpt-5.3-codex', apiKind: 'responses', reasoningEffort: 'low' },
+      } as ProviderConfig),
+    );
+
+    expect(llm.getProviderOptions?.()).toEqual({ openai: { reasoningEffort: 'low' } });
   });
 });
