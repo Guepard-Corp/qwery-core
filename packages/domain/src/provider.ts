@@ -32,16 +32,19 @@ export interface UserConfig {
   providers: Partial<Record<ProviderId, ProviderConfig>>;
 }
 
-async function fetchOllamaModels(baseURL: string): Promise<string[]> {
+async function fetchOllamaModels(baseURL: string, apiKey?: string): Promise<string[]> {
   const root = baseURL.replace(/\/v1\/?$/, '').replace(/\/$/, '');
-  const res = await fetch(`${root}/api/tags`);
+  const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+  const res = await fetch(`${root}/api/tags`, { headers });
   if (!res.ok) {
     throw new Error(`Ollama responded ${res.status} ${res.statusText} at ${root}/api/tags`);
   }
   const data = (await res.json()) as { models?: { name: string }[] };
   const names = (data.models ?? []).map((m) => m.name).filter((n): n is string => !!n);
   if (names.length === 0) {
-    throw new Error(`No models installed at ${root}. Pull one first: \`ollama pull qwen2.5-coder:14b\`.`);
+    const hint = apiKey ? 'No models available' : 'No models installed';
+    const pull = apiKey ? '' : ' Pull one first: `ollama pull qwen2.5-coder:14b`.';
+    throw new Error(`${hint} at ${root}.${pull}`);
   }
   return names.sort();
 }
@@ -151,7 +154,13 @@ export const PROVIDERS: ProviderSpec[] = [
     fields: [
       { key: 'baseURL', label: 'Base URL', type: 'text', required: true, default: 'https://ollama.com/v1' },
       { key: 'apiKey', label: 'API key', type: 'secret', required: true },
-      { key: 'model', label: 'Model', type: 'text', required: true, placeholder: 'gpt-oss:120b' },
+      {
+        key: 'model',
+        label: 'Model',
+        type: 'select',
+        required: true,
+        loadChoices: (values) => fetchOllamaModels(values.baseURL ?? 'https://ollama.com/v1', values.apiKey),
+      },
     ],
   },
 ];
